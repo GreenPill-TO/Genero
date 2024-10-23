@@ -18,7 +18,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@toronto/tcoin/*": ["./src/app/toronto/TCoin/*"],
+      "@toronto/sparechange/*": ["./src/app/toronto/SpareChange/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

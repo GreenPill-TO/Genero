@@ -1,4 +1,4 @@
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar } from "@shared/components/ui/Avatar";
 import React, { useState } from "react";
 
 interface ImageUploadProps {

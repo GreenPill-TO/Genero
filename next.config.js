@@ -1,7 +1,5 @@
-/** @type {import('next').NextConfig} */
-
 const city = process.env.NEXT_PUBLIC_CITY || "toronto"; // Default city
-const appToServe = process.env.NEXT_PUBLIC_APP_NAME || "tcoin"; // Default app if not set
+const appToServe = process.env.NEXT_PUBLIC_APP_NAME || "TCoin"; // Default app if not set
 
 console.log(`Serving ${appToServe} for ${city}`);
 
@@ -21,4 +19,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

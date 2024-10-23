@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@/lib/classnames";
+import { cn } from "@shared/utils/classnames";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const selectVariants = cva("select bg-background", {
@@ -47,6 +47,7 @@ const Select: React.FC<SelectProps> = ({ variant, elSize, className, label, name
         </div>
       )}
       <select
+        name={name}
         className={cn(selectVariants({ variant, elSize }), className)}
         {...props}
         value={value}

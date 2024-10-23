@@ -1,4 +1,4 @@
-import "../styles/app.scss";
+import "@toronto/tcoin/styles/app.scss";
 
 const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (

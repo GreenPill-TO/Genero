@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@/lib/classnames";
+import { cn } from "@shared/utils/classnames";
 
 const TextArea = React.forwardRef<HTMLTextAreaElement, React.InputHTMLAttributes<HTMLTextAreaElement>>(({ className, ...props }, ref) => {
   return (

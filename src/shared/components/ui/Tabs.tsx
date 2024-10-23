@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { cn } from "@/lib/classnames";
+import { cn } from "@shared/utils/classnames";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const tabsVariants = cva("tabs", {
