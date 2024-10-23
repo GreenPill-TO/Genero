@@ -4,7 +4,7 @@ import type { Config } from "tailwindcss";
 import TailwindCSSAnimate from "tailwindcss-animate";
 
 const config: Config = {
-  darkMode: ["selector", "class"],
+  darkMode: ["selector"],
   content: ["./src/shared/**/*.{js,ts,jsx,tsx,mdx}", "src/app/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
