@@ -1,5 +1,7 @@
+import Typography from "@tailwindcss/typography";
 import DaisyUI from "daisyui";
 import type { Config } from "tailwindcss";
+import TailwindCSSAnimate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: ["selector", "class"],
@@ -69,6 +71,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [DaisyUI],
+  plugins: [DaisyUI, Typography, TailwindCSSAnimate],
 };
 export default config;
