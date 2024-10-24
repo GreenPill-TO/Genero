@@ -5,7 +5,7 @@ import TailwindCSSAnimate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: ["selector"],
-  content: ["./src/shared/**/*.{js,ts,jsx,tsx,mdx}", "src/app/**/*.{js,ts,jsx,tsx,mdx}"],
+  content: ["./shared/**/*.{js,ts,jsx,tsx,mdx}", "app/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
