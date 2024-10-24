@@ -9,11 +9,11 @@ const nextConfig = {
     return [
       {
         source: "/",
-        destination: `/${city}/${appToServe}/app`, // Serve the main app at the root
+        destination: `/${city}/${appToServe}`, // Serve the main app at the root
       },
       {
         source: "/:path*",
-        destination: `/${city}/${appToServe}/app/:path*`, // Rewrite all other requests to the app
+        destination: `/${city}/${appToServe}/:path*`, // Rewrite all other requests to the app
       },
     ];
   },
