@@ -1,4 +1,4 @@
-import { MobileWalletDashboardComponent } from "@toronto/sparechange/dashboard/screens/WalletComponent";
+import { MobileWalletDashboardComponent } from "./WalletComponent";
 
 export function WalletScreen() {
   return (

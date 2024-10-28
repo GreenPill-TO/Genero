@@ -7,7 +7,7 @@ import { Label } from "@shared/components/ui/Label";
 import { Switch } from "@shared/components/ui/Switch";
 import { TabContent, Tabs, TabTrigger } from "@shared/components/ui/Tabs";
 import { useModal } from "@shared/contexts/ModalContext";
-import { CharitySelectModal, ContactSelectModal, OffRampModal, QrScanModal, ShareQrModal, TopUpModal } from "@toronto/sparechange/components/modals";
+import { CharitySelectModal, ContactSelectModal, OffRampModal, QrScanModal, ShareQrModal, TopUpModal } from "../../components/modals";
 import { useState } from "react";
 import { LuCamera, LuCreditCard, LuDollarSign, LuQrCode, LuSend, LuShare2, LuUsers } from "react-icons/lu";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";

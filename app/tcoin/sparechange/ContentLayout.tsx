@@ -3,8 +3,8 @@
 
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { cn } from "@shared/utils/classnames";
-import { Footer } from "@toronto/sparechange/components/footer";
-import Navbar from "@toronto/sparechange/components/navbar";
+import { Footer } from "./components/footer";
+import Navbar from "./components/navbar";
 import { GeistSans } from "geist/font/sans";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";

@@ -14,8 +14,8 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <div>
-            <h4 className="text-lg font-bold">SpareChange</h4>
-            <p>&copy; {new Date().getFullYear()} SpareChange. All rights reserved.</p>
+            <h4 className="text-lg font-bold">sparechange</h4>
+            <p>&copy; {new Date().getFullYear()} sparechange. All rights reserved.</p>
           </div>
           <div className="flex space-x-4 items-center">
             <button onClick={() => handleOpenModal("/privacypolicy.md")} className="hover:underline">

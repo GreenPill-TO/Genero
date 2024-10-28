@@ -1,0 +1,24 @@
+// .vscode/launch.json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Toronto SpareChange",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:tcoin-sparechange"], // Start SpareChange app in development mode
+      "envFile": "${workspaceFolder}/.env.tcoin-sparechange.local", // Load SpareChange-specific env variables
+      "console": "integratedTerminal" // Output in VS Code terminal
+    },
+    {
+      "name": "Toronto TCoin",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:tcoin-wallet"], // Start TCoin wallet app in development mode
+      "envFile": "${workspaceFolder}/.env.tcoin-wallet.local", // Load TCoin-specific env variables
+      "console": "integratedTerminal" // Output in VS Code terminal
+    }
+  ]
+}

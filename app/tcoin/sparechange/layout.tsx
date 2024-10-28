@@ -1,7 +1,7 @@
 import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
-import "@toronto/sparechange/styles/app.scss";
+import "@tcoin/sparechange/styles/app.scss";
 import type { Metadata } from "next";
 import ContentLayout from "./ContentLayout";
 

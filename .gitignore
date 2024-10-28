@@ -19,6 +19,7 @@
 # misc
 .DS_Store
 *.pem
+directory_structure.txt
 
 # debug
 npm-debug.log*

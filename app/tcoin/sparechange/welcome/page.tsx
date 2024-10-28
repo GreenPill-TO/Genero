@@ -21,7 +21,7 @@ import {
   StorePaymentsStep,
   StoreProfileStep,
   UserInfoStep,
-} from "@toronto/sparechange/welcome/steps";
+} from "./steps";
 
 const stepHeadings = ["Introduction", "Complete Your Profile", "Choose Your Persona", "Additional Details", "Finalize Setup", "You're All Set!"];
 const initialFormData = {

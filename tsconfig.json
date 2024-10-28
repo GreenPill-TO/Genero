@@ -1,6 +1,11 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "baseUrl": ".", // Ensure root-level reference for paths
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -12,17 +17,32 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "allowSyntheticDefaultImports": true, // Allows better import compatibility
     "plugins": [
       {
         "name": "next"
       }
     ],
     "paths": {
-      "@shared/*": ["./shared/*"],
-      "@toronto/tcoin/*": ["./app/toronto/TCoin/*"],
-      "@toronto/sparechange/*": ["./app/toronto/SpareChange/*"]
-    }
+      "@shared/*": [
+        "./shared/*"
+      ],
+      "@tcoin/wallet/*": [
+        "./app/tcoin/wallet/*"
+      ], // Ensure root-relative paths
+      "@tcoin/sparechange/*": [
+        "./app/tcoin/sparechange/*"
+      ]
+    },
+    "target": "ES2017"
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

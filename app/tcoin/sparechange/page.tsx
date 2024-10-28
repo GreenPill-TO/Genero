@@ -1,7 +1,7 @@
 "use client";
 
 import { useModal } from "@shared/contexts/ModalContext";
-import SignInModal from "@toronto/sparechange/components/modals/SignInModal";
+import SignInModal from "./components/modals/SignInModal";
 import { CallToAction, Features, Hero, HowItWorks, Testimonials } from "./home";
 
 export default function Home() {
