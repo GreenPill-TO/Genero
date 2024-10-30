@@ -1,1 +1,9 @@
 @import "@shared/styles/globals.scss";
+@layer utilities {
+    .bg-background {
+      background-image: url('/images/background_blue.jpg');
+      background-size: cover;
+      background-position: center;
+    }
+  }
+  

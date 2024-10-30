@@ -5,7 +5,11 @@ import TailwindCSSAnimate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: ["selector"],
-  content: ["./shared/**/*.{js,ts,jsx,tsx,mdx}", "app/**/*.{js,ts,jsx,tsx,mdx}"],
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",  // Include all app directories
+    "./components/**/*.{js,ts,jsx,tsx}",  // Ensure components are included
+    "./shared/**/*.{js,ts,jsx,tsx,mdx}",  // Shared files and Markdown support
+  ],
   theme: {
     extend: {
       colors: {
@@ -73,4 +77,5 @@ const config: Config = {
   },
   plugins: [DaisyUI, Typography, TailwindCSSAnimate],
 };
+
 export default config;
