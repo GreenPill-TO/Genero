@@ -14,7 +14,7 @@ import {
   QrScanModal,
   ShareQrModal,
   TopUpModal,
-} from "@toronto/sparechange/components/modals";
+} from "@tcoin/sparechange/components/modals";
 import { useState } from "react";
 import { LuCamera, LuCreditCard, LuDollarSign, LuQrCode, LuSend, LuShare2, LuUsers } from "react-icons/lu";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";

@@ -1,5 +1,5 @@
 import InputField from "@shared/components/ui/InputField";
-import PaymentForm from "@toronto/sparechange/components/forms/PaymentForm";
+import PaymentForm from "@tcoin/sparechange/components/forms/PaymentForm";
 import React, { useEffect } from "react";
 
 interface AddFundsStepProps {

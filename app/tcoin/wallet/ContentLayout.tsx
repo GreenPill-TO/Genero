@@ -3,8 +3,8 @@
 
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { cn } from "@shared/utils/classnames";
-import { Footer } from "@toronto/tcoin/components/footer";
-import Navbar from "@toronto/tcoin/components/navbar";
+import { Footer } from "@tcoin/wallet/components/footer";
+import Navbar from "@tcoin/wallet/components/navbar";
 import { GeistSans } from "geist/font/sans";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";

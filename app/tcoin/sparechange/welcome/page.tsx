@@ -21,9 +21,16 @@ import {
   StorePaymentsStep,
   StoreProfileStep,
   UserInfoStep,
-} from "@toronto/sparechange/welcome/steps";
+} from "@tcoin/sparechange/welcome/steps";
 
-const stepHeadings = ["Introduction", "Complete Your Profile", "Choose Your Persona", "Additional Details", "Finalize Setup", "You're All Set!"];
+const stepHeadings = [
+  "Introduction",
+  "Complete Your Profile",
+  "Choose Your Persona",
+  "Additional Details",
+  "Finalize Setup",
+  "You're All Set!",
+];
 const initialFormData = {
   full_name: "",
   username: "",
@@ -47,7 +54,9 @@ const WelcomeFlow: React.FC = () => {
   const { userData } = useAuth();
 
   const [userFormData, setUserFormData] = useState<TCubidData>(
-    userData?.cubidData?.current_step && userData?.cubidData?.current_step > 1 ? { ...initialFormData, ...userData?.cubidData } : initialFormData
+    userData?.cubidData?.current_step && userData?.cubidData?.current_step > 1
+      ? { ...initialFormData, ...userData?.cubidData }
+      : initialFormData
   );
 
   const [isNextEnabled, setIsNextEnabled] = useState<boolean>(true);
@@ -116,7 +125,9 @@ const WelcomeFlow: React.FC = () => {
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={index}
-                className={`w-2 h-2 rounded-full mx-1 ${index + 1 === userFormData.current_step ? "bg-indigo-600" : "dark:bg-gray-600 bg-gray-300"}`}
+                className={`w-2 h-2 rounded-full mx-1 ${
+                  index + 1 === userFormData.current_step ? "bg-indigo-600" : "dark:bg-gray-600 bg-gray-300"
+                }`}
               ></div>
             ))}
           </div>
@@ -162,7 +173,9 @@ const WelcomeFlow: React.FC = () => {
                     nextStep={nextStep}
                   />
                 )}
-                {userFormData.persona === "sm" && <StorePaymentsStep nextStep={nextStep} setIsNextEnabled={setIsNextEnabled} />}
+                {userFormData.persona === "sm" && (
+                  <StorePaymentsStep nextStep={nextStep} setIsNextEnabled={setIsNextEnabled} />
+                )}
                 {userFormData.persona === "dr" && (
                   <DonationPreferencesStep
                     preferredDonationAmount={userFormData.preferred_donation_amount || 0}
@@ -224,7 +237,9 @@ const WelcomeFlow: React.FC = () => {
         </CardContent>
 
         <CardFooter>
-          {userFormData.current_step > 1 && userFormData.current_step < 6 && <Button onClick={previousStep}>Back</Button>}
+          {userFormData.current_step > 1 && userFormData.current_step < 6 && (
+            <Button onClick={previousStep}>Back</Button>
+          )}
           {userFormData.current_step < 6 && (
             <Button onClick={nextStep} disabled={!isNextEnabled} style={{ marginLeft: "auto" }}>
               Continue

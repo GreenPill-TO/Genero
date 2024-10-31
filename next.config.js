@@ -1,7 +1,7 @@
-const city = process.env.NEXT_PUBLIC_CITY || "toronto"; // Default city
-const appToServe = process.env.NEXT_PUBLIC_APP_NAME || "TCoin"; // Default app if not set
+const citycoin = process.env.NEXT_PUBLIC_CITYCOIN || "tcoin"; // Default CityCoin
+const appToServe = process.env.NEXT_PUBLIC_APP_NAME || "wallet"; // Default app if not set
 
-console.log(`Serving ${appToServe} for ${city}`);
+console.log(`Serving ${appToServe} for ${citycoin}`);
 
 const nextConfig = {
   // No redirect; instead, directly serve from base URL
@@ -9,11 +9,11 @@ const nextConfig = {
     return [
       {
         source: "/",
-        destination: `/${city}/${appToServe}`, // Serve the main app at the root
+        destination: `/${citycoin}/${appToServe}`, // Serve the main app at the root
       },
       {
         source: "/:path*",
-        destination: `/${city}/${appToServe}/:path*`, // Rewrite all other requests to the app
+        destination: `/${citycoin}/${appToServe}/:path*`, // Rewrite all other requests to the app
       },
     ];
   },

@@ -1,4 +1,4 @@
-import { MobileWalletDashboardComponent } from "@toronto/tcoin/dashboard/screens/WalletComponent";
+import { MobileWalletDashboardComponent } from "@tcoin/sparechange/dashboard/screens/WalletComponent";
 
 export function WalletScreen() {
   return (

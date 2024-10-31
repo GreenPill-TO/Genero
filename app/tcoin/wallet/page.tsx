@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@shared/components/ui/Card";
 import { cn } from "@shared/utils/classnames";
-import "@toronto/tcoin/styles/home.scss";
+import "@tcoin/wallet/styles/home.scss";
 
 const TCoinApp = () => {
   return (

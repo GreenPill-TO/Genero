@@ -1,13 +1,13 @@
 import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
-import "@toronto/tcoin/styles/app.scss";
+import "@tcoin/sparechange/styles/app.scss";
 import type { Metadata } from "next";
 import ContentLayout from "./ContentLayout";
 
 export const metadata: Metadata = {
-  title: "TCoin",
-  description: "Empowering Toronto's Economy",
+  title: "Spare Change",
+  description: "Help people donate to Panhandlers, Waitresses and more.",
 };
 
 export default function RootLayout({

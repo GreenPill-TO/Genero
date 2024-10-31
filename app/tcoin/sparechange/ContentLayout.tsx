@@ -3,8 +3,8 @@
 
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { cn } from "@shared/utils/classnames";
-import { Footer } from "@toronto/sparechange/components/footer";
-import Navbar from "@toronto/sparechange/components/navbar";
+import { Footer } from "@tcoin/sparechange/components/footer";
+import Navbar from "@tcoin/sparechange/components/navbar";
 import { GeistSans } from "geist/font/sans";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -15,7 +15,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const { isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
-  const bodyClass = cn("min-h-screen", "flex flex-col justify-between", "bg-background", "text-primary text-sm font-inter");
+  const bodyClass = cn(
+    "min-h-screen",
+    "flex flex-col justify-between",
+    "bg-background",
+    "text-primary text-sm font-inter"
+  );
 
   useEffect(() => {
     // Replace this with your actual authentication logic
