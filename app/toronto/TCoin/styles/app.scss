@@ -1,1 +1,108 @@
 @import "@shared/styles/globals.scss";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* styles/globals.css */
+
+@layer base {
+  :root {
+    --background: 220 50% 95%; /* Light blue background */
+    --foreground: 220 40% 20%; /* Dark blue text */
+
+    --card: 220 50% 98%; /* Very light blue for cards */
+    --card-foreground: 220 40% 20%; /* Dark blue for card text */
+
+    --popover: 220 50% 98%; /* Light blue for popovers */
+    --popover-foreground: 220 40% 20%; /* Dark blue for popover text */
+
+    --primary: 340 100% 60%; /* pink primary color */
+    --primary-foreground: 220 50% 95%; /* Light blue for primary text */
+
+    --secondary: 220 60% 90%; /* Pale blue for secondary elements */
+    --secondary-foreground: 220 40% 30%; /* Darker blue for secondary text */
+
+    --muted: 220 40% 92%; /* Very light blue muted background */
+    --muted-foreground: 220 40% 45%; /* Medium blue for muted text */
+
+    --accent: 220 60% 80%; /* Soft blue accent */
+    --accent-foreground: 220 40% 20%; /* Dark blue accent text */
+
+    --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
+    --destructive-foreground: 210 40% 98%; /* White text for destructive actions */
+
+    --border: 220 40% 85%; /* Light blue borders */
+    --input: 220 40% 85%; /* Light blue for input fields */
+
+    --ring: 220 70% 50%; /* Blue focus ring */
+
+    /* Link and header color */
+    --link-color: 340 100% 70%; /* Pink link color (#ff4081) */
+    --header-color: 340 100% 70%; /* Pink header color (#ff4081) */
+
+    /* Chart colors in shades of blue */
+    --chart-1: 210 100% 50%; /* Bright blue */
+    --chart-2: 220 80% 60%; /* Light blue */
+    --chart-3: 230 60% 40%; /* Dark blue */
+    --chart-4: 200 70% 50%; /* Muted blue */
+    --chart-5: 190 80% 60%; /* Light cyan */
+
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 220 30% 15%; /* Dark blue background */
+    --foreground: 220 80% 95%; /* Very light blue text */
+
+    --card: 220 30% 20%; /* Darker blue for cards */
+    --card-foreground: 220 80% 95%; /* Light text on cards */
+
+    --popover: 220 30% 20%; /* Darker blue for popovers */
+    --popover-foreground: 220 80% 95%; /* Light text in popovers */
+
+    --primary: 340 100% 70%; /* Medium blue for primary elements */
+    --primary-foreground: 220 30% 95%; /* Very light blue for primary text */
+
+    --secondary: 220 40% 30%; /* Darker blue for secondary elements */
+    --secondary-foreground: 220 80% 95%; /* Very light blue for secondary text */
+
+    --muted: 220 30% 25%; /* Muted dark blue */
+    --muted-foreground: 220 30% 60%; /* Medium-light blue for muted text */
+
+    --accent: 220 80% 70%; /* Bright blue accent */
+    --accent-foreground: 220 30% 20%; /* Dark blue accent text */
+
+    --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
+    --destructive-foreground: 210 40% 98%; /* White text for destructive actions */
+
+    --border: 220 30% 25%; /* Dark blue borders */
+    --input: 220 30% 25%; /* Dark blue for input fields */
+
+    --ring: 220 80% 95%; /* Light blue focus ring */
+
+    /* Link and header color */
+    --link-color: 340 100% 70%; /* Pink link color (#ff4081) */
+    --header-color: 340 100% 70%; /* Pink header color (#ff4081) */
+
+    /* Updated chart colors for blue theme */
+    --chart-1: 210 60% 50%; /* Medium blue */
+    --chart-2: 220 50% 40%; /* Darker blue */
+    --chart-3: 230 40% 60%; /* Light blue */
+    --chart-4: 200 50% 30%; /* Dark blue */
+    --chart-5: 190 50% 70%; /* Very light blue */
+  }
+}
+
+@layer base {
+  a {
+    color: hsl(var(--primary)); /* Apply link color */
+  }
+
+  .link-btn {
+    color: hsl(var(--primary));
+  }
+
+  svg {
+    color: hsl(var(--primary));
+  }
+}
