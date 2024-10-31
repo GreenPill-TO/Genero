@@ -1,13 +1,31 @@
+import { ModalProvider } from "@shared/contexts/ModalContext";
+import DarkModeProvider from "@shared/providers/dark-mode-provider";
+import { ReactQueryProvider } from "@shared/providers/react-query-provider";
 import "@toronto/tcoin/styles/app.scss";
+import type { Metadata } from "next";
+import ContentLayout from "./ContentLayout";
 
-const RootLayout = ({ children }: { children: React.ReactNode }) => {
+export const metadata: Metadata = {
+  title: "TCoin",
+  description: "Empowering Toronto's Economy",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html>
+    <html lang="en">
       <body>
-        <div>{children}</div>
+        <ReactQueryProvider>
+          <DarkModeProvider>
+            <ModalProvider>
+              <ContentLayout>{children}</ContentLayout>
+            </ModalProvider>
+          </DarkModeProvider>
+        </ReactQueryProvider>
       </body>
     </html>
   );
-};
-
-export default RootLayout;
+}

@@ -5,7 +5,7 @@ export default function AppLogo() {
 
   return (
     <div className={mainClass}>
-      <div className="px-12 py-1">SpareChange</div>
+      <div className="px-12 py-1">TCOIN.ME</div>
     </div>
   );
 }
