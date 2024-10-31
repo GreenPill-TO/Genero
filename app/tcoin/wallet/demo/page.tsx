@@ -1,16 +1,52 @@
+// app/tcoin/wallet/demo/page.tsx
+
 "use client";
 
 import { Button } from "@shared/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
 import { Label } from "@shared/components/ui/Label";
 import { Switch } from "@shared/components/ui/Switch";
-import { TabContent, Tabs, TabTrigger } from "@shared/components/ui/Tabs";
+import { 
+  TabContent, 
+  Tabs, 
+  TabTrigger 
+} from "@shared/components/ui/Tabs";
 import { useModal } from "@shared/contexts/ModalContext";
-import { CharitySelectModal, ContactSelectModal, OffRampModal, QrScanModal, ShareQrModal, TopUpModal } from "/home/noaklindqvist/Genero/app/tcoin/sparechange/components/modals";
+import { 
+  CharitySelectModal, 
+  ContactSelectModal, 
+  OffRampModal, 
+  QrScanModal, 
+  ShareQrModal, 
+  TopUpModal 
+} from "@shared/components/modals/index";
 import { useState } from "react";
-import { LuCamera, LuCreditCard, LuDollarSign, LuQrCode, LuSend, LuShare2, LuUsers } from "react-icons/lu";
-import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { 
+  LuCamera, 
+  LuCreditCard, 
+  LuDollarSign, 
+  LuQrCode, 
+  LuSend, 
+  LuShare2, 
+  LuUsers 
+} from "react-icons/lu";
+import { 
+  Area, 
+  AreaChart, 
+  CartesianGrid, 
+  Line, 
+  LineChart, 
+  ResponsiveContainer, 
+  Tooltip, 
+  XAxis, 
+  YAxis 
+} from "recharts";
 
 const balanceHistory = [
   { date: "2023-06-01", balance: 800 },
@@ -36,7 +72,7 @@ const charityContributionData = [
   { date: "2023-09-01", TheShelter: 22, TheFoodBank: 18 },
 ];
 
-export function MobileWalletDashboardComponent() {
+export default function MobileWalletDashboardComponent() {
   const { openModal, closeModal } = useModal();
   const [balance, setBalance] = useState(1000);
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");

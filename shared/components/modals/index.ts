@@ -1,4 +1,4 @@
-export * from "../../../../../shared/components/ui/Modal";
+export * from "../ui/Modal";
 export * from "./CharitySelectModal";
 export * from "./ContactSelectModal";
 export * from "./OffRampModal";

@@ -1,6 +1,6 @@
 import { useSendPasscodeMutation, useVerifyPasscodeMutation } from "@shared/api/mutations/usePasscode";
 import ImageCarousel from "@shared/components/ui/ImageCarousel";
-import OTPForm from "../forms/OTPForm";
+import OTPForm from "../../../app/tcoin/sparechange/components/forms/OTPForm";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "react-toastify";
