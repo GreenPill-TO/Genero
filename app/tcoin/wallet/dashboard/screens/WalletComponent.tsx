@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
@@ -7,6 +8,7 @@ import { Label } from "@shared/components/ui/Label";
 import { Switch } from "@shared/components/ui/Switch";
 import { TabContent, Tabs, TabTrigger } from "@shared/components/ui/Tabs";
 import { useModal } from "@shared/contexts/ModalContext";
+import { createClient } from "@shared/lib/supabase/client";
 import {
   CharitySelectModal,
   ContactSelectModal,
@@ -15,6 +17,8 @@ import {
   ShareQrModal,
   TopUpModal,
 } from "@tcoin/wallet/components/modals";
+import { CubidWidget } from "cubid-sdk";
+import { WalletComponent } from 'cubid-wallet'
 import { useState } from "react";
 import { LuCamera, LuCreditCard, LuDollarSign, LuQrCode, LuSend, LuShare2, LuUsers } from "react-icons/lu";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -98,9 +102,42 @@ export function MobileWalletDashboardComponent() {
     }
   };
 
+  const { userData } = useAuth()
+
   return (
     <div className="container mx-auto sm:p-4 space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Cubid Stamps</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <CubidWidget
+                stampToRender="phone" uuid={userData?.user?.cubid_id}
+                page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+              />
+              <CubidWidget stampToRender="email"
+                uuid={userData?.user?.cubid_id}
+                page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+              />
+              <WalletComponent type="evm"
+                user_id={userData?.user?.cubid_id} dapp_id="59"
+                api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+                onAppShare={async (share) => {
+                  console.log({ share })
+                  const supabase = createClient()
+                  if (share) {
+                    await supabase.from("wallet_appshare").insert({
+                      app_share: share,
+                      user_id: (userData?.cubidData as any)?.id
+                    })
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Charitable Contributions</CardTitle>
@@ -304,9 +341,8 @@ export function MobileWalletDashboardComponent() {
                       </div>
                       <div className="text-right">
                         <p
-                          className={`font-semibold ${
-                            transaction.type === "Received" ? "text-green-600" : "text-red-600"
-                          }`}
+                          className={`font-semibold ${transaction.type === "Received" ? "text-green-600" : "text-red-600"
+                            }`}
                         >
                           {transaction.type === "Received" ? "+" : "-"}
                           {showAmountInCad

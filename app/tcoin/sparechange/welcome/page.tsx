@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { createClient } from "@shared/lib/supabase/client";
 
 // Import all the step components
 import { useAuth } from "@shared/api/hooks/useAuth";
@@ -22,6 +23,10 @@ import {
   StoreProfileStep,
   UserInfoStep,
 } from "@tcoin/sparechange/welcome/steps";
+import { CubidWidget } from "cubid-sdk";
+import { WalletComponent } from "cubid-wallet";
+
+const supabase = createClient();
 
 const stepHeadings = [
   "Introduction",
@@ -29,6 +34,8 @@ const stepHeadings = [
   "Choose Your Persona",
   "Additional Details",
   "Finalize Setup",
+  "Add Cubid Stamp",
+  "Add Cubid Wallet",
   "You're All Set!",
 ];
 const initialFormData = {
@@ -117,17 +124,18 @@ const WelcomeFlow: React.FC = () => {
     }
   }, [userFormData.current_step]);
 
+  console.log({ userData: userData })
+
   return (
     <div className={mainClass}>
       <Card>
         <CardHeader className="text-2xl font-semibold text-center mb-8">
           <div className="flex justify-center mb-4">
-            {Array.from({ length: 6 }).map((_, index) => (
+            {Array.from({ length: 8 }).map((_, index) => (
               <div
                 key={index}
-                className={`w-2 h-2 rounded-full mx-1 ${
-                  index + 1 === userFormData.current_step ? "bg-indigo-600" : "dark:bg-gray-600 bg-gray-300"
-                }`}
+                className={`w-2 h-2 rounded-full mx-1 ${index + 1 === userFormData.current_step ? "bg-indigo-600" : "dark:bg-gray-600 bg-gray-300"
+                  }`}
               ></div>
             ))}
           </div>
@@ -215,7 +223,7 @@ const WelcomeFlow: React.FC = () => {
                   <AddFundsStep
                     preferredDonationAmount={userFormData.preferred_donation_amount || 0}
                     setPreferredDonationAmount={(v) => updateUserFormField("preferred_donation_amount", v)}
-                    handleSubmitPayment={() => {}}
+                    handleSubmitPayment={() => { }}
                     nextStep={nextStep}
                     setIsNextEnabled={setIsNextEnabled}
                   />
@@ -223,6 +231,38 @@ const WelcomeFlow: React.FC = () => {
               </>
             )}
             {userFormData.current_step === 6 && (
+              <>
+                <CubidWidget stampToRender="phone" uuid={userData?.user?.cubid_id}
+                  page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+                  onStampChange={() => {
+                    nextStep()
+                  }}
+                />
+                <CubidWidget stampToRender="email" uuid={userData?.user?.cubid_id}
+                  page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+                />
+              </>
+            )}
+            {userFormData.current_step === 7 && (
+              <WalletComponent type="evm" user_id={userData?.user?.cubid_id} dapp_id="59"
+                api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+                onEVMWallet={(wallet) => {
+                  console.log({ wallet })
+                  if (wallet.length) {
+                    nextStep()
+                  }
+                }}
+                onAppShare={async (share) => {
+                  console.log({ share })
+                  if (share) {
+                    await supabase.from("wallet_appshare").insert({
+                      app_share: share,
+                      user_id: (userData?.cubidData as any)?.id
+                    })
+                  }
+                }} />
+            )}
+            {userFormData.current_step === 8 && (
               <FinalWelcomeStep
                 onDashboardRedirect={() => {
                   saveToLocalStorage();
@@ -240,7 +280,7 @@ const WelcomeFlow: React.FC = () => {
           {userFormData.current_step > 1 && userFormData.current_step < 6 && (
             <Button onClick={previousStep}>Back</Button>
           )}
-          {userFormData.current_step < 6 && (
+          {userFormData.current_step < 8 && (
             <Button onClick={nextStep} disabled={!isNextEnabled} style={{ marginLeft: "auto" }}>
               Continue
             </Button>
