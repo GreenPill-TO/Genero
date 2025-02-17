@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useEffect, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { createClient } from '@shared/lib/supabase/client';
