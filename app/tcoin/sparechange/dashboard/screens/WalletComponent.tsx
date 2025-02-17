@@ -38,6 +38,7 @@ import {
 } from "recharts";
 import QRCode from "react-qr-code"; // Import QRCode generator
 import { toast } from "react-toastify";
+import { useSendMoney } from "@shared/hooks/useSendMoney";
 
 // Sample data arrays
 const balanceHistory = [
@@ -207,7 +208,9 @@ export function MobileWalletDashboardComponent() {
   const [toSendData, setToSendData] = useState<Hypodata | null>(null);
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
 
-  console.log({ user_id, toSendData });
+  const { senderWallet, receiverWallet, sendMoney, loading, error } = useSendMoney({ senderId: user_id, receiverId: toSendData?.id ?? null })
+
+  console.log({ user_id, toSendData, senderWallet, receiverWallet });
 
   return (
     <div className="container mx-auto sm:p-4 space-y-6">
