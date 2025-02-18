@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@spliterati/shamir": "^0.5.1",
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.6",
     "@tailwindcss/typography": "^0.5.15",
@@ -17,7 +18,7 @@
     "axios": "^1.7.7",
     "class-variance-authority": "^0.7.0",
     "cubid-sdk": "^2.1.4",
-    "cubid-wallet": "^0.4.8",
+    "cubid-wallet": "^0.5.7",
     "ethers": "^6.13.5",
     "framer-motion": "^12.4.1",
     "geist": "^1.3.1",
@@ -39,6 +40,8 @@
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
     "sass": "^1.80.3",
+    "secretjs": "^1.15.1",
+    "secrets.js": "^0.1.8",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7"
   },

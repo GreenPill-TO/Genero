@@ -253,13 +253,25 @@ const WelcomeFlow: React.FC = () => {
             {userFormData.current_step === 7 && (
               <WalletComponent type="evm" user_id={userData?.user?.cubid_id} dapp_id="59"
                 api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-                onEVMWallet={(wallet) => {
+                onEVMWallet={async (wallet: any) => {
                   console.log({ wallet })
+                  const [walletDetails] = wallet;
                   if (wallet.length) {
+                    await supabase.from("wallet_list").insert({
+                      public_key: walletDetails.address,
+                      user_id: userData?.cubidData?.id,
+                      is_generated: walletDetails?.is_generated_via_lib
+                    })
                     nextStep()
                   }
                 }}
-                onAppShare={async (share) => {
+                onUserShare={async (usershare: any) => {
+                  await supabase.from("user_encrypted_share").insert({
+                    user_share_encrypted: usershare,
+                    user_id: userData?.cubidData?.id,
+                  })
+                }}
+                onAppShare={async (share: any) => {
                   console.log({ share })
                   if (share) {
                     await supabase.from("wallet_appshare").insert({
@@ -267,7 +279,9 @@ const WelcomeFlow: React.FC = () => {
                       user_id: (userData?.cubidData as any)?.id
                     })
                   }
-                }} />
+                }}
+
+              />
             )}
             {userFormData.current_step === 8 && (
               <FinalWelcomeStep
