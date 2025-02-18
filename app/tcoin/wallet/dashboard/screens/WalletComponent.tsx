@@ -17,8 +17,15 @@ import {
   ShareQrModal,
   TopUpModal,
 } from "@tcoin/wallet/components/modals";
-import { CubidWidget } from "cubid-sdk";
-import { WalletComponent } from 'cubid-wallet'
+import dynamic from "next/dynamic";
+const WalletComponent = dynamic(
+  () => import('cubid-wallet').then((mod) => mod.WalletComponent),
+  { ssr: false }
+);
+const CubidWidget = dynamic(
+  () => import('cubid-sdk').then((mod) => mod.CubidWidget),
+  { ssr: false }
+);
 import { useState } from "react";
 import { LuCamera, LuCreditCard, LuDollarSign, LuQrCode, LuSend, LuShare2, LuUsers } from "react-icons/lu";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
