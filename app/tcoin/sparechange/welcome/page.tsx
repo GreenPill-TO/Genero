@@ -23,8 +23,15 @@ import {
   StoreProfileStep,
   UserInfoStep,
 } from "@tcoin/sparechange/welcome/steps";
-import { CubidWidget } from "cubid-sdk";
-import { WalletComponent } from "cubid-wallet";
+import dynamic from "next/dynamic";
+const WalletComponent = dynamic(
+  () => import('cubid-wallet').then((mod) => mod.WalletComponent),
+  { ssr: false }
+);
+const CubidWidget = dynamic(
+  () => import('cubid-sdk').then((mod) => mod.CubidWidget),
+  { ssr: false }
+);
 
 const supabase = createClient();
 
