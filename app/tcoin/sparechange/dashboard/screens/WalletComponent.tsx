@@ -264,6 +264,7 @@ function SendCard({
   closeModal,
   explorerLink,
   setExplorerLink,
+  setTcoin
 }: {
   toSendData: Hypodata | null;
   setToSendData: (data: Hypodata | null) => void;
@@ -275,6 +276,7 @@ function SendCard({
   closeModal: any;
   explorerLink: string | null;
   setExplorerLink: (link: string | null) => void;
+  setTcoin:any;
 }) {
   return (
     <Card>
@@ -288,7 +290,7 @@ function SendCard({
             onClick={() => {
               openModal({
                 content: (
-                  <QrScanModal setToSendData={setToSendData} closeModal={closeModal} />
+                  <QrScanModal setTcoin={setTcoin} setToSendData={setToSendData} closeModal={closeModal} />
                 ),
                 title: "Scan QR to Pay",
                 description: "Use your device's camera to scan a QR code for payment.",
@@ -873,6 +875,7 @@ export function MobileWalletDashboardComponent() {
               setToSendData={setToSendData}
               tcoinAmount={tcoinAmount}
               cadAmount={cadAmount}
+              setTcoin={setTcoinAmount}
               handleTcoinChange={handleTcoinChange}
               handleCadChange={handleCadChange}
               openModal={openModal}

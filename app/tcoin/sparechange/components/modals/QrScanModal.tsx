@@ -17,7 +17,8 @@ export interface QrScanModalProps {
  */
 export const QrScanModal: React.FC<QrScanModalProps> = ({
   closeModal,
-  setToSendData
+  setToSendData,
+  setTcoin
 }) => {
   // State to track the current facing mode
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
@@ -57,6 +58,9 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
         id: user_id
       })
       setToSendData(userDataFromSupabaseTable?.[0])
+      if(JSON.parse(data?.[0]?.rawValue)?.tcoinAmount){
+        setTcoin(JSON.parse(data?.[0]?.rawValue)?.tcoinAmount)
+      }
     }
 
     closeModal()
