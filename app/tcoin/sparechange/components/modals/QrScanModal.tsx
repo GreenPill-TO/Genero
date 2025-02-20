@@ -44,7 +44,6 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
 
   // Called whenever a QR code is successfully scanned.
   const handleScan = useCallback(async (data: any) => {
-    console.log(JSON.parse(data?.[0]?.rawValue));
     const { user_id } = JSON.parse(data?.[0]?.rawValue)
     const supabase = createClient()
     toast.success("Scanned User Successfully")

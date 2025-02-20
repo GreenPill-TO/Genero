@@ -132,7 +132,6 @@ const WelcomeFlow: React.FC = () => {
     }
   }, [userFormData.current_step]);
 
-  console.log({ userData: userData })
 
   return (
     <div className={mainClass}>
@@ -255,7 +254,6 @@ const WelcomeFlow: React.FC = () => {
               <WalletComponent type="evm" user_id={userData?.user?.cubid_id} dapp_id="59"
                 api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                 onEVMWallet={async (wallet: any) => {
-                  console.log({ wallet })
                   const [walletDetails] = wallet;
                   if (wallet.length) {
                     await supabase.from("wallet_list").insert({
@@ -267,13 +265,26 @@ const WelcomeFlow: React.FC = () => {
                   }
                 }}
                 onUserShare={async (usershare: any) => {
+                  function bufferToBase64(buf) {
+                    return Buffer.from(buf).toString('base64');
+                  }
+                  const jsonData = {
+                    encryptedAesKey
+                      : bufferToBase64(usershare.encryptedAesKey),
+                    encryptedData: bufferToBase64(usershare.encryptedData),
+                    encryptionMethod: usershare.encryptionMethod,
+                    id: usershare.id,
+                    iv: bufferToBase64(usershare.iv),
+                    ivForKeyEncryption: usershare.ivForKeyEncryption,
+                    salt: usershare.salt,
+                    credentialId: bufferToBase64(usershare.credentialId)
+                  };
                   await supabase.from("user_encrypted_share").insert({
-                    user_share_encrypted: usershare,
+                    user_share_encrypted: jsonData,
                     user_id: userData?.cubidData?.id,
                   })
                 }}
                 onAppShare={async (share: any) => {
-                  console.log({ share })
                   if (share) {
                     await supabase.from("wallet_appshare").insert({
                       app_share: share,
@@ -299,7 +310,7 @@ const WelcomeFlow: React.FC = () => {
         </CardContent>
 
         <CardFooter>
-          {userFormData.current_step > 1 && userFormData.current_step < 6 && (
+          {userFormData.current_step > 1 && userFormData.current_step < 9 && (
             <Button onClick={previousStep}>Back</Button>
           )}
           {userFormData.current_step < 8 && (

@@ -184,7 +184,7 @@ function ReceiveCard({
         <CardTitle>Receive</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 mt-[-10px]">
-        <p>{qrTcoinAmount ? `Receive ${qrTcoinAmount} amount` : "Receive any amount"}</p>
+        <p>{(Boolean(qrTcoinAmount) && qrTcoinAmount!=='0.00 TCOIN') ? `Receive ${qrTcoinAmount} amount` : "Receive any amount"}</p>
         <div className="relative flex flex-col items-center justify-center p-2 rounded-xl transform transition duration-500 hover:scale-105">
           {qrCodeData ? (
             <QRCode
@@ -264,8 +264,10 @@ function SendCard({
   closeModal,
   explorerLink,
   setExplorerLink,
-  setTcoin
+  setTcoin,
+  sendMoney
 }: {
+  sendMoney: any;
   toSendData: Hypodata | null;
   setToSendData: (data: Hypodata | null) => void;
   tcoinAmount: string;
@@ -278,6 +280,8 @@ function SendCard({
   setExplorerLink: (link: string | null) => void;
   setTcoin: any;
 }) {
+  const [isLoading, setIsLoading] = useState(false);
+
   return (
     <Card>
       <CardHeader>
@@ -290,7 +294,11 @@ function SendCard({
             onClick={() => {
               openModal({
                 content: (
-                  <QrScanModal setTcoin={setTcoin} setToSendData={setToSendData} closeModal={closeModal} />
+                  <QrScanModal
+                    setTcoin={setTcoin}
+                    setToSendData={setToSendData}
+                    closeModal={closeModal}
+                  />
                 ),
                 title: "Scan QR to Pay",
                 description: "Use your device's camera to scan a QR code for payment.",
@@ -373,15 +381,34 @@ function SendCard({
                         </Button>
                         <Button
                           className="flex-1"
-                          onClick={() => {
-                            setExplorerLink(
-                              "https://gnosisscan.io/tx/0x679767eea7b4cadd01b016cdd41e26b5990d729c7d0f471bd327d7584f400bdb"
-                            );
-                            closeModal();
-                            toast.success("Payment Sent Successfully!");
+                          disabled={isLoading}
+                          onClick={async () => {
+                            setIsLoading(true);
+                            try {
+                             const hash =  await sendMoney(tcoinAmount);
+                              setExplorerLink(
+                                `https://evm-testnet.flowscan.io/tx/${hash}`
+                              );
+                              toast.success("Payment Sent Successfully!");
+                            } catch (error) {
+                              toast.error("Error sending payment!");
+                            } finally {
+                              setIsLoading(false);
+                              closeModal();
+                            }
                           }}
                         >
-                          Send Now
+                          {isLoading ? (
+                            <>
+                              {/* Custom Tailwind CSS Spinner */}
+                              <span className="animate-spin inline-block w-4 h-4 border-2 border-t-2 border-white rounded-full mr-2"></span>
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <LuSend className="mr-2 h-4 w-4" /> Send Now
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -763,7 +790,6 @@ export function MobileWalletDashboardComponent() {
     if (!user_id) return;
     setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
     const interval = setInterval(() => {
-      console.log({ user_id, timestamp: Date.now() })
       setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
     }, 2000);
     return () => clearInterval(interval);
@@ -878,6 +904,7 @@ export function MobileWalletDashboardComponent() {
               setToSendData={setToSendData}
               tcoinAmount={tcoinAmount}
               cadAmount={cadAmount}
+              sendMoney={sendMoney}
               setTcoin={setTcoinAmount}
               handleTcoinChange={handleTcoinChange}
               handleCadChange={handleCadChange}
@@ -938,6 +965,7 @@ export function MobileWalletDashboardComponent() {
           cadAmount={cadAmount}
           handleTcoinChange={handleTcoinChange}
           handleCadChange={handleCadChange}
+          sendMoney={sendMoney}
           openModal={openModal}
           closeModal={closeModal}
           explorerLink={explorerLink}

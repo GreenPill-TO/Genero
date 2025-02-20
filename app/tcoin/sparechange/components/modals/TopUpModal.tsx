@@ -15,8 +15,6 @@ const TopUpModal = ({ closeModal }: TopUpModalProps) => {
   const [loading, setLoading] = useState<boolean>(true);
   const { userData } = useAuth()
 
-  console.log({ userData })
-
   useEffect(() => {
     const fetchOrCreateReference = async () => {
       // Get the currently authenticated user

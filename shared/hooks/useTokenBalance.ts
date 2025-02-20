@@ -22,11 +22,6 @@ export const useTokenBalance = (walletAddress: string | null) => {
       console.log(`fetchBalance: Retrieved token address from env: ${tokenAddress}`);
       if (!tokenAddress) throw new Error("Token address not provided");
 
-      // Retrieve the private key from env.
-      const privateKey = process.env.NEXT_PUBLIC_PRIVATE_KEY;
-      console.log(`fetchBalance: Retrieved private key from env: ${privateKey ? "Provided" : "Not provided"}`);
-      if (!privateKey) throw new Error("Private key not provided");
-
       // Retrieve the RPC URL from env (or fallback to a default).
       const rpcUrl = 'https://testnet.evm.nodes.onflow.org'
       console.log(`fetchBalance: Using RPC URL: ${rpcUrl}`);

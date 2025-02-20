@@ -133,7 +133,6 @@ export function MobileWalletDashboardComponent() {
                 user_id={userData?.user?.cubid_id} dapp_id="59"
                 api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                 onAppShare={async (share) => {
-                  console.log({ share })
                   const supabase = createClient()
                   if (share) {
                     await supabase.from("wallet_appshare").insert({
@@ -213,7 +212,6 @@ export function MobileWalletDashboardComponent() {
               />
               <Button
                 onClick={() => {
-                  console.log("Update QR for", qrTcoinAmount);
                   const qrTextElement = document.querySelector(".qr-code-text");
                   if (qrTextElement) {
                     qrTextElement.textContent = `QR code for ${qrTcoinAmount}`;
