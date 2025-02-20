@@ -7,7 +7,7 @@ export const useTokenBalance = (walletAddress: string | null) => {
   const [balance, setBalance] = useState<string>('0');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  console.log({ walletAddress })
+
   // This function fetches the balance from the token contract.
   const fetchBalance = useCallback(async () => {
     if (!walletAddress) {
@@ -17,20 +17,27 @@ export const useTokenBalance = (walletAddress: string | null) => {
     console.log(`fetchBalance: Starting balance fetch for walletAddress: ${walletAddress}`);
     setLoading(true);
     try {
+      // Retrieve the token contract address from env.
       const tokenAddress = '0x6E534F15c921915fC2e6aD87b7e395d448Bc9ECE';
       console.log(`fetchBalance: Retrieved token address from env: ${tokenAddress}`);
-      if (!tokenAddress) {
-        throw new Error("Token address not provided");
-      }
+      if (!tokenAddress) throw new Error("Token address not provided");
 
-      if (!window.ethereum) {
-        throw new Error('No Ethereum provider found');
-      }
-      console.log('fetchBalance: Ethereum provider detected:', window.ethereum);
+      // Retrieve the private key from env.
+      const privateKey = process.env.NEXT_PUBLIC_PRIVATE_KEY;
+      console.log(`fetchBalance: Retrieved private key from env: ${privateKey ? "Provided" : "Not provided"}`);
+      if (!privateKey) throw new Error("Private key not provided");
 
-      // Initialize Web3 using the injected provider.
-      const web3 = new Web3(window.ethereum);
+      // Retrieve the RPC URL from env (or fallback to a default).
+      const rpcUrl = 'https://testnet.evm.nodes.onflow.org'
+      console.log(`fetchBalance: Using RPC URL: ${rpcUrl}`);
+
+      // Initialize Web3 using an HTTP provider.
+      const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
       console.log('fetchBalance: Initialized Web3 instance:', web3);
+
+      // Add the account from the private key to the wallet.
+      const account = web3.eth.accounts.create()
+      console.log('fetchBalance: Added account from private key. Account address:', account.address);
 
       // Create a contract instance with the token ABI and address.
       const tokenContract = new web3.eth.Contract(tokenAbi as any, tokenAddress);
@@ -41,7 +48,7 @@ export const useTokenBalance = (walletAddress: string | null) => {
       const balanceWei = await tokenContract.methods.balanceOf(walletAddress).call();
       console.log('fetchBalance: Received balance in Wei:', balanceWei);
 
-      // Convert the balance from Wei to Ether (assumes token uses 18 decimals).
+      // Convert the balance from Wei to Ether (assuming 18 decimals).
       const formattedBalance = web3.utils.fromWei(balanceWei, 'ether');
       console.log('fetchBalance: Converted balance from Wei to Ether:', formattedBalance);
 

@@ -500,8 +500,8 @@ function AccountCard({
           {activeAccountTab === "balance" && (
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
-              <p className="text-4xl font-bold">{formatNumber(balance.toString(), false)}</p>
-              <p className="text-xl">{formatNumber(convertToCad(balance), true)}</p>
+              <p className="text-4xl font-bold">{formatNumber(rest.balance.toString(), false)}</p>
+              <p className="text-xl">{formatNumber(convertToCad(rest.balance), true)}</p>
             </div>
           )}
           {activeAccountTab === "transactions" && (

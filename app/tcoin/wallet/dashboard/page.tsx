@@ -1,7 +1,7 @@
 "use client";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useMemo } from "react";
-import { WalletScreen } from "./screens";
+import { WalletScreen } from "../../sparechange/dashboard/screens/WalletScreen";
 
 export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
