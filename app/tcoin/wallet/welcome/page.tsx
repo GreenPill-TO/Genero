@@ -221,7 +221,7 @@ export default function NewWelcomePage() {
                             user_id={userData?.user?.cubid_id}
                             dapp_id="59"
                             api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-                            onEVMWallet={(walletArray) => {
+                            onEVMWallet={async (walletArray) => {
                                 setWallets(walletArray);
                                 const [walletDetails] = wallet;
                                 if (walletArray.length) {

@@ -518,6 +518,17 @@ function AccountCard({
     return isCad ? `$${formatted}` : `${formatted} TCOIN`;
   };
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(senderWallet)
+      .then(() => {
+        // Optionally, display a confirmation message
+        alert('Wallet address copied to clipboard!');
+      })
+      .catch((error) => {
+        console.error('Copy failed:', error);
+      });
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -563,6 +574,13 @@ function AccountCard({
           {activeAccountTab === "balance" && (
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
+              <p
+                className="text-4xl font-bold cursor-pointer"
+                onClick={handleCopy}
+                title="Click to copy your wallet address"
+              >
+                Your Wallet Address {senderWallet} (click to copy)
+              </p>
               <p className="text-4xl font-bold">{formatNumber(rest.balance.toString(), false)}</p>
               <p className="text-xl">{formatNumber(convertToCad(rest.balance), true)}</p>
             </div>
