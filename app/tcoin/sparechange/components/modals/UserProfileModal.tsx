@@ -7,7 +7,7 @@ interface UserProfileModalProps {
 }
 
 const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
-  const { signOut } = useAuth();
+  const { signOut,userData } = useAuth();
 
   return (
     <div className="mt-2 p-0">
@@ -19,10 +19,10 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
           </Button>
         </div>
         <p>
-          <strong>Name:</strong> John Doe
+          <strong>Name:</strong> {userData?.cubidData.full_name}
         </p>
         <p>
-          <strong>Email:</strong> john.doe@example.com
+          <strong>Email:</strong> {userData?.cubidData.email}
         </p>
         <Button className="w-full" variant="default">
           Edit Profile
