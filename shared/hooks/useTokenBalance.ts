@@ -17,7 +17,7 @@ export const useTokenBalance = (walletAddress: string | null) => {
     console.log(`fetchBalance: Starting balance fetch for walletAddress: ${walletAddress}`);
     setLoading(true);
     try {
-      const tokenAddress = process.env.NEXT_PUBLIC_TOKEN_ADDRESS;
+      const tokenAddress = '0x6E534F15c921915fC2e6aD87b7e395d448Bc9ECE';
       console.log(`fetchBalance: Retrieved token address from env: ${tokenAddress}`);
       if (!tokenAddress) {
         throw new Error("Token address not provided");

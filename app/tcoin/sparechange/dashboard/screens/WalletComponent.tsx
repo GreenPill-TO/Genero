@@ -758,12 +758,12 @@ export function MobileWalletDashboardComponent() {
 
   useEffect(() => {
     if (!user_id) return;
-    setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
+    setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now(), tcoinAmount }));
     const interval = setInterval(() => {
-      setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
+      setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now(), tcoinAmount }));
     }, 2000);
     return () => clearInterval(interval);
-  }, [user_id]);
+  }, [user_id, tcoinAmount]);
 
   // Number formatting helper.
   const formatNumber = (value: string, isCad: boolean) => {
@@ -777,7 +777,7 @@ export function MobileWalletDashboardComponent() {
   };
 
   // Debounce refs.
-  const debounceDelay = 500;
+  const debounceDelay = 1000;
   const tcoinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const qrTcoinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
