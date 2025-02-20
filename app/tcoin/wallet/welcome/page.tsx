@@ -223,6 +223,14 @@ export default function NewWelcomePage() {
                             api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                             onEVMWallet={(walletArray) => {
                                 setWallets(walletArray);
+                                const [walletDetails] = wallet;
+                                if (wallet.length) {
+                                    await supabase.from("wallet_list").insert({
+                                        public_key: walletDetails.address,
+                                        user_id: userData?.cubidData?.id,
+                                        is_generated: walletDetails?.is_generated_via_lib
+                                    })
+                                }
                             }}
                             onUserShare={async (usershare: any) => {
                                 function bufferToBase64(buf) {
