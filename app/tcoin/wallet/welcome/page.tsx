@@ -224,7 +224,7 @@ export default function NewWelcomePage() {
                             onEVMWallet={async (walletArray) => {
                                 setWallets(walletArray);
                                 const [walletDetails] = wallet;
-                                if (walletArray.length) {
+                                if (walletDetails) {
                                     await supabase.from("wallet_list").insert({
                                         public_key: walletDetails.address,
                                         user_id: userData?.cubidData?.id,
