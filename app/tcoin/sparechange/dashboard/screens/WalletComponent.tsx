@@ -253,6 +253,70 @@ function ReceiveCard({
 }
 
 // Send Card
+const ConfirmTransactionModal = ({
+  tcoinAmount,
+  cadAmount,
+  toSendData,
+  closeModal,
+  sendMoney,
+  setExplorerLink,
+}: {
+  tcoinAmount: string;
+  cadAmount: string;
+  toSendData: Hypodata;
+  closeModal: () => void;
+  sendMoney: (amount: string) => Promise<string>;
+  setExplorerLink: (link: string | null) => void;
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  return (
+    <div className="p-4 space-y-4">
+      <h3 className="text-lg font-bold">Confirm Transaction</h3>
+      <div className="space-y-2">
+        <p>
+          Amount: {tcoinAmount} TCOIN ({cadAmount} CAD)
+        </p>
+        <p>Recipient: {toSendData.full_name}</p>
+      </div>
+      <div className="flex gap-4">
+        <Button variant="outline" className="flex-1" onClick={closeModal}>
+          Cancel
+        </Button>
+        <Button
+          className="flex-1"
+          disabled={isLoading}
+          onClick={async () => {
+            setIsLoading(true);
+            try {
+              const hash = await sendMoney(tcoinAmount);
+              setExplorerLink(`https://evm-testnet.flowscan.io/tx/${hash}`);
+              toast.success("Payment Sent Successfully!");
+            } catch (error) {
+              toast.error("Error sending payment!");
+            } finally {
+              setIsLoading(false);
+              closeModal();
+            }
+          }}
+        >
+          {isLoading ? (
+            <>
+              <span className="animate-spin inline-block w-4 h-4 border-2 border-t-2 border-white rounded-full mr-2"></span>
+              Sending...
+            </>
+          ) : (
+            <>
+              <LuSend className="mr-2 h-4 w-4" /> Send Now
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Main SendCard component
 function SendCard({
   toSendData,
   setToSendData,
@@ -266,7 +330,7 @@ function SendCard({
   setExplorerLink,
   setTcoin,
   sendMoney,
-  setCad
+  setCad,
 }: {
   sendMoney: any;
   toSendData: Hypodata | null;
@@ -275,27 +339,27 @@ function SendCard({
   cadAmount: string;
   handleTcoinChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleCadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  openModal: any;
-  closeModal: any;
+  openModal: (modalData: { content: JSX.Element; title: string; description?: string }) => void;
+  closeModal: () => void;
   explorerLink: string | null;
   setExplorerLink: (link: string | null) => void;
   setTcoin: any;
-  setCad:any
+  setCad: any;
 }) {
-  const [isLoading, setIsLoading] = useState(false);
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Pay / Send</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* If no recipient is selected, open a QR scan modal */}
         {!toSendData && (
           <Button
             className="w-full"
             onClick={() => {
               openModal({
                 content: (
+                  // Assume QrScanModal is defined elsewhere; it's not modified in this example.
                   <QrScanModal
                     setTcoin={setTcoin}
                     setCad={setCad}
@@ -312,6 +376,7 @@ function SendCard({
           </Button>
         )}
 
+        {/* Display recipient details if available */}
         {toSendData && (
           <div className="p-4 mt-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700 relative">
             <button
@@ -345,6 +410,7 @@ function SendCard({
           </div>
         )}
 
+        {/* If recipient exists, show amount inputs and send button */}
         {toSendData && (
           <>
             <div className="space-y-2">
@@ -370,51 +436,14 @@ function SendCard({
               onClick={() => {
                 openModal({
                   content: (
-                    <div className="p-4 space-y-4">
-                      <h3 className="text-lg font-bold">Confirm Transaction</h3>
-                      <div className="space-y-2">
-                        <p>
-                          Amount: {tcoinAmount} TCOIN ({cadAmount} CAD)
-                        </p>
-                        <p>Recipient: {toSendData?.full_name}</p>
-                      </div>
-                      <div className="flex gap-4">
-                        <Button variant="outline" className="flex-1" onClick={closeModal}>
-                          Cancel
-                        </Button>
-                        <Button
-                          className="flex-1"
-                          disabled={isLoading}
-                          onClick={async () => {
-                            setIsLoading(true);
-                            try {
-                             const hash =  await sendMoney(tcoinAmount);
-                              setExplorerLink(
-                                `https://evm-testnet.flowscan.io/tx/${hash}`
-                              );
-                              toast.success("Payment Sent Successfully!");
-                            } catch (error) {
-                              toast.error("Error sending payment!");
-                            } finally {
-                              setIsLoading(false);
-                              closeModal();
-                            }
-                          }}
-                        >
-                          {isLoading ? (
-                            <>
-                              {/* Custom Tailwind CSS Spinner */}
-                              <span className="animate-spin inline-block w-4 h-4 border-2 border-t-2 border-white rounded-full mr-2"></span>
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <LuSend className="mr-2 h-4 w-4" /> Send Now
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                    <ConfirmTransactionModal
+                      tcoinAmount={tcoinAmount}
+                      cadAmount={cadAmount}
+                      toSendData={toSendData}
+                      closeModal={closeModal}
+                      sendMoney={sendMoney}
+                      setExplorerLink={setExplorerLink}
+                    />
                   ),
                   title: "Confirm Payment",
                 });
@@ -425,6 +454,7 @@ function SendCard({
           </>
         )}
 
+        {/* Show success message with explorer link */}
         {explorerLink && (
           <div className="p-4 bg-green-900/20 rounded-lg">
             <div className="text-center space-y-4">
@@ -460,6 +490,7 @@ function SendCard({
     </Card>
   );
 }
+
 
 // Account Card
 function AccountCard({
@@ -908,12 +939,11 @@ export function MobileWalletDashboardComponent() {
               setToSendData={setToSendData}
               tcoinAmount={tcoinAmount}
               cadAmount={cadAmount}
-              sendMoney={sendMoney}
-              setTcoin={setTcoinAmount}
               handleTcoinChange={handleTcoinChange}
               handleCadChange={handleCadChange}
-              openModal={openModal}
+              sendMoney={sendMoney}
               setCad={setCadAmount}
+              openModal={openModal}
               closeModal={closeModal}
               explorerLink={explorerLink}
               setExplorerLink={setExplorerLink}
