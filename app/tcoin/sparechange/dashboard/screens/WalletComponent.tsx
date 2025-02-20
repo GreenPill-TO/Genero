@@ -276,7 +276,7 @@ function SendCard({
   closeModal: any;
   explorerLink: string | null;
   setExplorerLink: (link: string | null) => void;
-  setTcoin:any;
+  setTcoin: any;
 }) {
   return (
     <Card>
@@ -758,11 +758,13 @@ export function MobileWalletDashboardComponent() {
     user_id ? JSON.stringify({ user_id, timestamp: Date.now() }) : ""
   );
 
+
   useEffect(() => {
     if (!user_id) return;
-    setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now(), tcoinAmount }));
+    setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
     const interval = setInterval(() => {
-      setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now(), tcoinAmount }));
+      console.log({ user_id, timestamp: Date.now() })
+      setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
     }, 2000);
     return () => clearInterval(interval);
   }, [user_id, tcoinAmount]);
@@ -858,9 +860,10 @@ export function MobileWalletDashboardComponent() {
               closeModal={closeModal}
             />
           )}
+
           {activeTab === "receive" && (
             <ReceiveCard
-              qrCodeData={qrCodeData}
+              qrCodeData={qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData}
               qrTcoinAmount={qrTcoinAmount}
               qrCadAmount={qrCadAmount}
               handleQrTcoinChange={handleQrTcoinChange}
@@ -920,7 +923,7 @@ export function MobileWalletDashboardComponent() {
           closeModal={closeModal}
         />
         <ReceiveCard
-          qrCodeData={qrCodeData}
+          qrCodeData={qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData}
           qrTcoinAmount={qrTcoinAmount}
           qrCadAmount={qrCadAmount}
           handleQrTcoinChange={handleQrTcoinChange}

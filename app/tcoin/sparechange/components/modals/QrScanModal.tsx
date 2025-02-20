@@ -58,8 +58,8 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
         id: user_id
       })
       setToSendData(userDataFromSupabaseTable?.[0])
-      if(JSON.parse(data?.[0]?.rawValue)?.tcoinAmount){
-        setTcoin(JSON.parse(data?.[0]?.rawValue)?.tcoinAmount)
+      if(JSON.parse(data?.[0]?.rawValue)?.qrTcoinAmount){
+        setTcoin(JSON.parse(data?.[0]?.rawValue)?.qrTcoinAmount)
       }
     }
 
