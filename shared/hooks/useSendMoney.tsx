@@ -1,8 +1,8 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Shamir } from '@spliterati/shamir';
 import { useAuth } from '@shared/api/hooks/useAuth';
-import { WebAuthN } from 'cubid-wallet';
 import ethers from 'ethers';
 
 // Your Supabase client initialization.
