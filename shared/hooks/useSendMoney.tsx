@@ -6,6 +6,7 @@ import { Shamir } from '@spliterati/shamir';
 import { useAuth } from '@shared/api/hooks/useAuth';
 import { tokenAbi } from './abi';
 import { WebAuthnCrypto } from 'cubid-wallet';
+import { toast } from 'react-toastify';
 
 // Initialize Supabase client.
 const supabase = createClient(
@@ -72,6 +73,7 @@ export const useSendMoney = ({
 	const [loading, setLoading] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
 	const { userData } = useAuth();
+	console.log({ receiverWallet, senderWallet })
 
 	// Fetch wallet address from Supabase using Cubid.
 	const fetchWalletAddress = async (
@@ -95,6 +97,7 @@ export const useSendMoney = ({
 	};
 
 	useEffect(() => {
+		console.log({ receiverId })
 		if (senderId) fetchWalletAddress(senderId, setSenderWallet);
 		if (receiverId) fetchWalletAddress(receiverId, setReceiverWallet);
 	}, [senderId, receiverId]);
@@ -110,6 +113,7 @@ export const useSendMoney = ({
 	 */
 	const sendMoney = async (amount: string) => {
 		if (!senderWallet || !receiverWallet) {
+			toast.info("Receiver Wallet Not Found")
 			setError('Wallet addresses not found');
 			return;
 		}

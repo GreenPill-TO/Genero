@@ -15,10 +15,15 @@ export interface QrScanModalProps {
  * A QR scanning modal that uses the @yudiel/react-qr-scanner library.
  * It handles camera stream setup, scanning, and camera flipping if multiple cameras are available.
  */
+function extractDecimalFromString(str: string): number {
+	const match = str.match(/-?\d+(\.\d+)?/);
+	return match ? Number(match[0]) : NaN;
+}
 export const QrScanModal: React.FC<QrScanModalProps> = ({
   closeModal,
   setToSendData,
-  setTcoin
+  setTcoin,
+  setCad
 }) => {
   // State to track the current facing mode
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
@@ -57,8 +62,9 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
         id: user_id
       })
       setToSendData(userDataFromSupabaseTable?.[0])
-      if(JSON.parse(data?.[0]?.rawValue)?.qrTcoinAmount){
+      if (JSON.parse(data?.[0]?.rawValue)?.qrTcoinAmount) {
         setTcoin(JSON.parse(data?.[0]?.rawValue)?.qrTcoinAmount)
+        setCad(extractDecimalFromString(JSON.parse(data?.[0]?.rawValue)?.qrTcoinAmount) * 3.3)
       }
     }
 

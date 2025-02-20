@@ -184,7 +184,7 @@ function ReceiveCard({
         <CardTitle>Receive</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 mt-[-10px]">
-        <p>{(Boolean(qrTcoinAmount) && qrTcoinAmount!=='0.00 TCOIN') ? `Receive ${qrTcoinAmount} amount` : "Receive any amount"}</p>
+        <p>{(Boolean(qrTcoinAmount) && qrTcoinAmount !== '0.00 TCOIN') ? `Receive ${qrTcoinAmount} amount` : "Receive any amount"}</p>
         <div className="relative flex flex-col items-center justify-center p-2 rounded-xl transform transition duration-500 hover:scale-105">
           {qrCodeData ? (
             <QRCode
@@ -265,7 +265,8 @@ function SendCard({
   explorerLink,
   setExplorerLink,
   setTcoin,
-  sendMoney
+  sendMoney,
+  setCad
 }: {
   sendMoney: any;
   toSendData: Hypodata | null;
@@ -279,6 +280,7 @@ function SendCard({
   explorerLink: string | null;
   setExplorerLink: (link: string | null) => void;
   setTcoin: any;
+  setCad:any
 }) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -296,6 +298,7 @@ function SendCard({
                 content: (
                   <QrScanModal
                     setTcoin={setTcoin}
+                    setCad={setCad}
                     setToSendData={setToSendData}
                     closeModal={closeModal}
                   />
@@ -790,6 +793,7 @@ export function MobileWalletDashboardComponent() {
     if (!user_id) return;
     setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
     const interval = setInterval(() => {
+      console.log({ user_id, timestamp: Date.now() })
       setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
     }, 2000);
     return () => clearInterval(interval);
@@ -909,6 +913,7 @@ export function MobileWalletDashboardComponent() {
               handleTcoinChange={handleTcoinChange}
               handleCadChange={handleCadChange}
               openModal={openModal}
+              setCad={setCadAmount}
               closeModal={closeModal}
               explorerLink={explorerLink}
               setExplorerLink={setExplorerLink}
@@ -966,6 +971,7 @@ export function MobileWalletDashboardComponent() {
           handleTcoinChange={handleTcoinChange}
           handleCadChange={handleCadChange}
           sendMoney={sendMoney}
+          setCad={setCadAmount}
           openModal={openModal}
           closeModal={closeModal}
           explorerLink={explorerLink}
