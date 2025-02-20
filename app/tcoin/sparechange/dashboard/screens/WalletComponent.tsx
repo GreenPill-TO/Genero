@@ -575,7 +575,7 @@ function AccountCard({
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
               <p
-                className="text-4xl font-bold cursor-pointer"
+                className="text-md break-all font-bold cursor-pointer"
                 onClick={handleCopy}
                 title="Click to copy your wallet address"
               >
