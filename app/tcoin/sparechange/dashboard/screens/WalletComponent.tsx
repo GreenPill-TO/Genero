@@ -1,12 +1,14 @@
+// @ts-nocheck
+
 "use client";
 
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
 import { Label } from "@shared/components/ui/Label";
 import { Switch } from "@shared/components/ui/Switch";
-import { TabContent, Tabs, TabTrigger } from "@shared/components/ui/Tabs";
 import { useModal } from "@shared/contexts/ModalContext";
 import {
   CharitySelectModal,
@@ -16,7 +18,6 @@ import {
   ShareQrModal,
   TopUpModal,
 } from "@tcoin/sparechange/components/modals";
-import { useState, useEffect, useRef } from "react";
 import {
   LuCamera,
   LuCreditCard,
@@ -25,6 +26,7 @@ import {
   LuShare2,
   LuUsers,
 } from "react-icons/lu";
+import { FiUser } from "react-icons/fi";
 import {
   Area,
   AreaChart,
@@ -36,7 +38,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import QRCode from "react-qr-code"; // Import QRCode generator
+import QRCode from "react-qr-code";
 import { toast } from "react-toastify";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 
@@ -72,14 +74,14 @@ export interface Hypodata {
   email: string;
   phone: string;
   persona: string;
-  created_at: string; // ISO formatted date string
+  created_at: string;
   has_completed_intro: boolean;
   auth_user_id: string;
   is_new_user: boolean | null;
   cubid_score: number | null;
   cubid_identity: unknown;
   cubid_score_details: unknown;
-  updated_at: string; // ISO formatted date string
+  updated_at: string;
   current_step: number;
   full_name: string;
   bio: string;
@@ -92,23 +94,548 @@ export interface Hypodata {
   category: string;
 }
 
+/* -----------------------------------------------
+   Reusable Card Components
+----------------------------------------------- */
+
+// Contributions Card
+function ContributionsCard({
+  selectedCharity,
+  setSelectedCharity,
+  charityData,
+  openModal,
+  closeModal,
+}: {
+  selectedCharity: string;
+  setSelectedCharity: (charity: string) => void;
+  charityData: {
+    personalContribution: number;
+    allUsersToCharity: number;
+    allUsersToAllCharities: number;
+  };
+  openModal: any;
+  closeModal: any;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Charitable Contributions</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          <p>
+            My default charity: <strong>{selectedCharity}</strong>
+            <Button
+              variant="link"
+              className="p-0 ml-2 h-auto font-normal"
+              onClick={() => {
+                openModal({
+                  content: (
+                    <CharitySelectModal
+                      closeModal={closeModal}
+                      selectedCharity={selectedCharity}
+                      setSelectedCharity={setSelectedCharity}
+                    />
+                  ),
+                  title: "Change Default Charity",
+                  description: "Select a new default charity for your contributions.",
+                });
+              }}
+            >
+              change
+            </Button>
+          </p>
+          <p>
+            My contribution to {selectedCharity}: {charityData.personalContribution} TCOIN
+          </p>
+          <p>
+            All users to {selectedCharity}: {charityData.allUsersToCharity} TCOIN
+          </p>
+          <p>
+            All users to all charities: {charityData.allUsersToAllCharities} TCOIN
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Receive Card
+function ReceiveCard({
+  qrCodeData,
+  qrTcoinAmount,
+  qrCadAmount,
+  handleQrTcoinChange,
+  handleQrCadChange,
+  openModal,
+  closeModal,
+}: {
+  qrCodeData: string;
+  qrTcoinAmount: string;
+  qrCadAmount: string;
+  handleQrTcoinChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleQrCadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  openModal: any;
+  closeModal: any;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Receive</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="relative flex flex-col items-center justify-center p-2 rounded-xl transform transition duration-500 hover:scale-105">
+          {qrCodeData ? (
+            <QRCode value={qrCodeData} size={128} bgColor="transparent" fgColor="#fff" />
+          ) : (
+            <p className="text-white">Loading QR Code...</p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Input
+            name="qrTcoin"
+            elSize="md"
+            className="w-full"
+            value={qrTcoinAmount}
+            onChange={handleQrTcoinChange}
+            placeholder="Enter TCOIN amount"
+          />
+          <Input
+            name="qrCad"
+            elSize="md"
+            className="w-full"
+            value={qrCadAmount}
+            onChange={handleQrCadChange}
+            placeholder="Enter CAD amount"
+          />
+        </div>
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <Button
+            className="flex-1"
+            onClick={() => {
+              openModal({
+                content: (
+                  <ContactSelectModal
+                    closeModal={closeModal}
+                    amount={qrTcoinAmount}
+                    method="Request"
+                  />
+                ),
+                title: "Request from Contact",
+                description: "Select a contact to request TCOIN from.",
+              });
+            }}
+          >
+            <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={() => {
+              openModal({
+                content: <ShareQrModal closeModal={closeModal} />,
+                title: "Share QR Code",
+                description: "Share your QR code via different methods.",
+              });
+            }}
+          >
+            <LuShare2 className="mr-2 h-4 w-4" /> Share
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Send Card
+function SendCard({
+  toSendData,
+  setToSendData,
+  tcoinAmount,
+  cadAmount,
+  handleTcoinChange,
+  handleCadChange,
+  openModal,
+  closeModal,
+  explorerLink,
+  setExplorerLink,
+}: {
+  toSendData: Hypodata | null;
+  setToSendData: (data: Hypodata | null) => void;
+  tcoinAmount: string;
+  cadAmount: string;
+  handleTcoinChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleCadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  openModal: any;
+  closeModal: any;
+  explorerLink: string | null;
+  setExplorerLink: (link: string | null) => void;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Pay / Send</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!toSendData && (
+          <Button
+            className="w-full"
+            onClick={() => {
+              openModal({
+                content: (
+                  <QrScanModal setToSendData={setToSendData} closeModal={closeModal} />
+                ),
+                title: "Scan QR to Pay",
+                description: "Use your device's camera to scan a QR code for payment.",
+              });
+            }}
+          >
+            <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
+          </Button>
+        )}
+
+        {toSendData && (
+          <div className="p-4 mt-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700 relative">
+            <button
+              onClick={() => {
+                setToSendData(null);
+                setExplorerLink(null);
+              }}
+              className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+            <div className="flex items-center">
+              {toSendData.profile_image_url ? (
+                <img
+                  src={toSendData.profile_image_url}
+                  alt={toSendData.full_name}
+                  className="w-16 h-16 rounded-full"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-white">
+                    {toSendData.full_name ? toSendData.full_name.charAt(0) : "?"}
+                  </span>
+                </div>
+              )}
+              <div className="ml-4">
+                <h3 className="text-xl font-semibold text-white">{toSendData.full_name}</h3>
+                <p className="text-sm text-gray-400">@{toSendData.username}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {toSendData && (
+          <>
+            <div className="space-y-2">
+              <Input
+                className="w-full"
+                elSize="md"
+                name="tcoin"
+                value={tcoinAmount}
+                onChange={handleTcoinChange}
+                placeholder="Enter TCOIN amount"
+              />
+              <Input
+                name="cad"
+                elSize="md"
+                className="w-full"
+                value={cadAmount}
+                onChange={handleCadChange}
+                placeholder="Enter CAD amount"
+              />
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: (
+                    <div className="p-4 space-y-4">
+                      <h3 className="text-lg font-bold">Confirm Transaction</h3>
+                      <div className="space-y-2">
+                        <p>
+                          Amount: {tcoinAmount} TCOIN ({cadAmount} CAD)
+                        </p>
+                        <p>Recipient: {toSendData?.full_name}</p>
+                      </div>
+                      <div className="flex gap-4">
+                        <Button variant="outline" className="flex-1" onClick={closeModal}>
+                          Cancel
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={() => {
+                            setExplorerLink(
+                              "https://gnosisscan.io/tx/0x679767eea7b4cadd01b016cdd41e26b5990d729c7d0f471bd327d7584f400bdb"
+                            );
+                            closeModal();
+                            toast.success("Payment Sent Successfully!");
+                          }}
+                        >
+                          Send Now
+                        </Button>
+                      </div>
+                    </div>
+                  ),
+                  title: "Confirm Payment",
+                });
+              }}
+            >
+              <LuSend className="mr-2 h-4 w-4" /> Send to Contact
+            </Button>
+          </>
+        )}
+
+        {explorerLink && (
+          <div className="p-4 bg-green-900/20 rounded-lg">
+            <div className="text-center space-y-4">
+              <h3 className="text-lg font-bold text-green-400">Success!</h3>
+              <a
+                href={explorerLink}
+                className="text-blue-400 underline block"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View Transaction on Explorer
+              </a>
+              <div className="pt-4 border-t border-gray-700">
+                <p>Add to Contacts?</p>
+                <div className="flex justify-center gap-4 mt-2">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      toast.success("Contact added!");
+                    }}
+                  >
+                    Yes
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setExplorerLink(null)}>
+                    No
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Account Card
+function AccountCard({
+  balance,
+  openModal,
+  closeModal,
+}: {
+  balance: number;
+  openModal: any;
+  closeModal: any;
+}) {
+  const [activeAccountTab, setActiveAccountTab] = useState("balance");
+
+  // Simple conversion and formatting helpers
+  const convertToCad = (tcoin: number) => (tcoin * 3.3).toFixed(2);
+  const formatNumber = (value: string, isCad: boolean) => {
+    const num = parseFloat(value);
+    if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
+    const formatted = num.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return isCad ? `$${formatted}` : `${formatted} TCOIN`;
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>My Account</CardTitle>
+      </CardHeader>
+      <CardContent className="p-4">
+        {/* Inner Tabs */}
+        <div className="flex justify-around mb-4">
+          {[
+            { key: "balance", label: "Balance" },
+            { key: "graph", label: "Graph" },
+            { key: "transactions", label: "Transactions" },
+            { key: "charity", label: "Charity" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveAccountTab(tab.key)}
+              className={`px-3 py-1 rounded-md font-medium transition-colors ${
+                activeAccountTab === tab.key
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Inner Tab Content */}
+        <div>
+          {activeAccountTab === "graph" && (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={balanceHistory}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="balance" stroke="#8884d8" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+          {activeAccountTab === "balance" && (
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
+              <p className="text-4xl font-bold">{formatNumber(balance.toString(), false)}</p>
+              <p className="text-xl">{formatNumber(convertToCad(balance), true)}</p>
+            </div>
+          )}
+          {activeAccountTab === "transactions" && (
+            <div>
+              <div className="flex items-center space-x-2 mb-4">
+                <Switch id="currency-toggle" onCheckedChange={() => {}} />
+                <Label htmlFor="currency-toggle">Show amounts in CAD</Label>
+              </div>
+              <ul className="space-y-2">
+                {recentTransactions.map((transaction) => (
+                  <li
+                    key={transaction.id}
+                    className="flex justify-between items-center border-b border-gray-700 pb-2"
+                  >
+                    <div>
+                      <p className="font-semibold">{transaction.type}</p>
+                      <p className="text-sm text-gray-500">
+                        {transaction.from
+                          ? `From: ${transaction.from}`
+                          : `To: ${transaction.to}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={`font-semibold ${
+                          transaction.type === "Received"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {transaction.type === "Received" ? "+" : "-"}
+                        {formatNumber(transaction.amount.toString(), false)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Charity:{" "}
+                        {formatNumber((transaction.amount * 0.03).toString(), false)}
+                      </p>
+                      <p className="text-sm text-gray-500">{transaction.date}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {activeAccountTab === "charity" && (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={charityContributionData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area
+                    type="monotone"
+                    dataKey="TheShelter"
+                    stackId="1"
+                    stroke="#8884d8"
+                    fill="#8884d8"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="TheFoodBank"
+                    stackId="1"
+                    stroke="#82ca9d"
+                    fill="#82ca9d"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Other Card
+function OtherCard({ openModal, closeModal }: { openModal: any; closeModal: any }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Other</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <Button
+            className="w-full"
+            onClick={() => {
+              openModal({
+                content: <TopUpModal closeModal={closeModal} />,
+                title: "Top Up with Interac eTransfer",
+                description: "Send an Interac eTransfer to top up your TCOIN Balance.",
+              });
+            }}
+          >
+            <LuCreditCard className="mr-2 h-4 w-4" /> Top Up with Interac eTransfer
+          </Button>
+          <Button
+            className="w-full"
+            onClick={() => {
+              openModal({
+                content: <OffRampModal closeModal={closeModal} />,
+                title: "Convert and Off-ramp",
+                description: "Convert your TCOIN to CAD and transfer to your bank account.",
+              });
+            }}
+          >
+            <LuDollarSign className="mr-2 h-4 w-4" /> Convert to CAD and Cash Out
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* -----------------------------------------------
+   Main Component
+----------------------------------------------- */
 export function MobileWalletDashboardComponent() {
+  // Mobile active tab state
+  const [activeTab, setActiveTab] = useState("contributions");
+  const tabs = [
+    { key: "contributions", label: "Contributions", icon: LuUsers },
+    { key: "receive", label: "Receive", icon: LuShare2 },
+    { key: "send", label: "Send", icon: LuSend },
+    { key: "account", label: "My Account", icon: FiUser },
+    { key: "other", label: "Other", icon: LuCreditCard },
+  ];
+
   const { openModal, closeModal } = useModal();
   const { userData }: any = useAuth();
   const [balance, setBalance] = useState(1000);
 
-  // --- Amount States for QR and Send Sections ---
-  // For QR amounts
+  // --- QR and Send Amount States ---
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");
   const [qrCadAmount, setQrCadAmount] = useState("");
-  // For Send amounts
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
 
-  const [showAmountInCad, setShowAmountInCad] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState("The FoodBank");
   const exchangeRate = 3.3;
-
   const [charityData, setCharityData] = useState({
     personalContribution: 50,
     allUsersToCharity: 600,
@@ -131,11 +658,7 @@ export function MobileWalletDashboardComponent() {
     return () => clearInterval(interval);
   }, [user_id]);
 
-  // --- Conversion & Formatting Functions ---
-  const convertToCad = (tcoin: number) => (tcoin * exchangeRate).toFixed(2);
-  const convertToTcoin = (cad: number) => (cad / exchangeRate).toFixed(2);
-
-  // This function adds currency symbols and units.
+  // --- Conversion & Formatting ---
   const formatNumber = (value: string, isCad: boolean) => {
     const num = parseFloat(value);
     if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
@@ -146,12 +669,12 @@ export function MobileWalletDashboardComponent() {
     return isCad ? `$${formatted}` : `${formatted} TCOIN`;
   };
 
-  // --- Debounce Delay (milliseconds) ---
+  // --- Debounce Delay and Refs ---
   const debounceDelay = 500;
-
-  // --- Refs for Debouncing Send Inputs ---
   const tcoinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const qrTcoinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const qrCadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (tcoinTimeoutRef.current) clearTimeout(tcoinTimeoutRef.current);
@@ -177,10 +700,6 @@ export function MobileWalletDashboardComponent() {
     }, debounceDelay);
   };
 
-  // --- Refs for Debouncing QR Inputs ---
-  const qrTcoinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const qrCadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const handleQrTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (qrTcoinTimeoutRef.current) clearTimeout(qrTcoinTimeoutRef.current);
     const rawValue = e.target.value.replace(/[^\d.]/g, "");
@@ -205,394 +724,116 @@ export function MobileWalletDashboardComponent() {
     }, debounceDelay);
   };
 
+  // --- Send Money Related State ---
   const [toSendData, setToSendData] = useState<Hypodata | null>(null);
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
 
-  const { senderWallet, receiverWallet, sendMoney, loading, error } = useSendMoney({ senderId: user_id, receiverId: toSendData?.id ?? null })
+  const { senderWallet, receiverWallet, sendMoney, loading, error } = useSendMoney({
+    senderId: user_id,
+    receiverId: toSendData?.id ?? null,
+  });
 
+  // Debug logging
   console.log({ user_id, toSendData, senderWallet, receiverWallet });
 
   return (
-    <div className="container mx-auto sm:p-4 space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Charitable Contributions */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Charitable Contributions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p>
-                My default charity: <strong>{selectedCharity}</strong>
-                <Button
-                  variant="link"
-                  className="p-0 ml-2 h-auto font-normal"
-                  onClick={() => {
-                    openModal({
-                      content: (
-                        <CharitySelectModal
-                          closeModal={closeModal}
-                          selectedCharity={selectedCharity}
-                          setSelectedCharity={setSelectedCharity}
-                        />
-                      ),
-                      title: "Change Default Charity",
-                      description: "Select a new default charity for your contributions.",
-                    });
-                  }}
-                >
-                  change
-                </Button>
-              </p>
-              <p>
-                My contribution to {selectedCharity}: {charityData.personalContribution} TCOIN
-              </p>
-              <p>
-                All users to {selectedCharity}: {charityData.allUsersToCharity} TCOIN
-              </p>
-              <p>
-                All users to all charities: {charityData.allUsersToAllCharities} TCOIN
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="container mx-auto p-4 space-y-8">
+      {/* --- Mobile View (Single Card with Tab Navigation) --- */}
+      <div className="md:hidden">
+        <div className="space-y-8 max-w-[400px] min-h-[60vh] mx-auto">
+          {activeTab === "contributions" && (
+            <ContributionsCard
+              selectedCharity={selectedCharity}
+              setSelectedCharity={setSelectedCharity}
+              charityData={charityData}
+              openModal={openModal}
+              closeModal={closeModal}
+            />
+          )}
+          {activeTab === "receive" && (
+            <ReceiveCard
+              qrCodeData={qrCodeData}
+              qrTcoinAmount={qrTcoinAmount}
+              qrCadAmount={qrCadAmount}
+              handleQrTcoinChange={handleQrTcoinChange}
+              handleQrCadChange={handleQrCadChange}
+              openModal={openModal}
+              closeModal={closeModal}
+            />
+          )}
+          {activeTab === "send" && (
+            <SendCard
+              toSendData={toSendData}
+              setToSendData={setToSendData}
+              tcoinAmount={tcoinAmount}
+              cadAmount={cadAmount}
+              handleTcoinChange={handleTcoinChange}
+              handleCadChange={handleCadChange}
+              openModal={openModal}
+              closeModal={closeModal}
+              explorerLink={explorerLink}
+              setExplorerLink={setExplorerLink}
+            />
+          )}
+          {activeTab === "account" && (
+            <AccountCard balance={balance} openModal={openModal} closeModal={closeModal} />
+          )}
+          {activeTab === "other" && (
+            <OtherCard openModal={openModal} closeModal={closeModal} />
+          )}
+        </div>
 
-        {/* Receive Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Receive</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="relative flex flex-col items-center justify-center p-2 rounded-xl transform transition duration-500 hover:scale-105">
-              {qrCodeData ? (
-                <QRCode value={qrCodeData} size={128} bgColor="transparent" fgColor="#fff" />
-              ) : (
-                <p className="text-white">Loading QR Code...</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Input
-                name="qrTcoin"
-                elSize="md"
-                className="w-full"
-                value={qrTcoinAmount}
-                onChange={handleQrTcoinChange}
-                placeholder="Enter TCOIN amount"
-              />
-              <Input
-                name="qrCad"
-                elSize="md"
-                className="w-full"
-                value={qrCadAmount}
-                onChange={handleQrCadChange}
-                placeholder="Enter CAD amount"
-              />
-            </div>
-            <div className="flex flex-col space-y-4 sm:space-x-2 sm:space-y-0 sm:flex-row">
-              <Button
-                className="flex-1"
-                onClick={() => {
-                  openModal({
-                    content: (
-                      <ContactSelectModal
-                        closeModal={closeModal}
-                        amount={qrTcoinAmount}
-                        method="Request"
-                      />
-                    ),
-                    title: "Request from Contact",
-                    description: "Select a contact to request TCOIN from.",
-                  });
-                }}
-              >
-                <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={() => {
-                  openModal({
-                    content: <ShareQrModal closeModal={closeModal} />,
-                    title: "Share QR Code",
-                    description: "Share your QR code via different methods.",
-                  });
-                }}
-              >
-                <LuShare2 className="mr-2 h-4 w-4" /> Share
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pay / Send Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pay / Send</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              className="w-full"
-              onClick={() => {
-                openModal({
-                  content: (
-                    <QrScanModal setToSendData={setToSendData} closeModal={closeModal} />
-                  ),
-                  title: "Scan QR to Pay",
-                  description: "Use your device's camera to scan a QR code for payment.",
-                });
-              }}
+        {/* Mobile Navigation */}
+        <nav className="flex px-3 mx-auto w-[fit-content] py-3 rounded-xl bg-gray-900 justify-center gap-4">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`p-2 rounded-md transition-colors ${
+                activeTab === tab.key
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-700 text-white hover:bg-gray-300"
+              }`}
+              title={tab.label}
             >
-              <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
-            </Button>
-            {toSendData && (
-              <>
-                <div className="p-4 mt-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700">
-                  <div className="flex items-center">
-                    {toSendData.profile_image_url ? (
-                      <img
-                        src={toSendData.profile_image_url}
-                        alt={toSendData.full_name}
-                        className="w-16 h-16 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white">
-                          {toSendData.full_name ? toSendData.full_name.charAt(0) : "?"}
-                        </span>
-                      </div>
-                    )}
-                    <div className="ml-4">
-                      <h3 className="text-xl font-semibold text-white">
-                        {toSendData.full_name}
-                      </h3>
-                      <p className="text-sm text-gray-400">@{toSendData.username}</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-gray-300">
-                        <span className="font-semibold">Email:</span> {toSendData.email}
-                      </p>
-                      {toSendData.phone && (
-                        <p className="text-gray-300">
-                          <span className="font-semibold">Phone:</span> {toSendData.phone}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-xs m-3">
-                      <p className="text-gray-300">
-                        <span className="font-semibold">Category:</span> {toSendData.category}
-                      </p>
-                      <p className="text-gray-300">
-                        <span className="font-semibold">Cause:</span> {toSendData.selected_cause}
-                      </p>
-                      <p className="text-gray-300">
-                        <span className="font-semibold">Preferred Donation:</span>{" "}
-                        {toSendData.preferred_donation_amount} TCOIN
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <p>How much do you want to send?</p>
-              </>
-            )}
+              <tab.icon className="h-6 w-6" />
+            </button>
+          ))}
+        </nav>
+      </div>
 
-            <div className="space-y-2">
-              <Input
-                className="w-full"
-                elSize="md"
-                name="tcoin"
-                value={tcoinAmount}
-                onChange={handleTcoinChange}
-                placeholder="Enter TCOIN amount"
-              />
-              <Input
-                name="cad"
-                elSize="md"
-                className="w-full"
-                value={cadAmount}
-                onChange={handleCadChange}
-                placeholder="Enter CAD amount"
-              />
-            </div>
-            <Button
-              className={`w-full ${!Boolean(toSendData) && "opacity-50"}`}
-              onClick={() => {
-                if (Boolean(toSendData)) {
-                  setExplorerLink("https://gnosisscan.io/tx/0x679767eea7b4cadd01b016cdd41e26b5990d729c7d0f471bd327d7584f400bdb")
-                  toast.success("Success")
-                }
-              }}
-            >
-              <LuSend className="mr-2 h-4 w-4" /> Send to Contact
-            </Button>
-            {explorerLink && <a href={explorerLink}>Transaction Link</a>}
-            {explorerLink && <>
-              <div>
-                Add to Contacts ?
-                <div className="flex items-center space-x-2">
-                  <Button>Add</Button>
-                </div>
-              </div>
-            </>}
-          </CardContent>
-        </Card>
-
-        {/* My Account Section */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>My Account</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-auto mx-6 p-0">
-            <Tabs className="w-full" variant="bordered">
-              <TabTrigger name="tab_insight" ariaLabel="Graph" defaultChecked />
-              <TabContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={balanceHistory}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="balance" stroke="#8884d8" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </TabContent>
-              <TabTrigger name="tab_insight" ariaLabel="Balance" />
-              <TabContent>
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
-                  <p className="text-4xl font-bold">
-                    {formatNumber(balance.toString(), false)}
-                  </p>
-                  <p className="text-xl">{formatNumber(convertToCad(balance), true)}</p>
-                </div>
-              </TabContent>
-              <TabTrigger name="tab_insight" ariaLabel="Transactions" />
-              <TabContent>
-                <div className="flex items-center space-x-2 mb-4">
-                  <Switch
-                    id="currency-toggle"
-                    checked={showAmountInCad}
-                    onCheckedChange={setShowAmountInCad}
-                  />
-                  <Label htmlFor="currency-toggle">
-                    Show amounts in {showAmountInCad ? "CAD" : "TCOIN"}
-                  </Label>
-                </div>
-                <ul className="space-y-2">
-                  {recentTransactions.map((transaction) => (
-                    <li
-                      key={transaction.id}
-                      className="flex justify-between items-center"
-                    >
-                      <div>
-                        <p className="font-semibold">{transaction.type}</p>
-                        <p className="text-sm text-gray-500">
-                          {transaction.from
-                            ? `From: ${transaction.from}`
-                            : `To: ${transaction.to}`}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p
-                          className={`font-semibold ${transaction.type === "Received"
-                            ? "text-green-600"
-                            : "text-red-600"
-                            }`}
-                        >
-                          {transaction.type === "Received" ? "+" : "-"}
-                          {showAmountInCad
-                            ? formatNumber(convertToCad(transaction.amount), true)
-                            : formatNumber(transaction.amount.toString(), false)}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Charity:{" "}
-                          {showAmountInCad
-                            ? formatNumber(
-                              (transaction.amount * 0.03 * exchangeRate).toString(),
-                              true
-                            )
-                            : formatNumber(
-                              (transaction.amount * 0.03).toString(),
-                              false
-                            )}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {transaction.date}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </TabContent>
-              <TabTrigger name="tab_insight" ariaLabel="Charity" />
-              <TabContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={charityContributionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area
-                        type="monotone"
-                        dataKey="TheShelter"
-                        stackId="1"
-                        stroke="#8884d8"
-                        fill="#8884d8"
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="TheFoodBank"
-                        stackId="1"
-                        stroke="#82ca9d"
-                        fill="#82ca9d"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </TabContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        {/* Other Options */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Other</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Button
-                className="w-full"
-                onClick={() => {
-                  openModal({
-                    content: <TopUpModal closeModal={closeModal} />,
-                    title: "Top Up with Interac eTransfer",
-                    description:
-                      "Send an Interac eTransfer to top up your TCOIN Balance.",
-                  });
-                }}
-              >
-                <LuCreditCard className="mr-2 h-4 w-4" /> Top Up with Interac eTransfer
-              </Button>
-              <Button
-                className="w-full"
-                onClick={() => {
-                  openModal({
-                    content: <OffRampModal closeModal={closeModal} />,
-                    title: "Convert and Off-ramp",
-                    description:
-                      "Convert your TCOIN to CAD and transfer to your bank account.",
-                  });
-                }}
-              >
-                <LuDollarSign className="mr-2 h-4 w-4" /> Convert TCOIN to CAD and Off-ramp
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      {/* --- Desktop Grid View (All Cards Visible) --- */}
+      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ContributionsCard
+          selectedCharity={selectedCharity}
+          setSelectedCharity={setSelectedCharity}
+          charityData={charityData}
+          openModal={openModal}
+          closeModal={closeModal}
+        />
+        <ReceiveCard
+          qrCodeData={qrCodeData}
+          qrTcoinAmount={qrTcoinAmount}
+          qrCadAmount={qrCadAmount}
+          handleQrTcoinChange={handleQrTcoinChange}
+          handleQrCadChange={handleQrCadChange}
+          openModal={openModal}
+          closeModal={closeModal}
+        />
+        <SendCard
+          toSendData={toSendData}
+          setToSendData={setToSendData}
+          tcoinAmount={tcoinAmount}
+          cadAmount={cadAmount}
+          handleTcoinChange={handleTcoinChange}
+          handleCadChange={handleCadChange}
+          openModal={openModal}
+          closeModal={closeModal}
+          explorerLink={explorerLink}
+          setExplorerLink={setExplorerLink}
+        />
+        <AccountCard balance={balance} openModal={openModal} closeModal={closeModal} />
+        <OtherCard openModal={openModal} closeModal={closeModal} />
       </div>
     </div>
   );

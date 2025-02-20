@@ -87,16 +87,18 @@ const OffRampModal = ({ closeModal }: OffRampProps) => {
             name="interac_transfer"
             control={control}
             render={({ field }) => (
-              <Input
+              <InputField
                 {...field}
+                fullWidth
                 placeholder="Interac eTransfer email or phone"
                 className="w-full"
                 type="email"
+                label=" Interac destination"
               />
             )}
           />
           <p className="text-sm text-gray-500">
-            Note: The transfer will be completed within the next 24 hours.
+            Note: As long as your legal name matches the bank account records, then the transfer should be completed within the next 24h.
           </p>
           <Button className="w-full" disabled={loading} type="submit">
             {loading ? "Processing..." : "Convert and Transfer"}
