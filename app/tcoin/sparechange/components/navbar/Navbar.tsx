@@ -102,8 +102,7 @@ export default function Navbar() {
   return (
     <nav
       className={cn(
-        "shadow w-full z-20 fixed top-0",
-        "bg-background",
+        "w-full z-20 fixed top-0",
         "transition-transform duration-300",
         { "translate-y-0": isVisible },
         { "-translate-y-full": !isVisible }
@@ -131,7 +130,7 @@ export default function Navbar() {
                 }}
                 className="mr-2"
               >
-                <LuCamera className="h-6 w-6" />
+                <LuCamera style={{ height: '26px', width: "26px" }} />
               </Button>
             )}
             <div className="relative">

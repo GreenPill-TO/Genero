@@ -43,7 +43,9 @@
     "secretjs": "^1.15.1",
     "secrets.js": "^0.1.8",
     "tailwind-merge": "^2.5.4",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "viem": "^2.23.3",
+    "web3": "^4.16.0"
   },
   "devDependencies": {
     "@types/node": "^20",

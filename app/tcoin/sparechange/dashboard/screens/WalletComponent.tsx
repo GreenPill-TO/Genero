@@ -1,7 +1,4 @@
 // @ts-nocheck
-
-"use client";
-
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
@@ -16,7 +13,7 @@ import {
   OffRampModal,
   QrScanModal,
   ShareQrModal,
-  TopUpModal,
+  // Note: The TopUpModal is defined below.
 } from "@tcoin/sparechange/components/modals";
 import {
   LuCamera,
@@ -41,8 +38,11 @@ import {
 import QRCode from "react-qr-code";
 import { toast } from "react-toastify";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
+import useDarkMode from "@shared/hooks/useDarkMode";
+import { createClient } from "@shared/lib/supabase/client";
+import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 
-// Sample data arrays
+// ---------------- Sample Data ----------------
 const balanceHistory = [
   { date: "2023-06-01", balance: 800 },
   { date: "2023-06-15", balance: 950 },
@@ -67,6 +67,7 @@ const charityContributionData = [
   { date: "2023-09-01", TheShelter: 22, TheFoodBank: 18 },
 ];
 
+// ---------------- Interface ----------------
 export interface Hypodata {
   id: number;
   cubid_id: string;
@@ -94,9 +95,7 @@ export interface Hypodata {
   category: string;
 }
 
-/* -----------------------------------------------
-   Reusable Card Components
------------------------------------------------ */
+// ---------------- Reusable Card Components ----------------
 
 // Contributions Card
 function ContributionsCard({
@@ -126,8 +125,8 @@ function ContributionsCard({
           <p>
             My default charity: <strong>{selectedCharity}</strong>
             <Button
-              variant="link"
-              className="p-0 ml-2 h-auto font-normal"
+              variant="default"
+              className="py-1 ml-2 h-auto font-normal"
               onClick={() => {
                 openModal({
                   content: (
@@ -142,7 +141,7 @@ function ContributionsCard({
                 });
               }}
             >
-              change
+              Change
             </Button>
           </p>
           <p>
@@ -178,15 +177,22 @@ function ReceiveCard({
   openModal: any;
   closeModal: any;
 }) {
+  const { isDarkMode } = useDarkMode();
   return (
     <Card>
       <CardHeader>
         <CardTitle>Receive</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 mt-[-10px]">
+        <p>{qrTcoinAmount ? `Receive ${qrTcoinAmount} amount` : "Receive any amount"}</p>
         <div className="relative flex flex-col items-center justify-center p-2 rounded-xl transform transition duration-500 hover:scale-105">
           {qrCodeData ? (
-            <QRCode value={qrCodeData} size={128} bgColor="transparent" fgColor="#fff" />
+            <QRCode
+              value={qrCodeData}
+              size={250}
+              bgColor="transparent"
+              fgColor={isDarkMode ? "#fff" : "#000"}
+            />
           ) : (
             <p className="text-white">Loading QR Code...</p>
           )}
@@ -428,13 +434,15 @@ function AccountCard({
   balance,
   openModal,
   closeModal,
+  senderWallet
 }: {
   balance: number;
   openModal: any;
   closeModal: any;
+  senderWallet: string;
 }) {
   const [activeAccountTab, setActiveAccountTab] = useState("balance");
-
+  const { ...rest } = useTokenBalance(senderWallet)
   // Simple conversion and formatting helpers
   const convertToCad = (tcoin: number) => (tcoin * 3.3).toFixed(2);
   const formatNumber = (value: string, isCad: boolean) => {
@@ -464,11 +472,10 @@ function AccountCard({
             <button
               key={tab.key}
               onClick={() => setActiveAccountTab(tab.key)}
-              className={`px-3 py-1 rounded-md font-medium transition-colors ${
-                activeAccountTab === tab.key
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-              }`}
+              className={`px-3 py-1 rounded-md font-medium transition-colors ${activeAccountTab === tab.key
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                }`}
             >
               {tab.label}
             </button>
@@ -500,7 +507,7 @@ function AccountCard({
           {activeAccountTab === "transactions" && (
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <Switch id="currency-toggle" onCheckedChange={() => {}} />
+                <Switch id="currency-toggle" onCheckedChange={() => { }} />
                 <Label htmlFor="currency-toggle">Show amounts in CAD</Label>
               </div>
               <ul className="space-y-2">
@@ -519,18 +526,14 @@ function AccountCard({
                     </div>
                     <div className="text-right">
                       <p
-                        className={`font-semibold ${
-                          transaction.type === "Received"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
+                        className={`font-semibold ${transaction.type === "Received" ? "text-green-600" : "text-red-600"
+                          }`}
                       >
                         {transaction.type === "Received" ? "+" : "-"}
                         {formatNumber(transaction.amount.toString(), false)}
                       </p>
                       <p className="text-sm text-gray-500">
-                        Charity:{" "}
-                        {formatNumber((transaction.amount * 0.03).toString(), false)}
+                        Charity: {formatNumber((transaction.amount * 0.03).toString(), false)}
                       </p>
                       <p className="text-sm text-gray-500">{transaction.date}</p>
                     </div>
@@ -610,11 +613,115 @@ function OtherCard({ openModal, closeModal }: { openModal: any; closeModal: any 
   );
 }
 
-/* -----------------------------------------------
-   Main Component
------------------------------------------------ */
+// ---------------- Updated TopUpModal Component ----------------
+
+// Helper to generate a reference code. The first part is fixed while the second part is randomly generated.
+const generateReferenceCode = () => {
+  const base = "TCOIN-REF"; // fixed beginning part
+  const randomPart = Math.floor(100000 + Math.random() * 900000); // new 6-digit number
+  return `${base}-${randomPart}`;
+};
+
+export function TopUpModal({ closeModal }) {
+  // "input" or "confirmation" steps
+  const [step, setStep] = useState("input");
+  const [amount, setAmount] = useState("");
+  const [refCode, setRefCode] = useState(generateReferenceCode());
+  const { userData } = useAuth()
+  const supabase = createClient()
+  // Move to confirmation if a valid amount is entered.
+  const handleNext = async () => {
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount.");
+      return;
+    }
+
+    await supabase.from("interac_transfer").insert({
+      user_id: userData?.cubidData?.id,
+      interac_code: refCode,
+      is_sent: false,
+      amount: amount
+    })
+    setStep("confirmation");
+  };
+
+  // Go back to the amount entry view.
+  const handleBack = () => {
+    setStep("input");
+  };
+
+  // Close the modal without saving.
+  const handleCancel = () => {
+    closeModal();
+  };
+
+  // Simulate saving the top up info and generate a new reference code.
+  const handleConfirm = async () => {
+    try {
+      // Replace with your actual API call.
+      await supabase.from("interac_transfer").update({ is_sent: true }).match({ interac_code: refCode, })
+      toast.success("Top up recorded successfully!");
+      setRefCode(generateReferenceCode());
+      closeModal();
+    } catch (error) {
+      toast.error("Failed to record top up. Please try again.");
+    }
+  };
+
+
+  return (
+    <div className="p-4 space-y-6">
+      {step === "input" && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold">Top Up via Interac eTransfer</h3>
+          <div className="justify-between flex w-full">
+            <Input
+              type="number"
+              placeholder="Enter amount sent"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            <div>
+              <Button onClick={handleNext}>Next</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === "confirmation" && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold">Confirm Top Up</h3>
+          <p>
+            <strong>Amount:</strong> {amount}
+          </p>
+          <p>
+            <strong>Reference Code:</strong> {refCode}
+          </p>
+          <p>
+            <strong>Email:</strong> support@tcoin.com
+          </p>
+          <p className="text-sm text-gray-500">
+            Make sure you have a confirmation from your bank that the money has been sent before finalizing here.
+          </p>
+          <div className="flex gap-4">
+            <Button variant="outline" onClick={handleBack}>
+              Back
+            </Button>
+            <Button variant="outline" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm}>I have sent it</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------- Main Component ----------------
+
 export function MobileWalletDashboardComponent() {
-  // Mobile active tab state
+  // Active tab for mobile view.
   const [activeTab, setActiveTab] = useState("contributions");
   const tabs = [
     { key: "contributions", label: "Contributions", icon: LuUsers },
@@ -628,7 +735,7 @@ export function MobileWalletDashboardComponent() {
   const { userData }: any = useAuth();
   const [balance, setBalance] = useState(1000);
 
-  // --- QR and Send Amount States ---
+  // States for QR and send amounts.
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");
   const [qrCadAmount, setQrCadAmount] = useState("");
   const [tcoinAmount, setTcoinAmount] = useState("");
@@ -644,7 +751,7 @@ export function MobileWalletDashboardComponent() {
 
   const user_id = userData?.cubidData.id;
 
-  // --- QR Code Data ---
+  // QR Code data setup.
   const [qrCodeData, setQrCodeData] = useState(
     user_id ? JSON.stringify({ user_id, timestamp: Date.now() }) : ""
   );
@@ -658,7 +765,7 @@ export function MobileWalletDashboardComponent() {
     return () => clearInterval(interval);
   }, [user_id]);
 
-  // --- Conversion & Formatting ---
+  // Number formatting helper.
   const formatNumber = (value: string, isCad: boolean) => {
     const num = parseFloat(value);
     if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
@@ -669,7 +776,7 @@ export function MobileWalletDashboardComponent() {
     return isCad ? `$${formatted}` : `${formatted} TCOIN`;
   };
 
-  // --- Debounce Delay and Refs ---
+  // Debounce refs.
   const debounceDelay = 500;
   const tcoinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -724,7 +831,7 @@ export function MobileWalletDashboardComponent() {
     }, debounceDelay);
   };
 
-  // --- Send Money Related State ---
+  // Send Money state.
   const [toSendData, setToSendData] = useState<Hypodata | null>(null);
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
 
@@ -733,9 +840,8 @@ export function MobileWalletDashboardComponent() {
     receiverId: toSendData?.id ?? null,
   });
 
-  // Debug logging
-  console.log({ user_id, toSendData, senderWallet, receiverWallet });
 
+  // Debug logging.
   return (
     <div className="container mx-auto p-4 space-y-8">
       {/* --- Mobile View (Single Card with Tab Navigation) --- */}
@@ -776,7 +882,7 @@ export function MobileWalletDashboardComponent() {
             />
           )}
           {activeTab === "account" && (
-            <AccountCard balance={balance} openModal={openModal} closeModal={closeModal} />
+            <AccountCard balance={balance} senderWallet={senderWallet} openModal={openModal} closeModal={closeModal} />
           )}
           {activeTab === "other" && (
             <OtherCard openModal={openModal} closeModal={closeModal} />
@@ -789,11 +895,10 @@ export function MobileWalletDashboardComponent() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`p-2 rounded-md transition-colors ${
-                activeTab === tab.key
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-white hover:bg-gray-300"
-              }`}
+              className={`p-2 rounded-md transition-colors ${activeTab === tab.key
+                ? "bg-blue-600 text-white"
+                : "bg-gray-700 text-white hover:bg-gray-300"
+                }`}
               title={tab.label}
             >
               <tab.icon className="h-6 w-6" />
@@ -832,7 +937,7 @@ export function MobileWalletDashboardComponent() {
           explorerLink={explorerLink}
           setExplorerLink={setExplorerLink}
         />
-        <AccountCard balance={balance} openModal={openModal} closeModal={closeModal} />
+        <AccountCard balance={balance} senderWallet={senderWallet} openModal={openModal} closeModal={closeModal} />
         <OtherCard openModal={openModal} closeModal={closeModal} />
       </div>
     </div>

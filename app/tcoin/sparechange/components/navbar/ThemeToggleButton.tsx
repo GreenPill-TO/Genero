@@ -9,7 +9,7 @@ export function ThemeToggleButton() {
 
   return (
     <Button onClick={() => toggleDarkMode()} className="p-2 mr-2" size="icon" variant="ghost">
-      {isDarkMode ? <LuSun className="w-6 h-6" /> : <LuMoon className="w-6 h-6 text-gray-800" />}
+      {isDarkMode ? <LuSun style={{ height: '26px', width: "26px" }} className="h-10 w-10" /> : <LuMoon style={{ height: '26px', width: "26px" }} className="w-10 h-10 text-gray-800" />}
     </Button>
   );
 }
