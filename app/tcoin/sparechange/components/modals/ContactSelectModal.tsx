@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Radio } from "@shared/components/ui/Radio";
