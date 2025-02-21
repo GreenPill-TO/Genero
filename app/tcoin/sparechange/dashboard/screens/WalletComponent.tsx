@@ -831,19 +831,19 @@ export function MobileWalletDashboardComponent() {
   });
 
   const user_id = userData?.cubidData.id;
+  const nano_id = userData?.cubidData.user_identifier;
 
   // QR Code data setup.
   const [qrCodeData, setQrCodeData] = useState(
-    user_id ? JSON.stringify({ user_id, timestamp: Date.now() }) : ""
+    user_id ? JSON.stringify({ nano_id, timestamp: Date.now() }) : ""
   );
 
 
   useEffect(() => {
     if (!user_id) return;
-    setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
+    setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
     const interval = setInterval(() => {
-      console.log({ user_id, timestamp: Date.now() })
-      setQrCodeData(JSON.stringify({ user_id, timestamp: Date.now() }));
+      setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
     }, 2000);
     return () => clearInterval(interval);
   }, [user_id, tcoinAmount]);
@@ -923,6 +923,14 @@ export function MobileWalletDashboardComponent() {
     receiverId: toSendData?.id ?? null,
   });
 
+  const dynamicQrData = qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData
+
+  function base64Encode(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  const qrData = `https://tcoin.me?pay=${base64Encode(dynamicQrData)}`
+
 
   // Debug logging.
   return (
@@ -942,7 +950,7 @@ export function MobileWalletDashboardComponent() {
 
           {activeTab === "receive" && (
             <ReceiveCard
-              qrCodeData={qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData}
+              qrCodeData={qrData}
               qrTcoinAmount={qrTcoinAmount}
               qrCadAmount={qrCadAmount}
               handleQrTcoinChange={handleQrTcoinChange}
@@ -1003,7 +1011,7 @@ export function MobileWalletDashboardComponent() {
           closeModal={closeModal}
         />
         <ReceiveCard
-          qrCodeData={qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData}
+          qrCodeData={qrData}
           qrTcoinAmount={qrTcoinAmount}
           qrCadAmount={qrCadAmount}
           handleQrTcoinChange={handleQrTcoinChange}
