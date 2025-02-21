@@ -5,6 +5,7 @@ import { Button } from "@shared/components/ui/Button";
 import { useModal } from "@shared/contexts/ModalContext";
 import { cn } from "@shared/utils/classnames";
 import { QrScanModal } from "@tcoin/sparechange/components/modals";
+
 import SignInModal from "@tcoin/sparechange/components/modals/SignInModal";
 import { UserProfileModal } from "@tcoin/sparechange/components/modals/UserProfileModal";
 import { usePathname } from "next/navigation";
@@ -122,11 +123,7 @@ export default function Navbar() {
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  openModal({
-                    content: <QrScanModal closeModal={closeModal} />,
-                    title: "Scan QR to Pay",
-                    description: "Use your device's camera to scan a QR code for payment.",
-                  });
+                  localStorage.setItem("openQR", "true")
                 }}
                 className="mr-2"
               >

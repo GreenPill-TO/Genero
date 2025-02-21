@@ -120,29 +120,10 @@ function ContributionsCard({
       <CardHeader>
         <CardTitle>Charitable Contributions</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
+      <CardContent className="relative">
+        <div className="space-y-2 relative h-full">
           <p>
             My default charity: <strong>{selectedCharity}</strong>
-            <Button
-              variant="default"
-              className="py-1 ml-2 h-auto font-normal"
-              onClick={() => {
-                openModal({
-                  content: (
-                    <CharitySelectModal
-                      closeModal={closeModal}
-                      selectedCharity={selectedCharity}
-                      setSelectedCharity={setSelectedCharity}
-                    />
-                  ),
-                  title: "Change Default Charity",
-                  description: "Select a new default charity for your contributions.",
-                });
-              }}
-            >
-              Change
-            </Button>
           </p>
           <p>
             My contribution to {selectedCharity}: {charityData.personalContribution} TCOIN
@@ -154,6 +135,25 @@ function ContributionsCard({
             All users to all charities: {charityData.allUsersToAllCharities} TCOIN
           </p>
         </div>
+        <Button
+          variant="default"
+          className="py-1 h-auto bottom-0 left-0 font-normal"
+          onClick={() => {
+            openModal({
+              content: (
+                <CharitySelectModal
+                  closeModal={closeModal}
+                  selectedCharity={selectedCharity}
+                  setSelectedCharity={setSelectedCharity}
+                />
+              ),
+              title: "Change Default Charity",
+              description: "Select a new default charity for your contributions.",
+            });
+          }}
+        >
+          Change
+        </Button>
       </CardContent>
     </Card>
   );
@@ -238,7 +238,7 @@ function ReceiveCard({
             className="flex-1"
             onClick={() => {
               openModal({
-                content: <ShareQrModal closeModal={closeModal} />,
+                content: <ShareQrModal qrCodeData={qrCodeData} closeModal={closeModal} />,
                 title: "Share QR Code",
                 description: "Share your QR code via different methods.",
               });
@@ -352,28 +352,48 @@ function SendCard({
         <CardTitle>Pay / Send</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* If no recipient is selected, open a QR scan modal */}
+        {/* If no recipient is selected, show two options */}
         {!toSendData && (
-          <Button
-            className="w-full"
-            onClick={() => {
-              openModal({
-                content: (
-                  // Assume QrScanModal is defined elsewhere; it's not modified in this example.
-                  <QrScanModal
-                    setTcoin={setTcoin}
-                    setCad={setCad}
-                    setToSendData={setToSendData}
-                    closeModal={closeModal}
-                  />
-                ),
-                title: "Scan QR to Pay",
-                description: "Use your device's camera to scan a QR code for payment.",
-              });
-            }}
-          >
-            <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
-          </Button>
+          <div className="space-y-2">
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: (
+                    <QrScanModal
+                      setTcoin={setTcoin}
+                      setCad={setCad}
+                      setToSendData={setToSendData}
+                      closeModal={closeModal}
+                    />
+                  ),
+                  title: "Scan QR to Pay",
+                  description: "Use your device's camera to scan a QR code for payment.",
+                });
+              }}
+            >
+              <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
+            </Button>
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: (
+                    <ContactSelectModal
+                      closeModal={closeModal}
+                      setToSendData={setToSendData}
+                      method={"Send"}
+                    // Additional props to fetch contacts from the connections table can be added here.
+                    />
+                  ),
+                  title: "Select Contact to Pay",
+                  description: "Choose a contact from your connections to send TCOIN to.",
+                });
+              }}
+            >
+              <LuUsers className="mr-2 h-4 w-4" /> Select Contact to Pay
+            </Button>
+          </div>
         )}
 
         {/* Display recipient details if available */}
@@ -491,7 +511,6 @@ function SendCard({
   );
 }
 
-
 // Account Card
 function AccountCard({
   balance,
@@ -505,7 +524,7 @@ function AccountCard({
   senderWallet: string;
 }) {
   const [activeAccountTab, setActiveAccountTab] = useState("balance");
-  const { ...rest } = useTokenBalance(senderWallet)
+  const { ...rest } = useTokenBalance(senderWallet);
   // Simple conversion and formatting helpers
   const convertToCad = (tcoin: number) => (tcoin * 3.3).toFixed(2);
   const formatNumber = (value: string, isCad: boolean) => {
@@ -521,7 +540,6 @@ function AccountCard({
   const handleCopy = () => {
     navigator.clipboard.writeText(senderWallet)
       .then(() => {
-        // Optionally, display a confirmation message
         alert('Wallet address copied to clipboard!');
       })
       .catch((error) => {
@@ -708,8 +726,8 @@ export function TopUpModal({ closeModal }) {
   const [step, setStep] = useState("input");
   const [amount, setAmount] = useState("");
   const [refCode, setRefCode] = useState(generateReferenceCode());
-  const { userData } = useAuth()
-  const supabase = createClient()
+  const { userData } = useAuth();
+  const supabase = createClient();
   // Move to confirmation if a valid amount is entered.
   const handleNext = async () => {
     if (!amount || parseFloat(amount) <= 0) {
@@ -721,8 +739,8 @@ export function TopUpModal({ closeModal }) {
       user_id: userData?.cubidData?.id,
       interac_code: refCode,
       is_sent: false,
-      amount: amount
-    })
+      amount: amount,
+    });
     setStep("confirmation");
   };
 
@@ -740,7 +758,7 @@ export function TopUpModal({ closeModal }) {
   const handleConfirm = async () => {
     try {
       // Replace with your actual API call.
-      await supabase.from("interac_transfer").update({ is_sent: true }).match({ interac_code: refCode, })
+      await supabase.from("interac_transfer").update({ is_sent: true }).match({ interac_code: refCode });
       toast.success("Top up recorded successfully!");
       setRefCode(generateReferenceCode());
       closeModal();
@@ -748,7 +766,6 @@ export function TopUpModal({ closeModal }) {
       toast.error("Failed to record top up. Please try again.");
     }
   };
-
 
   return (
     <div className="p-4 space-y-6">
@@ -813,7 +830,7 @@ export function MobileWalletDashboardComponent() {
   ];
 
   const { openModal, closeModal } = useModal();
-  const { userData }: any = useAuth();
+  const { userData } = useAuth();
   const [balance, setBalance] = useState(1000);
 
   // States for QR and send amounts.
@@ -822,7 +839,14 @@ export function MobileWalletDashboardComponent() {
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
 
-  const [selectedCharity, setSelectedCharity] = useState("The FoodBank");
+  const [selectedCharity, setSelectedCharity] = useState("");
+
+  useEffect(() => {
+    if (userData?.cubidData?.charity) {
+      setSelectedCharity(userData?.cubidData?.charity);
+    }
+  }, [userData]);
+
   const exchangeRate = 3.3;
   const [charityData, setCharityData] = useState({
     personalContribution: 50,
@@ -838,7 +862,6 @@ export function MobileWalletDashboardComponent() {
     user_id ? JSON.stringify({ nano_id, timestamp: Date.now() }) : ""
   );
 
-
   useEffect(() => {
     if (!user_id) return;
     setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
@@ -847,6 +870,29 @@ export function MobileWalletDashboardComponent() {
     }, 2000);
     return () => clearInterval(interval);
   }, [user_id, tcoinAmount]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (localStorage.getItem("openQR")) {
+        openModal({
+          content: (
+            <QrScanModal
+              setTcoin={setTcoinAmount}
+              setCad={setCadAmount}
+              setToSendData={setToSendData}
+              closeModal={closeModal}
+            />
+          ),
+          title: "Scan QR to Pay",
+          description: "Use your device's camera to scan a QR code for payment.",
+        });
+        localStorage.removeItem("openQR")
+      }
+    }, 1000)
+    return () => {
+      clearInterval(interval)
+    }
+  }, [])
 
   // Number formatting helper.
   const formatNumber = (value: string, isCad: boolean) => {
@@ -923,14 +969,13 @@ export function MobileWalletDashboardComponent() {
     receiverId: toSendData?.id ?? null,
   });
 
-  const dynamicQrData = qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData
+  const dynamicQrData = qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData;
 
   function base64Encode(str) {
     return btoa(unescape(encodeURIComponent(str)));
   }
 
-  const qrData = `https://tcoin.me?pay=${base64Encode(dynamicQrData)}`
-
+  const qrData = `https://tcoin.me?pay=${base64Encode(dynamicQrData)}`;
 
   // Debug logging.
   return (

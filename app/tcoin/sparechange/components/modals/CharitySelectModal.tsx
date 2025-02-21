@@ -1,6 +1,15 @@
+// @ts-nocheck
+import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import { Radio } from "@shared/components/ui/Radio";
-import { useState } from "react";
+import { createClient } from "@shared/lib/supabase/client";
+import { useState, useEffect } from "react";
+
+interface Charity {
+  id: string;
+  name: string;
+  value: string;
+}
 
 interface CharitySelectModalProps {
   closeModal: () => void;
@@ -8,49 +17,70 @@ interface CharitySelectModalProps {
   setSelectedCharity: (v: string) => void;
 }
 
-const charities = [
-  { value: "The FoodBank", label: "The FoodBank", id: "charity1" },
-  { value: "The Shelter", label: "The Shelter", id: "charity2" },
-  { value: "Save the Trees", label: "Save the Trees", id: "charity3" },
-];
-
-const CharitySelectModal = ({ closeModal, selectedCharity, setSelectedCharity }: CharitySelectModalProps) => {
+const CharitySelectModal = ({
+  closeModal,
+  selectedCharity,
+  setSelectedCharity,
+}: CharitySelectModalProps) => {
   const [charity, setCharity] = useState(selectedCharity);
+  const [charities, setCharities] = useState<Charity[]>([]);
+  const supabase = createClient();
+  const { userData } = useAuth()
+
+  useEffect(() => {
+    const fetchCharities = async () => {
+      const { data, error } = await supabase
+        .from("charities")
+        .select("*");
+      if (error) {
+        console.error("Error fetching charities:", error);
+      } else if (data) {
+        setCharities(data);
+      }
+    };
+
+    fetchCharities();
+  }, [supabase]);
+
+  const handleSelect = async () => {
+    // Update the parent component state
+    setSelectedCharity(charity);
+
+    // Get the current user
+
+    // Update the charity column in the users table
+    const { error } = await supabase
+      .from("users")
+      .update({ charity })
+      .eq("id", userData?.cubidData?.id);
+    if (error) {
+      console.error("Error updating user's charity:", error);
+    }
+
+
+    closeModal();
+  };
 
   return (
     <div className="mt-2 p-0">
       <div className="space-y-4">
-        {charities.map((ch) => {
-          return (
-            <Radio
-              name="charity-selection"
-              key={ch.id}
-              label={ch.label}
-              value={ch.value}
-              onValueChange={setCharity}
-              id={ch.id}
-              defaultChecked={ch.value === charity}
-            />
-          );
-        })}
+        {charities.map((ch) => (
+          <Radio
+            name="charity-selection"
+            key={ch.id}
+            label={ch.name}
+            value={ch.name}
+            onValueChange={setCharity}
+            id={ch.id}
+            defaultChecked={ch.name === charity}
+          />
+        ))}
 
         <div className="flex justify-end space-x-2 mt-4">
-          <Button
-            variant="outline"
-            onClick={() => {
-              closeModal();
-            }}
-          >
+          <Button variant="outline" onClick={closeModal}>
             Cancel
           </Button>
-          <Button
-            onClick={() => {
-              setSelectedCharity(charity);
-              closeModal();
-            }}
-          >
-            Select
-          </Button>
+          <Button onClick={handleSelect}>Select</Button>
         </div>
       </div>
     </div>
