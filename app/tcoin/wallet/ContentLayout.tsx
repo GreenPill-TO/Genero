@@ -4,7 +4,7 @@
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { cn } from "@shared/utils/classnames";
 import { Footer } from "@tcoin/wallet/components/footer";
-import Navbar from "@tcoin/wallet/components/navbar";
+import Navbar from "@tcoin/sparechange/components/navbar/Navbar";
 import { GeistSans } from "geist/font/sans";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -34,7 +34,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     <div className={GeistSans.className}>
       {!isLoading ? (
         <section className={bodyClass}>
-          <Navbar />
+          <Navbar title="Tcoin" />
           <div className={cn("flex-grow flex flex-col pt-16", "bg-secondary")}>{children}</div>
           <Footer />
           <ToastContainer autoClose={1000} transition={Flip} theme={"colored"} />

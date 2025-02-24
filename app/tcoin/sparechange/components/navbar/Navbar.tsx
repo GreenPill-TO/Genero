@@ -14,7 +14,7 @@ import { LuCamera } from "react-icons/lu";
 import NavLink from "./NavLink";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 
-export default function Navbar() {
+export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
   const { isAuthenticated } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
@@ -111,7 +111,7 @@ export default function Navbar() {
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center max-w-7xl mx-auto">
-          <NavLink link="/" title="SpareChange" optionalClass="text-2xl font-bold" />
+          <NavLink link="/" title={title ?? "SpareChange"} optionalClass="text-2xl font-bold" />
           <div className="hidden sm:flex sm:items-center sm:space-x-8 mx-auto">
             {homePageLinks}
             {isAuthenticated && navLinksProtected}
