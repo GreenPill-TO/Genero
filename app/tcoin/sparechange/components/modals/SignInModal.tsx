@@ -44,7 +44,7 @@ type SignInModalProps = {
 };
 
 function SignInModal({ closeModal }: SignInModalProps) {
-  const [authMethod, setAuthMethod] = useState<"phone" | "email">("phone");
+  const [authMethod, setAuthMethod] = useState<"phone" | "email">("email");
   const [countryCode, setCountryCode] = useState("+1");
   const [contact, setContact] = useState("");
   const [passcode, setPasscode] = useState("");

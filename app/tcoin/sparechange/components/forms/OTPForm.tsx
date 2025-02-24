@@ -56,7 +56,6 @@ function OTPForm({
                 value={authMethod}
                 onValueChange={(v) => handleAuthMethodChange(v as "phone" | "email")}
                 options={[
-                  { label: "Phone", value: "phone" },
                   { label: "Email", value: "email" },
                 ]}
               />
