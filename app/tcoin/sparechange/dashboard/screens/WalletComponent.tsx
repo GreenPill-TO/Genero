@@ -41,6 +41,7 @@ import { useSendMoney } from "@shared/hooks/useSendMoney";
 import useDarkMode from "@shared/hooks/useDarkMode";
 import { createClient } from "@shared/lib/supabase/client";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
+import { insertSuccessNotification } from "@shared/utils/insertNotification";
 
 // ---------------- Sample Data ----------------
 const balanceHistory = [
@@ -184,7 +185,7 @@ function ReceiveCard({
         <CardTitle>Receive</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 mt-[-10px]">
-        <p>{(Boolean(qrTcoinAmount) && qrTcoinAmount !== '0.00 TCOIN') ? `Receive ${qrTcoinAmount} amount` : "Receive any amount"}</p>
+        <p>{(Boolean(qrTcoinAmount) && qrTcoinAmount !== '0.00 TCOIN') ? `Receive ${qrTcoinAmount}` : "Receive any amount"}</p>
         <div className="relative flex flex-col items-center justify-center p-2 rounded-xl transform transition duration-500 hover:scale-105">
           {qrCodeData ? (
             <QRCode
@@ -290,6 +291,7 @@ const ConfirmTransactionModal = ({
             setIsLoading(true);
             try {
               const hash = await sendMoney(tcoinAmount);
+              insertSuccessNotification({ user_id: toSendData.id, notification: `You received ${tcoinAmount}` })
               setExplorerLink(`https://evm-testnet.flowscan.io/tx/${hash}`);
               toast.success("Payment Sent Successfully!");
             } catch (error) {
@@ -346,6 +348,19 @@ function SendCard({
   setTcoin: any;
   setCad: any;
 }) {
+
+  const [connections, setConnections] = useState(null)
+
+  useEffect(() => {
+    if (toSendData?.id) {
+      const fetchConnections = async () => {
+        const supabase = createClient();
+        const { data } = await supabase.from("connections").select("*").match({ connected_user_id: toSendData?.id, }).neq("state", 'new')
+        setConnections(data?.[0])
+      }
+      fetchConnections()
+    }
+  }, [toSendData])
   return (
     <Card>
       <CardHeader>
@@ -478,31 +493,38 @@ function SendCard({
         {explorerLink && (
           <div className="p-4 bg-green-900/20 rounded-lg">
             <div className="text-center space-y-4">
-              <h3 className="text-lg font-bold text-green-400">Success!</h3>
-              <a
-                href={explorerLink}
-                className="text-blue-400 underline block"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View Transaction on Explorer
-              </a>
-              <div className="pt-4 border-t border-gray-700">
-                <p>Add to Contacts?</p>
-                <div className="flex justify-center gap-4 mt-2">
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      toast.success("Contact added!");
-                    }}
+              {explorerLink && (
+                <>
+                  <h3 className="text-lg font-bold text-green-400">Success!</h3>
+                  <a
+                    href={explorerLink}
+                    className="text-blue-400 underline block"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    Yes
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setExplorerLink(null)}>
-                    No
-                  </Button>
+                    View Transaction on Explorer
+                  </a>
+                </>
+              )}
+              {!connections?.[0] && (
+                <div className="pt-4 border-t border-gray-700">
+                  <p>Add to Contacts?</p>
+                  <div className="flex justify-center gap-4 mt-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        toast.success("Contact added!");
+                      }}
+                    >
+                      Yes
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setExplorerLink(null)}>
+                      No
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
+
             </div>
           </div>
         )}
@@ -722,12 +744,13 @@ const generateReferenceCode = () => {
 };
 
 export function TopUpModal({ closeModal }) {
-  // "input" or "confirmation" steps
+  // "input", "confirmation", or "final" steps
   const [step, setStep] = useState("input");
   const [amount, setAmount] = useState("");
   const [refCode, setRefCode] = useState(generateReferenceCode());
   const { userData } = useAuth();
   const supabase = createClient();
+
   // Move to confirmation if a valid amount is entered.
   const handleNext = async () => {
     if (!amount || parseFloat(amount) <= 0) {
@@ -758,24 +781,30 @@ export function TopUpModal({ closeModal }) {
   const handleConfirm = async () => {
     try {
       // Replace with your actual API call.
-      await supabase.from("interac_transfer").update({ is_sent: true }).match({ interac_code: refCode });
+      await supabase
+        .from("interac_transfer")
+        .update({ is_sent: true })
+        .match({ interac_code: refCode });
       toast.success("Top up recorded successfully!");
+      insertSuccessNotification({user_id:userData?.cubidData.id,notification:`${amount} topped up successfully into Tcoin Wallet`})
       setRefCode(generateReferenceCode());
-      closeModal();
+      // Instead of closing immediately, move to the final confirmation screen.
+      setStep("final");
     } catch (error) {
       toast.error("Failed to record top up. Please try again.");
     }
   };
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 pb-0 space-y-6">
       {step === "input" && (
         <div className="space-y-4">
           <h3 className="text-lg font-bold">Top Up via Interac eTransfer</h3>
+          <h3 className="text-sm font-bold">Tcoin Balance to Topup</h3>
           <div className="justify-between flex w-full">
             <Input
               type="number"
-              placeholder="Enter amount sent"
+              placeholder="Enter amount to send"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
@@ -783,6 +812,11 @@ export function TopUpModal({ closeModal }) {
               <Button onClick={handleNext}>Next</Button>
             </div>
           </div>
+          {Boolean(amount) && (
+            <div className="mb-4">
+              {amount * 3.3} CAD
+            </div>
+          )}
         </div>
       )}
 
@@ -793,10 +827,13 @@ export function TopUpModal({ closeModal }) {
             <strong>Amount:</strong> {amount}
           </p>
           <p>
+            <strong>Amount in CAD:</strong> {amount * 3.3}
+          </p>
+          <p>
             <strong>Reference Code:</strong> {refCode}
           </p>
           <p>
-            <strong>Email:</strong> support@tcoin.com
+            <strong>eTransfer money to:</strong> support@tcoin.com
           </p>
           <p className="text-sm text-gray-500">
             Make sure you have a confirmation from your bank that the money has been sent before finalizing here.
@@ -812,9 +849,20 @@ export function TopUpModal({ closeModal }) {
           </div>
         </div>
       )}
+
+      {step === "final" && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold">Thank You!</h3>
+          <p>Thank you! Check back here in 24 hours when the TCOIN balance should be updated.</p>
+          <div className="flex justify-end">
+            <Button onClick={closeModal}>Close</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 // ---------------- Main Component ----------------
 
@@ -1013,6 +1061,7 @@ export function MobileWalletDashboardComponent() {
               handleTcoinChange={handleTcoinChange}
               handleCadChange={handleCadChange}
               sendMoney={sendMoney}
+              setTcoin={setTcoinAmount}
               setCad={setCadAmount}
               openModal={openModal}
               closeModal={closeModal}
@@ -1073,6 +1122,7 @@ export function MobileWalletDashboardComponent() {
           handleCadChange={handleCadChange}
           sendMoney={sendMoney}
           setCad={setCadAmount}
+          setTcoin={setTcoinAmount}
           openModal={openModal}
           closeModal={closeModal}
           explorerLink={explorerLink}

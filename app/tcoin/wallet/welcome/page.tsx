@@ -29,9 +29,10 @@ export default function NewWelcomePage() {
 
     // Wallet state array; Continue button enabled only when wallets.length > 0
     const [wallets, setWallets] = useState([]);
-
     // State to track if username uniqueness is being checked
     const [isUsernameChecking, setIsUsernameChecking] = useState(false);
+    // New state: show video demo before dashboard redirect
+    const [showVideo, setShowVideo] = useState(false);
 
     // Initialize react-hook-form with default values and validations.
     const {
@@ -107,13 +108,36 @@ export default function NewWelcomePage() {
                     return;
                 }
 
-                router.push("/dashboard");
+                // Instead of immediately redirecting, show the video demo
+                setShowVideo(true);
             } catch (err) {
                 console.error("Error submitting form:", err);
             }
         },
         [userData, router]
     );
+
+    // If showVideo is true, render the video demo screen.
+    if (showVideo) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-900">
+                <h2 className="text-2xl font-semibold text-white mb-4">
+                    How to Top Up Your Account
+                </h2>
+                <video
+                    src="https://kyxsjnwkvddgjqigdpsv.supabase.co/storage/v1/object/public/screen_recording//Screen%20Recording%202025-02-24%20at%206.54.17%20PM.mov"
+                    controls
+                    className="w-full max-w-2xl"
+                />
+                <Button
+                    onClick={() => router.push("/dashboard")}
+                    className="mt-6"
+                >
+                    Continue to Dashboard
+                </Button>
+            </div>
+        );
+    }
 
     const mainClass = cn("flex-grow flex flex-col items-center justify-center p-4");
 
@@ -181,7 +205,7 @@ export default function NewWelcomePage() {
                         {/* Avatar File Upload */}
                         <div className="mb-4">
                             <label htmlFor="avatar" className="block font-medium text-sm mb-2">
-                                Avatar
+                                Profile Picture
                             </label>
                             <input
                                 id="avatar"
@@ -229,7 +253,7 @@ export default function NewWelcomePage() {
                                         public_key: walletDetails.address,
                                         user_id: userData?.cubidData?.id,
                                         is_generated: walletDetails?.is_generated_via_lib
-                                    })
+                                    });
                                 }
                             }}
                             onUserShare={async (usershare: any) => {
@@ -237,8 +261,7 @@ export default function NewWelcomePage() {
                                     return Buffer.from(buf).toString('base64');
                                 }
                                 const jsonData = {
-                                    encryptedAesKey
-                                        : bufferToBase64(usershare.encryptedAesKey),
+                                    encryptedAesKey: bufferToBase64(usershare.encryptedAesKey),
                                     encryptedData: bufferToBase64(usershare.encryptedData),
                                     encryptionMethod: usershare.encryptionMethod,
                                     id: usershare.id,
@@ -250,14 +273,14 @@ export default function NewWelcomePage() {
                                 await supabase.from("user_encrypted_share").insert({
                                     user_share_encrypted: jsonData,
                                     user_id: userData?.cubidData?.id,
-                                })
+                                });
                             }}
                             onAppShare={async (share: any) => {
                                 if (share) {
                                     await supabase.from("wallet_appshare").insert({
                                         app_share: share,
                                         user_id: (userData?.cubidData as any)?.id
-                                    })
+                                    });
                                 }
                             }}
                         />

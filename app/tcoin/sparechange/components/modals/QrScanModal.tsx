@@ -83,7 +83,7 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
       setToSendData(userDataFromSupabaseTable?.[0])
       if (rest?.qrTcoinAmount) {
         setTcoin(rest?.qrTcoinAmount)
-        setCad((rest?.qrTcoinAmount) * 3.3)
+        setCad(extractDecimalFromString(rest?.qrTcoinAmount) * 3.3)
       }
     }
 
