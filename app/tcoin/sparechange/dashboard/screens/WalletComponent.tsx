@@ -207,6 +207,7 @@ function ReceiveCard({
     openModal({
       content: (
         <ContactSelectModal
+          setToSendData={handleQrTcoinChange}
           closeModal={closeModal}
           amount={qrTcoinAmount}
           method="Request" />
@@ -618,8 +619,8 @@ function AccountCard({
               key={tab.key}
               onClick={() => setActiveAccountTab(tab.key)}
               className={`px-3 py-1 rounded-md font-medium transition-colors ${activeAccountTab === tab.key
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
                 }`}
             >
               {tab.label}
