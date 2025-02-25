@@ -1,10 +1,22 @@
-import React from "react";
+'use client';
+import React, { useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@shared/components/ui/Card";
 import { cn } from "@shared/utils/classnames";
 import { Fade } from "react-awesome-reveal";
 import "@tcoin/wallet/styles/home.scss";
 
 const TCoinApp = () => {
+  useEffect(() => {
+    // Access the URL search params using the browser's window API
+    const queryParams = new URLSearchParams(window.location.search);
+    const pay = queryParams.get("pay");
+
+    if (pay) {
+      // Redirect using window.location.replace to avoid creating an extra history entry
+      window.location.replace(`/dashboard?pay=${pay}`);
+    }
+  }, []);
+
   return (
     <main className="p-4 sm:px-20 md:px-32 lg:px-40 sm:text-xl home-screen">
       <header className="mb-8 text-center">
@@ -29,13 +41,11 @@ const TCoinApp = () => {
               <p>Summary:</p>
               <ul className="list-disc ml-6 sm:ml-8">
                 <li>
-                  Automatically share 3% of transaction value to a local charity of your
-                  own choice (not to the credit card industry).
+                  Automatically share 3% of transaction value to a local charity of your own choice (not to the credit card industry).
                 </li>
                 <li>Keep money circulating locally (not to foreign suppliers).</li>
                 <li>
-                  Also an easy way to tip your waitress in person and to donate to panhandlers
-                  with QR codes.
+                  Also an easy way to tip your waitress in person and to donate to panhandlers with QR codes.
                 </li>
                 <li>Local money is better money.</li>
               </ul>
@@ -73,8 +83,7 @@ const TCoinApp = () => {
             <CardContent>
               <p>
                 <strong>
-                  Supporting local businesses, fostering community engagement, and building a
-                  sustainable Toronto economy.
+                  Supporting local businesses, fostering community engagement, and building a sustainable Toronto economy.
                 </strong>
               </p>
               <p>

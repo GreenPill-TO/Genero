@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
@@ -160,7 +160,6 @@ function ContributionsCard({
   );
 }
 
-// Receive Card
 function ReceiveCard({
   qrCodeData,
   qrTcoinAmount,
@@ -169,6 +168,7 @@ function ReceiveCard({
   handleQrCadChange,
   openModal,
   closeModal,
+  senderWallet
 }: {
   qrCodeData: string;
   qrTcoinAmount: string;
@@ -177,8 +177,46 @@ function ReceiveCard({
   handleQrCadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   openModal: any;
   closeModal: any;
+  senderWallet: string;
 }) {
   const { isDarkMode } = useDarkMode();
+  const { ...rest } = useTokenBalance(senderWallet);
+  const formatNumber = (value: string, isCad: boolean) => {
+    const num = parseFloat(value);
+    if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
+    const formatted = num.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return isCad ? `$${formatted}` : `${formatted} TCOIN`;
+  };
+  const balance = formatNumber(rest.balance.toString(), false);
+
+  // Function to validate the amount before proceeding
+  const handleRequestClick = () => {
+    const requestedAmount = parseFloat(qrTcoinAmount);
+    const availableBalance = parseFloat(rest.balance);
+    if (isNaN(requestedAmount) || requestedAmount <= 0) {
+      alert("Please enter a valid amount.");
+      return;
+    }
+    if (requestedAmount > availableBalance) {
+      alert("The amount to request exceeds your available balance.");
+      return;
+    }
+    openModal({
+      content: (
+        <ContactSelectModal
+          closeModal={closeModal}
+          amount={qrTcoinAmount}
+          method="Request"
+        />
+      ),
+      title: "Request from Contact",
+      description: "Select a contact to request TCOIN from.",
+    });
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -219,19 +257,7 @@ function ReceiveCard({
         <div className="flex flex-col gap-4 sm:flex-row">
           <Button
             className="flex-1"
-            onClick={() => {
-              openModal({
-                content: (
-                  <ContactSelectModal
-                    closeModal={closeModal}
-                    amount={qrTcoinAmount}
-                    method="Request"
-                  />
-                ),
-                title: "Request from Contact",
-                description: "Select a contact to request TCOIN from.",
-              });
-            }}
+            onClick={handleRequestClick}
           >
             <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
           </Button>
@@ -533,12 +559,11 @@ function SendCard({
   );
 }
 
-// Account Card
 function AccountCard({
   balance,
   openModal,
   closeModal,
-  senderWallet
+  senderWallet,
 }: {
   balance: number;
   openModal: any;
@@ -547,6 +572,7 @@ function AccountCard({
 }) {
   const [activeAccountTab, setActiveAccountTab] = useState("balance");
   const { ...rest } = useTokenBalance(senderWallet);
+
   // Simple conversion and formatting helpers
   const convertToCad = (tcoin: number) => (tcoin * 3.3).toFixed(2);
   const formatNumber = (value: string, isCad: boolean) => {
@@ -557,6 +583,12 @@ function AccountCard({
       maximumFractionDigits: 2,
     });
     return isCad ? `$${formatted}` : `${formatted} TCOIN`;
+  };
+
+  // Helper to shorten wallet address: show first 6 and last 4 characters.
+  const shortenedAddress = (address: string) => {
+    if (address.length <= 10) return address;
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
   };
 
   const handleCopy = () => {
@@ -586,10 +618,11 @@ function AccountCard({
             <button
               key={tab.key}
               onClick={() => setActiveAccountTab(tab.key)}
-              className={`px-3 py-1 rounded-md font-medium transition-colors ${activeAccountTab === tab.key
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                }`}
+              className={`px-3 py-1 rounded-md font-medium transition-colors ${
+                activeAccountTab === tab.key
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+              }`}
             >
               {tab.label}
             </button>
@@ -614,21 +647,34 @@ function AccountCard({
           {activeAccountTab === "balance" && (
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
-              <p
-                className="text-md break-all font-bold cursor-pointer"
-                onClick={handleCopy}
-                title="Click to copy your wallet address"
+              <div className="flex justify-center items-center space-x-2 mb-1">
+                <span className="text-md break-all font-bold" title={senderWallet}>
+                  {`Wallet: ${shortenedAddress(senderWallet)}`}
+                </span>
+                <button onClick={handleCopy} title="Copy wallet address">
+                  <FiCopy className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+              <a
+                href={`https://explorer.example.com/address/${senderWallet}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-500 underline mb-3 block"
               >
-                Your Wallet Address {senderWallet} (click to copy)
+                View on Explorer
+              </a>
+              <p className="text-4xl font-bold">
+                {formatNumber(rest.balance.toString(), false)}
               </p>
-              <p className="text-4xl font-bold">{formatNumber(rest.balance.toString(), false)}</p>
-              <p className="text-xl">{formatNumber(convertToCad(rest.balance), true)}</p>
+              <p className="text-xl">
+                {formatNumber(convertToCad(rest.balance), true)} CAD
+              </p>
             </div>
           )}
           {activeAccountTab === "transactions" && (
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <Switch id="currency-toggle" onCheckedChange={() => { }} />
+                <Switch id="currency-toggle" onCheckedChange={() => {}} />
                 <Label htmlFor="currency-toggle">Show amounts in CAD</Label>
               </div>
               <ul className="space-y-2">
@@ -647,8 +693,9 @@ function AccountCard({
                     </div>
                     <div className="text-right">
                       <p
-                        className={`font-semibold ${transaction.type === "Received" ? "text-green-600" : "text-red-600"
-                          }`}
+                        className={`font-semibold ${
+                          transaction.type === "Received" ? "text-green-600" : "text-red-600"
+                        }`}
                       >
                         {transaction.type === "Received" ? "+" : "-"}
                         {formatNumber(transaction.amount.toString(), false)}
@@ -786,7 +833,7 @@ export function TopUpModal({ closeModal }) {
         .update({ is_sent: true })
         .match({ interac_code: refCode });
       toast.success("Top up recorded successfully!");
-      insertSuccessNotification({user_id:userData?.cubidData.id,notification:`${amount} topped up successfully into Tcoin Wallet`})
+      insertSuccessNotification({ user_id: userData?.cubidData.id, notification: `${amount} topped up successfully into Tcoin Wallet` })
       setRefCode(generateReferenceCode());
       // Instead of closing immediately, move to the final confirmation screen.
       setStep("final");
@@ -919,6 +966,50 @@ export function MobileWalletDashboardComponent() {
     return () => clearInterval(interval);
   }, [user_id, tcoinAmount]);
 
+  function extractAndDecodeBase64(url: string) {
+    try {
+      const urlObj = new URL(url);
+      const base64Data = urlObj.searchParams.get("pay");
+      if (!base64Data) throw new Error("No Base64 data found in URL.");
+      console.log({ base64Data })
+      // Decode Base64 data
+      const decodedData = decodeURIComponent(escape(atob(base64Data)));
+      return JSON.parse(decodedData); // Assuming the data is in JSON format
+    } catch (error) {
+      console.error("Error decoding Base64:", error);
+      return null;
+    }
+  }
+
+
+  const handleScan = useCallback(async (data: any) => {
+    const { ...rest } = extractAndDecodeBase64(data)
+    console.log({ rest })
+    const supabase = createClient()
+    toast.success("Scanned User Successfully")
+    if (rest?.nano_id) {
+      const { data: userDataFromSupabaseTable } = await supabase.from("users").select("*").match({
+        user_identifier: rest?.nano_id
+      })
+      await supabase.from("connections").insert({
+        owner_user_id: (userData as any)?.cubidData?.id,
+        connected_user_id: userDataFromSupabaseTable?.[0]?.id,
+        state: "new"
+      })
+
+      setToSendData(userDataFromSupabaseTable?.[0])
+      if (rest?.qrTcoinAmount) {
+        setTcoin(rest?.qrTcoinAmount)
+        setCad(extractDecimalFromString(rest?.qrTcoinAmount) * 3.3)
+      }
+    }
+
+  }, []);
+
+  useEffect(() => {
+    handleScan(window.location.href)
+  }, [])
+
   useEffect(() => {
     const interval = setInterval(() => {
       if (localStorage.getItem("openQR")) {
@@ -1050,6 +1141,7 @@ export function MobileWalletDashboardComponent() {
               handleQrCadChange={handleQrCadChange}
               openModal={openModal}
               closeModal={closeModal}
+              senderWallet={senderWallet}
             />
           )}
           {activeTab === "send" && (
@@ -1112,6 +1204,7 @@ export function MobileWalletDashboardComponent() {
           handleQrCadChange={handleQrCadChange}
           openModal={openModal}
           closeModal={closeModal}
+          senderWallet={senderWallet}
         />
         <SendCard
           toSendData={toSendData}
