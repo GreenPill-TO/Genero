@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
@@ -23,6 +22,7 @@ import {
   LuShare2,
   LuUsers,
 } from "react-icons/lu";
+import { FiCopy } from 'react-icons/fi'
 import { FiUser } from "react-icons/fi";
 import {
   Area,
@@ -209,8 +209,7 @@ function ReceiveCard({
         <ContactSelectModal
           closeModal={closeModal}
           amount={qrTcoinAmount}
-          method="Request"
-        />
+          method="Request" />
       ),
       title: "Request from Contact",
       description: "Select a contact to request TCOIN from.",
@@ -587,8 +586,8 @@ function AccountCard({
 
   // Helper to shorten wallet address: show first 6 and last 4 characters.
   const shortenedAddress = (address: string) => {
-    if (address.length <= 10) return address;
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+    if (address?.length <= 10) return address;
+    return `${address?.substring(0, 6)}...${address?.substring(address.length - 4)}`;
   };
 
   const handleCopy = () => {
@@ -618,11 +617,10 @@ function AccountCard({
             <button
               key={tab.key}
               onClick={() => setActiveAccountTab(tab.key)}
-              className={`px-3 py-1 rounded-md font-medium transition-colors ${
-                activeAccountTab === tab.key
+              className={`px-3 py-1 rounded-md font-medium transition-colors ${activeAccountTab === tab.key
                   ? "bg-blue-600 text-white"
                   : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-              }`}
+                }`}
             >
               {tab.label}
             </button>
@@ -674,7 +672,7 @@ function AccountCard({
           {activeAccountTab === "transactions" && (
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <Switch id="currency-toggle" onCheckedChange={() => {}} />
+                <Switch id="currency-toggle" onCheckedChange={() => { }} />
                 <Label htmlFor="currency-toggle">Show amounts in CAD</Label>
               </div>
               <ul className="space-y-2">
@@ -693,9 +691,8 @@ function AccountCard({
                     </div>
                     <div className="text-right">
                       <p
-                        className={`font-semibold ${
-                          transaction.type === "Received" ? "text-green-600" : "text-red-600"
-                        }`}
+                        className={`font-semibold ${transaction.type === "Received" ? "text-green-600" : "text-red-600"
+                          }`}
                       >
                         {transaction.type === "Received" ? "+" : "-"}
                         {formatNumber(transaction.amount.toString(), false)}
