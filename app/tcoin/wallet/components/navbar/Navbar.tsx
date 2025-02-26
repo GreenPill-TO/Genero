@@ -49,7 +49,7 @@ export default function Navbar() {
 
     return (
       <>
-        <NavLink link="/dashboard" title="Dashboard" optionalClass="hover:text-blue-500" />
+        {/* <NavLink link="/dashboard" title="Dashboard" optionalClass="hover:text-blue-500" /> */}
       </>
     );
   }, [isAuthenticated]);

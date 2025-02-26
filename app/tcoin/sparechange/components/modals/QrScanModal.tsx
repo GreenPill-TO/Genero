@@ -66,7 +66,7 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
 
   // Called whenever a QR code is successfully scanned.
   const handleScan = useCallback(async (data: any) => {
-    const { nano_id,...rest } = extractAndDecodeBase64(data?.[0]?.rawValue)
+    const { nano_id, ...rest } = extractAndDecodeBase64(data?.[0]?.rawValue)
     console.log({ rest })
     const supabase = createClient()
     toast.success("Scanned User Successfully")
@@ -77,6 +77,12 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
       await supabase.from("connections").insert({
         owner_user_id: (userData as any)?.cubidData?.id,
         connected_user_id: userDataFromSupabaseTable?.[0]?.id,
+        state: "new"
+      })
+
+      await supabase.from("connections").insert({
+        connected_user_id: (userData as any)?.cubidData?.id,
+        owner_user_id: userDataFromSupabaseTable?.[0]?.id,
         state: "new"
       })
 

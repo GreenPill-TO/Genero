@@ -49,7 +49,7 @@ export default function Navbar({ title }: { title?: string }) {
 
     return (
       <>
-        <NavLink link="/dashboard" title="Dashboard" optionalClass="hover:text-blue-500" />
+        {/* <NavLink link="/dashboard" title="Dashboard" optionalClass="hover:text-blue-500" /> */}
       </>
     );
   }, [isAuthenticated]);

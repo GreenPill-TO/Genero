@@ -378,16 +378,20 @@ function SendCard({
 
   const [connections, setConnections] = useState(null)
 
+  const { userData } = useAuth()
+
   useEffect(() => {
     if (toSendData?.id) {
       const fetchConnections = async () => {
         const supabase = createClient();
-        const { data } = await supabase.from("connections").select("*").match({ connected_user_id: toSendData?.id, }).neq("state", 'new')
+        const { data } = await supabase.from("connections").select("*").match({ connected_user_id: toSendData?.id, owner_user_id: userData?.cubidData?.id }).neq("state", 'new')
         setConnections(data?.[0])
       }
       fetchConnections()
     }
-  }, [toSendData])
+  }, [toSendData, userData])
+
+  const supabase = createClient()
   return (
     <Card>
       <CardHeader>
@@ -539,13 +543,20 @@ function SendCard({
                   <div className="flex justify-center gap-4 mt-2">
                     <Button
                       size="sm"
-                      onClick={() => {
+                      onClick={async () => {
+                        await supabase.from("connections").update({ state: "added" }).match({ connected_user_id: toSendData?.id, owner_user_id:  userData?.cubidData?.id })
+                        await supabase.from("connections").update({ state: "added" }).match({ owner_user_id: toSendData?.id, connected_user_id:  userData?.cubidData?.id })
                         toast.success("Contact added!");
                       }}
                     >
                       Yes
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setExplorerLink(null)}>
+                    <Button variant="outline" size="sm"
+                      onClick={async () => {
+                        await supabase.from("connections").update({ state: "removed" }).match({ connected_user_id: toSendData?.id, owner_user_id: userData?.cubidData?.id })
+                        await supabase.from("connections").update({ state: "removed" }).match({ owner_user_id: toSendData?.id, connected_user_id:  userData?.cubidData?.id })
+                        toast.success("Contact added!");
+                      }}>
                       No
                     </Button>
                   </div>
