@@ -345,7 +345,30 @@ const ConfirmTransactionModal = ({
   );
 };
 
-// Main SendCard component
+interface Hypodata {
+  id: string;
+  full_name: string;
+  username: string;
+  profile_image_url?: string;
+}
+
+interface SendCardProps {
+  sendMoney: any;
+  toSendData: Hypodata | null;
+  setToSendData: (data: Hypodata | null) => void;
+  tcoinAmount: string;
+  cadAmount: string;
+  handleTcoinChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleCadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  openModal: (modalData: { content: JSX.Element; title: string; description?: string }) => void;
+  closeModal: () => void;
+  explorerLink: string | null;
+  setExplorerLink: (link: string | null) => void;
+  setTcoin: any;
+  setCad: any;
+  userBalance: number;
+}
+
 function SendCard({
   toSendData,
   setToSendData,
@@ -360,38 +383,43 @@ function SendCard({
   setTcoin,
   sendMoney,
   setCad,
-}: {
-  sendMoney: any;
-  toSendData: Hypodata | null;
-  setToSendData: (data: Hypodata | null) => void;
-  tcoinAmount: string;
-  cadAmount: string;
-  handleTcoinChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleCadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  openModal: (modalData: { content: JSX.Element; title: string; description?: string }) => void;
-  closeModal: () => void;
-  explorerLink: string | null;
-  setExplorerLink: (link: string | null) => void;
-  setTcoin: any;
-  setCad: any;
-}) {
-
-  const [connections, setConnections] = useState(null)
-
-  const { userData } = useAuth()
+  userBalance
+}: SendCardProps) {
+  const [connections, setConnections] = useState<any>(null);
+  const { userData } = useAuth();
 
   useEffect(() => {
     if (toSendData?.id) {
       const fetchConnections = async () => {
         const supabase = createClient();
-        const { data } = await supabase.from("connections").select("*").match({ connected_user_id: toSendData?.id, owner_user_id: userData?.cubidData?.id }).neq("state", 'new')
-        setConnections(data?.[0])
-      }
-      fetchConnections()
+        const { data } = await supabase
+          .from("connections")
+          .select("*")
+          .match({
+            connected_user_id: toSendData?.id,
+            owner_user_id: userData?.cubidData?.id,
+          })
+          .neq("state", "new");
+        setConnections(data?.[0]);
+      };
+      fetchConnections();
     }
-  }, [toSendData, userData])
+  }, [toSendData, userData]);
 
-  const supabase = createClient()
+  const supabase = createClient();
+
+  // Convert input strings to numbers.
+  const tcoinValue = parseFloat(tcoinAmount);
+  const cadValue = parseFloat(cadAmount);
+
+  // Validation: both amounts must be valid, positive, and the TCOIN amount must not exceed the user's balance.
+  const isValidAmount =
+    !isNaN(tcoinValue) &&
+    !isNaN(cadValue) &&
+    tcoinValue > 0 &&
+    cadValue > 0 &&
+    tcoinValue <= userBalance;
+
   return (
     <Card>
       <CardHeader>
@@ -429,7 +457,6 @@ function SendCard({
                       closeModal={closeModal}
                       setToSendData={setToSendData}
                       method={"Send"}
-                    // Additional props to fetch contacts from the connections table can be added here.
                     />
                   ),
                   title: "Select Contact to Pay",
@@ -499,7 +526,14 @@ function SendCard({
             </div>
             <Button
               className="w-full"
+              disabled={!isValidAmount}
               onClick={() => {
+                if (!isValidAmount) {
+                  toast.error(
+                    "Please enter valid amounts. Ensure they are positive and within your available balance."
+                  );
+                  return;
+                }
                 openModal({
                   content: (
                     <ConfirmTransactionModal
@@ -524,19 +558,17 @@ function SendCard({
         {explorerLink && (
           <div className="p-4 bg-green-900/20 rounded-lg">
             <div className="text-center space-y-4">
-              {explorerLink && (
-                <>
-                  <h3 className="text-lg font-bold text-green-400">Success!</h3>
-                  <a
-                    href={explorerLink}
-                    className="text-blue-400 underline block"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View Transaction on Explorer
-                  </a>
-                </>
-              )}
+              <>
+                <h3 className="text-lg font-bold text-green-400">Success!</h3>
+                <a
+                  href={explorerLink}
+                  className="text-blue-400 underline block"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View Transaction on Explorer
+                </a>
+              </>
               {!connections?.[0] && (
                 <div className="pt-4 border-t border-gray-700">
                   <p>Add to Contacts?</p>
@@ -544,25 +576,39 @@ function SendCard({
                     <Button
                       size="sm"
                       onClick={async () => {
-                        await supabase.from("connections").update({ state: "added" }).match({ connected_user_id: toSendData?.id, owner_user_id:  userData?.cubidData?.id })
-                        await supabase.from("connections").update({ state: "added" }).match({ owner_user_id: toSendData?.id, connected_user_id:  userData?.cubidData?.id })
+                        await supabase
+                          .from("connections")
+                          .update({ state: "added" })
+                          .match({ connected_user_id: toSendData?.id, owner_user_id: userData?.cubidData?.id });
+                        await supabase
+                          .from("connections")
+                          .update({ state: "added" })
+                          .match({ owner_user_id: toSendData?.id, connected_user_id: userData?.cubidData?.id });
                         toast.success("Contact added!");
                       }}
                     >
                       Yes
                     </Button>
-                    <Button variant="outline" size="sm"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={async () => {
-                        await supabase.from("connections").update({ state: "removed" }).match({ connected_user_id: toSendData?.id, owner_user_id: userData?.cubidData?.id })
-                        await supabase.from("connections").update({ state: "removed" }).match({ owner_user_id: toSendData?.id, connected_user_id:  userData?.cubidData?.id })
-                        toast.success("Contact added!");
-                      }}>
+                        await supabase
+                          .from("connections")
+                          .update({ state: "removed" })
+                          .match({ connected_user_id: toSendData?.id, owner_user_id: userData?.cubidData?.id });
+                        await supabase
+                          .from("connections")
+                          .update({ state: "removed" })
+                          .match({ owner_user_id: toSendData?.id, connected_user_id: userData?.cubidData?.id });
+                        toast.success("Contact removed!");
+                      }}
+                    >
                       No
                     </Button>
                   </div>
                 </div>
               )}
-
             </div>
           </div>
         )}
@@ -1118,6 +1164,8 @@ export function MobileWalletDashboardComponent() {
     receiverId: toSendData?.id ?? null,
   });
 
+  const { balance: userBalance } = useTokenBalance(senderWallet)
+
   const dynamicQrData = qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData;
 
   function base64Encode(str) {
@@ -1157,6 +1205,7 @@ export function MobileWalletDashboardComponent() {
           {activeTab === "send" && (
             <SendCard
               toSendData={toSendData}
+              balance={balance}
               setToSendData={setToSendData}
               tcoinAmount={tcoinAmount}
               cadAmount={cadAmount}
@@ -1222,6 +1271,7 @@ export function MobileWalletDashboardComponent() {
           tcoinAmount={tcoinAmount}
           cadAmount={cadAmount}
           handleTcoinChange={handleTcoinChange}
+          userBalance={userBalance}
           handleCadChange={handleCadChange}
           sendMoney={sendMoney}
           setCad={setCadAmount}

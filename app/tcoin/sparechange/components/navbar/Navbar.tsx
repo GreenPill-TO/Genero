@@ -19,7 +19,7 @@ export default function Navbar({ title }: { title?: string }) {
   const { isAuthenticated } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
-
+  const { userData } = useAuth()
   const pathname = usePathname();
 
   const onAuth = () => {
@@ -57,7 +57,7 @@ export default function Navbar({ title }: { title?: string }) {
   const Account = () => {
     if (isAuthenticated)
       return (
-        <Avatar
+        <img
           onClick={() => {
             openModal({
               content: <UserProfileModal closeModal={closeModal} />,
@@ -66,9 +66,9 @@ export default function Navbar({ title }: { title?: string }) {
               description: "Manage your account settings and preferences.",
             });
           }}
-          src={"https://github.com/shadcn.png"}
+          src={userData?.cubidData?.profile_image_url || "https://github.com/shadcn.png"}
           alt={"Avatar"}
-          className="mx-2"
+          className="mx-2 h-8 w-8 rounded-full"
         />
       );
     return <Button onClick={onAuth}>Authenticate</Button>;

@@ -324,6 +324,12 @@ export default function NewWelcomePage() {
     }, [setValue]);
 
     useEffect(() => {
+        if (userData?.cubidData?.full_name) {
+            router.replace('/dashboard')
+        }
+    }, [userData, router])
+
+    useEffect(() => {
         localStorage.setItem("newWelcomeData", JSON.stringify(formData));
     }, [formData]);
 
