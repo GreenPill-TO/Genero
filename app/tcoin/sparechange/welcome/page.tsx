@@ -134,7 +134,7 @@ const WelcomeFlow: React.FC = () => {
     }
   }, [userFormData.current_step]);
 
-  const insertOrUpdateDataInWallet = async (userId, data) => {
+  const insertOrUpdateDataInWallet = async (userId, add) => {
     const { data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })
     if (data?.[0]) {
       await supabase.from("wallet_list").update({
@@ -143,7 +143,7 @@ const WelcomeFlow: React.FC = () => {
         user_id: userId
       })
     } else {
-      await supabase.from("wallet_list").insert({ user_id: userId, ...data })
+      await supabase.from("wallet_list").insert({ user_id: userId, ...add })
     }
   }
 
