@@ -128,8 +128,7 @@ export function MobileWalletDashboardComponent() {
               <CubidWidget stampToRender="email"
                 uuid={userData?.user?.cubid_id}
                 page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-              />
-            
+              />  
             </div>
           </CardContent>
         </Card>

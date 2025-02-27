@@ -326,8 +326,10 @@ export default function NewWelcomePage() {
         }
     }, [setValue]);
 
+    console.log("n", userData?.cubidData?.full_name)
+
     useEffect(() => {
-        if (userData?.cubidData?.full_name) {
+        if (Boolean(userData?.cubidData?.full_name)) {
             router.replace('/dashboard')
         }
     }, [userData, router])
@@ -335,6 +337,20 @@ export default function NewWelcomePage() {
     useEffect(() => {
         localStorage.setItem("newWelcomeData", JSON.stringify(formData));
     }, [formData]);
+
+
+    const insertOrUpdateDataInWallet = async (userId, data) => {
+        const { data: wallet_data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })
+        if (wallet_data?.[0]) {
+            await supabase.from("wallet_list").update({
+                ...data
+            }).match({
+                user_id: userId
+            })
+        } else {
+            await supabase.from("wallet_list").insert({ user_id: userId, ...data })
+        }
+    }
 
     // Step 1: Submit the form and update the user’s data.
     const onSubmit = useCallback(
@@ -370,7 +386,7 @@ export default function NewWelcomePage() {
     if (step === 1) {
         return (
             <div className={mainClass}>
-                <Card className={`w-full text-black ${isDarkMode?"text-white":"text-black"} max-w-xl`}>
+                <Card className={`w-full text-black ${isDarkMode ? "text-white" : "text-black"} max-w-xl`}>
                     <CardHeader className="text-2xl font-semibold text-center mb-6">
                         <h1>Welcome</h1>
                         <p className="text-sm text-gray-600 mt-1">Please fill in the details below</p>
@@ -387,7 +403,7 @@ export default function NewWelcomePage() {
                                     id="firstName"
                                     type="text"
                                     {...register("firstName", { required: "First name is required" })}
-                                    style={{color:"black !important"}}
+                                    style={{ color: "black !important" }}
                                     className={`w-full border border-gray-300 p-2 rounded !text-black`}
                                 />
                                 {errors.firstName && (
@@ -404,7 +420,7 @@ export default function NewWelcomePage() {
                                 <input
                                     id="lastName"
                                     type="text"
-                                    style={{color:"black !important"}}
+                                    style={{ color: "black !important" }}
                                     {...register("lastName", { required: "Last name is required" })}
                                     className={`w-full border border-gray-300 p-2 rounded  !text-black`}
                                 />
@@ -424,7 +440,7 @@ export default function NewWelcomePage() {
                                 <input
                                     id="nickname"
                                     type="text"
-                                    style={{color:"black !important"}}
+                                    style={{ color: "black !important" }}
                                     {...register("nickname")}
                                     className={`w-full border border-gray-300 p-2 rounded !text-black`}
                                 />
@@ -510,11 +526,10 @@ export default function NewWelcomePage() {
                                     setWallets(walletArray);
                                     const [walletDetails] = walletArray;
                                     if (walletDetails) {
-                                        await supabase.from("wallet_list").insert({
+                                        await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
                                             public_key: walletDetails.address,
-                                            user_id: userData?.cubidData?.id,
                                             is_generated: walletDetails?.is_generated_via_lib
-                                        });
+                                        })
                                     }
                                 }}
                                 onUserShare={async (usershare: any) => {
@@ -538,10 +553,11 @@ export default function NewWelcomePage() {
                                 }}
                                 onAppShare={async (share) => {
                                     if (share) {
-                                        await supabase.from("wallet_appshare").insert({
-                                            app_share: share,
-                                            user_id: userData?.cubidData?.id
-                                        });
+                                        setTimeout(async() => {
+                                            await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
+                                                app_share: share,
+                                            })
+                                        }, 1500)
                                     }
                                 }}
                             />

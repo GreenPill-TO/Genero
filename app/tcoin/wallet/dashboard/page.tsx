@@ -1,12 +1,14 @@
 "use client";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { WalletScreen } from "../../sparechange/dashboard/screens/WalletScreen";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
 
   const mainClass = "p-4 sm:p-8";
+  const router = useRouter()
 
   const screenContent = useMemo(() => {
     if (isLoadingUser || error) return null;
@@ -20,6 +22,11 @@ export default function Dashboard() {
         return <WalletScreen />;
     }
   }, [userData]);
+  useEffect(() => {
+    if (Boolean(userData?.cubidData?.full_name)) {
+      router.replace('/dashboard')
+    }
+  }, [userData, router])
 
   if (error) {
     return <div className={mainClass}>Error loading data: {error.message}</div>;

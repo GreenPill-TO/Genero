@@ -42,7 +42,7 @@ import { useSendMoney } from "@shared/hooks/useSendMoney";
 import useDarkMode from "@shared/hooks/useDarkMode";
 import { createClient } from "@shared/lib/supabase/client";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
-import { insertSuccessNotification } from "@shared/utils/insertNotification";
+import { adminInsertNotification, insertSuccessNotification } from "@shared/utils/insertNotification";
 
 // ---------------- Sample Data ----------------
 const balanceHistory = [
@@ -887,9 +887,22 @@ export function TopUpModal({ closeModal }) {
       await supabase
         .from("interac_transfer")
         .update({ is_sent: true })
-        .match({ interac_code: refCode });
+        .match({ interac_code: refCode })
+      const { data: interac_transfer_id } = await supabase.from("interac_transfer").select("*").match({ interac_code: refCode })
+      const { data: acc_transactions } = await supabase.from("act_transactions").insert({
+        transaction_category: "transfer",
+        created_by: userData?.cubidData.id,
+        onramp_request_id: interac_transfer_id?.[0]?.id
+      }).select("*")
       toast.success("Top up recorded successfully!");
-      insertSuccessNotification({ user_id: userData?.cubidData.id, notification: `${amount} topped up successfully into Tcoin Wallet` })
+      await insertSuccessNotification({
+        user_id: userData?.cubidData.id, notification: `${amount} topped up successfully into Tcoin Wallet`, additionalData: {
+          trx_entry_id: acc_transactions?.[0]?.id
+        }
+      })
+      await adminInsertNotification({
+        user_id: userData?.cubidData.id, notification: `Sent ${amount} to TCOIN wallet needs to be verified`,
+      })
       setRefCode(generateReferenceCode());
       // Instead of closing immediately, move to the final confirmation screen.
       setStep("final");
