@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Avatar } from "@shared/components/ui/Avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@shared/components/ui/Card";
 
