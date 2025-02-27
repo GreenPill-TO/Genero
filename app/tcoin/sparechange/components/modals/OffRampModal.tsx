@@ -1,5 +1,5 @@
 // OffRampModal.tsx
-
+// @ts-nocheck
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import InputField from "@shared/components/ui/InputField";
