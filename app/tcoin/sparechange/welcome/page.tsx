@@ -25,6 +25,7 @@ import {
   UserInfoStep,
 } from "@tcoin/sparechange/welcome/steps";
 import dynamic from "next/dynamic";
+import useDarkMode from "@shared/hooks/useDarkMode";
 const WalletComponent = dynamic(
   () => import('cubid-wallet').then((mod) => mod.WalletComponent),
   { ssr: false }
@@ -67,6 +68,7 @@ const initialFormData = {
 const WelcomeFlow: React.FC = () => {
   const router = useRouter();
   const { userData } = useAuth();
+  const { isDarkMode } = useDarkMode()
 
   const [userFormData, setUserFormData] = useState<TCubidData>(
     userData?.cubidData?.current_step && userData?.cubidData?.current_step > 1
@@ -131,6 +133,19 @@ const WelcomeFlow: React.FC = () => {
       setIsNextEnabled(true); // Always enable Next button on the first step
     }
   }, [userFormData.current_step]);
+
+  const insertOrUpdateDataInWallet = (userId, data) => {
+    const { data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })
+    if (data?.[0]) {
+      await supabase.from("wallet_list").update({
+        ...data
+      }).match({
+        user_id: userId
+      })
+    } else {
+      await supabase.from("wallet_list").insert({ user_id: userId, ...data })
+    }
+  }
 
 
   return (
@@ -256,11 +271,7 @@ const WelcomeFlow: React.FC = () => {
                 onEVMWallet={async (wallet: any) => {
                   const [walletDetails] = wallet;
                   if (wallet.length) {
-                    await supabase.from("wallet_list").insert({
-                      public_key: walletDetails.address,
-                      user_id: userData?.cubidData?.id,
-                      is_generated: walletDetails?.is_generated_via_lib
-                    })
+                    await insertOrUpdateDataInWallet(userData?.cubidData?.id, { public_key: walletDetails.address, is_generated: walletDetails?.is_generated_via_lib })
                     nextStep()
                   }
                 }}
@@ -286,13 +297,13 @@ const WelcomeFlow: React.FC = () => {
                 }}
                 onAppShare={async (share: any) => {
                   if (share) {
-                    await supabase.from("wallet_appshare").insert({
+                    await supabase.from("wallet_list").insert({
                       app_share: share,
                       user_id: (userData?.cubidData as any)?.id
                     })
+                    await insertOrUpdateDataInWallet((userData?.cubidData as any)?.id, { app_share: share, })
                   }
                 }}
-
               />
             )}
             {userFormData.current_step === 8 && (

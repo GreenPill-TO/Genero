@@ -16,6 +16,7 @@ import Select from "react-select";
 import countryList from "react-select-country-list";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import useDarkMode from "@shared/hooks/useDarkMode";
 
 const supabase = createClient();
 
@@ -290,6 +291,8 @@ export default function NewWelcomePage() {
         }));
     }, []);
 
+    const { isDarkMode } = useDarkMode()
+
     // Initialize react-hook-form with our new fields.
     const {
         register,
@@ -367,7 +370,7 @@ export default function NewWelcomePage() {
     if (step === 1) {
         return (
             <div className={mainClass}>
-                <Card className="w-full text-black dark:text-white max-w-xl">
+                <Card className={`w-full text-black ${isDarkMode?"text-white":"text-black"} max-w-xl`}>
                     <CardHeader className="text-2xl font-semibold text-center mb-6">
                         <h1>Welcome</h1>
                         <p className="text-sm text-gray-600 mt-1">Please fill in the details below</p>
@@ -384,7 +387,8 @@ export default function NewWelcomePage() {
                                     id="firstName"
                                     type="text"
                                     {...register("firstName", { required: "First name is required" })}
-                                    className="w-full border border-gray-300 p-2 rounded dark:bg-gray-600"
+                                    style={{color:"black !important"}}
+                                    className={`w-full border border-gray-300 p-2 rounded !text-black`}
                                 />
                                 {errors.firstName && (
                                     <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>
@@ -400,8 +404,9 @@ export default function NewWelcomePage() {
                                 <input
                                     id="lastName"
                                     type="text"
+                                    style={{color:"black !important"}}
                                     {...register("lastName", { required: "Last name is required" })}
-                                    className="w-full border border-gray-300 p-2 rounded dark:bg-gray-600 "
+                                    className={`w-full border border-gray-300 p-2 rounded  !text-black`}
                                 />
                                 {errors.lastName && (
                                     <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>
@@ -419,8 +424,9 @@ export default function NewWelcomePage() {
                                 <input
                                     id="nickname"
                                     type="text"
+                                    style={{color:"black !important"}}
                                     {...register("nickname")}
-                                    className="w-full border border-gray-300 p-2 rounded dark:bg-gray-600"
+                                    className={`w-full border border-gray-300 p-2 rounded !text-black`}
                                 />
                             </div>
 

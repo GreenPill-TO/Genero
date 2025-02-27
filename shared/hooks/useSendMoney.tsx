@@ -131,7 +131,7 @@ export const useSendMoney = ({
 		try {
 			// Fetch shares from Supabase.
 			const { data: shareData, error: shareError } = await supabase
-				.from('wallet_appshare')
+				.from('wallet_list')
 				.select('app_share')
 				.match({ user_id: cubidUserId })
 				.single();

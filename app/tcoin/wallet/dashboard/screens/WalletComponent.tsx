@@ -129,19 +129,7 @@ export function MobileWalletDashboardComponent() {
                 uuid={userData?.user?.cubid_id}
                 page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
               />
-              <WalletComponent type="evm"
-                user_id={userData?.user?.cubid_id} dapp_id="59"
-                api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-                onAppShare={async (share) => {
-                  const supabase = createClient()
-                  if (share) {
-                    await supabase.from("wallet_appshare").insert({
-                      app_share: share,
-                      user_id: (userData?.cubidData as any)?.id
-                    })
-                  }
-                }}
-              />
+            
             </div>
           </CardContent>
         </Card>
