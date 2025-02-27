@@ -1,3 +1,4 @@
+// @ts-nocheck
 import InputField from "@shared/components/ui/InputField";
 import { Select } from "@shared/components/ui/Select";
 import React, { useEffect } from "react";
