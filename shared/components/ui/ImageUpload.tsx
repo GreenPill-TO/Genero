@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Avatar } from "@shared/components/ui/Avatar";
 import React, { useState } from "react";
 

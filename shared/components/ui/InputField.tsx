@@ -33,7 +33,6 @@ const InputField: React.FC<InputFieldProps> = ({
       </Label>
       <Input
         className={fullWidth ? "w-full" : ""}
-        variant="bordered"
         id={name}
         name={name}
         type={type}
