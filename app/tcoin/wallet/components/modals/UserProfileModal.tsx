@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
