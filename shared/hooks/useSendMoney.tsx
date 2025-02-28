@@ -102,15 +102,128 @@ export const useSendMoney = ({
 		if (receiverId) fetchWalletAddress(receiverId, setReceiverWallet);
 	}, [senderId, receiverId]);
 
-	/**
-	 * Sends a token transfer by:
-	 * 1. Retrieving two shares from Supabase.
-	 * 2. Reconstructing the private key.
-	 * 3. Signing the transaction offline.
-	 * 4. Broadcasting the signed transaction via a custom RPC provider.
-	 *
-	 * @param amount - The token amount to transfer (e.g., "0.1").
-	 */
+
+	const burnMoney = async (amount: string) => {
+		if (!senderWallet) {
+			setError('Wallet addresses not found');
+			return;
+		}
+
+		// Ensure we have a valid user ID in userData.
+		const cubidUserId = userData?.cubidData?.id;
+		if (!cubidUserId) {
+			setError('No valid Cubid user ID found');
+			return;
+		}
+		setLoading(true);
+		setError(null);
+
+		try {
+			// Fetch shares from Supabase.
+			const { data: shareData, error: shareError } = await supabase
+				.from('wallet_list')
+				.select('app_share')
+				.match({ user_id: cubidUserId })
+				.single();
+
+			if (shareError) throw new Error(shareError.message);
+			if (!shareData?.app_share) {
+				throw new Error('No app_share found for this user');
+			}
+
+			const { data: userShare, error: userShareError } = await supabase
+				.from('user_encrypted_share')
+				.select('user_share_encrypted')
+				.match({ user_id: cubidUserId })
+				.single();
+
+			if (userShareError) throw new Error(userShareError.message);
+			if (!userShare?.user_share_encrypted) {
+				throw new Error('No user_share_encrypted found for this user');
+			}
+
+			const { app_share } = shareData;
+			const { user_share_encrypted } = userShare;
+
+			// Prepare the data for decryption.
+			const jsonData = {
+				encryptedAesKey: base64ToArrayBuffer(user_share_encrypted.encryptedAesKey),
+				encryptedData: base64ToArrayBuffer(user_share_encrypted.encryptedData),
+				encryptionMethod: user_share_encrypted.encryptionMethod,
+				id: user_share_encrypted.id,
+				iv: base64ToArrayBuffer(user_share_encrypted.iv),
+				ivForKeyEncryption: user_share_encrypted.ivForKeyEncryption,
+				salt: user_share_encrypted.salt,
+				credentialId: base64ToArrayBuffer(user_share_encrypted.credentialId),
+			};
+
+			// Decrypt to get the user share.
+			const user_share = await webAuthn.decryptString(jsonData);
+			console.log('Decrypted user share:', user_share);
+
+			// Reconstruct the private key.
+			const privateKeyHex = combineShares([app_share, user_share]);
+			if (!privateKeyHex) {
+				throw new Error('Failed to reconstruct private key from shares');
+			}
+			// Ensure the key has the proper "0x" prefix.
+			const privateKey = privateKeyHex.startsWith('0x') ? privateKeyHex : `0x${privateKeyHex}`;
+			console.log('Reconstructed private key:', privateKey);
+
+			// Initialize ethers with a custom RPC provider.
+			// Verify that this RPC URL is correct for your testnet.
+			const provider = new ethers.providers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+
+			// Create a wallet instance from the private key and connect it to the provider.
+			const walletInstance = new ethers.Wallet(privateKey, provider);
+			const fromAddress = walletInstance.address;
+
+			// Define the token contract address.
+			const tokenAddress = '0x6E534F15c921915fC2e6aD87b7e395d448Bc9ECE';
+			if (!tokenAddress) throw new Error('Token address not provided');
+			console.log({ walletInstance })
+			// Create a contract instance.
+			const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, walletInstance);
+
+			// Parse and validate the token amount.
+			const numAmount = extractDecimalFromString(amount);
+			if (isNaN(numAmount) || numAmount <= 0) {
+				throw new Error('Invalid transfer amount');
+			}
+			const parsedAmount = ethers.utils.parseUnits(numAmount.toString(), 'ether');
+
+			// Optional: Perform a static call to see if the transfer would succeed.
+
+			// Estimate gas limit and fetch gas price.
+			let gasLimit;
+
+			// Fallback gas limit (adjust as needed)
+			gasLimit = ethers.BigNumber.from(50000000);
+
+			const gasPrice = await provider.getGasPrice();
+
+			// Build transaction overrides.
+			const overrides = {
+				gasLimit,
+				gasPrice,
+			};
+
+			// Send the token transfer.
+			const txResponse = await tokenContract.burn(parsedAmount, overrides);
+			console.log('Transaction sent:', txResponse.hash);
+
+			// Wait for the transaction to be mined.
+			const txReceipt = await txResponse.wait();
+			return txReceipt.transactionHash;
+		} catch (err: any) {
+			console.error('Transaction error:', err);
+			setError(err.message);
+		} finally {
+			setLoading(false);
+		}
+	}
+
+
 	const sendMoney = async (amount: string) => {
 		if (!senderWallet || !receiverWallet) {
 			toast.info("Receiver Wallet Not Found")
@@ -237,5 +350,5 @@ export const useSendMoney = ({
 		}
 	};
 
-	return { senderWallet, receiverWallet, sendMoney, loading, error };
+	return { senderWallet, receiverWallet, sendMoney, loading, error, burnMoney };
 };

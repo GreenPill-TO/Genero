@@ -298,6 +298,8 @@ const ConfirmTransactionModal = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
+  const { userData } = useAuth()
+
   return (
     <div className="p-4 space-y-4">
       <h3 className="text-lg font-bold">Confirm Transaction</h3>
@@ -318,6 +320,8 @@ const ConfirmTransactionModal = ({
             setIsLoading(true);
             try {
               const hash = await sendMoney(tcoinAmount);
+              insertSuccessNotification({ user_id: userData?.cubidData?.id, notification: `You sent ${tcoinAmount}` })
+
               insertSuccessNotification({ user_id: toSendData.id, notification: `You received ${tcoinAmount}` })
               setExplorerLink(`https://evm-testnet.flowscan.io/tx/${hash}`);
               toast.success("Payment Sent Successfully!");

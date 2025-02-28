@@ -15,6 +15,11 @@ const TCoinApp = () => {
       // Redirect using window.location.replace to avoid creating an extra history entry
       window.location.replace(`/dashboard?pay=${pay}`);
     }
+    const invoice = queryParams.get("invoice");
+
+    if(invoice){
+      window.location.replace(`/dashboard?invoice=${invoice}`);
+    }
   }, []);
 
   return (
