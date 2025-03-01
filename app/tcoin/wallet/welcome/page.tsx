@@ -328,8 +328,6 @@ export default function NewWelcomePage() {
         }
     }, [setValue]);
 
-    console.log("n", userData?.cubidData?.full_name)
-
     useEffect(() => {
         if (Boolean(userData?.cubidData?.full_name)) {
             router.replace('/dashboard')
@@ -339,7 +337,6 @@ export default function NewWelcomePage() {
     useEffect(() => {
         localStorage.setItem("newWelcomeData", JSON.stringify(formData));
     }, [formData]);
-
 
     const insertOrUpdateDataInWallet = async (userId, data) => {
         const { data: wallet_data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })
