@@ -136,6 +136,10 @@ function SignInModal({ closeModal }: SignInModalProps) {
             isOtpSent={isPasscodeSent}
             errorMessage={null}
             handleAuthMethodChange={handleAuthMethodChange}
+            canResend={true}
+            onResend={() => {
+              sendCodeMut.mutate({ contact, method: "email" });
+            }}
             isLoading={sendCodeMut.isPending || verifyCodeMut.isPending}
           />
         </div>

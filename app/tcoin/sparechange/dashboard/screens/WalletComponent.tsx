@@ -201,10 +201,6 @@ function ReceiveCard({
       alert("Please enter a valid amount.");
       return;
     }
-    if (requestedAmount > availableBalance) {
-      alert("The amount to request exceeds your available balance.");
-      return;
-    }
     openModal({
       content: (
         <ContactSelectModal

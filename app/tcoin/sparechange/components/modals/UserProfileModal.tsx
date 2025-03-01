@@ -146,6 +146,7 @@ const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => 
           onClick={() => {
             signOut();
             closeModal();
+            localStorage.clear()
           }}
           className="flex-1"
         >

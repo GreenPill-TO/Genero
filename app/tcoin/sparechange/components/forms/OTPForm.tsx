@@ -16,6 +16,8 @@ type OTPFormProps = {
   setContact: (value: string) => void;
   setPasscode: (value: string) => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
+  onResend: () => void; // New callback for resending OTP
+  canResend: boolean;   // Flag to control when resend is allowed
   isOtpSent: boolean;
   isLoading?: boolean;
   errorMessage: string | null;
@@ -31,6 +33,8 @@ function OTPForm({
   setContact,
   setPasscode,
   onSubmit,
+  onResend,
+  canResend,
   isOtpSent,
   errorMessage,
   handleAuthMethodChange,
@@ -47,7 +51,6 @@ function OTPForm({
         {!isOtpSent && (
           <>
             <p className="text-center md:mt-0 mt-6 text-xl mb-4 font-semibold">Sign In or Sign Up</p>
-
             <div className="flex mb-4 items-center">
               <Select
                 label="Sign in with:"
@@ -65,33 +68,17 @@ function OTPForm({
         )}
 
         {isOtpSent && (
-          <>
-            <p className="text-center text-lg md:mt-0 mt-6 font-semibold">Enter verification code received on {contact}</p>
-            <p className="text-center text-slate-500 mt-2 text-sm">Didn't receive the code? Check your spam folder</p>
-          </>
-        )}
-
-        {!isOtpSent && authMethod === "phone" && (
-          <div className="form-control w-full mt-8 flex">
-            <div className="flex w-full">
-              <Select
-                variant="bordered"
-                elSize="md"
-                name="countryCode"
-                value={countryCode}
-                onValueChange={(v) => setCountryCode(v)}
-                options={countryCodes.map((v) => ({ value: v.code, label: `${v.flag} ${v.code}` }))}
-              />
-              <Input
-                variant="bordered"
-                elSize="md"
-                type="tel"
-                placeholder="Enter your phone number"
-                value={contact}
-                onChange={handleContactChange}
-                className={"ml-2 flex-grow"}
-                required
-              />
+          <div className="text-left">
+            <p className="text-lg md:mt-0 mt-6 font-semibold">
+              Enter verification code received on {contact}
+            </p>
+            <p className="text-slate-500 mt-2 text-sm">
+              Didn't receive the code? Check your spam folder
+            </p>
+            <div className="mt-4">
+              <Button type="button" onClick={onResend} disabled={!canResend}>
+                {canResend ? "Resend Code" : "Please wait..."}
+              </Button>
             </div>
           </div>
         )}
@@ -115,13 +102,18 @@ function OTPForm({
             <label className="label">
               <span className="label-text text-xs">Verification Code</span>
             </label>
-            <Input type="text" value={passcode} placeholder="Ex- 123456" onChange={(e) => setPasscode(e.target.value)} />
+            <Input
+              type="text"
+              value={passcode}
+              placeholder="Ex- 123456"
+              onChange={(e) => setPasscode(e.target.value)}
+            />
           </div>
         )}
       </div>
 
       {/* Display error only for phone authMethod */}
-      {authMethod === "phone" && errorMessage && <div className="text-rose-500">{errorMessage}</div>}
+      {errorMessage && <div className="text-rose-500">{errorMessage}</div>}
 
       <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
         {isLoading && <Loading />}
@@ -132,3 +124,4 @@ function OTPForm({
 }
 
 export default OTPForm;
+

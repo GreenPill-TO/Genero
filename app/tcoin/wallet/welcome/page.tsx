@@ -289,7 +289,9 @@ export default function NewWelcomePage() {
             ...option,
             label: `${option.label} (${dialCodes[option.value] || ""})`
         }));
-    }, []);
+    }, [])
+
+    console.log({ customCountryOptions })
 
     const { isDarkMode } = useDarkMode()
 
@@ -404,7 +406,7 @@ export default function NewWelcomePage() {
                                     type="text"
                                     {...register("firstName", { required: "First name is required" })}
                                     style={{ color: "black !important" }}
-                                    className={`w-full border border-gray-300 p-2 rounded !text-black`}
+                                    className={`w-full border border-gray-300 !bg-white p-2 rounded !text-black`}
                                 />
                                 {errors.firstName && (
                                     <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>
@@ -422,7 +424,7 @@ export default function NewWelcomePage() {
                                     type="text"
                                     style={{ color: "black !important" }}
                                     {...register("lastName", { required: "Last name is required" })}
-                                    className={`w-full border border-gray-300 p-2 rounded  !text-black`}
+                                    className={`w-full border border-gray-300 p-2 !bg-white rounded  !text-black`}
                                 />
                                 {errors.lastName && (
                                     <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>
@@ -442,7 +444,7 @@ export default function NewWelcomePage() {
                                     type="text"
                                     style={{ color: "black !important" }}
                                     {...register("nickname")}
-                                    className={`w-full border border-gray-300 p-2 rounded !text-black`}
+                                    className={`w-full border border-gray-300 !bg-white p-2 rounded !text-black`}
                                 />
                             </div>
 
@@ -459,7 +461,10 @@ export default function NewWelcomePage() {
                                     render={({ field }) => (
                                         <Select
                                             {...field}
-                                            options={customCountryOptions}
+                                            options={[{
+                                                value: "CA",
+                                                label: "Canada (+1)"
+                                            }, ...customCountryOptions]}
                                             className="!text-black"
                                             placeholder="Select a country"
                                         />
@@ -553,7 +558,7 @@ export default function NewWelcomePage() {
                                 }}
                                 onAppShare={async (share) => {
                                     if (share) {
-                                        setTimeout(async() => {
+                                        setTimeout(async () => {
                                             await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
                                                 app_share: share,
                                             })

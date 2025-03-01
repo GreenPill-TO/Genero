@@ -95,6 +95,15 @@ export default function Navbar({ title }: { title?: string }) {
           >
             Testimonials
           </a>
+          {Boolean(userData?.cubidData?.id) && (
+            <a
+              href="/dashboard"
+              className="hover:text-blue-500"
+            >
+              Dashboard
+            </a>
+          )}
+
         </>
       );
     return null;
