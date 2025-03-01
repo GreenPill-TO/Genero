@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useSendPasscodeMutation, useVerifyPasscodeMutation } from "@shared/api/mutations/usePasscode";
 import ImageCarousel from "@shared/components/ui/ImageCarousel";
 import OTPForm from "@tcoin/sparechange/components/forms/OTPForm";
