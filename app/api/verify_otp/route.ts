@@ -1,9 +1,9 @@
 // app/api/otp/verify-otp/route.ts
 import { NextResponse } from "next/server";
 import twilio from "twilio";
-const accountSid = 'AC9b65bde6e517e7a18b6c01e11a7c5493';
-const authToken = '6bd9243f4c04b54b6fffbe59d5ff0c60';
-const verifyServiceSid = 'VA627c33ab3023aa319bf6351a0367d2c8';
+const accountSid = process.env.accountSid;
+const authToken = process.env.authToken;
+const verifyServiceSid = process.env.verifyServiceSid;
 
 if (!accountSid || !authToken || !verifyServiceSid) {
   throw new Error("Twilio environment variables are not set properly");

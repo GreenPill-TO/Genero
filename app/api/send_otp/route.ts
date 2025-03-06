@@ -4,7 +4,7 @@ import twilio from "twilio";
 
 const accountSid = process.env.accountSid;
 const authToken = process.env.authToken;
-const verifyServiceSid = 'VA627c33ab3023aa319bf6351a0367d2c8';
+const verifyServiceSid = process.env.verifyServiceSid;
 
 if (!accountSid || !authToken || !verifyServiceSid) {
   throw new Error("Twilio environment variables are not set properly");
