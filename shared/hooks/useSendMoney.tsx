@@ -7,6 +7,7 @@ import { useAuth } from '@shared/api/hooks/useAuth';
 import { tokenAbi } from './abi';
 import { WebAuthnCrypto } from 'cubid-wallet';
 import { toast } from 'react-toastify';
+import { transfer } from '@shared/utils/insertNotification';
 
 // Initialize Supabase client.
 const supabase = createClient(
@@ -73,7 +74,6 @@ export const useSendMoney = ({
 	const [loading, setLoading] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
 	const { userData } = useAuth();
-	console.log({ receiverWallet, senderWallet })
 
 	// Fetch wallet address from Supabase using Cubid.
 	const fetchWalletAddress = async (
@@ -88,7 +88,7 @@ export const useSendMoney = ({
 				.single();
 			if (error) throw new Error(error.message);
 			if (!data?.email) throw new Error('Email not found');
-
+			console.log("wallet list", { userId })
 			const { data: wallet_data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })
 			setWallet(wallet_data?.[0]?.public_key);
 		} catch (err: any) {
@@ -341,6 +341,13 @@ export const useSendMoney = ({
 
 			// Wait for the transaction to be mined.
 			const txReceipt = await txResponse.wait();
+			await transfer({
+				recipient_wallet: receiverWallet,
+				sender_wallet: senderWallet,
+				token_price: 3.3,
+				transfer_amount: amount,
+				transfer_user_id: senderId
+			})
 			return txReceipt.transactionHash;
 		} catch (err: any) {
 			console.error('Transaction error:', err);

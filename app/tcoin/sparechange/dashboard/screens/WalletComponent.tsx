@@ -1177,6 +1177,8 @@ export function MobileWalletDashboardComponent() {
     receiverId: toSendData?.id ?? null,
   });
 
+  console.log({ senderWallet, user_id })
+
   const { balance: userBalance } = useTokenBalance(senderWallet)
 
   const dynamicQrData = qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData;
