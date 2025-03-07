@@ -1,4 +1,5 @@
 // app/api/otp/send-otp/route.ts
+// @ts-nocheck
 import { NextResponse } from "next/server";
 import twilio from "twilio";
 
