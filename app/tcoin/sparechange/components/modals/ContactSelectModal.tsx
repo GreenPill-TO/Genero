@@ -26,7 +26,7 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   // activeTab can be "all" or "my"
-  const [activeTab, setActiveTab] = useState<"all" | "my">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "my">("my");
 
   const supabase = createClient();
   const { userData } = useAuth();
@@ -77,7 +77,7 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
   const myContacts = filteredContacts.filter(contact => contact.state !== "new");
 
   const contactsToDisplay = activeTab === "all" ? allContacts : myContacts;
-  console.log({ selectedContact,contactsToDisplay })
+  console.log({ selectedContact, contactsToDisplay })
 
   return (
     <div className="mt-2 p-0">
@@ -99,11 +99,14 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
         </button>
       </div>
       <div className="space-y-4">
-        <Input
-          placeholder="Search contacts..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        {contactsToDisplay.length > 5 && (
+          <Input
+            placeholder="Search contacts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        )}
+
         {contactsToDisplay.length > 0 ? (
           contactsToDisplay.map((contact) => (
             <Radio
@@ -142,8 +145,8 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
                 amount_requested: extractDecimalFromString(amount)
               })
               insertSuccessNotification({
-                user_id:parseInt(selectedContact),
-                notification:`${amount} request by ${userData?.cubidData?.full_name}`
+                user_id: parseInt(selectedContact),
+                notification: `${amount} request by ${userData?.cubidData?.full_name}`
               })
             }
             closeModal();

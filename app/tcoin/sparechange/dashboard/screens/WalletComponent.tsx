@@ -43,6 +43,7 @@ import useDarkMode from "@shared/hooks/useDarkMode";
 import { createClient } from "@shared/lib/supabase/client";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { adminInsertNotification, insertSuccessNotification } from "@shared/utils/insertNotification";
+import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 
 // ---------------- Sample Data ----------------
 const balanceHistory = [
@@ -169,8 +170,13 @@ function ReceiveCard({
   handleQrCadChange,
   openModal,
   closeModal,
-  senderWallet
+  senderWallet,
+  handleQrTcoinBlur,
+  handleQrCadBlur
+
 }: {
+  handleQrTcoinBlur: any;
+  handleQrCadBlur: any;
   qrCodeData: string;
   qrTcoinAmount: string;
   qrCadAmount: string;
@@ -234,20 +240,26 @@ function ReceiveCard({
           )}
         </div>
         <div className="space-y-2">
+          <p>Tcoin</p>
           <Input
             name="qrTcoin"
             elSize="md"
+            label="Tcoin"
             className="w-full"
             value={qrTcoinAmount}
             onChange={handleQrTcoinChange}
+            onBlur={handleQrTcoinBlur}
             placeholder="Enter TCOIN amount"
           />
+          <p>Cad</p>
           <Input
             name="qrCad"
             elSize="md"
+            label="Cad"
             className="w-full"
             value={qrCadAmount}
             onChange={handleQrCadChange}
+            onBlur={handleQrCadBlur}
             placeholder="Enter CAD amount"
           />
         </div>
@@ -630,9 +642,10 @@ function AccountCard({
 }) {
   const [activeAccountTab, setActiveAccountTab] = useState("balance");
   const { ...rest } = useTokenBalance(senderWallet);
+  const { exchangeRate } = useControlVariables()
 
   // Simple conversion and formatting helpers
-  const convertToCad = (tcoin: number) => (tcoin * 3.3).toFixed(2);
+  const convertToCad = (tcoin: number) => (tcoin * exchangeRate).toFixed(2);
   const formatNumber = (value: string, isCad: boolean) => {
     const num = parseFloat(value);
     if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
@@ -911,6 +924,8 @@ export function TopUpModal({ closeModal }) {
     }
   };
 
+  const { exchangeRate } = useControlVariables()
+
   return (
     <div className="p-4 pb-0 space-y-6">
       {step === "input" && (
@@ -930,7 +945,7 @@ export function TopUpModal({ closeModal }) {
           </div>
           {Boolean(amount) && (
             <div className="mb-4">
-              {amount * 3.3} CAD
+              {amount * exchangeRate} CAD
             </div>
           )}
         </div>
@@ -943,7 +958,7 @@ export function TopUpModal({ closeModal }) {
             <strong>Amount:</strong> {amount}
           </p>
           <p>
-            <strong>Amount in CAD:</strong> {amount * 3.3}
+            <strong>Amount in CAD:</strong> {amount * exchangeRate}
           </p>
           <p>
             <strong>Reference Code:</strong> {refCode}
@@ -1011,7 +1026,8 @@ export function MobileWalletDashboardComponent() {
     }
   }, [userData]);
 
-  const exchangeRate = 3.3;
+  const { exchangeRate } = useControlVariables()
+
   const [charityData, setCharityData] = useState({
     personalContribution: 50,
     allUsersToCharity: 600,
@@ -1069,11 +1085,11 @@ export function MobileWalletDashboardComponent() {
       setToSendData(userDataFromSupabaseTable?.[0])
       if (rest?.qrTcoinAmount) {
         setTcoin(rest?.qrTcoinAmount)
-        setCad(extractDecimalFromString(rest?.qrTcoinAmount) * 3.3)
+        setCad(extractDecimalFromString(rest?.qrTcoinAmount) * exchangeRate)
       }
     }
 
-  }, []);
+  }, [exchangeRate]);
 
   useEffect(() => {
     handleScan(window.location.href)
@@ -1144,28 +1160,34 @@ export function MobileWalletDashboardComponent() {
     }, debounceDelay);
   };
 
+  // Update the onChange handlers to only update raw values
   const handleQrTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (qrTcoinTimeoutRef.current) clearTimeout(qrTcoinTimeoutRef.current);
     const rawValue = e.target.value.replace(/[^\d.]/g, "");
     setQrTcoinAmount(rawValue);
     const num = parseFloat(rawValue) || 0;
-    const qrCadRaw = (num * exchangeRate).toString();
-    qrTcoinTimeoutRef.current = setTimeout(() => {
-      setQrTcoinAmount(formatNumber(rawValue, false));
-      setQrCadAmount(formatNumber(qrCadRaw, true));
-    }, debounceDelay);
+    // Update CAD immediately without formatting
+    setQrCadAmount((num * exchangeRate).toString());
   };
 
   const handleQrCadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (qrCadTimeoutRef.current) clearTimeout(qrCadTimeoutRef.current);
     const rawValue = e.target.value.replace(/[^\d.]/g, "");
     setQrCadAmount(rawValue);
     const num = parseFloat(rawValue) || 0;
-    const qrTcoinRaw = (num / exchangeRate).toString();
-    qrCadTimeoutRef.current = setTimeout(() => {
-      setQrCadAmount(formatNumber(rawValue, true));
-      setQrTcoinAmount(formatNumber(qrTcoinRaw, false));
-    }, debounceDelay);
+    // Update TCOIN immediately without formatting
+    setQrTcoinAmount((num / exchangeRate).toString());
+  };
+
+  // Use onBlur to apply the formatting only after editing is complete.
+  const handleQrTcoinBlur = () => {
+    const num = parseFloat(qrTcoinAmount) || 0;
+    setQrTcoinAmount(formatNumber(qrTcoinAmount, false));
+    setQrCadAmount(formatNumber((num * exchangeRate).toString(), true));
+  };
+
+  const handleQrCadBlur = () => {
+    const num = parseFloat(qrCadAmount) || 0;
+    setQrCadAmount(formatNumber(qrCadAmount, true));
+    setQrTcoinAmount(formatNumber((num / exchangeRate).toString(), false));
   };
 
   // Send Money state.
@@ -1212,6 +1234,8 @@ export function MobileWalletDashboardComponent() {
               qrCadAmount={qrCadAmount}
               handleQrTcoinChange={handleQrTcoinChange}
               handleQrCadChange={handleQrCadChange}
+              handleQrCadBlur={handleQrCadBlur}
+              handleQrTcoinBlur={handleQrTcoinBlur}
               openModal={openModal}
               closeModal={closeModal}
               senderWallet={senderWallet}

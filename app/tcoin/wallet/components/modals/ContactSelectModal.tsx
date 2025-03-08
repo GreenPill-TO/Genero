@@ -20,7 +20,9 @@ const ContactSelectModal = ({ closeModal, amount, method }: ContactSelectModalPr
   return (
     <div className="mt-2 p-0">
       <div className="space-y-4">
+        {contacts.length>5 && (
         <Input placeholder="Search contacts..." />
+        )}
         {contacts.map((contact) => {
           return (
             <Radio

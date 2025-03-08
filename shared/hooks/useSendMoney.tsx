@@ -8,6 +8,7 @@ import { tokenAbi } from './abi';
 import { WebAuthnCrypto } from 'cubid-wallet';
 import { toast } from 'react-toastify';
 import { transfer } from '@shared/utils/insertNotification';
+import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate'
 
 // Initialize Supabase client.
 const supabase = createClient(
@@ -223,6 +224,9 @@ export const useSendMoney = ({
 		}
 	}
 
+	const { exchangeRate } = useControlVariables()
+
+
 
 	const sendMoney = async (amount: string) => {
 		if (!senderWallet || !receiverWallet) {
@@ -344,7 +348,7 @@ export const useSendMoney = ({
 			await transfer({
 				recipient_wallet: receiverWallet,
 				sender_wallet: senderWallet,
-				token_price: 3.3,
+				token_price: exchangeRate,
 				transfer_amount: amount,
 				transfer_user_id: senderId
 			})

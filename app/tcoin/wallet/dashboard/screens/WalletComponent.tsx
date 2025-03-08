@@ -9,6 +9,7 @@ import { Label } from "@shared/components/ui/Label";
 import { Switch } from "@shared/components/ui/Switch";
 import { TabContent, Tabs, TabTrigger } from "@shared/components/ui/Tabs";
 import { useModal } from "@shared/contexts/ModalContext";
+import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { createClient } from "@shared/lib/supabase/client";
 import {
   CharitySelectModal,
@@ -64,8 +65,7 @@ export function MobileWalletDashboardComponent() {
   const [cadAmount, setCadAmount] = useState("");
   const [showAmountInCad, setShowAmountInCad] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState("The FoodBank");
-  const exchangeRate = 3.3;
-
+  const { exchangeRate } = useControlVariables()
   const [charityData, setCharityData] = useState({
     personalContribution: 50,
     allUsersToCharity: 600,
@@ -128,7 +128,7 @@ export function MobileWalletDashboardComponent() {
               <CubidWidget stampToRender="email"
                 uuid={userData?.user?.cubid_id}
                 page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-              />  
+              />
             </div>
           </CardContent>
         </Card>

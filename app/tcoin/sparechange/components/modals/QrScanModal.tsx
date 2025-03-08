@@ -4,17 +4,14 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import { useAuth } from '@shared/api/hooks/useAuth';
 import { createClient } from '@shared/lib/supabase/client';
 import { toast } from 'react-toastify';
+import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
 
 export interface QrScanModalProps {
   /** Callback to close the modal */
   closeModal: () => void;
-  setToSendData: any
+  setToSendData: any;
 }
 
-/**
- * A QR scanning modal that uses the @yudiel/react-qr-scanner library.
- * It handles camera stream setup, scanning, and camera flipping if multiple cameras are available.
- */
 function extractDecimalFromString(str: string): number {
   const match = str.match(/-?\d+(\.\d+)?/);
   return match ? Number(match[0]) : NaN;
@@ -31,7 +28,8 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
   const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   // Optionally show a loading indicator until the scanner is mounted
   const [loading, setLoading] = useState(true);
-  const { userData } = useAuth()
+  const { userData } = useAuth();
+  const { exchangeRate } = useControlVariables()
 
   // Check if multiple video input devices exist.
   useEffect(() => {
@@ -48,6 +46,19 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
     checkDevices();
   }, []);
 
+  // Listen for the Escape key to close the modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [closeModal]);
 
   function extractAndDecodeBase64(url: string) {
     try {
@@ -66,34 +77,37 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
 
   // Called whenever a QR code is successfully scanned.
   const handleScan = useCallback(async (data: any) => {
-    const { nano_id, ...rest } = extractAndDecodeBase64(data?.[0]?.rawValue)
-    console.log({ rest })
-    const supabase = createClient()
-    toast.success("Scanned User Successfully")
+    const { nano_id, ...rest } = extractAndDecodeBase64(data?.[0]?.rawValue);
+    console.log({ rest });
+    const supabase = createClient();
+    toast.success("Scanned User Successfully");
     if (nano_id) {
-      const { data: userDataFromSupabaseTable } = await supabase.from("users").select("*").match({
-        user_identifier: nano_id
-      })
+      const { data: userDataFromSupabaseTable } = await supabase
+        .from("users")
+        .select("*")
+        .match({
+          user_identifier: nano_id
+        });
       await supabase.from("connections").insert({
         owner_user_id: (userData as any)?.cubidData?.id,
         connected_user_id: userDataFromSupabaseTable?.[0]?.id,
         state: "new"
-      })
+      });
 
       await supabase.from("connections").insert({
         connected_user_id: (userData as any)?.cubidData?.id,
         owner_user_id: userDataFromSupabaseTable?.[0]?.id,
         state: "new"
-      })
+      });
 
-      setToSendData(userDataFromSupabaseTable?.[0])
+      setToSendData(userDataFromSupabaseTable?.[0]);
       if (rest?.qrTcoinAmount) {
-        setTcoin(rest?.qrTcoinAmount)
-        setCad(extractDecimalFromString(rest?.qrTcoinAmount) * 3.3)
+        setTcoin(rest?.qrTcoinAmount);
+        setCad(extractDecimalFromString(rest?.qrTcoinAmount) * exchangeRate);
       }
     }
 
-    closeModal()
+    closeModal();
   }, [closeModal]);
 
   // Called on any scanning error.
@@ -109,7 +123,6 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
   };
 
   // Once the component mounts, assume the scanner is ready after a short delay.
-  // (If the library exposes an event for this, you can use that instead.)
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1000);
     return () => clearTimeout(timer);

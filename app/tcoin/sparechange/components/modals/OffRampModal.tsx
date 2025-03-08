@@ -6,12 +6,13 @@ import InputField from "@shared/components/ui/InputField";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { createClient } from "@shared/lib/supabase/client";
 import { off_ramp_req } from "@shared/utils/insertNotification";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 // Import the react-phone-input-2 library and its stylesheet
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
+import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 
 interface OffRampProps {
   closeModal: () => void;
@@ -43,11 +44,24 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   const [errorMessage, setErrorMessage] = useState("");
   const { userData } = useAuth();
   const { burnMoney, senderWallet } = useSendMoney({ senderId: userData?.cubidData?.id });
+  const { exchangeRate } = useControlVariables();
 
-  const donationAmount = watch("preferredDonationAmount") || 0;
-  const exchangeRate = 3.3;
+  const donationAmount = watch("preferredDonationAmount");
   const estimatedCAD = donationAmount * exchangeRate;
   const MIN_TCOIN = 10;
+
+  // Listen for the Escape key to close the modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeModal();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeModal]);
 
   // Function to send the OTP via your Next.js API route
   const sendOTP = async () => {
@@ -144,17 +158,20 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       p_current_token_balance: userBalance,
       p_etransfer_target: data.interac_email,
       p_is_store: true,
-      p_tokens_burned: (estimatedCAD / 3.3).toFixed(2),
+      p_tokens_burned: (estimatedCAD / exchangeRate).toFixed(2),
       p_user_id: userData?.cubidData?.id,
       p_wallet_account: senderWallet,
-      p_exchange_rate: 3.3,
+      p_exchange_rate: exchangeRate,
     });
 
-    if (offRampResponse.error) {
-      setErrorMessage("Failed to create off-ramp request.");
-      setLoading(false);
-      return;
-    }
+    // Add your off-ramp response logic here (if applicable)
+    // For example:
+    // if (offRampResponse.error) {
+    //   setErrorMessage("Failed to create off-ramp request.");
+    //   setLoading(false);
+    //   return;
+    // }
+
     // Burn the tokens from the user's balance
     await burnMoney(donationAmount);
 
@@ -177,8 +194,9 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
                 label="Preferred Donation Amount (TCOIN)"
                 type="number"
                 fullWidth
+                className="border-gray-600"
                 onChange={(e) =>
-                  field.onChange(parseFloat(e.currentTarget.value) || 0)
+                  field.onChange(parseFloat(e.currentTarget.value))
                 }
               />
             )}
@@ -195,7 +213,6 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
                 value={field.value}
                 onChange={(value) => field.onChange(value)}
                 className="!text-black"
-
               />
             )}
           />
