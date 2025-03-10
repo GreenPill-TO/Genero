@@ -14,7 +14,7 @@ const OffRampModal = ({ closeModal }: OffRampProps) => {
     <div className="mt-2 p-0">
       <div className="space-y-4">
         <InputField
-          label="Preferred Donation Amount (TCOIN)"
+          label="TCOIN amount to redeem (TCOIN)"
           name="preferredDonationAmount"
           type="number"
           value={amount}

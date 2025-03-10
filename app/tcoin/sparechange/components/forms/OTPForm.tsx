@@ -83,6 +83,7 @@ function OTPForm({
           </div>
         )}
 
+        {/* Updated email input with pattern validation */}
         {!isOtpSent && authMethod === "email" && (
           <div className="form-control w-full mt-8">
             <Input
@@ -92,6 +93,8 @@ function OTPForm({
               placeholder="Enter your email"
               value={contact}
               onChange={handleContactChange}
+              pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+              title="Please enter a valid email address"
               required
             />
           </div>
@@ -124,4 +127,3 @@ function OTPForm({
 }
 
 export default OTPForm;
-

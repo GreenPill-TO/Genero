@@ -19,7 +19,7 @@ const Modal: React.FC<ModalProps> = ({ modalContent, closeModal }) => {
   };
 
   return (
-    <div className={cn("modal modal-open text-foreground", modalContent?.isResponsive ? "modal-bottom sm:modal-middle" : "")}>
+    <div className={cn("modal modal-open !bg-black !bg-opacity-[75%] text-foreground", modalContent?.isResponsive ? "modal-bottom sm:modal-middle" : "")}>
       <div className={cn("modal-box bg-card", modalContent?.elSize ? sizeClasses[modalContent?.elSize] : "w-content")}>
         <h2 className="font-bold text-lg modal-title">{modalContent?.title}</h2>
         <p className="text-sm text-muted-foreground">{modalContent?.description}</p>

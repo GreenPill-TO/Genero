@@ -44,6 +44,7 @@ import { createClient } from "@shared/lib/supabase/client";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { adminInsertNotification, insertSuccessNotification } from "@shared/utils/insertNotification";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
+import { FiDollarSign, FiTrendingUp, FiList, FiHeart } from 'react-icons/fi';
 
 // ---------------- Sample Data ----------------
 const balanceHistory = [
@@ -681,20 +682,21 @@ function AccountCard({
         {/* Inner Tabs */}
         <div className="flex justify-around mb-4">
           {[
-            { key: "balance", label: "Balance" },
-            { key: "graph", label: "Graph" },
-            { key: "transactions", label: "Transactions" },
-            { key: "charity", label: "Charity" },
+            { key: "balance", icon: <FiDollarSign  className="font-bold"/>, label: "Balance" },
+            { key: "graph", icon: <FiTrendingUp className="font-bold" />, label: "Graph" },
+            { key: "transactions", icon: <FiList className="font-bold" />, label: "Transactions" },
+            { key: "charity", icon: <FiHeart className="font-bold" />, label: "Charity" },
           ].map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveAccountTab(tab.key)}
-              className={`px-3 py-1 rounded-md font-medium transition-colors ${activeAccountTab === tab.key
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+              title={tab.label}  // optional: for accessibility
+              className={`px-5 py-3 rounded-md font-bold transition-colors ${activeAccountTab === tab.key
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-700 text-gray-800 hover:bg-gray-300"
                 }`}
             >
-              {tab.label}
+              {tab.icon}
             </button>
           ))}
         </div>
@@ -931,11 +933,12 @@ export function TopUpModal({ closeModal }) {
       {step === "input" && (
         <div className="space-y-4">
           <h3 className="text-lg font-bold">Top Up via Interac eTransfer</h3>
-          <h3 className="text-sm font-bold">Tcoin Balance to Topup</h3>
-          <div className="justify-between flex w-full">
+          <h3 className="text-sm font-bold">TCOIN amount to top up</h3>
+          <div className="justify-between space-x-4 flex w-full">
             <Input
               type="number"
-              placeholder="Enter amount to send"
+              placeholder="Enter amount of TCOIN"
+              className="border-gray-500"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
@@ -999,7 +1002,7 @@ export function TopUpModal({ closeModal }) {
 
 export function MobileWalletDashboardComponent() {
   // Active tab for mobile view.
-  const [activeTab, setActiveTab] = useState("contributions");
+  const [activeTab, setActiveTab] = useState("account");
   const tabs = [
     { key: "contributions", label: "Contributions", icon: LuUsers },
     { key: "receive", label: "Receive", icon: LuShare2 },

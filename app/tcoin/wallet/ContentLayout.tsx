@@ -37,7 +37,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           <Navbar title="Tcoin" />
           <div className={cn("flex-grow flex flex-col pt-16", "bg-secondary")}>{children}</div>
           <Footer />
-          <ToastContainer autoClose={1000} transition={Flip} theme={"colored"} />
+          <ToastContainer autoClose={3000} transition={Flip} theme={"colored"} />
         </section>
       ) : (
         <div className={bodyClass}>...loading </div>

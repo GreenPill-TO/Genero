@@ -70,13 +70,12 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       setErrorMessage("Please enter your phone number.");
       return;
     }
-    // Optionally, you could further validate the phone number here.
     try {
       setLoading(true);
       const response = await fetch("/api/send_otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: `+${phone}` }), // phone number in international format
+        body: JSON.stringify({ phone: `+${phone}` }),
       });
       const result = await response.json();
       if (result.success) {
@@ -164,14 +163,6 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       p_exchange_rate: exchangeRate,
     });
 
-    // Add your off-ramp response logic here (if applicable)
-    // For example:
-    // if (offRampResponse.error) {
-    //   setErrorMessage("Failed to create off-ramp request.");
-    //   setLoading(false);
-    //   return;
-    // }
-
     // Burn the tokens from the user's balance
     await burnMoney(donationAmount);
 
@@ -191,7 +182,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
             render={({ field }) => (
               <InputField
                 {...field}
-                label="Preferred Donation Amount (TCOIN)"
+                label="TCOIN amount to redeem (TCOIN)"
                 type="number"
                 fullWidth
                 className="border-gray-600"
@@ -256,17 +247,25 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
             </>
           )}
 
-          {/* Interac eTransfer Email Input */}
+          {/* Interac eTransfer Email Input with Validation */}
           <Controller
             name="interac_email"
             control={control}
-            render={({ field }) => (
+            rules={{
+              required: "Interac eTransfer email is required",
+              pattern: {
+                value: /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/,
+                message: "Please enter a valid email address",
+              },
+            }}
+            render={({ field, fieldState: { error } }) => (
               <InputField
                 {...field}
                 fullWidth
                 placeholder="Interac eTransfer Email"
                 type="email"
                 label="Interac Destination Email"
+                error={error ? error.message : ""}
               />
             )}
           />
