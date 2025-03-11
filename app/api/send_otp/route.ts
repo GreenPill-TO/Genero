@@ -26,11 +26,12 @@ export async function POST(req: Request) {
     }
 
     const verification = await client.verify.v2
-      .services('VA627c33ab3023aa319bf6351a0367d2c8')
+      .services(verifyServiceSid)
       .verifications.create({ to: phone, channel: "sms" });
 
     return NextResponse.json({ success: true, status: verification.status });
   } catch (error: any) {
+    console.log(error)
     return NextResponse.json(
       { success: false, message: error.message },
       { status: 500 }

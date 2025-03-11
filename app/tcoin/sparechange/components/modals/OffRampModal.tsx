@@ -9,9 +9,8 @@ import { off_ramp_req } from "@shared/utils/insertNotification";
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
-// Import the react-phone-input-2 library and its stylesheet
-import PhoneInput from 'react-phone-input-2';
-import 'react-phone-input-2/lib/style.css';
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 
 interface OffRampProps {
@@ -29,7 +28,7 @@ interface OffRampFormValues {
 const supabase = createClient();
 
 const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
-  const { control, handleSubmit, watch, reset } = useForm<OffRampFormValues>({
+  const { control, handleSubmit, watch, setValue, reset } = useForm<OffRampFormValues>({
     defaultValues: {
       preferredDonationAmount: 0,
       phone_number: "",
@@ -38,10 +37,13 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
     },
   });
 
+  const [phoneCubidSDK, setPhoneCubidSDK] = useState("");
+  const [cubidSdk, setCubidSDK] = useState(null);
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
   const { userData } = useAuth();
   const { burnMoney, senderWallet } = useSendMoney({ senderId: userData?.cubidData?.id });
   const { exchangeRate } = useControlVariables();
@@ -50,7 +52,6 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   const estimatedCAD = donationAmount * exchangeRate;
   const MIN_TCOIN = 10;
 
-  // Listen for the Escape key to close the modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -63,13 +64,32 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
     };
   }, [closeModal]);
 
-  // Function to send the OTP via your Next.js API route
+  useEffect(() => {
+    const loadSDK = async () => {
+      const { CubidSDK } = await import("cubid-sdk");
+      const cubid_sdk = new CubidSDK(57, "14475a54-5bbe-4f3f-81c7-ff4403ad0830");
+      const cubid_stamps = await cubid_sdk.fetchStamps({ user_id: userData?.user?.cubid_id });
+
+      const phoneStamp = cubid_stamps.all_stamps.find((item) => item.stamptype_string === "phone")?.uniquevalue;
+
+      if (phoneStamp) {
+        setPhoneCubidSDK(phoneStamp);
+        setValue("phone_number", phoneStamp);
+      }
+
+      setCubidSDK(cubid_sdk);
+    };
+    loadSDK();
+  }, []);
+
   const sendOTP = async () => {
-    const phone = watch("phone_number");
+    const phone = phoneCubidSDK || watch("phone_number");
+
     if (!phone) {
-      setErrorMessage("Please enter your phone number.");
+      setErrorMessage("Please enter a valid phone number.");
       return;
     }
+
     try {
       setLoading(true);
       const response = await fetch("/api/send_otp", {
@@ -78,6 +98,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
         body: JSON.stringify({ phone: `+${phone}` }),
       });
       const result = await response.json();
+
       if (result.success) {
         setOtpSent(true);
         setErrorMessage("");
@@ -90,14 +111,15 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
     setLoading(false);
   };
 
-  // Function to verify the OTP via your Next.js API route
   const verifyOTP = async () => {
-    const phone = watch("phone_number");
+    const phone = phoneCubidSDK || watch("phone_number");
     const otp = watch("otp");
+
     if (!phone || !otp) {
       setErrorMessage("Please provide both phone number and OTP.");
       return;
     }
+
     try {
       setLoading(true);
       const response = await fetch("/api/verify_otp", {
@@ -106,6 +128,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
         body: JSON.stringify({ phone: `+${phone}`, otp }),
       });
       const result = await response.json();
+
       if (result.success) {
         setOtpVerified(true);
         setErrorMessage("");
@@ -119,21 +142,17 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
     }
   };
 
-  // Final submission: off-ramp conversion and transfer
   const onSubmit = async (data: OffRampFormValues) => {
-    setErrorMessage("");
-
-    // Validate donation amount
+    if (!otpVerified) {
+      setErrorMessage("OTP must be verified before proceeding.");
+      return;
+    }
     if (donationAmount > userBalance) {
       setErrorMessage("Insufficient TCOIN balance.");
       return;
     }
     if (donationAmount < MIN_TCOIN) {
       setErrorMessage(`Minimum off-ramp amount is ${MIN_TCOIN} TCOIN.`);
-      return;
-    }
-    if (!otpVerified) {
-      setErrorMessage("OTP must be verified before proceeding.");
       return;
     }
     if (!data.interac_email) {
@@ -143,7 +162,6 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
     setLoading(true);
 
-    // Generate unique IDs for off-ramp request and transaction
     const offRampRequestId = uuidv4();
     const transactionId = uuidv4();
 
@@ -152,7 +170,6 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
     const CAD_offramp_fee = parseFloat((estimatedCAD * feePercentage).toFixed(2));
     const CAD_to_user = parseFloat((estimatedCAD - CAD_offramp_fee).toFixed(2));
 
-    // Optional: send a notification or log the off-ramp request
     off_ramp_req({
       p_current_token_balance: userBalance,
       p_etransfer_target: data.interac_email,
@@ -163,8 +180,19 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       p_exchange_rate: exchangeRate,
     });
 
-    // Burn the tokens from the user's balance
     await burnMoney(donationAmount);
+
+    const { data: off_ramp_req_data, error } = await supabase
+      .from("off_ramp_req")
+      .select("*")
+      .match({ user_id: userData?.cubidData?.id })
+      .order("id", { ascending: false })
+      .limit(1);
+
+    await supabase
+      .rpc('accounting_after_offramp_burn', {
+        p_offramp_req_id: off_ramp_req_data?.[0]?.id
+      })
 
     setLoading(false);
     reset();
@@ -175,108 +203,70 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="mt-2 p-0">
         <div className="space-y-4">
-          {/* Donation Amount Input */}
           <Controller
             name="preferredDonationAmount"
             control={control}
             render={({ field }) => (
-              <InputField
-                {...field}
-                label="TCOIN amount to redeem (TCOIN)"
-                type="number"
-                fullWidth
-                className="border-gray-600"
-                onChange={(e) =>
-                  field.onChange(parseFloat(e.currentTarget.value))
-                }
-              />
+              <InputField {...field} label="TCOIN amount to redeem (TCOIN)" type="number" fullWidth />
             )}
           />
           <p>Estimated CAD: ${estimatedCAD.toFixed(2)}</p>
+          {donationAmount > userBalance && (
+            <p className="text-sm text-red-500">
+              Warning: The entered TCOIN amount exceeds your available balance of {userBalance}.
+            </p>
+          )}
 
-          {/* Phone Number Input using react-phone-input-2 */}
           <Controller
             name="phone_number"
             control={control}
             render={({ field }) => (
               <PhoneInput
-                country={'ca'}
-                value={field.value}
-                onChange={(value) => field.onChange(value)}
+                country={"us"}
                 className="!text-black"
+                value={phoneCubidSDK || field.value}
+                onChange={(value) => field.onChange(value)}
+                disabled={!!phoneCubidSDK}
               />
             )}
           />
 
-          {/* Send OTP Button (visible if OTP not yet sent) */}
           {!otpSent && (
-            <Button
-              className="w-full"
-              disabled={loading || !watch("phone_number")}
-              type="button"
-              onClick={sendOTP}
-            >
-              {loading ? "Sending OTP..." : "Send OTP"}
+            <Button disabled={loading} onClick={sendOTP}>
+              Send OTP
             </Button>
           )}
 
-          {/* OTP Input & Verify Button (visible if OTP sent but not verified) */}
           {otpSent && !otpVerified && (
             <>
               <Controller
                 name="otp"
                 control={control}
                 render={({ field }) => (
-                  <InputField
-                    {...field}
-                    fullWidth
-                    placeholder="Enter OTP"
-                    type="text"
-                    label="OTP Verification"
-                  />
+                  <InputField label="OTP" placeholder="Enter OTP" {...field} fullWidth />
                 )}
               />
-              <Button
-                className="w-full"
-                disabled={loading || !watch("otp")}
-                type="button"
-                onClick={verifyOTP}
-              >
-                {loading ? "Verifying OTP..." : "Verify OTP"}
+              <Button disabled={loading} onClick={verifyOTP}>
+                Verify OTP
               </Button>
             </>
           )}
 
-          {/* Interac eTransfer Email Input with Validation */}
           <Controller
             name="interac_email"
             control={control}
-            rules={{
-              required: "Interac eTransfer email is required",
-              pattern: {
-                value: /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/,
-                message: "Please enter a valid email address",
-              },
-            }}
-            render={({ field, fieldState: { error } }) => (
-              <InputField
-                {...field}
-                fullWidth
-                placeholder="Interac eTransfer Email"
-                type="email"
-                label="Interac Destination Email"
-                error={error ? error.message : ""}
-              />
+            render={({ field }) => (
+              <InputField label="Interac Email" placeholder="Interac Email" {...field} fullWidth />
             )}
           />
 
-          {errorMessage && (
-            <p className="text-sm text-red-500">{errorMessage}</p>
-          )}
+          {errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
 
-          {/* Final submission button for conversion and transfer */}
-          <Button className="w-full" disabled={loading} type="submit">
-            {loading ? "Processing..." : "Convert and Transfer"}
+          <Button
+            disabled={loading || !otpVerified || donationAmount > userBalance}
+            type="submit"
+          >
+            Convert and Transfer
           </Button>
         </div>
       </div>

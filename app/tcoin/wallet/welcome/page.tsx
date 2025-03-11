@@ -291,8 +291,6 @@ export default function NewWelcomePage() {
         }));
     }, [])
 
-    console.log({ customCountryOptions })
-
     const { isDarkMode } = useDarkMode()
 
     // Initialize react-hook-form with our new fields.
@@ -477,22 +475,11 @@ export default function NewWelcomePage() {
                                 <label htmlFor="phone" className="block font-medium text-sm mb-1">
                                     Phone
                                 </label>
-                                <p className="text-xs text-gray-500 mb-2">
-                                    Enter your country code and phone number. We will only use this to send you notifications about transactions. You can opt out later.
-                                </p>
-                                <Controller
-                                    control={control}
-                                    name="phone"
-                                    rules={{ required: "Phone number is required" }}
-                                    render={({ field }) => (
-                                        <PhoneInput
-                                            {...field}
-                                            inputStyle={{ width: "100%" }}
-                                            className="!text-black"
-                                            country={"us"}
-                                            onChange={(value) => field.onChange(value)}
-                                        />
-                                    )}
+                                <CubidWidget
+                                    stampToRender="phone"
+                                    uuid={userData?.user?.cubid_id}
+                                    page_id='37'
+                                    api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                                 />
                                 {errors.phone && (
                                     <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
@@ -576,7 +563,7 @@ export default function NewWelcomePage() {
     } else if (step === 3) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-900">
-                <h2 className="text-2xl font-semibold text-white mb-4">How to Top Up Your Account</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">How to Fund Your Account</h2>
                 <video
                     src="https://kyxsjnwkvddgjqigdpsv.supabase.co/storage/v1/object/public/screen_recording/Screen%20Recording%202025-02-24%20at%206.54.17%20PM.mov"
                     controls

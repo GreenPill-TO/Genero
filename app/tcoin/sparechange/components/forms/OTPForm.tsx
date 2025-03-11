@@ -108,6 +108,7 @@ function OTPForm({
             <Input
               type="text"
               value={passcode}
+              className="border-gray-500"
               placeholder="Ex- 123456"
               onChange={(e) => setPasscode(e.target.value)}
             />
