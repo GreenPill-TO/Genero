@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Genero
 
-## Getting Started
+Genero is a Next.js application that implements **T-Coin**, a Toronto-focused digital currency. The repository contains two main app variants: `wallet` for payments and `sparechange` for micro‑donations. These apps live under `app/[CITYCOIN]/[APP_NAME]` where the values are provided via environment variables.
 
-First, run the development server:
+The project integrates Supabase for storage, Cubid for identity and wallet management and Twilio for SMS based verification. UI components are built with React, TailwindCSS and Radix.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Requirements
+
+- Node.js 20+
+ - pnpm
+
+## Setup
+
+1. Copy `.env.local.example` to `.env.local` and populate the variables. The sample file lists the expected values and explains what each is for.
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+3. Start the development server:
+   ```bash
+   pnpm dev
+   ```
+
+Open `http://localhost:3000` in your browser. Next.js will serve the app configured by `NEXT_PUBLIC_CITYCOIN` and `NEXT_PUBLIC_APP_NAME`.
+
+## Scripts
+
+- `pnpm dev` – run the development server
+- `pnpm build` – create a production build
+- `pnpm start` – start the production server
+- `pnpm lint` – run ESLint
+
+## Project Structure
+
+```
+app/
+  api/                   # Next.js API routes
+  [citycoin]/
+    wallet/
+      components/
+      dashboard/
+      styles/
+      welcome/
+    sparechange/
+      components/
+      dashboard/
+      home/
+      styles/
+      welcome/
+shared/
+  api/                   # Cubid and Supabase service wrappers
+  components/            # Reusable UI components
+  contexts/              # React context providers
+  hooks/                 # Custom React hooks
+  lib/                   # Utility libraries
+  providers/             # Application providers
+  styles/                # Global stylesheets
+  types/                 # TypeScript types
+  utils/                 # Helper utilities
+public/                  # Static assets
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+API routes for Twilio OTP verification are located under `app/api`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Credentials for Supabase, Cubid and Twilio are required. They are referenced throughout the hooks in `shared/` and the API routes. Refer to `.env.local.example` for full details.
 
-## Learn More
+## Contribution
 
-To learn more about Next.js, take a look at the following resources:
+Use 2 spaces for indentation and run `pnpm lint` before committing changes.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Potential Improvements
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Add automated tests for API routes and critical hooks
+- Introduce a CI workflow that runs `pnpm lint` and `pnpm build`
+- Centralize error handling for the Twilio endpoints
+- Add end-to-end tests for the wallet and donation flows
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
