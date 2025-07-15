@@ -26,3 +26,4 @@
 - NFC/RFID support planned for physical tBill integrations.
 - Demurrage timers for token decay embedded in wallet logic.
 - Wallet landing page styled after Thinking Machines with mission-driven copy.
+- ESLint config disables react/no-unescaped-entities.
