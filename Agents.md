@@ -22,16 +22,19 @@ alwaysApply: true
 ## 1 Repository Structure
 Source files are organized under the `app/` directory while context files for agents are organized under agent-context/ with the following layout:
 ```
-.github/workflows/       # Mandatory - PR template + CI workflows for build, lint, supabase, secret scanning
+.github/workflows/       # PR template + CI workflows for build, lint, supabase, secret scanning
 agent-context/           # designs, logs and other context files for developers and agents
-├─ session-log.md        # Mandatory – append-only per session, new entries at top of file, v ↑ per edit
-├─ technical-spec.md     # Mandatory – latest technical spec
-├─ functional-spec.md    # Optional – latest functional spec
-├─ user-stories.md       # Optional – personas & acceptance criteria
-├─ app-context.md        # Optional – problem, approach, value prop
-├─ sql-diff-v{N}.sql     # Optional – Auto-generated incremental SQL patches - append-only per session (new entries at top of file)
+├─ session-log.md        # Mandator - Append-only per session, new entries at top of file, v ↑ per edit
+├─ technical-spec.md     # Latest technical spec
+├─ functional-spec.md    # Latest functional spec
+├─ app-context.md        # Problem, approach, value prop
+├─ sql-diff-v{N}.sql     # Auto-generated incremental SQL patches - append-only per session (new entries at top of file)
+├─ style-guide.md        # Style for the wallet app
 └─ workflow.md           # Repetitive per-session checklist
 app/                     # app router
+└─ tcoin/                # This project is first going live in Toronto with TCOIN (Toronto Coin)
+  ├─ sparechange         # One of the two TCOIN apps in this repo: For tipping to panhandlers
+  └─ wallet              # One of the two TCOIN apps in this repo: For general transfers
 components/              # shared components
 hooks/                   # custom React hooks
 lib/
@@ -44,7 +47,7 @@ README.md                # intro to the project and this repo
 AGENTS.md                # this file
 ```
 
-*Note: If expected files are missing from .github/workflows or from agent-context/ then follow [these instructions](https://raw.githubusercontent.com/KazanderDad/agent-context-seed-files/refs/heads/main/agent-setup.md) to create them.*
+*Note: More template files can be found by following [these instructions](https://raw.githubusercontent.com/KazanderDad/agent-context-seed-files/refs/heads/main/agent-setup.md) to create them.*
 
 ---
 
@@ -89,12 +92,11 @@ AGENTS.md                # this file
 
 | Phase | File | Detail |
 |-------|------|--------|
-| **Bootstrap (first run)** | `https://raw.githubusercontent.com/KazanderDad/agent-context-seed-files/refs/heads/main/agent-setup.md` | Creates folders, Husky hooks, CI scaffold, etc. Installs git-moji-cli for commit emojis (optional). |
 | **Every session** | `workflow.md` | Mandatory checklist (log, spec update(s), code, summary). |
 | **Artefact maintenance** | Scripts inside `scripts/` | `env-sync.ts`, `spec-lint.ts`, etc. |
 | **CI Triggers** | Pushes to main and all PRs run forge test, forge coverage, pnpm lint, and hardhat size-contracts. |
 
-Agents **must** first read and follow [agent-setup.md](https://raw.githubusercontent.com/KazanderDad/agent-context-seed-files/refs/heads/main/agent-setup.md) if mandatory artefacts are missing
+Agents **must** first read and follow [agent-setup.md](https://raw.githubusercontent.com/KazanderDad/agent-context-seed-files/refs/heads/main/agent-setup.md) if mandatory artefacts are missing.
 Agents **must** read and follow `workflow.md` each time.
 
 ---
