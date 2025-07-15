@@ -1,3 +1,9 @@
+## v0.7
+
+- Replaced Michroma with Courier New and added underline styling.
+- Removed "A project by Toronto DAO" text and dark top line.
+- Updated copy to use TCOIN wording and darker highlight.
+
 ## v0.6
 
 - Applied Michroma font across new wallet homepage and unified text size.

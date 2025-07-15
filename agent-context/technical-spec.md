@@ -30,7 +30,7 @@
 - NFC/RFID support planned for physical tBill integrations.
 - Demurrage timers for token decay embedded in wallet logic.
 - Wallet landing page styled after Thinking Machines with mission-driven copy.
-- Homepage uses Google\'s Michroma font with uniform text size; headings are bold and centered but not larger.
+- Homepage sets body font to Courier New with uniform text size; headings are bold and centred but not larger.
 - Banner image matches text width and a minimal navbar displays only \"open your wallet\" at top right.
 - Sections have slimmer spacing and the prior blue accent line is removed.
 - ESLint config disables react/no-unescaped-entities.
