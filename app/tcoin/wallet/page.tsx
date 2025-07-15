@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function HomePage() {
   return (
@@ -24,6 +25,14 @@ export default function HomePage() {
         </nav>
       </header>
       <main className="flex-grow">
+        <Image
+          src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images//tcoin-banner.png"
+          alt="Toronto Coin banner"
+          width={1920}
+          height={600}
+          className="w-full"
+          priority
+        />
         <section className="h-screen flex flex-col justify-center px-6 max-w-screen-xl mx-auto">
           <h1 className="text-5xl font-semibold leading-tight mt-20">
             TORONTO COIN
