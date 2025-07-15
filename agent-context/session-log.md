@@ -1,3 +1,7 @@
+## v0.8
+
+- Switched wallet homepage font to Special Elite for a typewriter feel.
+
 ## v0.7
 
 - Replaced Michroma with Courier New and added underline styling.

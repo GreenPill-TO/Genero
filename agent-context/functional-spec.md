@@ -11,7 +11,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Digital wallet for holding, sending, and receiving CityCoins.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.
-- Layout sets all text to Courier New with uniform size and bold centred headings.
+- Layout uses the Special Elite typewriter font with uniform size and bold centred headings.
 - Banner is limited to content width and navbar only shows "open your wallet".
 - Top banner image sourced from Supabase is displayed on the wallet homepage.
 - Supports demurrage logic (e.g., 1% monthly balance decay).

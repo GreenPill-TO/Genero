@@ -1,13 +1,20 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import Head from "next/head";
 
 export default function HomePage() {
   return (
     <>
+      <Head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap"
+          rel="stylesheet"
+        />
+      </Head>
       <style jsx global>{`
         body {
-          font-family: 'Courier New', sans-serif;
+          font-family: 'Special Elite', serif;
           line-height: 1.333;
           margin: 0;
           padding: 0 var(--margin-page, 20px);
