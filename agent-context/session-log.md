@@ -1,12 +1,18 @@
-## v0.4
+## v0.6
 
-- Added remote banner image and allowed domain in Next.js config.
+- Applied Michroma font across new wallet homepage and unified text size.
+- Slimmed spacing and limited banner width to match content.
+- Simplified navbar to single "open your wallet" link and removed blue top line.
 
 ## v0.5
 
 - Refined wallet homepage design with white background, dark text, and centered headings.
 - Converted bullet lists to prose and highlighted first sentences.
 - Adjusted layout to 50% width with 25% margins and fixed banner path.
+
+## v0.4
+
+- Added remote banner image and allowed domain in Next.js config.
 
 ## v0.3
 

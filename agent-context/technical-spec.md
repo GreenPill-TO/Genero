@@ -30,6 +30,8 @@
 - NFC/RFID support planned for physical tBill integrations.
 - Demurrage timers for token decay embedded in wallet logic.
 - Wallet landing page styled after Thinking Machines with mission-driven copy.
-- Homepage uses white background with dark grey text, centered headings, and 50% width layout with 25% margins.
+- Homepage uses Google\'s Michroma font with uniform text size; headings are bold and centered but not larger.
+- Banner image matches text width and a minimal navbar displays only \"open your wallet\" at top right.
+- Sections have slimmer spacing and the prior blue accent line is removed.
 - ESLint config disables react/no-unescaped-entities.
 - Next.js config allows remote images from Supabase for the banner.
