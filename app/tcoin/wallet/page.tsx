@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white text-gray-800">
       <header className="fixed top-0 left-0 w-full bg-white/80 backdrop-blur z-50">
         <nav className="max-w-screen-xl mx-auto flex justify-between items-center py-4 px-6">
           <div className="font-bold">TCOIN.ME</div>
@@ -26,15 +26,15 @@ export default function HomePage() {
       </header>
       <main className="flex-grow">
         <Image
-          src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images//tcoin-banner.png"
+          src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images/tcoin-banner.png"
           alt="Toronto Coin banner"
           width={1920}
           height={600}
           className="w-full"
           priority
         />
-        <section className="h-screen flex flex-col justify-center px-6 max-w-screen-xl mx-auto">
-          <h1 className="text-5xl font-semibold leading-tight mt-20">
+        <section className="h-screen flex flex-col justify-center px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
+          <h1 className="text-5xl font-semibold leading-tight mt-20 text-center">
             TORONTO COIN
           </h1>
           <p className="mt-4 inline-block bg-gray-100 px-2">
@@ -43,154 +43,136 @@ export default function HomePage() {
           <p className="italic">A project by Toronto DAO</p>
         </section>
 
-        <section id="future" className="py-16 px-6 max-w-screen-xl mx-auto">
-          <h2 className="text-3xl font-semibold mb-4">
+        <section id="future" className="py-16 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
+          <h2 className="text-3xl font-semibold mb-4 text-center">
             The future of money is local
           </h2>
           <p className="mb-4">
-            Toronto Coin (T-Coin) is a new kind of currency—one rooted in the
-            rhythms of city life. Designed to keep money circulating in Toronto,
-            every T-Coin transaction supports your neighbourhood, your favourite
-            local spot, and the causes you care about.
+            <span className="bg-gray-100 px-1">
+              Toronto Coin (T-Coin) is a new kind of currency—one rooted in the
+              rhythms of city life.
+            </span>{" "}
+            Designed to keep money circulating in Toronto, every T-Coin
+            transaction supports your neighbourhood, your favourite local spot,
+            and the causes you care about.
           </p>
           <p>It’s not just money. It’s a movement.</p>
         </section>
 
-        <section id="why" className="py-16 px-6 max-w-screen-xl mx-auto">
-          <h2 className="text-3xl font-semibold mb-4">Why T-Coin?</h2>
-          <ul className="list-disc pl-6 space-y-2">
-            <li>
-              <span className="bg-gray-100 px-1">Built for Toronto</span> –
-              T-Coin is pegged to the price of a TTC fare, so it holds its value
-              in the way that matters most: getting around the city.
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Support your community</span> –
-              3% of each transaction goes to a local nonprofit of your choice.
-              No middlemen. No billion-dollar processors.
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Spend or share</span> – Use
+        <section id="why" className="py-16 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
+          <h2 className="text-3xl font-semibold mb-4 text-center">Why T-Coin?</h2>
+          <div className="space-y-4">
+            <p>
+              <span className="bg-gray-100 px-1">Built for Toronto.</span> T-Coin
+              is pegged to the price of a TTC fare, so it holds its value in the
+              way that matters most: getting around the city.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Support your community.</span>{" "}
+              3% of each transaction goes to a local nonprofit of your choice. No
+              middlemen. No billion-dollar processors.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Spend or share.</span> Use
               T-Coin to pay in stores, tip your server, or give directly to
               someone in need—QR codes make it effortless.
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">
-                Circulation over accumulation
-              </span>{" "}
-              – A small monthly demurrage fee (1%) encourages money to keep
-              moving, not sit idle.
-            </li>
-          </ul>
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Circulation over accumulation.</span>
+              A small monthly demurrage fee (1%) encourages money to keep moving,
+              not sit idle.
+            </p>
+          </div>
         </section>
 
-        <section id="how" className="py-16 px-6 max-w-screen-xl mx-auto">
-          <h2 className="text-3xl font-semibold mb-4">How It Works</h2>
+        <section id="how" className="py-16 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
+          <h2 className="text-3xl font-semibold mb-4 text-center">How It Works</h2>
           <p className="mb-4">
             T-Coin combines the best of digital and physical payment systems:
           </p>
-          <ul className="list-disc pl-6 space-y-2">
-            <li>
-              <span className="bg-gray-100 px-1">Digital Wallets</span>
-              <div>
-                A user-friendly app for sending and receiving T-Coins—secure,
-                transparent, and designed to feel familiar.
-              </div>
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Physical tBills</span>
-              <div>
-                Durable polymer notes with RFID chips. Use them just like cash,
-                with added smart features like balance checks and expiry
-                reminders.
-              </div>
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Charity by default</span>
-              <div>
-                Every time you spend T-Coins, 3% is minted for a local cause.
-                Choose your charity once in the app—it happens automatically.
-              </div>
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">QR Codes Everywhere</span>
-              <div>
-                Panhandlers, artists, waitstaff—anyone can receive T-Coins with
-                a simple QR. And stores can post a fixed amount for instant
-                payment.
-              </div>
-            </li>
-          </ul>
+          <div className="space-y-4">
+            <p>
+              <span className="bg-gray-100 px-1">Digital Wallets.</span> A
+              user-friendly app for sending and receiving T-Coins—secure,
+              transparent, and designed to feel familiar.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Physical tBills.</span> Durable
+              polymer notes with RFID chips. Use them just like cash, with added
+              smart features like balance checks and expiry reminders.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Charity by default.</span> Every
+              time you spend T-Coins, 3% is minted for a local cause. Choose your
+              charity once in the app—it happens automatically.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">QR Codes Everywhere.</span>
+              Panhandlers, artists, waitstaff—anyone can receive T-Coins with a
+              simple QR. And stores can post a fixed amount for instant payment.
+            </p>
+          </div>
         </section>
 
-        <section id="real-life" className="py-16 px-6 max-w-screen-xl mx-auto">
-          <h2 className="text-3xl font-semibold mb-4">
+        <section id="real-life" className="py-16 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
+          <h2 className="text-3xl font-semibold mb-4 text-center">
             A Currency Designed for Real Life
           </h2>
           <p className="mb-4">
             T-Coin is engineered for Toronto’s unique needs:
           </p>
-          <ul className="list-disc pl-6 space-y-2">
-            <li>
-              <span className="bg-gray-100 px-1">Stable and sensible</span> – By
+          <div className="space-y-4">
+            <p>
+              <span className="bg-gray-100 px-1">Stable and sensible.</span> By
               tying the coin’s value to TTC fares, it remains relevant and
               stable—even as the Canadian dollar fluctuates.
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Transparent and fair</span> –
-              You already pay 3% in credit card fees. With T-Coin, that same 3%
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Transparent and fair.</span> You
+              already pay 3% in credit card fees. With T-Coin, that same 3%
               becomes a donation to your city.
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Local by design</span> – Our
-              goal is to keep money moving locally—supporting shops, schools,
-              and social services.
-            </li>
-          </ul>
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Local by design.</span> Our goal
+              is to keep money moving locally—supporting shops, schools, and
+              social services.
+            </p>
+          </div>
         </section>
 
         <section
           id="infrastructure"
-          className="py-16 px-6 max-w-screen-xl mx-auto"
+          className="py-16 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]"
         >
-          <h2 className="text-3xl font-semibold mb-4">
+          <h2 className="text-3xl font-semibold mb-4 text-center">
             Not Just Money—Infrastructure
           </h2>
           <p className="mb-4">
             Money is a public good. With T-Coin, we’re building infrastructure
             for a fairer economy:
           </p>
-          <ul className="list-disc pl-6 space-y-2">
-            <li>
-              <span className="bg-gray-100 px-1">A system that serves all</span>
-              <div>
-                From digital wallets to tBills, every part of the T-Coin
-                ecosystem is designed to be inclusive—no bank account required.
-              </div>
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">
-                Price stability, done right
-              </span>
-              <div>
-                No artificial scarcity. T-Coins are minted on demand, with
-                supply managed to meet community needs—not speculative
-                interests.
-              </div>
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Participatory governance</span>
-              <div>
-                Toronto DAO oversees the treasury, sets rules, and adapts to
-                community feedback. Decisions are made transparently and with
-                purpose.
-              </div>
-            </li>
-          </ul>
+          <div className="space-y-4">
+            <p>
+              <span className="bg-gray-100 px-1">A system that serves all.</span>
+              From digital wallets to tBills, every part of the T-Coin ecosystem
+              is designed to be inclusive—no bank account required.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Price stability, done right.</span>
+              No artificial scarcity. T-Coins are minted on demand, with supply
+              managed to meet community needs—not speculative interests.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Participatory governance.</span>
+              Toronto DAO oversees the treasury, sets rules, and adapts to
+              community feedback. Decisions are made transparently and with
+              purpose.
+            </p>
+          </div>
         </section>
 
-        <section id="who" className="py-16 px-6 max-w-screen-xl mx-auto">
-          <h2 className="text-3xl font-semibold mb-4">Who’s Behind This?</h2>
+        <section id="who" className="py-16 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
+          <h2 className="text-3xl font-semibold mb-4 text-center">Who’s Behind This?</h2>
           <p className="mb-4">
             Toronto Coin is a project by{" "}
             <Link href="link">Toronto DAO (TDAO)</Link>, with co-sponsorship
@@ -204,33 +186,27 @@ export default function HomePage() {
           </p>
         </section>
 
-        <section id="involved" className="py-16 px-6 max-w-screen-xl mx-auto">
-          <h2 className="text-3xl font-semibold mb-4">How to Get Involved</h2>
-          <ul className="list-disc pl-6 space-y-2">
-            <li>
-              <span className="bg-gray-100 px-1">Sign up</span> –{" "}
-              <Link href="link">Join the mailing list</Link> and get early
-              access to buy T-Coins.
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Help build it</span> – We’re a
-              grassroots team. <Link href="link">Message us on WhatsApp</Link>.
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Explore the details</span> –{" "}
-              <Link href="link">Read the whitepaper</Link>,{" "}
-              <Link href="link">check out the presentation</Link>, and{" "}
-              <Link href="link">see the source code</Link>.
-            </li>
-            <li>
-              <span className="bg-gray-100 px-1">Try it out</span> – (Coming
-              soon) Buy T-Coins and support a stronger, more resilient Toronto.
-            </li>
-          </ul>
+        <section id="involved" className="py-16 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
+          <h2 className="text-3xl font-semibold mb-4 text-center">How to Get Involved</h2>
+          <div className="space-y-4">
+            <p>
+              <span className="bg-gray-100 px-1">Sign up.</span>{" "}
+              <Link href="link">Join the mailing list</Link> and get early access to buy T-Coins.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Help build it.</span> We’re a grassroots team. <Link href="link">Message us on WhatsApp</Link>.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Explore the details.</span>{" "}<Link href="link">Read the whitepaper</Link>,{" "}<Link href="link">check out the presentation</Link>, and{" "}<Link href="link">see the source code</Link>.
+            </p>
+            <p>
+              <span className="bg-gray-100 px-1">Try it out.</span> (Coming soon) Buy T-Coins and support a stronger, more resilient Toronto.
+            </p>
+          </div>
         </section>
 
-        <section className="py-16 px-6 max-w-screen-xl mx-auto">
-          <h2 className="text-3xl font-semibold mb-4">
+        <section className="py-16 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
+          <h2 className="text-3xl font-semibold mb-4 text-center">
             What Are You Waiting For?
           </h2>
           <p className="mb-4">
