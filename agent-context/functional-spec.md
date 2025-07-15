@@ -7,6 +7,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 ### 1. Wallet
 - Digital wallet for holding, sending, and receiving CityCoins.
 - Interface includes balance display, QR payment flow, and transaction history.
+- Homepage uses mission-driven copy with Thinking Machines layout.
 - Supports demurrage logic (e.g., 1% monthly balance decay).
 
 ### 2. SpareChange
