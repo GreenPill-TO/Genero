@@ -4,6 +4,15 @@ const appToServe = process.env.NEXT_PUBLIC_APP_NAME || "wallet"; // Default app 
 console.log(`Serving ${appToServe} for ${citycoin}`);
 
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "cspyqrxxyflnuwzzzkmv.supabase.co",
+        pathname: "/storage/v1/object/public/website-images/**",
+      },
+    ],
+  },
   // No redirect; instead, directly serve from base URL
   async rewrites() {
     return [
@@ -20,4 +29,3 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
-
