@@ -30,8 +30,8 @@
 - NFC/RFID support planned for physical tBill integrations.
 - Demurrage timers for token decay embedded in wallet logic.
 - Wallet landing page styled after Thinking Machines with mission-driven copy.
-- Homepage sets body font to the Special Elite typewriter font with uniform text size; headings are bold and centred but not larger.
-- Banner image matches text width and a minimal navbar displays only \"open your wallet\" at top right.
+- Homepage sets body font to the Special Elite typewriter font via next/font with uniform text size; headings are bold and centred but not larger.
+- Banner image matches text width and a minimal navbar displays \"/open your wallet/\" linking to the dashboard.
 - Sections have slimmer spacing and the prior blue accent line is removed.
 - ESLint config disables react/no-unescaped-entities.
 - Next.js config allows remote images from Supabase for the banner.

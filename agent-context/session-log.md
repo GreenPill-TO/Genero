@@ -2,6 +2,12 @@
 
 - Switched wallet homepage font to Special Elite for a typewriter feel.
 
+## v0.9
+
+- Applied Special Elite using next/font and global styles in wallet layout.
+- Simplified ContentLayout for landing page without navbar or footer.
+- Updated nav text to "/open your wallet/" linking to dashboard.
+
 ## v0.7
 
 - Replaced Michroma with Courier New and added underline styling.

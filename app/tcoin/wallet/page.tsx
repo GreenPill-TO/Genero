@@ -1,35 +1,15 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import Head from "next/head";
-
 export default function HomePage() {
   return (
     <>
-      <Head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap"
-          rel="stylesheet"
-        />
-      </Head>
-      <style jsx global>{`
-        body {
-          font-family: 'Special Elite', serif;
-          line-height: 1.333;
-          margin: 0;
-          padding: 0 var(--margin-page, 20px);
-          color: var(--ui-primary, #000);
-          text-wrap: pretty;
-        }
-
-        a {
-          text-decoration: underline;
-        }
-      `}</style>
       <div className="min-h-screen flex flex-col bg-white text-gray-800 text-base">
-      <header className="fixed top-0 left-0 w-full bg-white z-50 border-none shadow-none">
+      <header className="fixed top-0 left-0 w-full bg-white z-50">
         <nav className="max-w-screen-xl mx-auto flex justify-end py-4 px-6">
-          <span>open your wallet</span>
+          <Link href="/dashboard" className="no-underline">
+            /open your wallet/
+          </Link>
         </nav>
       </header>
       <main className="flex-grow">
