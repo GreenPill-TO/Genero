@@ -1,3 +1,8 @@
+## v0.11
+
+- Imported Special Elite via style tag with system-ui fallback, ensuring font loads without monospace fallback.
+- Updated functional and technical specs to reflect new font approach.
+
 ## v0.10
 
 - Ensured Special Elite font falls back only to typewriter fonts and updated nav link text to "<open my wallet>".
