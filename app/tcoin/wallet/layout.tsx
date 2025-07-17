@@ -6,7 +6,7 @@ import "@tcoin/wallet/styles/app.scss";
 import type { Metadata } from "next";
 import ContentLayout from "./ContentLayout";
 import dynamic from "next/dynamic";
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 
 
@@ -30,7 +30,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <head>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');`}</style>
+        <style>{`.special-elite-regular { font-family: 'Special Elite', system-ui; font-weight: 400; font-style: normal; }`}</style>
+      </head>
+      <body className="special-elite-regular">
+        <style jsx global>{`
+          body {
+            line-height: 1.333;
+            margin: 0;
+            padding: 0 var(--margin-page, 20px);
+            color: var(--ui-primary, #000);
+            text-wrap: pretty;
+          }
+          a {
+            text-decoration: underline;
+          }
+        `}</style>
         <QueryClientProvider client={queryClient}>
           <Provider>
             <WalletCubidProvider>
