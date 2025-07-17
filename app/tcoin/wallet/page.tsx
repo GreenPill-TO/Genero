@@ -24,16 +24,16 @@ export default function HomePage() {
           />
         </div>
         <section className="py-4 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <p className="my-2 inline-block bg-gray-200 px-2">
+          <p className="mb-2 inline-block bg-gray-200 px-2">
             Local Currency, Global Example.
           </p>
         </section>
 
         <section id="future" className="py-4 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-2">The future of money is local</h2>
+          <h2 className="font-bold text-center mb-2">The future of money is local</h2>
           <p className="mb-2">
             <span className="bg-gray-200 px-1">
-              Toronto Coin (TCOIN) is a new kind of currency—one rooted in the
+              Toronto Coin (TCOIN) is a new kind of currency - one rooted in the
               rhythms of city life.
             </span>{" "}
             Designed to keep money circulating in Toronto, every TCOIN
@@ -44,7 +44,7 @@ export default function HomePage() {
         </section>
 
         <section id="why" className="py-4 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-2">Why TCOIN?</h2>
+          <h2 className="font-bold text-center mb-2">Why TCOIN?</h2>
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 px-1">Built for Toronto.</span> TCOIN
@@ -59,7 +59,7 @@ export default function HomePage() {
             <p>
               <span className="bg-gray-200 px-1">Spend or share.</span> Use
               TCOIN to pay in stores, tip your server, or give directly to
-              someone in need—QR codes make it effortless.
+              someone in need - QR codes make it effortless.
             </p>
             <p>
               <span className="bg-gray-200 px-1">Circulation over accumulation.</span>
@@ -70,14 +70,14 @@ export default function HomePage() {
         </section>
 
         <section id="how" className="py-4 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-2">How It Works</h2>
+          <h2 className="font-bold text-center mb-2">How It Works</h2>
           <p className="mb-2">
             TCOIN combines the best of digital and physical payment systems:
           </p>
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 px-1">Digital Wallets.</span> A
-              user-friendly app for sending and receiving TCOINs—secure,
+              user-friendly app for sending and receiving TCOINs - secure,
               transparent, and designed to feel familiar.
             </p>
             <p>
@@ -88,18 +88,18 @@ export default function HomePage() {
             <p>
               <span className="bg-gray-200 px-1">Charity by default.</span> Every
               time you spend TCOINs, 3% is minted for a local cause. Choose your
-              charity once in the app—it happens automatically.
+              charity once in the app - it happens automatically.
             </p>
             <p>
               <span className="bg-gray-200 px-1">QR Codes Everywhere.</span>
-              Panhandlers, artists, waitstaff—anyone can receive TCOINs with a
+              Panhandlers, artists, waitstaff - anyone can receive TCOINs with a
               simple QR. And stores can post a fixed amount for instant payment.
             </p>
           </div>
         </section>
 
         <section id="real-life" className="py-4 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-2">A Currency Designed for Real Life</h2>
+          <h2 className="font-bold text-center mb-2">A Currency Designed for Real Life</h2>
           <p className="mb-2">
             TCOIN is engineered for Toronto’s unique needs:
           </p>
@@ -107,7 +107,7 @@ export default function HomePage() {
             <p>
               <span className="bg-gray-200 px-1">Stable and sensible.</span> By
               tying the coin’s value to TTC fares, it remains relevant and
-              stable—even as the Canadian dollar fluctuates.
+              stable - even as the Canadian dollar fluctuates.
             </p>
             <p>
               <span className="bg-gray-200 px-1">Transparent and fair.</span> You
@@ -116,7 +116,7 @@ export default function HomePage() {
             </p>
             <p>
               <span className="bg-gray-200 px-1">Local by design.</span> Our goal
-              is to keep money moving locally—supporting shops, schools, and
+              is to keep money moving locally - supporting shops, schools, and
               social services.
             </p>
           </div>
@@ -126,7 +126,7 @@ export default function HomePage() {
           id="infrastructure"
           className="py-4 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]"
         >
-          <h2 className="font-bold text-center my-2">Not Just Money—Infrastructure</h2>
+          <h2 className="font-bold text-center mb-2">Not Just Money - Infrastructure</h2>
           <p className="mb-2">
             Money is a public good. With TCOIN, we’re building infrastructure
             for a fairer economy:
@@ -135,12 +135,12 @@ export default function HomePage() {
             <p>
               <span className="bg-gray-200 px-1">A system that serves all.</span>
               From digital wallets to tBills, every part of the TCOIN ecosystem
-              is designed to be inclusive—no bank account required.
+              is designed to be inclusive - no bank account required.
             </p>
             <p>
               <span className="bg-gray-200 px-1">Price stability, done right.</span>
               No artificial scarcity. TCOINs are minted on demand, with supply
-              managed to meet community needs—not speculative interests.
+              managed to meet community needs - not speculative interests.
             </p>
             <p>
               <span className="bg-gray-200 px-1">Participatory governance.</span>
@@ -152,7 +152,7 @@ export default function HomePage() {
         </section>
 
         <section id="who" className="py-4 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-2">Who’s Behind This?</h2>
+          <h2 className="font-bold text-center mb-2">Who’s Behind This?</h2>
           <p className="mb-2">
             Toronto Coin is a joint project by{' '}
             <Link href="https://www.tdao.to/">Toronto DAO</Link> and{' '}
@@ -162,12 +162,12 @@ export default function HomePage() {
             local values, and practical economics.
           </p>
           <p>
-            We believe money should work for people—not the other way around.
+            We believe money should work for people - not the other way around.
           </p>
         </section>
 
         <section id="involved" className="py-4 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-2">How to Get Involved</h2>
+          <h2 className="font-bold text-center mb-2">How to Get Involved</h2>
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 px-1">Sign up.</span>{" "}
@@ -186,15 +186,14 @@ export default function HomePage() {
         </section>
 
         <section className="py-4 px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-2">What Are You Waiting For?</h2>
+          <h2 className="font-bold text-center mb-2">What Are You Waiting For?</h2>
           <p className="mb-2">
             <span className="bg-gray-200 px-1">
               TCOIN is a statement, a system, and a tool.
             </span>
           </p>
           <p>
-            It’s what happens when we reimagine money as a way to build—not
-            extract—from our communities.
+            It’s what happens when we reimagine money as a way to build up - not extract from - our communities.
           </p>
           <p className="mt-4">
             Toronto doesn’t just deserve a better currency.

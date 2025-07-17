@@ -35,3 +35,4 @@
 - Sections have slimmer spacing and the prior blue accent line is removed.
 - ESLint config disables react/no-unescaped-entities.
 - Next.js config allows remote images from Supabase for the banner.
+- Copy uses standard dashes and closes with "build up - not extract from - our communities".

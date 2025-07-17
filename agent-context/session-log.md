@@ -1,3 +1,7 @@
+## v0.12
+
+- Updated home page copy with regular dashes and revised closing line.
+
 ## v0.11
 
 - Imported Special Elite via style tag with system-ui fallback, ensuring font loads without monospace fallback.
