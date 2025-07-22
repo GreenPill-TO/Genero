@@ -1,4 +1,5 @@
 import { cn } from "@shared/utils/classnames";
+import Link from "next/link";
 
 export function Footer() {
   return (
@@ -8,6 +9,11 @@ export function Footer() {
           <div>
             <h4 className="text-lg font-bold">TCOIN.ME</h4>
             <h5>&copy; {new Date().getFullYear()} Toronto Coin. All rights reserved.</h5>
+          </div>
+          <div className="space-x-4 text-sm">
+            <Link href="/whitepaper">Whitepaper</Link>
+            <Link href="https://github.com">Github</Link>
+            <Link href="/contact">Contact</Link>
           </div>
         </div>
       </div>

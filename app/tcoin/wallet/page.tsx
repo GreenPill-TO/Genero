@@ -6,7 +6,7 @@ export default function HomePage() {
     <>
       <div className="min-h-screen flex flex-col bg-white text-gray-800 text-base">
       <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-none border-none">
-        <nav className="absolute top-0 right-0 py-4 px-6">
+        <nav className="absolute top-0 right-0 lg:right-[30%] py-4 px-6 text-left">
           <Link href="/dashboard" className="no-underline">
             &lt;open my wallet&gt;
           </Link>
@@ -20,14 +20,14 @@ export default function HomePage() {
             className="w-full"
             priority
           />
-          <p className="text-right bg-gray-200 px-2">
+          <p className="text-right mb-4">
             Local Currency. Value = $3.35. Proceeds to charity.
           </p>
         </div>
       </header>
       <main className="flex-grow">
 
-        <section id="future" className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
+        <section id="future" className="pt-72 px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
           <h2 className="font-extrabold text-center my-5">The future of money is local</h2>
           <p className="mb-2">
             <span className="bg-gray-200 px-1">
@@ -173,6 +173,9 @@ export default function HomePage() {
             </p>
             <p>
               <span className="bg-gray-200 px-1">Help build it.</span> We’re a grassroots team. <Link href="link">Message us on WhatsApp</Link>.
+            </p>
+            <p>
+              <span className="bg-gray-200 px-1">Spread the word.</span> The greatest help we could get is signing up new stores and service providers willing to accept TCOIN.
             </p>
             <p>
               <span className="bg-gray-200 px-1">Explore the details.</span>{" "}<Link href="link">Read the whitepaper</Link>,{" "}<Link href="link">check out the presentation</Link>, and{" "}<Link href="link">see the source code</Link>.

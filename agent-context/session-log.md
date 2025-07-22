@@ -1,3 +1,9 @@
+## v0.18
+- Aligned the "<open my wallet>" link within the right margin.
+- Tagline changed to plain text with margin underneath.
+- Added padding before the first section and updated copy on how to get involved.
+- Footer now links to Whitepaper, Github and Contact, with a new contact page.
+
 ## v0.17
 - Placed tagline beneath the banner image in the fixed header.
 - Positioned the "<open my wallet>" link at the far right of the page.
