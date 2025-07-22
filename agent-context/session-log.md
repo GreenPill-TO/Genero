@@ -1,3 +1,8 @@
+## v0.14
+
+- Trimmed section padding on wallet homepage so headings have exactly one blank line above and below.
+- Updated functional and technical specs to reflect the refined spacing.
+
 ## v0.13
 
 - Added equal spacing above and below each heading on TCOIN wallet homepage.
