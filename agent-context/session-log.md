@@ -1,3 +1,8 @@
+## v0.13
+
+- Added equal spacing above and below each heading on TCOIN wallet homepage.
+- Documented heading spacing in functional and technical specs.
+
 ## v0.12
 
 - Updated home page copy with regular dashes and revised closing line.

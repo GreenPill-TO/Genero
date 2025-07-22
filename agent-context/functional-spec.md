@@ -12,7 +12,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.
 - Closing line states "build up - not extract from - our communities" with space-dash-space style.
-- Layout loads the Special Elite typewriter font via a style tag with system-ui fallback and uniform text size; headings are bold and centred.
+- Layout loads the Special Elite typewriter font via a style tag with system-ui fallback and uniform text size; headings are bold, centred, and spaced with one blank line above and below.
 - Banner is limited to content width and navbar shows "<open my wallet>" linked to the dashboard.
 - Top banner image sourced from Supabase is displayed on the wallet homepage.
 - Supports demurrage logic (e.g., 1% monthly balance decay).

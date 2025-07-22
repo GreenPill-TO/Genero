@@ -30,7 +30,7 @@
 - NFC/RFID support planned for physical tBill integrations.
 - Demurrage timers for token decay embedded in wallet logic.
 - Wallet landing page styled after Thinking Machines with mission-driven copy.
-- Homepage sets body font to the Special Elite typewriter font via a style tag with system-ui fallback; headings are bold, centred, and the same size as body text.
+- Homepage sets body font to the Special Elite typewriter font via a style tag with system-ui fallback; headings are bold, centred, same size as body text, and spaced with one blank line above and below.
 - Banner image matches text width and a minimal navbar displays "<open my wallet>" linking to the dashboard.
 - Sections have slimmer spacing and the prior blue accent line is removed.
 - ESLint config disables react/no-unescaped-entities.
