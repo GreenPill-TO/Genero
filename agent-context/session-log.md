@@ -1,3 +1,7 @@
+## v0.17
+- Placed tagline beneath the banner image in the fixed header.
+- Positioned the "<open my wallet>" link at the far right of the page.
+
 ## v0.16
 
 - Narrowed body text and banner to 40% width on large screens.

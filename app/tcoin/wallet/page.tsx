@@ -6,7 +6,12 @@ export default function HomePage() {
     <>
       <div className="min-h-screen flex flex-col bg-white text-gray-800 text-base">
       <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-none border-none">
-        <div className="relative px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
+        <nav className="absolute top-0 right-0 py-4 px-6">
+          <Link href="/dashboard" className="no-underline">
+            &lt;open my wallet&gt;
+          </Link>
+        </nav>
+        <div className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
           <Image
             src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images/tcoin-banner.png"
             alt="Toronto Coin banner"
@@ -15,14 +20,9 @@ export default function HomePage() {
             className="w-full"
             priority
           />
-          <p className="absolute bottom-4 right-0 text-right bg-gray-200 px-2">
+          <p className="text-right bg-gray-200 px-2">
             Local Currency. Value = $3.35. Proceeds to charity.
           </p>
-          <nav className="absolute top-0 right-0 py-4 px-6">
-            <Link href="/dashboard" className="no-underline">
-              &lt;open my wallet&gt;
-            </Link>
-          </nav>
         </div>
       </header>
       <main className="flex-grow">
