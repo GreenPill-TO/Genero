@@ -37,5 +37,8 @@
 - ESLint config disables react/no-unescaped-entities.
 - Banner and tagline are placed in the fixed header so the page scrolls underneath, and the header has no shadow.
 - Footer background is white with black text.
+- Body content and banner are limited to 40% width with 30% side margins on large screens.
+- Tagline reads "Local Currency. Value = $3.35. Proceeds to charity." and is right-aligned under the banner image.
+- All section headings use the `font-extrabold` class for extra emphasis.
 - Next.js config allows remote images from Supabase for the banner.
 - Copy uses standard dashes and closes with "build up - not extract from - our communities".

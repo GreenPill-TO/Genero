@@ -1,3 +1,9 @@
+## v0.16
+
+- Narrowed body text and banner to 40% width on large screens.
+- Updated tagline: "Local Currency. Value = $3.35. Proceeds to charity." and right-aligned it below the banner.
+- Headings now use extra-bold styling.
+
 ## v0.15
 
 - Moved banner image and "Local Currency, Global Example." tagline into the fixed header so content scrolls underneath.

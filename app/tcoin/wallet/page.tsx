@@ -6,7 +6,7 @@ export default function HomePage() {
     <>
       <div className="min-h-screen flex flex-col bg-white text-gray-800 text-base">
       <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-none border-none">
-        <div className="relative">
+        <div className="relative px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
           <Image
             src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images/tcoin-banner.png"
             alt="Toronto Coin banner"
@@ -15,8 +15,8 @@ export default function HomePage() {
             className="w-full"
             priority
           />
-          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gray-200 px-2">
-            Local Currency, Global Example.
+          <p className="absolute bottom-4 right-0 text-right bg-gray-200 px-2">
+            Local Currency. Value = $3.35. Proceeds to charity.
           </p>
           <nav className="absolute top-0 right-0 py-4 px-6">
             <Link href="/dashboard" className="no-underline">
@@ -27,8 +27,8 @@ export default function HomePage() {
       </header>
       <main className="flex-grow">
 
-        <section id="future" className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-5">The future of money is local</h2>
+        <section id="future" className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
+          <h2 className="font-extrabold text-center my-5">The future of money is local</h2>
           <p className="mb-2">
             <span className="bg-gray-200 px-1">
               Toronto Coin (TCOIN) is a new kind of currency - one rooted in the
@@ -41,8 +41,8 @@ export default function HomePage() {
           <p>It’s not just money. It’s a movement.</p>
         </section>
 
-        <section id="why" className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-5">Why TCOIN?</h2>
+        <section id="why" className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
+          <h2 className="font-extrabold text-center my-5">Why TCOIN?</h2>
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 px-1">Built for Toronto.</span> TCOIN
@@ -67,8 +67,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="how" className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-5">How It Works</h2>
+        <section id="how" className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
+          <h2 className="font-extrabold text-center my-5">How It Works</h2>
           <p className="mb-2">
             TCOIN combines the best of digital and physical payment systems:
           </p>
@@ -96,8 +96,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="real-life" className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-5">A Currency Designed for Real Life</h2>
+        <section id="real-life" className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
+          <h2 className="font-extrabold text-center my-5">A Currency Designed for Real Life</h2>
           <p className="mb-2">
             TCOIN is engineered for Toronto’s unique needs:
           </p>
@@ -122,9 +122,9 @@ export default function HomePage() {
 
         <section
           id="infrastructure"
-          className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]"
+          className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]"
         >
-          <h2 className="font-bold text-center my-5">Not Just Money - Infrastructure</h2>
+          <h2 className="font-extrabold text-center my-5">Not Just Money - Infrastructure</h2>
           <p className="mb-2">
             Money is a public good. With TCOIN, we’re building infrastructure
             for a fairer economy:
@@ -149,8 +149,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="who" className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-5">Who’s Behind This?</h2>
+        <section id="who" className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
+          <h2 className="font-extrabold text-center my-5">Who’s Behind This?</h2>
           <p className="mb-2">
             Toronto Coin is a joint project by{' '}
             <Link href="https://www.tdao.to/">Toronto DAO</Link> and{' '}
@@ -164,8 +164,8 @@ export default function HomePage() {
           </p>
         </section>
 
-        <section id="involved" className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-5">How to Get Involved</h2>
+        <section id="involved" className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
+          <h2 className="font-extrabold text-center my-5">How to Get Involved</h2>
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 px-1">Sign up.</span>{" "}
@@ -183,8 +183,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <h2 className="font-bold text-center my-5">What Are You Waiting For?</h2>
+        <section className="px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
+          <h2 className="font-extrabold text-center my-5">What Are You Waiting For?</h2>
           <p className="mb-2">
             <span className="bg-gray-200 px-1">
               TCOIN is a statement, a system, and a tool.
