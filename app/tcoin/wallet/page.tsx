@@ -5,15 +5,8 @@ export default function HomePage() {
   return (
     <>
       <div className="min-h-screen flex flex-col bg-white text-gray-800 text-base">
-      <header className="fixed top-0 left-0 w-full bg-white z-50">
-        <nav className="max-w-screen-xl mx-auto flex justify-end py-4 px-6">
-          <Link href="/dashboard" className="no-underline">
-            &lt;open my wallet&gt;
-          </Link>
-        </nav>
-      </header>
-      <main className="flex-grow">
-        <div className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
+      <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-none border-none">
+        <div className="relative">
           <Image
             src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images/tcoin-banner.png"
             alt="Toronto Coin banner"
@@ -22,12 +15,17 @@ export default function HomePage() {
             className="w-full"
             priority
           />
-        </div>
-        <section className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
-          <p className="mb-2 inline-block bg-gray-200 px-2">
+          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gray-200 px-2">
             Local Currency, Global Example.
           </p>
-        </section>
+          <nav className="absolute top-0 right-0 py-4 px-6">
+            <Link href="/dashboard" className="no-underline">
+              &lt;open my wallet&gt;
+            </Link>
+          </nav>
+        </div>
+      </header>
+      <main className="flex-grow">
 
         <section id="future" className="px-6 max-w-screen-xl mx-auto lg:w-1/2 lg:mx-[25%]">
           <h2 className="font-bold text-center my-5">The future of money is local</h2>

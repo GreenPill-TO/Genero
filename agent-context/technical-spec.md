@@ -35,5 +35,7 @@
 - Banner image matches text width and a minimal navbar displays "<open my wallet>" linking to the dashboard.
 - Sections have slimmer spacing and the prior blue accent line is removed.
 - ESLint config disables react/no-unescaped-entities.
+- Banner and tagline are placed in the fixed header so the page scrolls underneath, and the header has no shadow.
+- Footer background is white with black text.
 - Next.js config allows remote images from Supabase for the banner.
 - Copy uses standard dashes and closes with "build up - not extract from - our communities".

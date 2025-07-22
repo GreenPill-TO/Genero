@@ -1,3 +1,9 @@
+## v0.15
+
+- Moved banner image and "Local Currency, Global Example." tagline into the fixed header so content scrolls underneath.
+- Removed the dark top border by clearing shadow styles.
+- Footer now displays white background with black text.
+
 ## v0.14
 
 - Trimmed section padding on wallet homepage so headings have exactly one blank line above and below.

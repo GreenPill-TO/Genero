@@ -16,7 +16,9 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Section margins trimmed so headings net exactly one blank line of space above and below.
 - Banner is limited to content width and navbar shows "<open my wallet>" linked to the dashboard.
 - Top banner image sourced from Supabase is displayed on the wallet homepage.
+- Banner and tagline now sit in the fixed header so the page scrolls under them.
 - Supports demurrage logic (e.g., 1% monthly balance decay).
+- Footer uses a white background with black text.
 
 ### 2. SpareChange
 
