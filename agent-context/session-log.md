@@ -1,3 +1,31 @@
+## v0.19
+- Split the fixed header into three columns with empty left area.
+- Centre column matches body width and holds the banner and right-aligned tagline.
+- Right column shows "<open my wallet>" left aligned at the top.
+- Minimized bottom padding of the header.
+
+## v0.18
+- Aligned the "<open my wallet>" link within the right margin.
+- Tagline changed to plain text with margin underneath.
+- Added padding before the first section and updated copy on how to get involved.
+- Footer now links to Whitepaper, Github and Contact, with a new contact page.
+
+## v0.17
+- Placed tagline beneath the banner image in the fixed header.
+- Positioned the "<open my wallet>" link at the far right of the page.
+
+## v0.16
+
+- Narrowed body text and banner to 40% width on large screens.
+- Updated tagline: "Local Currency. Value = $3.35. Proceeds to charity." and right-aligned it below the banner.
+- Headings now use extra-bold styling.
+
+## v0.15
+
+- Moved banner image and "Local Currency, Global Example." tagline into the fixed header so content scrolls underneath.
+- Removed the dark top border by clearing shadow styles.
+- Footer now displays white background with black text.
+
 ## v0.14
 
 - Trimmed section padding on wallet homepage so headings have exactly one blank line above and below.
