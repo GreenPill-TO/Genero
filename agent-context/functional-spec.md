@@ -24,6 +24,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Footer uses a white background with black text.
 - The "<open my wallet>" link is left aligned within the right margin.
 - Tagline appears as normal text with spacing below it.
+- Header split into three columns: blank left, centre matches body width with banner and right-aligned tagline, right column holds "<open my wallet>".
 - Extra top padding pushes the first section below the header.
 - Footer includes links to Whitepaper, Github and Contact, which opens a new contact page.
 

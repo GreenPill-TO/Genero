@@ -1,3 +1,9 @@
+## v0.19
+- Split the fixed header into three columns with empty left area.
+- Centre column matches body width and holds the banner and right-aligned tagline.
+- Right column shows "<open my wallet>" left aligned at the top.
+- Minimized bottom padding of the header.
+
 ## v0.18
 - Aligned the "<open my wallet>" link within the right margin.
 - Tagline changed to plain text with margin underneath.

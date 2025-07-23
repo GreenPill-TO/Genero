@@ -40,6 +40,7 @@
 - Body content and banner are limited to 40% width with 30% side margins on large screens.
 - Tagline reads "Local Currency. Value = $3.35. Proceeds to charity." as plain text, right-aligned with margin below.
 - The first section includes extra top padding so content clears the fixed header.
+- Header split into three columns with left blank, centre column equal to body width containing banner and right-aligned tagline, right column with the "<open my wallet>" link.
 - Footer now lists links to Whitepaper, Github and a new contact page.
 - All section headings use the `font-extrabold` class for extra emphasis.
 - Next.js config allows remote images from Supabase for the banner.
