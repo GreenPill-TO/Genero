@@ -34,9 +34,8 @@ Open `http://localhost:3000` in your browser. Next.js will serve the app configu
 
 ```
 app/
-  [citycoin]/
-    wallet/        # Main wallet interface
-    sparechange/   # Donation interface
+  [citycoins]/     # Starting with Toronto's TCOIN, this monorepo allows for multiple cities, each with their own local currency
+    [citycoin apps]/  # Each citycoin will have one or more dedicated apps, aka wallets.
 shared/            # Reusable hooks, components and utilities
 ```
 
