@@ -1,33 +1,12 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
+import { LandingHeader } from "@tcoin/wallet/components/landing-header";
+import { Footer } from "@tcoin/wallet/components/footer";
+
 export default function HomePage() {
   return (
-    <>
-      <div className="min-h-screen flex flex-col bg-white text-gray-800 text-base">
-      <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-none border-none">
-        <div className="grid grid-cols-3 lg:[grid-template-columns:30%_40%_30%] items-start pb-1">
-          <div />
-          <div className="px-6">
-            <Image
-              src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images/tcoin-banner.png"
-              alt="Toronto Coin banner"
-              width={1920}
-              height={600}
-              className="w-full"
-              priority
-            />
-            <p className="text-right mb-2">
-              Local Currency. Value = $3.35. Proceeds to charity.
-            </p>
-          </div>
-          <nav className="flex items-start justify-start px-6">
-            <Link href="/dashboard" className="no-underline">
-              &lt;open my wallet&gt;
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col bg-white text-gray-800 text-base">
+      <LandingHeader />
       <main className="flex-grow">
 
         <section id="future" className="pt-72 px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
@@ -172,16 +151,19 @@ export default function HomePage() {
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 px-1">Sign up.</span>{" "}
-              <Link href="link">Join the mailing list</Link> and get early access to buy TCOINs.
+              <Link href="/tcoin/wallet/contact">Join the mailing list</Link> and get early access to buy TCOINs.
             </p>
             <p>
-              <span className="bg-gray-200 px-1">Help build it.</span> We’re a grassroots team. <Link href="link">Message us on WhatsApp</Link>.
+              <span className="bg-gray-200 px-1">Help build it.</span> We’re a grassroots team. <Link href="https://t.me/+EPRHfB_R2kkzZDlh">Message us on Telegram</Link>.
             </p>
             <p>
               <span className="bg-gray-200 px-1">Spread the word.</span> The greatest help we could get is signing up new stores and service providers willing to accept TCOIN.
             </p>
             <p>
-              <span className="bg-gray-200 px-1">Explore the details.</span>{" "}<Link href="link">Read the whitepaper</Link>,{" "}<Link href="link">check out the presentation</Link>, and{" "}<Link href="link">see the source code</Link>.
+              <span className="bg-gray-200 px-1">Explore the details.</span>{" "}
+              <Link href="https://docs.google.com/document/d/1eHSfW12Cw7HGznSpMBFJf7TGMOx6uFSatYO2t-ezYtU/edit?tab=t.6am3ekffscmi#heading=h.9j36dhj3y2db">Read the whitepaper</Link>,{" "}
+              <Link href="https://drive.google.com/file/d/103zZDnQPfKmaLjxnSBB0B-K7vsCYoazw/view">check out the presentation</Link>, and{" "}
+              <Link href="https://github.com/GreenPill-TO/TorontoCoin">see the source code</Link>.
             </p>
             <p>
               <span className="bg-gray-200 px-1">Try it out.</span> (Coming soon) Buy TCOINs and support a stronger, more resilient Toronto.
@@ -206,7 +188,7 @@ export default function HomePage() {
           </p>
         </section>
       </main>
+      <Footer />
     </div>
-    </>
   );
 }

@@ -1,3 +1,12 @@
+## v0.21
+- Made Resources and Contact pages public with landing page styling and shared header and footer.
+- Fixed landing page links to point to the whitepaper, Telegram chat, presentation and source code.
+- Footer now links to Resources and GitHub repo; Twilio routes initialise clients only when env vars exist.
+
+## v0.20
+- Added Resources page linking to external project materials and open source repository.
+- Expanded Contact page with WhatsApp invite and submission form saving requests and IP addresses to Supabase.
+
 ## v0.19
 - Split the fixed header into three columns with empty left area.
 - Centre column matches body width and holds the banner and right-aligned tagline.

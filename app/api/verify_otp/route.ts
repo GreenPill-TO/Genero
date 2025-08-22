@@ -2,15 +2,6 @@
 // @ts-nocheck
 import { NextResponse } from "next/server";
 import twilio from "twilio";
-const accountSid = process.env.accountSid;
-const authToken = process.env.authToken;
-const verifyServiceSid = process.env.verifyServiceSid;
-
-if (!accountSid || !authToken || !verifyServiceSid) {
-  throw new Error("Twilio environment variables are not set properly");
-}
-
-const client = twilio(accountSid, authToken);
 
 export async function POST(req: Request) {
   try {
@@ -23,6 +14,19 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const accountSid = process.env.accountSid;
+    const authToken = process.env.authToken;
+    const verifyServiceSid = process.env.verifyServiceSid;
+
+    if (!accountSid || !authToken || !verifyServiceSid) {
+      return NextResponse.json(
+        { success: false, message: "Twilio environment variables are not set properly" },
+        { status: 500 }
+      );
+    }
+
+    const client = twilio(accountSid, authToken);
 
     const verificationCheck = await client.verify
       .services(verifyServiceSid)
@@ -43,3 +47,4 @@ export async function POST(req: Request) {
     );
   }
 }
+

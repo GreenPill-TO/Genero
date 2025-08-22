@@ -11,9 +11,9 @@ export function Footer() {
             <h5>&copy; {new Date().getFullYear()} Toronto Coin. All rights reserved.</h5>
           </div>
           <div className="space-x-4 text-sm">
-            <Link href="/whitepaper">Whitepaper</Link>
-            <Link href="https://github.com">Github</Link>
-            <Link href="/contact">Contact</Link>
+            <Link href="/tcoin/wallet/resources">Resources</Link>
+            <Link href="https://github.com/GreenPill-TO/TorontoCoin">Github</Link>
+            <Link href="/tcoin/wallet/contact">Contact</Link>
           </div>
         </div>
       </div>

@@ -14,7 +14,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const { isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const isLanding = pathname === "/tcoin/wallet";
+  const publicPaths = ["/tcoin/wallet", "/tcoin/wallet/resources", "/tcoin/wallet/contact"];
+  const isPublic = publicPaths.includes(pathname);
 
   const bodyClass = cn(
     "min-h-screen",
@@ -26,10 +27,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     // Replace this with your actual authentication logic
 
-    if (!isLoading && !isAuthenticated) {
-      router.push("/"); // Redirect to the main page or login page
+    if (!isLoading && !isAuthenticated && !isPublic) {
+      router.push("/");
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, isPublic, router]);
 
   if (isLoading) {
     return <div className={bodyClass}>...loading </div>;
@@ -37,9 +38,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <section className={bodyClass}>
-      {!isLanding && <Navbar title="Tcoin" />}
-      <div className={cn(!isLanding && "flex-grow flex flex-col pt-16 bg-secondary")}>{children}</div>
-      {!isLanding && (
+      {!isPublic && <Navbar title="Tcoin" />}
+      <div className={cn(!isPublic && "flex-grow flex flex-col pt-16 bg-secondary")}>{children}</div>
+      {!isPublic && (
         <>
           <Footer />
           <ToastContainer autoClose={3000} transition={Flip} theme="colored" />

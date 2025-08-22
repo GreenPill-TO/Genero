@@ -42,6 +42,11 @@
 - The first section includes extra top padding so content clears the fixed header.
 - Header split into three columns with left blank, centre column equal to body width containing banner and right-aligned tagline, right column with the "<open my wallet>" link.
 - Footer now lists links to Whitepaper, Github and a new contact page.
+- Added a Resources page with links to the hackathon submission, whitepaper, presentation and source code.
+- Contact page features a form that records user requests in Supabase `user_requests` along with an array of detected IP addresses.
+- Resources and Contact pages reuse the landing page header and footer and are accessible without authentication.
+- Landing page links resolve to the whitepaper, Telegram chat, presentation and source code repository.
+- Twilio API routes initialise clients inside handlers so builds succeed without environment variables.
 - All section headings use the `font-extrabold` class for extra emphasis.
 - Next.js config allows remote images from Supabase for the banner.
 - Copy uses standard dashes and closes with "build up - not extract from - our communities".
