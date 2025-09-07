@@ -28,7 +28,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground text-base">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-black text-foreground text-base">
       <LandingHeader />
       <main className="flex-grow pt-72 px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%] space-y-4">
         <h1 className="font-extrabold text-center my-5">Contact</h1>

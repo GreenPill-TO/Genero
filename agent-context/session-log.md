@@ -1,3 +1,7 @@
+## v0.24
+- Set page backgrounds to white or black according to theme while panels use themed background colour.
+- Centred the top-right call-to-action with the banner and duplicated the "<open my wallet>" link beneath the closing copy.
+
 ## v0.23
 - Hid landing page tagline on small screens and replaced the open-wallet link with a hamburger menu that reveals a slide-out panel containing the tagline and "<open my wallet>" link.
 

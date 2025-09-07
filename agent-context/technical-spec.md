@@ -55,3 +55,6 @@
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
 - Footer component uses themed colours and is injected by the layout to avoid duplicates.
 - On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
+- Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
+- Highlight spans on the landing page use `bg-background` instead of `bg-muted` to match the themed panel colour.
+- The top-right call-to-action aligns vertically with the banner image and a duplicate "<open my wallet>" link is centred beneath the closing copy.

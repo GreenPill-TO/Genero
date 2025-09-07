@@ -10,7 +10,7 @@ export function LandingHeader() {
 
   return (
     <header className="fixed top-0 left-0 w-full bg-background text-foreground z-50 shadow-none border-none">
-      <div className="flex items-start justify-between md:grid md:grid-cols-3 lg:[grid-template-columns:30%_40%_30%] pb-1">
+      <div className="flex items-center justify-between md:grid md:grid-cols-3 lg:[grid-template-columns:30%_40%_30%] pb-1">
         <div className="flex-1 px-4 md:px-6 md:col-start-2">
           <Image
             src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images/tcoin-banner.png"
@@ -24,12 +24,12 @@ export function LandingHeader() {
             Local Currency. Value = $3.35. Proceeds to charity.
           </p>
         </div>
-        <nav className="hidden md:flex items-start justify-start px-6">
+        <nav className="hidden md:flex items-center justify-start px-6">
           <Link href="/dashboard" className="no-underline">
             &lt;open my wallet&gt;
           </Link>
         </nav>
-        <div className="flex md:hidden items-start justify-end px-4">
+        <div className="flex md:hidden items-center justify-end px-4">
           <button
             type="button"
             onClick={() => setOpen(true)}
