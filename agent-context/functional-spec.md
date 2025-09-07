@@ -15,7 +15,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Layout loads the Special Elite typewriter font via a style tag with system-ui fallback and uniform text size; headings are bold, centred, and spaced with one blank line above and below.
 - Section margins trimmed so headings net exactly one blank line of space above and below.
 - Banner is limited to content width and the "<open my wallet>" link sits in the right margin, linking to the dashboard.
-- Top banner image sourced from Supabase is displayed on the wallet homepage.
+- Top banner image sourced from Supabase displays light and dark variants based on the active theme on the wallet homepage.
 - Banner and tagline now sit in the fixed header so the page scrolls under them.
 - Body content shrinks to 40% width with 30% side margins on large screens, and the banner matches this width.
 - Tagline text now reads "Local Currency. Value = $3.35. Proceeds to charity." and is right-aligned beneath the banner image.

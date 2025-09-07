@@ -13,11 +13,19 @@ export function LandingHeader() {
       <div className="flex items-center justify-between md:grid md:grid-cols-3 lg:[grid-template-columns:30%_40%_30%] pb-1">
         <div className="flex-1 px-4 md:px-6 md:col-start-2">
           <Image
-            src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images/tcoin-banner.png"
+            src="https://osgpkjqbdbybbmhrfxnw.supabase.co/storage/v1/object/public/website-images/tcoin-banner-light-mode.png"
             alt="Toronto Coin banner"
             width={1920}
             height={600}
-            className="w-full"
+            className="w-full dark:hidden"
+            priority
+          />
+          <Image
+            src="https://osgpkjqbdbybbmhrfxnw.supabase.co/storage/v1/object/public/website-images/tcoin-banner-dark-mode.png"
+            alt="Toronto Coin banner"
+            width={1920}
+            height={600}
+            className="hidden w-full dark:block"
             priority
           />
           <p className="hidden md:block text-right mb-2">

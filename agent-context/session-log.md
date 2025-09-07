@@ -1,3 +1,6 @@
+## v0.25
+- Switched landing header to light and dark banner images and updated image host configuration.
+
 ## v0.24
 - Set page backgrounds to white or black according to theme while panels use themed background colour.
 - Centred the top-right call-to-action with the banner and duplicated the "<open my wallet>" link beneath the closing copy.
