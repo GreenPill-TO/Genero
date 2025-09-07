@@ -1,3 +1,35 @@
+## v0.27
+- CI workflow installs dependencies without enforcing the lockfile.
+
+## v0.26
+- Widened landing, resources and contact pages to 60% width and trimmed top spacing on the landing page.
+- Added return-home links and extra spacing on Resources and Contact pages.
+- Fixed dark mode by attaching the `dark` class to the body so backgrounds and banner images toggle correctly.
+
+## v0.25
+- Switched landing header to light and dark banner images and updated image host configuration.
+
+## v0.24
+- Set page backgrounds to white or black according to theme while panels use themed background colour.
+- Centred the top-right call-to-action with the banner and duplicated the "<open my wallet>" link beneath the closing copy.
+
+## v0.23
+- Hid landing page tagline on small screens and replaced the open-wallet link with a hamburger menu that reveals a slide-out panel containing the tagline and "<open my wallet>" link.
+
+## v0.22
+- Applied system-preferring dark mode hook and extended theme across landing, resources and contact pages.
+- Centralised footer rendering in layout to avoid duplication and ensure consistent theming.
+- Dashboard background now follows the selected theme.
+
+## v0.21
+- Made Resources and Contact pages public with landing page styling and shared header and footer.
+- Fixed landing page links to point to the whitepaper, Telegram chat, presentation and source code.
+- Footer now links to Resources and GitHub repo; Twilio routes initialise clients only when env vars exist.
+
+## v0.20
+- Added Resources page linking to external project materials and open source repository.
+- Expanded Contact page with WhatsApp invite and submission form saving requests and IP addresses to Supabase.
+
 ## v0.19
 - Split the fixed header into three columns with empty left area.
 - Centre column matches body width and holds the banner and right-aligned tagline.

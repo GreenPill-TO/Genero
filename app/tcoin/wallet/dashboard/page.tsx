@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
 
-  const mainClass = "p-4 sm:p-8";
+  const mainClass = "p-4 sm:p-8 bg-background text-foreground min-h-screen";
   const router = useRouter()
 
   const screenContent = useMemo(() => {
