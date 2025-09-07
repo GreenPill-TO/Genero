@@ -1,3 +1,6 @@
+## v0.27
+- CI workflow installs dependencies without enforcing the lockfile.
+
 ## v0.26
 - Widened landing, resources and contact pages to 60% width and trimmed top spacing on the landing page.
 - Added return-home links and extra spacing on Resources and Contact pages.

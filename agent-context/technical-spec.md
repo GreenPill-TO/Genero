@@ -9,6 +9,7 @@
 - **Authentication**: Twilio SMS OTP via API routes
 - **Storage**: Supabase (Postgres + Auth)
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
+- **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
 
 ## Architecture
 
