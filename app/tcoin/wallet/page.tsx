@@ -1,34 +1,105 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
+
 export default function HomePage() {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <>
       <div className="min-h-screen flex flex-col bg-white text-gray-800 text-base">
-      <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-none border-none">
-        <div className="grid grid-cols-3 lg:[grid-template-columns:30%_40%_30%] items-start pb-1">
-          <div />
-          <div className="px-6">
+        <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-none border-none">
+          <div className="sm:hidden flex items-start justify-between pb-1 px-6">
             <Image
               src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images/tcoin-banner.png"
               alt="Toronto Coin banner"
               width={1920}
               height={600}
-              className="w-full"
+              className="flex-grow"
               priority
             />
-            <p className="text-right mb-2">
-              Local Currency. Value = $3.35. Proceeds to charity.
-            </p>
+            <button
+              type="button"
+              className="ml-2 p-2"
+              onClick={() => setMenuOpen(true)}
+            >
+              <span className="sr-only">Menu</span>
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
           </div>
-          <nav className="flex items-start justify-start px-6">
-            <Link href="/dashboard" className="no-underline">
-              &lt;open my wallet&gt;
-            </Link>
-          </nav>
-        </div>
-      </header>
-      <main className="flex-grow">
+          <div className="hidden sm:grid grid-cols-3 lg:[grid-template-columns:30%_40%_30%] items-start pb-1">
+            <div />
+            <div className="px-6">
+              <Image
+                src="https://cspyqrxxyflnuwzzzkmv.supabase.co/storage/v1/object/public/website-images/tcoin-banner.png"
+                alt="Toronto Coin banner"
+                width={1920}
+                height={600}
+                className="w-full"
+                priority
+              />
+              <p className="text-right mb-2">
+                Local Currency. Value = $3.35. Proceeds to charity.
+              </p>
+            </div>
+            <nav className="flex items-start justify-start px-6">
+              <Link href="/dashboard" className="no-underline">
+                &lt;open my wallet&gt;
+              </Link>
+            </nav>
+          </div>
+        </header>
+        {menuOpen && (
+          <div className="fixed inset-0 z-50 sm:hidden">
+            <button
+              type="button"
+              className="fixed inset-0 h-full w-full bg-black/50"
+              aria-label="Close menu"
+              onClick={() => setMenuOpen(false)}
+            />
+            <div className="fixed top-0 right-0 h-full w-2/3 bg-white text-black shadow-lg p-6 flex flex-col space-y-4">
+              <button
+                type="button"
+                className="self-end mb-4"
+                aria-label="Close menu"
+                onClick={() => setMenuOpen(false)}
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+              <p>Local Currency.</p>
+              <p>Value = $3.35.</p>
+              <p>Proceeds to charity.</p>
+              <Link href="/dashboard" className="no-underline mt-auto">
+                &lt;open my wallet&gt;
+              </Link>
+            </div>
+          </div>
+        )}
+        <main className="flex-grow">
 
         <section id="future" className="pt-72 px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%]">
           <h2 className="font-extrabold text-center my-5">The future of money is local</h2>

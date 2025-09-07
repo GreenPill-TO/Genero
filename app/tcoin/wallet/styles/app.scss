@@ -1,3 +1,5 @@
+@config "../../../../tailwind.wallet-app.config.ts";
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Poppins:wght@400;700&display=swap');
 @import "@shared/styles/globals.scss";
 
 @tailwind base;
@@ -8,88 +10,88 @@
 
 @layer base {
   :root {
-    --background: 220 50% 95%; /* Light blue background */
-    --foreground: 220 40% 20%; /* Dark blue text */
+    --background: 0 0% 100%; /* White background */
+    --foreground: 0 0% 0%; /* Black text */
 
     --card: 220 50% 98%; /* Very light blue for cards */
-    --card-foreground: 220 40% 20%; /* Dark blue for card text */
+    --card-foreground: 0 0% 0%; /* Black card text */
 
     --popover: 220 50% 98%; /* Light blue for popovers */
-    --popover-foreground: 220 40% 20%; /* Dark blue for popover text */
+    --popover-foreground: 0 0% 0%; /* Black popover text */
 
-    --primary: 340 100% 60%; /* pink primary color */
-    --primary-foreground: 220 50% 95%; /* Light blue for primary text */
+    --primary: 340 100% 60%; /* Pink primary */
+    --primary-foreground: 0 0% 100%; /* White primary text */
 
-    --secondary: 220 60% 90%; /* Pale blue for secondary elements */
-    --secondary-foreground: 220 40% 30%; /* Darker blue for secondary text */
+    --secondary: 0 0% 80%; /* Light gray secondary */
+    --secondary-foreground: 0 0% 20%; /* Dark gray secondary text */
 
-    --muted: 220 40% 92%; /* Very light blue muted background */
-    --muted-foreground: 220 40% 45%; /* Medium blue for muted text */
+    --muted: 0 0% 90%; /* Light gray muted background */
+    --muted-foreground: 0 0% 40%; /* Gray muted text */
 
     --accent: 220 60% 80%; /* Soft blue accent */
-    --accent-foreground: 220 40% 20%; /* Dark blue accent text */
+    --accent-foreground: 0 0% 0%; /* Black accent text */
 
     --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
-    --destructive-foreground: 210 40% 98%; /* White text for destructive actions */
+    --destructive-foreground: 0 0% 100%; /* White text for destructive actions */
 
     --border: 220 40% 85%; /* Light blue borders */
-    --input: 220 40% 85%; /* Light blue for input fields */
+    --input: 220 40% 85%; /* Light blue input fields */
 
     --ring: 220 70% 50%; /* Blue focus ring */
 
-    /* Link and header color */
-    --link-color: 340 100% 70%; /* Pink link color (#ff4081) */
-    --header-color: 340 100% 70%; /* Pink header color (#ff4081) */
+    /* Link and header colour */
+    --link-color: 340 100% 70%; /* Pink link colour (#ff4081) */
+    --header-color: 340 100% 70%; /* Pink header colour (#ff4081) */
 
-    /* Chart colors in shades of blue */
+    /* Chart colours */
     --chart-1: 210 100% 50%; /* Bright blue */
     --chart-2: 220 80% 60%; /* Light blue */
     --chart-3: 230 60% 40%; /* Dark blue */
-    --chart-4: 200 70% 50%; /* Muted blue */
-    --chart-5: 190 80% 60%; /* Light cyan */
+    --chart-4: 0 0% 70%; /* Gray */
+    --chart-5: 340 100% 70%; /* Pink */
 
     --radius: 0.5rem;
   }
   .dark {
-    --background: 220 30% 15%; /* Dark blue background */
-    --foreground: 220 80% 95%; /* Very light blue text */
+    --background: 0 0% 0%; /* Black background */
+    --foreground: 0 0% 100%; /* White text */
 
-    --card: 220 30% 20%; /* Darker blue for cards */
-    --card-foreground: 220 80% 95%; /* Light text on cards */
+    --card: 220 30% 20%; /* Dark blue cards */
+    --card-foreground: 0 0% 100%; /* White card text */
 
-    --popover: 220 30% 20%; /* Darker blue for popovers */
-    --popover-foreground: 220 80% 95%; /* Light text in popovers */
+    --popover: 220 30% 20%; /* Dark blue popovers */
+    --popover-foreground: 0 0% 100%; /* White popover text */
 
-    --primary: 340 100% 70%; /* Medium blue for primary elements */
-    --primary-foreground: 220 30% 95%; /* Very light blue for primary text */
+    --primary: 340 100% 70%; /* Pink primary */
+    --primary-foreground: 0 0% 0%; /* Black primary text */
 
-    --secondary: 220 40% 30%; /* Darker blue for secondary elements */
-    --secondary-foreground: 220 80% 95%; /* Very light blue for secondary text */
+    --secondary: 0 0% 40%; /* Dark gray secondary */
+    --secondary-foreground: 0 0% 100%; /* White secondary text */
 
-    --muted: 220 30% 25%; /* Muted dark blue */
-    --muted-foreground: 220 30% 60%; /* Medium-light blue for muted text */
+    --muted: 0 0% 25%; /* Muted dark gray */
+    --muted-foreground: 0 0% 75%; /* Light gray muted text */
 
     --accent: 220 80% 70%; /* Bright blue accent */
-    --accent-foreground: 220 30% 20%; /* Dark blue accent text */
+    --accent-foreground: 0 0% 0%; /* Black accent text */
 
-    --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
-    --destructive-foreground: 210 40% 98%; /* White text for destructive actions */
+    --destructive: 0 84.2% 60.2%; /* Red destructive */
+    --destructive-foreground: 0 0% 100%; /* White destructive text */
 
-    --border: 220 30% 25%; /* Dark blue borders */
-    --input: 220 30% 25%; /* Dark blue for input fields */
+    --border: 0 0% 30%; /* Dark border */
+    --input: 0 0% 30%; /* Dark input */
 
-    --ring: 220 80% 95%; /* Light blue focus ring */
+    --ring: 0 0% 100%; /* White focus ring */
 
-    /* Link and header color */
-    --link-color: 340 100% 70%; /* Pink link color (#ff4081) */
-    --header-color: 340 100% 70%; /* Pink header color (#ff4081) */
+    /* Link and header colour */
+    --link-color: 340 100% 70%;
+    --header-color: 340 100% 70%;
 
-    /* Updated chart colors for blue theme */
+    /* Chart colours */
     --chart-1: 210 60% 50%; /* Medium blue */
     --chart-2: 220 50% 40%; /* Darker blue */
-    --chart-3: 230 40% 60%; /* Light blue */
-    --chart-4: 200 50% 30%; /* Dark blue */
-    --chart-5: 190 50% 70%; /* Very light blue */
+    --chart-3: 200 20% 60%; /* Gray */
+    --chart-4: 340 80% 60%; /* Pink */
+    --chart-5: 210 30% 70%; /* Light blue */
   }
 }
 
@@ -104,5 +106,19 @@
 
   svg {
     color: hsl(var(--primary));
+  }
+}
+
+@layer base {
+  body {
+    @apply font-sans;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
   }
 }

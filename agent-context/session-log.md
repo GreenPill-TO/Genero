@@ -1,3 +1,8 @@
+## v0.20
+- Hid tagline on small screens and added a hamburger-triggered drawer.
+- Drawer slides in from the right, shows the tagline and an "<open my wallet>" button.
+- Mobile header now shows banner and a menu icon.
+
 ## v0.19
 - Split the fixed header into three columns with empty left area.
 - Centre column matches body width and holds the banner and right-aligned tagline.

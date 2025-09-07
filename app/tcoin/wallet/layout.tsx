@@ -2,7 +2,7 @@
 import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
-import "@tcoin/wallet/styles/app.scss";
+import "@tcoin/wallet/styles/website.scss";
 import type { Metadata } from "next";
 import ContentLayout from "./ContentLayout";
 import dynamic from "next/dynamic";
@@ -40,7 +40,7 @@ export default function RootLayout({
             line-height: 1.333;
             margin: 0;
             padding: 0 var(--margin-page, 20px);
-            color: var(--ui-primary, #000);
+            color: hsl(var(--foreground));
             text-wrap: pretty;
           }
           a {
