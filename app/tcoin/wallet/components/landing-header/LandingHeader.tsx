@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export function LandingHeader() {
   return (
-    <header className="fixed top-0 left-0 w-full bg-white z-50 shadow-none border-none">
+    <header className="fixed top-0 left-0 w-full bg-background text-foreground z-50 shadow-none border-none">
       <div className="grid grid-cols-3 lg:[grid-template-columns:30%_40%_30%] items-start pb-1">
         <div />
         <div className="px-6">

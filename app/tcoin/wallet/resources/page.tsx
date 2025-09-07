@@ -1,11 +1,10 @@
 "use client";
 import Link from "next/link";
 import { LandingHeader } from "@tcoin/wallet/components/landing-header";
-import { Footer } from "@tcoin/wallet/components/footer";
 
 export default function ResourcesPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-white text-gray-800 text-base">
+    <div className="min-h-screen flex flex-col bg-background text-foreground text-base">
       <LandingHeader />
       <main className="flex-grow pt-72 px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%] space-y-4">
         <h1 className="font-extrabold text-center my-5">Resources</h1>
@@ -34,7 +33,6 @@ export default function ResourcesPage() {
           </Link>
         </p>
       </main>
-      <Footer />
     </div>
   );
 }

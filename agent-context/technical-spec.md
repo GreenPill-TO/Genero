@@ -50,3 +50,7 @@
 - All section headings use the `font-extrabold` class for extra emphasis.
 - Next.js config allows remote images from Supabase for the banner.
 - Copy uses standard dashes and closes with "build up - not extract from - our communities".
+- Dark mode hook initialises based on `prefers-color-scheme` and syncs theme across pages.
+- Dashboard background swaps between white and black according to the current theme.
+- Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
+- Footer component uses themed colours and is injected by the layout to avoid duplicates.

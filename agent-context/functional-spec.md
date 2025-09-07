@@ -26,11 +26,14 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Tagline appears as normal text with spacing below it.
 - Header split into three columns: blank left, centre matches body width with banner and right-aligned tagline, right column holds "<open my wallet>".
 - Extra top padding pushes the first section below the header.
- - Footer includes links to Whitepaper, Github and Contact, which opens a new contact page.
- - Resources and Contact pages share the landing page header and footer and are publicly accessible without authentication.
- - Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository.
- - Contact page contains a form that saves user requests to Supabase including IP addresses.
- - Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository.
+- Footer includes links to Whitepaper, Github and Contact, which opens a new contact page.
+- Resources and Contact pages share the landing page header and footer and are publicly accessible without authentication.
+- Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository.
+- Contact page contains a form that saves user requests to Supabase including IP addresses.
+- Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository.
+- Landing, Resources and Contact pages respond to the theme selector without exposing the toggle.
+- Footer is rendered once across all wallet pages.
+- Theme defaults to the system preference on load and carries across navigation.
 
 ### 2. SpareChange
 

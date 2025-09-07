@@ -1,3 +1,8 @@
+## v0.22
+- Applied system-preferring dark mode hook and extended theme across landing, resources and contact pages.
+- Centralised footer rendering in layout to avoid duplication and ensure consistent theming.
+- Dashboard background now follows the selected theme.
+
 ## v0.21
 - Made Resources and Contact pages public with landing page styling and shared header and footer.
 - Fixed landing page links to point to the whitepaper, Telegram chat, presentation and source code.
