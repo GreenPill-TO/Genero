@@ -34,6 +34,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Landing, Resources and Contact pages respond to the theme selector without exposing the toggle.
 - Footer is rendered once across all wallet pages.
 - Theme defaults to the system preference on load and carries across navigation.
+- On small screens the landing header hides the tagline and replaces the open-wallet link with a hamburger menu that opens a slide-out panel with the tagline and "<open my wallet>" link.
 
 ### 2. SpareChange
 

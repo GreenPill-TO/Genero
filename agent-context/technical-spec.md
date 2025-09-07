@@ -54,3 +54,4 @@
 - Dashboard background swaps between white and black according to the current theme.
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
 - Footer component uses themed colours and is injected by the layout to avoid duplicates.
+- On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.

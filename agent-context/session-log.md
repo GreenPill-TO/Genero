@@ -1,3 +1,6 @@
+## v0.23
+- Hid landing page tagline on small screens and replaced the open-wallet link with a hamburger menu that reveals a slide-out panel containing the tagline and "<open my wallet>" link.
+
 ## v0.22
 - Applied system-preferring dark mode hook and extended theme across landing, resources and contact pages.
 - Centralised footer rendering in layout to avoid duplication and ensure consistent theming.
