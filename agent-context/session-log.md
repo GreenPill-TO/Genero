@@ -1,3 +1,8 @@
+## v0.26
+- Widened landing, resources and contact pages to 60% width and trimmed top spacing on the landing page.
+- Added return-home links and extra spacing on Resources and Contact pages.
+- Fixed dark mode by attaching the `dark` class to the body so backgrounds and banner images toggle correctly.
+
 ## v0.25
 - Switched landing header to light and dark banner images and updated image host configuration.
 

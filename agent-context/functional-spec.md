@@ -17,7 +17,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Banner is limited to content width and the "<open my wallet>" link sits in the right margin, linking to the dashboard.
 - Top banner image sourced from Supabase displays light and dark variants based on the active theme on the wallet homepage.
 - Banner and tagline now sit in the fixed header so the page scrolls under them.
-- Body content shrinks to 40% width with 30% side margins on large screens, and the banner matches this width.
+- Body content and banner expand to roughly 60% width on large screens to reduce side margins.
 - Tagline text now reads "Local Currency. Value = $3.35. Proceeds to charity." and is right-aligned beneath the banner image.
 - Headings are extra bold for greater emphasis.
 - Supports demurrage logic (e.g., 1% monthly balance decay).
@@ -27,10 +27,11 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Header split into three columns: blank left, centre matches body width with banner and right-aligned tagline, right column holds "<open my wallet>".
 - Extra top padding pushes the first section below the header.
 - Footer includes links to Whitepaper, Github and Contact, which opens a new contact page.
-- Resources and Contact pages share the landing page header and footer and are publicly accessible without authentication.
-- Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository.
-- Contact page contains a form that saves user requests to Supabase including IP addresses.
-- Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository.
+- Resources and Contact pages share the landing page header and footer, adopt the wider layout and are publicly accessible without authentication.
+- Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository and ends with a return-home link.
+- Contact page contains a form that saves user requests to Supabase including IP addresses and separates the send button from the return-home link.
+- Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository, with a trimmed top margin and wider content area.
+- Dark mode applies to the entire layout via a body-level class so backgrounds and banner images switch between themes.
 - Landing, Resources and Contact pages respond to the theme selector without exposing the toggle.
 - Footer is rendered once across all wallet pages.
 - Theme defaults to the system preference on load and carries across navigation.

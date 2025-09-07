@@ -34,7 +34,7 @@ export default function RootLayout({
         <style>{`@import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');`}</style>
         <style>{`.special-elite-regular { font-family: 'Special Elite', system-ui; font-weight: 400; font-style: normal; }`}</style>
       </head>
-      <body className="special-elite-regular">
+      <body id="main-content" className="special-elite-regular">
         <style jsx global>{`
           body {
             line-height: 1.333;

@@ -30,7 +30,7 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-black text-foreground text-base">
       <LandingHeader />
-      <main className="flex-grow pt-72 px-6 max-w-screen-xl mx-auto lg:w-2/5 lg:mx-[30%] space-y-4">
+      <main className="flex-grow pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5 space-y-4">
         <h1 className="font-extrabold text-center my-5">Contact</h1>
         <p>
           Get in Touch? Help out? We want to hear from you. We're a small and friendly team and would love your input, insights and any help you can offer. {" "}
@@ -52,10 +52,10 @@ export default function ContactPage() {
               <label className="mr-2" htmlFor="message">Message</label>
               <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} required />
             </div>
-            <Button type="submit">Send</Button>
+            <Button type="submit" className="mb-4">Send</Button>
           </form>
         )}
-        <p>
+        <p className="mt-8">
           <Link href="/">Return home</Link>
         </p>
       </main>

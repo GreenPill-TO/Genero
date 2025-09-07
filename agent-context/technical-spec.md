@@ -37,20 +37,20 @@
 - ESLint config disables react/no-unescaped-entities.
 - Banner and tagline are placed in the fixed header so the page scrolls underneath, and the header has no shadow.
 - Footer background is white with black text.
-- Body content and banner are limited to 40% width with 30% side margins on large screens.
+- Body content and banner span roughly 60% width on large screens to reduce side margins.
 - Tagline reads "Local Currency. Value = $3.35. Proceeds to charity." as plain text, right-aligned with margin below.
 - The first section includes extra top padding so content clears the fixed header.
 - Header split into three columns with left blank, centre column equal to body width containing banner and right-aligned tagline, right column with the "<open my wallet>" link.
 - Footer now lists links to Whitepaper, Github and a new contact page.
-- Added a Resources page with links to the hackathon submission, whitepaper, presentation and source code.
-- Contact page features a form that records user requests in Supabase `user_requests` along with an array of detected IP addresses.
-- Resources and Contact pages reuse the landing page header and footer and are accessible without authentication.
+- Added a Resources page with links to the hackathon submission, whitepaper, presentation and source code and a return-home link.
+- Contact page features a form that records user requests in Supabase `user_requests` along with an array of detected IP addresses and offers clearer spacing before the return-home link.
+- Resources and Contact pages reuse the landing page header and footer, adopt the wider layout and are accessible without authentication.
 - Landing page links resolve to the whitepaper, Telegram chat, presentation and source code repository.
 - Twilio API routes initialise clients inside handlers so builds succeed without environment variables.
 - All section headings use the `font-extrabold` class for extra emphasis.
 - Next.js config allows remote images from Supabase for the banner.
 - Copy uses standard dashes and closes with "build up - not extract from - our communities".
-- Dark mode hook initialises based on `prefers-color-scheme` and syncs theme across pages.
+- Dark mode hook initialises based on `prefers-color-scheme` and syncs theme across pages, applying the `dark` class to the body so background colours and banner images switch appropriately.
 - Dashboard background swaps between white and black according to the current theme.
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
 - Footer component uses themed colours and is injected by the layout to avoid duplicates.
