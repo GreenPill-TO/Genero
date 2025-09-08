@@ -39,7 +39,6 @@ import {
 import QRCode from "react-qr-code";
 import { toast } from "react-toastify";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
-import useDarkMode from "@shared/hooks/useDarkMode";
 import { createClient } from "@shared/lib/supabase/client";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { adminInsertNotification, insertSuccessNotification } from "@shared/utils/insertNotification";
@@ -187,7 +186,6 @@ function ReceiveCard({
   closeModal: any;
   senderWallet: string;
 }) {
-  const { isDarkMode } = useDarkMode();
   const { ...rest } = useTokenBalance(senderWallet);
   const formatNumber = (value: string, isCad: boolean) => {
     const num = parseFloat(value);
@@ -228,16 +226,16 @@ function ReceiveCard({
       </CardHeader>
       <CardContent className="space-y-4 mt-[-10px]">
         <p>{(Boolean(qrTcoinAmount) && qrTcoinAmount !== '0.00 TCOIN') ? `Receive ${qrTcoinAmount}` : "Receive any amount"}</p>
-        <div className="relative flex flex-col items-center justify-center p-2 rounded-xl transform transition duration-500 hover:scale-105">
+        <div className="relative flex flex-col items-center justify-center p-2 rounded-xl transform transition duration-500 hover:scale-105 bg-white">
           {qrCodeData ? (
             <QRCode
               value={qrCodeData}
               size={250}
-              bgColor="transparent"
-              fgColor={isDarkMode ? "#fff" : "#000"}
+              bgColor="#fff"
+              fgColor="#000"
             />
           ) : (
-            <p className="text-white">Loading QR Code...</p>
+            <p className="text-black">Loading QR Code...</p>
           )}
         </div>
         <div className="space-y-2">

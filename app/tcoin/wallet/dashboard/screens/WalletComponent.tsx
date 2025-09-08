@@ -176,7 +176,7 @@ export function MobileWalletDashboardComponent() {
             <CardTitle>Receive</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-white text-black">
               <LuQrCode className="mx-auto h-32 w-32" />
               <p className="mt-2 qr-code-text">Your default QR code (unspecified amount)</p>
             </div>
