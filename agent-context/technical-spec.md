@@ -59,7 +59,7 @@
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on the landing page use `bg-teal-50` in light mode and `dark:bg-[#05656F]` in dark mode to emphasise key phrases.
 - The top-right call-to-action aligns vertically with the banner image and a duplicate "<open my wallet>" link is centred beneath the closing copy.
-- Landing header swaps between light and dark banner images using Tailwind's `dark` utility.
+- Landing header swaps between light and dark banner images using Tailwind's `dark` utility, with the dark image URL carrying a version query to bypass stale caches.
 - "<open my wallet>" links on the landing page display as rectangular buttons with #05656F backgrounds and white text in light mode and invert colours in dark mode.
 - Contact page send button adopts a #05656F background in light mode.
 - Hamburger icon in the landing header uses #05656F in light mode.

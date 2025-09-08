@@ -21,7 +21,7 @@ export function LandingHeader() {
             priority
           />
           <Image
-            src="https://osgpkjqbdbybbmhrfxnw.supabase.co/storage/v1/object/public/website-images/tcoin-banner-dark-mode.png"
+            src="https://osgpkjqbdbybbmhrfxnw.supabase.co/storage/v1/object/public/website-images/tcoin-banner-dark-mode.png?v=1"
             alt="Toronto Coin banner"
             width={1920}
             height={600}

@@ -1,3 +1,6 @@
+## v0.32
+- Added a cache-busting query to the dark-mode banner image so the updated asset renders correctly.
+
 ## v0.31
 - Routed main panels to theme background and applied the dark class to the root element so dark mode renders panels black.
 
