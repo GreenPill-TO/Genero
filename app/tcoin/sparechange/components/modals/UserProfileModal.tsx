@@ -116,7 +116,7 @@ interface ViewProfileContentProps {
 
 const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => {
   const { signOut, userData } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, available: canTheme } = useTheme();
 
   const options = [
     { id: 0, label: "Light Gray" },
@@ -146,21 +146,23 @@ const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => 
           <strong>Email:</strong> {userData?.cubidData.email}
         </p>
       </div>
-      <div className="mb-4">
-        <p className="font-medium mb-2">Theme</p>
-        <div className="flex flex-wrap gap-2">
-          {options.map((o) => (
-            <Button
-              key={o.id}
-              variant={theme === o.id ? "default" : "outline"}
-              onClick={() => setTheme(o.id)}
-              className="px-2"
-            >
-              {o.label}
-            </Button>
-          ))}
+      {canTheme && (
+        <div className="mb-4">
+          <p className="font-medium mb-2">Theme</p>
+          <div className="flex flex-wrap gap-2">
+            {options.map((o) => (
+              <Button
+                key={o.id}
+                variant={theme === o.id ? "default" : "outline"}
+                onClick={() => setTheme(o.id)}
+                className="px-2"
+              >
+                {o.label}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       <>
         <Button variant="default" onClick={onEdit} className="flex-1">
           Edit Profile

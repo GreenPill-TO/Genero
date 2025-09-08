@@ -1,3 +1,6 @@
+## v0.38
+- Hid theme controls in profile modal unless the ThemeProvider is present so SpareChange continues using its dark-mode wrapper.
+
 ## v0.37
 - Fixed theme provider to read and store user style independent of Cubid data, preventing wallet theme from affecting Cubid components.
 

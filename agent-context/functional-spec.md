@@ -52,6 +52,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Micro-donation interface for tipping or charitable giving.
 - Panhandlers, artists, and nonprofits use static QR codes to receive donations.
 - Donors scan and pay instantly via the wallet.
+- Profile modal hides theme controls unless a ThemeProvider is present, keeping SpareChange styling separate.
 
 ## Key User Flows
 

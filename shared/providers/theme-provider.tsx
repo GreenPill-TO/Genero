@@ -55,13 +55,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export const useTheme = () => {
   const ctx = useContext(ThemeContext);
-  return (
-    ctx || {
-      theme: 0,
-      setTheme: async () => {
-        /* noop */
-      },
-    }
-  );
+  return ctx
+    ? { ...ctx, available: true }
+    : {
+        theme: 0 as ThemeOption,
+        setTheme: async () => {
+          /* noop */
+        },
+        available: false,
+      };
 };
 
