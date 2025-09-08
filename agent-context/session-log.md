@@ -1,3 +1,6 @@
+## v0.37
+- Fixed theme provider to read and store user style independent of Cubid data, preventing wallet theme from affecting Cubid components.
+
 ## v0.36
 - Split wallet theming so public pages use system light/dark styles while dashboard and welcome support four selectable themes saved to the user profile.
 

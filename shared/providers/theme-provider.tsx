@@ -27,7 +27,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const defaultTheme: ThemeOption = prefersDark ? 1 : 0;
-    const stored = userData?.cubidData?.style as ThemeOption | null | undefined;
+    const stored = userData?.user?.style as ThemeOption | null | undefined;
     setThemeState(stored ?? defaultTheme);
   }, [userData]);
 
@@ -35,11 +35,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     root.classList.toggle("dark", themeClasses[theme].dark);
     root.classList.toggle("colorful", themeClasses[theme].colourful);
+    return () => {
+      root.classList.remove("dark", "colorful");
+    };
   }, [theme]);
 
   const setTheme = async (t: ThemeOption) => {
     setThemeState(t);
-    const cubidId = userData?.cubidData?.cubid_id;
+    const cubidId = userData?.user?.cubid_id;
     if (cubidId) {
       await updateCubidDataInSupabase(cubidId, { style: t });
     }
