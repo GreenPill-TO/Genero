@@ -41,6 +41,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Both "<open my wallet>" links render as rectangular buttons with #05656F backgrounds and white text in light mode and invert colours in dark mode.
 - Contact page send button uses a #05656F background in light mode.
 - Hamburger menu icon adopts #05656F in light mode.
+- Highlighted phrases in landing copy use a very light teal background in light mode and #05656F in dark mode.
 - Theme background colours are pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels enforce black backgrounds in dark mode.
 
 ### 2. SpareChange

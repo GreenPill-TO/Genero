@@ -1,3 +1,6 @@
+## v0.30
+- Switched highlighted phrases on the landing page to a very light teal in light mode and #05656F in dark mode.
+
 ## v0.29
 - Shifted "<open my wallet>" buttons to #05656F in light mode, teal send buttons on the contact page and teal hamburger icons.
 - Ensured landing, resources and contact panels darken in dark mode.

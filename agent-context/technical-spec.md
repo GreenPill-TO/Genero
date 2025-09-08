@@ -57,7 +57,7 @@
 - Footer component uses themed colours and is injected by the layout to avoid duplicates.
 - On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
-- Highlight spans on the landing page use `bg-background` instead of `bg-muted` to match the themed panel colour.
+- Highlight spans on the landing page use `bg-teal-50` in light mode and `dark:bg-[#05656F]` in dark mode to emphasise key phrases.
 - The top-right call-to-action aligns vertically with the banner image and a duplicate "<open my wallet>" link is centred beneath the closing copy.
 - Landing header swaps between light and dark banner images using Tailwind's `dark` utility.
 - "<open my wallet>" links on the landing page display as rectangular buttons with #05656F backgrounds and white text in light mode and invert colours in dark mode.
