@@ -20,7 +20,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const bodyClass = cn(
     "min-h-screen",
     "flex flex-col justify-between",
-    "bg-white dark:bg-black",
+    "bg-background",
     "text-foreground text-sm"
   );
 

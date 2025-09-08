@@ -4,9 +4,9 @@ import { LandingHeader } from "@tcoin/wallet/components/landing-header";
 
 export default function ResourcesPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-black text-foreground text-base">
+    <div className="min-h-screen flex flex-col bg-background text-foreground text-base">
       <LandingHeader />
-      <main className="flex-grow pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5 space-y-8 bg-white dark:bg-black">
+      <main className="flex-grow pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5 space-y-8 bg-background">
         <h1 className="font-extrabold text-center my-5">Resources</h1>
         <p>
           <strong>DoraHack BUDIL:</strong>{" "}

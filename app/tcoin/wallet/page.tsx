@@ -4,13 +4,13 @@ import { LandingHeader } from "@tcoin/wallet/components/landing-header";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-black text-foreground text-base">
+    <div className="min-h-screen flex flex-col bg-background text-foreground text-base">
       <LandingHeader />
-      <main className="flex-grow bg-white dark:bg-black">
+      <main className="flex-grow bg-background">
 
         <section
           id="future"
-          className="pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5 bg-white dark:bg-black"
+          className="pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5 bg-background"
         >
           <h2 className="font-extrabold text-center my-5">The future of money is local</h2>
           <p className="mb-2">

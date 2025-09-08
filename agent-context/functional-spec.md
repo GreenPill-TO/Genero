@@ -43,6 +43,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Hamburger menu icon adopts #05656F in light mode.
 - Highlighted phrases in landing copy use a very light teal background in light mode and #05656F in dark mode.
 - Theme background colours are pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels enforce black backgrounds in dark mode.
+- Main panels derive their background from the theme variable instead of fixed white so they correctly switch to black in dark mode.
 
 ### 2. SpareChange
 

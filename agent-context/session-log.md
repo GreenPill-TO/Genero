@@ -1,3 +1,6 @@
+## v0.31
+- Routed main panels to theme background and applied the dark class to the root element so dark mode renders panels black.
+
 ## v0.30
 - Switched highlighted phrases on the landing page to a very light teal in light mode and #05656F in dark mode.
 

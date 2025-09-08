@@ -8,11 +8,11 @@ export default function useDarkMode() {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   const applyClass = (dark: boolean) => {
-    const htmlElement = document.getElementById("main-content");
+    const root = document.documentElement;
     if (dark) {
-      htmlElement?.classList.add("dark");
+      root.classList.add("dark");
     } else {
-      htmlElement?.classList.remove("dark");
+      root.classList.remove("dark");
     }
     setIsDarkMode(dark);
   };
