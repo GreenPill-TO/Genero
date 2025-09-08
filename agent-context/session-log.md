@@ -1,3 +1,6 @@
+## v0.33
+- Swapped landing page highlights for light grey in light mode and dark grey in dark mode.
+
 ## v0.32
 - Added a cache-busting query to the dark-mode banner image so the updated asset renders correctly.
 
