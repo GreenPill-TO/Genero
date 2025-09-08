@@ -41,7 +41,7 @@
 - ESLint config disables react/no-unescaped-entities.
 - Banner and tagline are placed in the fixed header so the page scrolls underneath, and the header has no shadow.
 - Footer background is white with black text.
-- Body content and banner span roughly 60% width on large screens to reduce side margins.
+- Body content and banner span roughly 50% width on large screens to reduce side margins.
 - Tagline reads "Local Currency. Value = $3.35. Proceeds to charity." as plain text, right-aligned with margin below.
 - The first section includes extra top padding so content clears the fixed header.
 - Header split into three columns with left blank, centre column equal to body width containing banner and right-aligned tagline, right column with the "<open my wallet>" link.
@@ -57,7 +57,7 @@
 - Dark mode hook initialises based on `prefers-color-scheme` and syncs theme across pages, applying the `dark` class to the body so background colours and banner images switch appropriately.
 - Dashboard background swaps between white and black according to the current theme.
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
-- Footer component uses themed colours and is injected by the layout to avoid duplicates.
+- Public pages include a themed footer via the `TextPage` wrapper, while the dashboard replaces it with a fixed bottom tab bar.
 - On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.
@@ -69,3 +69,4 @@
 - Hamburger icon in the landing header uses #05656F in light mode.
 - Theme background variables are now pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels force black backgrounds when dark mode is active.
 - Public page wrappers now use `bg-background` so panels take their colour from the theme variable instead of hard-coded white.
+- Dashboard features a bottom tab bar with Home, Receive, Send, Contacts and More buttons; the More button opens a slide-up menu with actions for Top Up, Cash Out, My Default Charity, Edit Profile and Select Theme.

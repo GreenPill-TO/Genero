@@ -1,3 +1,7 @@
+## v0.40
+- Added a fixed dashboard tab bar with a slide-up More menu and removed the old footer.
+- Moved the footer into TextPage and widened public copy to 50% of the viewport.
+
 ## v0.39
 - Loaded wallet stylesheet through the TextPage wrapper so landing renders correctly on direct visits.
 

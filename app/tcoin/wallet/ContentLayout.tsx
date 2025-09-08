@@ -3,7 +3,6 @@
 
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { cn } from "@shared/utils/classnames";
-import { Footer } from "@tcoin/wallet/components/footer";
 import Navbar from "@tcoin/sparechange/components/navbar/Navbar";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -38,9 +37,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <section className={bodyClass}>
-      {!isPublic && <Navbar title="Tcoin" />}
+      {!isPublic && <Navbar title="TCOIN" />}
       <div className={cn(!isPublic && "flex-grow flex flex-col pt-16")}>{children}</div>
-      <Footer isPublic={isPublic} />
       {!isPublic && (
         <ToastContainer autoClose={3000} transition={Flip} theme="colored" />
       )}
