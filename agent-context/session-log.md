@@ -1,3 +1,29 @@
+## v0.35
+- Lightened dark-mode highlight backgrounds to Tailwind gray-700 on landing, resources and contact pages.
+
+## v0.34
+- Corrected Tailwind dark mode configuration so highlight and banner styles switch properly.
+
+## v0.33
+- Swapped landing page highlights for light grey in light mode and dark grey in dark mode.
+
+## v0.32
+- Added a cache-busting query to the dark-mode banner image so the updated asset renders correctly.
+
+## v0.31
+- Routed main panels to theme background and applied the dark class to the root element so dark mode renders panels black.
+
+## v0.30
+- Switched highlighted phrases on the landing page to a very light teal in light mode and #05656F in dark mode.
+
+## v0.29
+- Shifted "<open my wallet>" buttons to #05656F in light mode, teal send buttons on the contact page and teal hamburger icons.
+- Ensured landing, resources and contact panels darken in dark mode.
+
+## v0.28
+- Styled "<open my wallet>" links as rectangular buttons with inverted colours for light and dark modes.
+- Switched themed backgrounds to pure white or black and set landing, resources and contact panels to black in dark mode.
+
 ## v0.27
 - CI workflow installs dependencies without enforcing the lockfile.
 
