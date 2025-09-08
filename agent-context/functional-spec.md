@@ -38,6 +38,8 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - On small screens the landing header hides the tagline and replaces the open-wallet link with a hamburger menu that opens a slide-out panel with the tagline and "<open my wallet>" link.
 - Page backgrounds are white in light mode and black in dark mode, while headers, footers and inline panels use the themed background colour.
 - The top-right "<open my wallet>" link or menu aligns vertically with the banner image, and the same link appears centred below the "We’re building one." line.
+- Both "<open my wallet>" links render as rectangular buttons with black backgrounds and white text in light mode and invert colours in dark mode.
+- Theme background colours are pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels enforce black backgrounds in dark mode.
 
 ### 2. SpareChange
 

@@ -8,8 +8,8 @@
 
 @layer base {
   :root {
-    --background: 220 50% 95%; /* Light blue background */
-    --foreground: 220 40% 20%; /* Dark blue text */
+    --background: 0 0% 100%; /* White background */
+    --foreground: 0 0% 3.9%; /* Near-black text */
 
     --card: 220 50% 98%; /* Very light blue for cards */
     --card-foreground: 220 40% 20%; /* Dark blue for card text */
@@ -51,8 +51,8 @@
     --radius: 0.5rem;
   }
   .dark {
-    --background: 220 30% 15%; /* Dark blue background */
-    --foreground: 220 80% 95%; /* Very light blue text */
+    --background: 0 0% 0%; /* Black background */
+    --foreground: 0 0% 98%; /* White text */
 
     --card: 220 30% 20%; /* Darker blue for cards */
     --card-foreground: 220 80% 95%; /* Light text on cards */

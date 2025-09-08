@@ -30,7 +30,7 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-black text-foreground text-base">
       <LandingHeader />
-      <main className="flex-grow pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5 space-y-4">
+      <main className="flex-grow bg-white dark:bg-black pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5 space-y-4">
         <h1 className="font-extrabold text-center my-5">Contact</h1>
         <p>
           Get in Touch? Help out? We want to hear from you. We're a small and friendly team and would love your input, insights and any help you can offer. {" "}

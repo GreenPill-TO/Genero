@@ -6,7 +6,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-black text-foreground text-base">
       <LandingHeader />
-      <main className="flex-grow">
+      <main className="flex-grow bg-white dark:bg-black">
 
         <section id="future" className="pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5">
           <h2 className="font-extrabold text-center my-5">The future of money is local</h2>
@@ -137,7 +137,10 @@ export default function HomePage() {
             We’re building one.
           </p>
           <div className="text-center my-6">
-            <Link href="/dashboard" className="no-underline">
+            <Link
+              href="/dashboard"
+              className="inline-block px-4 py-2 bg-black text-white dark:bg-white dark:text-black no-underline"
+            >
               &lt;open my wallet&gt;
             </Link>
           </div>

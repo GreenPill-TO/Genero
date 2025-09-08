@@ -1,3 +1,7 @@
+## v0.28
+- Styled "<open my wallet>" links as rectangular buttons with inverted colours for light and dark modes.
+- Switched themed backgrounds to pure white or black and set landing, resources and contact panels to black in dark mode.
+
 ## v0.27
 - CI workflow installs dependencies without enforcing the lockfile.
 

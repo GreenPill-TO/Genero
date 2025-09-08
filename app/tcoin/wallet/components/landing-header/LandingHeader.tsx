@@ -33,7 +33,10 @@ export function LandingHeader() {
           </p>
         </div>
         <nav className="hidden md:flex items-center justify-start px-6">
-          <Link href="/dashboard" className="no-underline">
+          <Link
+            href="/dashboard"
+            className="inline-block px-4 py-2 bg-black text-white dark:bg-white dark:text-black no-underline"
+          >
             &lt;open my wallet&gt;
           </Link>
         </nav>
@@ -62,7 +65,10 @@ export function LandingHeader() {
         <p>Local Currency.</p>
         <p>Value = $3.35.</p>
         <p>Proceeds to charity.</p>
-        <Link href="/dashboard" className="no-underline mt-4">
+        <Link
+          href="/dashboard"
+          className="inline-block px-4 py-2 bg-black text-white dark:bg-white dark:text-black no-underline mt-4"
+        >
           &lt;open my wallet&gt;
         </Link>
       </div>
