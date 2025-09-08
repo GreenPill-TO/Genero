@@ -1,3 +1,6 @@
+## v0.35
+- Lightened dark-mode highlight backgrounds to Tailwind gray-700 on landing, resources and contact pages.
+
 ## v0.34
 - Corrected Tailwind dark mode configuration so highlight and banner styles switch properly.
 
