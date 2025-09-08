@@ -33,6 +33,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository, with a trimmed top margin and wider content area.
 - Dark mode applies to the entire layout via a body-level class so backgrounds and banner images switch between themes.
 - Landing, Resources and Contact pages respond to the theme selector without exposing the toggle.
+- TextPage imports the wallet stylesheet so public pages retain layout when accessed directly.
 - Footer is rendered once across all wallet pages.
 - Theme defaults to the system preference on load and carries across navigation.
 - On small screens the landing header hides the tagline and replaces the open-wallet link with a hamburger menu that opens a slide-out panel with the tagline and "<open my wallet>" link.

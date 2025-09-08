@@ -1,3 +1,6 @@
+## v0.39
+- Loaded wallet stylesheet through the TextPage wrapper so landing renders correctly on direct visits.
+
 ## v0.38
 - Hid theme controls in profile modal unless the ThemeProvider is present so SpareChange continues using its dark-mode wrapper.
 

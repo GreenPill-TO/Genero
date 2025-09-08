@@ -19,6 +19,7 @@
   [citycoin]/sparechange/
   shared/ # Shared UI + logic
   - Wallet dashboard/welcome pages load a local theme stylesheet and `ThemeProvider` enabling light/dark grayscale and colourful themes saved per user; public landing/resources/contact pages use a lightweight layout respecting system preferences only. Theme selection writes to the user record and remains isolated from Cubid styling.
+  - The `TextPage` wrapper imports the wallet stylesheet so Tailwind utilities are present even on direct navigation to public pages.
   - The `useTheme` hook returns an `available` flag so components (e.g., profile modals) only show theme controls when wrapped in `ThemeProvider`, letting SpareChange keep its `DarkModeProvider`.
 - **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.

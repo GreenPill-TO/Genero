@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { LandingHeader } from "@tcoin/wallet/components/landing-header";
 import useDarkMode from "@shared/hooks/useDarkMode";
 import { cn } from "@shared/utils/classnames";
+import "@tcoin/wallet/styles/app.scss";
 
 export function TextPage({
   children,
