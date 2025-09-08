@@ -9,7 +9,7 @@ export function LandingHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 w-full bg-background text-foreground z-50 shadow-none border-none">
+    <header className="fixed top-0 left-0 w-full bg-white text-black dark:bg-black dark:text-white z-50 shadow-none border-none">
       <div className="flex items-center justify-between md:grid md:grid-cols-3 lg:[grid-template-columns:30%_40%_30%] pb-1">
         <div className="flex-1 px-4 md:px-6 md:col-start-2">
           <Image
@@ -46,13 +46,13 @@ export function LandingHeader() {
             onClick={() => setOpen(true)}
             aria-label="Open menu"
           >
-            <Menu className="h-6 w-6 text-[#05656F] dark:text-primary" />
+            <Menu className="h-6 w-6 text-[#05656F] dark:text-white" />
           </button>
         </div>
       </div>
 
       <div
-        className={`fixed top-0 right-0 h-full w-2/3 bg-background text-foreground z-50 transform transition-transform duration-300 p-6 flex flex-col space-y-4 ${open ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed top-0 right-0 h-full w-2/3 bg-white text-black dark:bg-black dark:text-white z-50 transform transition-transform duration-300 p-6 flex flex-col space-y-4 ${open ? "translate-x-0" : "translate-x-full"}`}
       >
         <button
           type="button"
@@ -60,7 +60,7 @@ export function LandingHeader() {
           aria-label="Close menu"
           className="self-end mb-4"
         >
-          <X className="h-6 w-6 text-[#05656F] dark:text-primary" />
+          <X className="h-6 w-6 text-[#05656F] dark:text-white" />
         </button>
         <p>Local Currency.</p>
         <p>Value = $3.35.</p>

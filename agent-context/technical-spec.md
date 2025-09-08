@@ -18,6 +18,7 @@
   [citycoin]/wallet/
   [citycoin]/sparechange/
   shared/ # Shared UI + logic
+  - Wallet dashboard/welcome pages load a local theme stylesheet and `ThemeProvider` enabling light/dark grayscale and colourful themes saved per user; public landing/resources/contact pages use a lightweight layout respecting system preferences only.
 - **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
 

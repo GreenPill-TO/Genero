@@ -1,12 +1,10 @@
 "use client";
 import Link from "next/link";
-import { LandingHeader } from "@tcoin/wallet/components/landing-header";
+import { TextPage } from "@tcoin/wallet/components/text-page";
 
 export default function ResourcesPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground text-base">
-      <LandingHeader />
-      <main className="flex-grow pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5 space-y-8 bg-background">
+    <TextPage className="space-y-8">
         <h1 className="font-extrabold text-center my-5">Resources</h1>
         <p>
           <strong>DoraHack BUDIL:</strong>{" "}
@@ -35,7 +33,6 @@ export default function ResourcesPage() {
         <p>
           <Link href="/">Return home</Link>
         </p>
-      </main>
-    </div>
+    </TextPage>
   );
 }

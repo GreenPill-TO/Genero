@@ -18,10 +18,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const isPublic = publicPaths.includes(pathname);
 
   const bodyClass = cn(
-    "min-h-screen",
-    "flex flex-col justify-between",
-    "bg-background",
-    "text-foreground text-sm"
+    "min-h-screen flex flex-col justify-between",
+    isPublic
+      ? "bg-white text-black dark:bg-black dark:text-white text-base"
+      : "bg-background text-foreground text-sm"
   );
 
   useEffect(() => {
@@ -39,8 +39,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   return (
     <section className={bodyClass}>
       {!isPublic && <Navbar title="Tcoin" />}
-      <div className={cn(!isPublic && "flex-grow flex flex-col pt-16 bg-background text-foreground")}>{children}</div>
-      <Footer />
+      <div className={cn(!isPublic && "flex-grow flex flex-col pt-16")}>{children}</div>
+      <Footer isPublic={isPublic} />
       {!isPublic && (
         <ToastContainer autoClose={3000} transition={Flip} theme="colored" />
       )}

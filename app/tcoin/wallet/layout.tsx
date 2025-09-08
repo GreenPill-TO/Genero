@@ -1,9 +1,6 @@
 'use client';
 import { ModalProvider } from "@shared/contexts/ModalContext";
-import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
-import "@tcoin/wallet/styles/app.scss";
-import type { Metadata } from "next";
 import ContentLayout from "./ContentLayout";
 import dynamic from "next/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -50,11 +47,9 @@ export default function RootLayout({
           <Provider>
             <WalletCubidProvider>
               <ReactQueryProvider>
-                <DarkModeProvider>
-                  <ModalProvider>
-                    <ContentLayout>{children}</ContentLayout>
-                  </ModalProvider>
-                </DarkModeProvider>
+                <ModalProvider>
+                  <ContentLayout>{children}</ContentLayout>
+                </ModalProvider>
               </ReactQueryProvider>
             </WalletCubidProvider>
           </Provider>

@@ -1,3 +1,6 @@
+## v0.36
+- Split wallet theming so public pages use system light/dark styles while dashboard and welcome support four selectable themes saved to the user profile.
+
 ## v0.35
 - Lightened dark-mode highlight backgrounds to Tailwind gray-700 on landing, resources and contact pages.
 

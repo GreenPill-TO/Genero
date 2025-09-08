@@ -16,7 +16,7 @@ import Select from "react-select";
 import countryList from "react-select-country-list";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import useDarkMode from "@shared/hooks/useDarkMode";
+import { useTheme } from "@shared/providers/theme-provider";
 
 const supabase = createClient();
 
@@ -291,7 +291,8 @@ export default function NewWelcomePage() {
         }));
     }, [])
 
-    const { isDarkMode } = useDarkMode()
+    const { theme } = useTheme();
+    const isDarkMode = theme === 1 || theme === 3;
 
     // Initialize react-hook-form with our new fields.
     const {
