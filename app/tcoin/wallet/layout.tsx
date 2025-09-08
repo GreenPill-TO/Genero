@@ -40,7 +40,6 @@ export default function RootLayout({
             line-height: 1.333;
             margin: 0;
             padding: 0 var(--margin-page, 20px);
-            color: var(--ui-primary, #000);
             text-wrap: pretty;
           }
           a {

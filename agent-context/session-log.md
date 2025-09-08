@@ -1,3 +1,6 @@
+## v0.34
+- Corrected Tailwind dark mode configuration so highlight and banner styles switch properly.
+
 ## v0.33
 - Swapped landing page highlights for light grey in light mode and dark grey in dark mode.
 
