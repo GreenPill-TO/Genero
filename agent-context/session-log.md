@@ -1,3 +1,7 @@
+## v0.29
+- Shifted "<open my wallet>" buttons to #05656F in light mode, teal send buttons on the contact page and teal hamburger icons.
+- Ensured landing, resources and contact panels darken in dark mode.
+
 ## v0.28
 - Styled "<open my wallet>" links as rectangular buttons with inverted colours for light and dark modes.
 - Switched themed backgrounds to pure white or black and set landing, resources and contact panels to black in dark mode.

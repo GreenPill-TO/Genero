@@ -35,7 +35,7 @@ export function LandingHeader() {
         <nav className="hidden md:flex items-center justify-start px-6">
           <Link
             href="/dashboard"
-            className="inline-block px-4 py-2 bg-black text-white dark:bg-white dark:text-black no-underline"
+            className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline"
           >
             &lt;open my wallet&gt;
           </Link>
@@ -46,7 +46,7 @@ export function LandingHeader() {
             onClick={() => setOpen(true)}
             aria-label="Open menu"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-6 w-6 text-[#05656F] dark:text-primary" />
           </button>
         </div>
       </div>
@@ -60,14 +60,14 @@ export function LandingHeader() {
           aria-label="Close menu"
           className="self-end mb-4"
         >
-          <X className="h-6 w-6" />
+          <X className="h-6 w-6 text-[#05656F] dark:text-primary" />
         </button>
         <p>Local Currency.</p>
         <p>Value = $3.35.</p>
         <p>Proceeds to charity.</p>
         <Link
           href="/dashboard"
-          className="inline-block px-4 py-2 bg-black text-white dark:bg-white dark:text-black no-underline mt-4"
+          className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline mt-4"
         >
           &lt;open my wallet&gt;
         </Link>
