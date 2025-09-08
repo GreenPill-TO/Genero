@@ -1,3 +1,6 @@
+## v0.41
+- Forced dashboard QR code to remain black on white regardless of theme.
+
 ## v0.40
 - Added a fixed dashboard tab bar with a slide-up More menu and removed the old footer.
 - Moved the footer into TextPage and widened public copy to 50% of the viewport.

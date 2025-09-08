@@ -35,6 +35,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Landing, Resources and Contact pages respond to the theme selector without exposing the toggle.
 - TextPage imports the wallet stylesheet so public pages retain layout when accessed directly.
 - Public wallet pages render a footer, while the dashboard uses a fixed tabbed navigation bar.
+- The dashboard's QR code displays with a white background and black modules regardless of the active theme.
 - Theme defaults to the system preference on load and carries across navigation.
 - On small screens the landing header hides the tagline and replaces the open-wallet link with a hamburger menu that opens a slide-out panel with the tagline and "<open my wallet>" link.
 - Page backgrounds are white in light mode and black in dark mode, while headers, footers and inline panels use the themed background colour.
