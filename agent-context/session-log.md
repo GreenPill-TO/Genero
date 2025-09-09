@@ -1,3 +1,6 @@
+## v0.38
+- Memoised modal context callbacks so the sign-in modal opens once and avoids infinite render loops.
+
 ## v0.37
 - Redirect unauthenticated wallet dashboard visits to the landing page after closing the sign-in modal.
 

@@ -1,7 +1,13 @@
 "use client";
 // ModalContext.tsx
 import Modal from "@shared/components/ui/Modal";
-import React, { createContext, ReactNode, useContext, useState } from "react";
+import React, {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useState,
+} from "react";
 
 export interface ModalContentType {
   content?: ReactNode | null;
@@ -35,15 +41,24 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [modalContent, setModalContent] = useState<ModalContentType | null>(null);
 
-  const openModal = ({ content = null, title = "", description = "", elSize = "md", isResponsive = false }: ModalContentType) => {
-    setModalContent({ content, title, elSize, isResponsive, description });
-    setIsOpen(true);
-  };
+  const openModal = useCallback(
+    ({
+      content = null,
+      title = "",
+      description = "",
+      elSize = "md",
+      isResponsive = false,
+    }: ModalContentType) => {
+      setModalContent({ content, title, elSize, isResponsive, description });
+      setIsOpen(true);
+    },
+    []
+  );
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsOpen(false);
     setModalContent(null);
-  };
+  }, []);
 
   return (
     <ModalContext.Provider value={{ isOpen, modalContent, openModal, closeModal }}>

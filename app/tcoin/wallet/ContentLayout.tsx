@@ -14,7 +14,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
-  const { openModal, closeModal } = useModal();
+  const { openModal, closeModal, isOpen } = useModal();
   const router = useRouter();
   const pathname = usePathname();
   const publicPaths = ["/tcoin/wallet", "/tcoin/wallet/resources", "/tcoin/wallet/contact"];
@@ -33,7 +33,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, [closeModal, router]);
 
   useEffect(() => {
-    if (isLoading || isAuthenticated) return;
+    if (isLoading || isAuthenticated || isOpen) return;
 
     if (pathname === "/tcoin/wallet/dashboard") {
       openModal({
@@ -48,7 +48,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     } else if (!isPublic) {
       router.push("/tcoin/wallet");
     }
-  }, [handleModalClose, isAuthenticated, isLoading, isPublic, openModal, pathname, router]);
+  }, [handleModalClose, isAuthenticated, isLoading, isOpen, isPublic, openModal, pathname, router]);
 
   if (isLoading) {
     return <div className={bodyClass}>...loading </div>;
