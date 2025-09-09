@@ -1,3 +1,30 @@
+## v0.43
+- Declared dashboard screen modules as client components so the "<open my wallet>" link loads without runtime errors.
+
+## v0.42
+- Expanded landing sections to full TextPage width for ≥50% body text and trimmed hero top margin.
+- Updated footer and routing so Resources and Contact resolve at /resources and /contact.
+- Corrected "<open my wallet>" links and removed redundant dashboard redirect causing client-side errors.
+
+## v0.41
+- Forced dashboard QR code to remain black on white regardless of theme.
+
+## v0.40
+- Added a fixed dashboard tab bar with a slide-up More menu and removed the old footer.
+- Moved the footer into TextPage and widened public copy to 50% of the viewport.
+
+## v0.39
+- Loaded wallet stylesheet through the TextPage wrapper so landing renders correctly on direct visits.
+
+## v0.38
+- Hid theme controls in profile modal unless the ThemeProvider is present so SpareChange continues using its dark-mode wrapper.
+
+## v0.37
+- Fixed theme provider to read and store user style independent of Cubid data, preventing wallet theme from affecting Cubid components.
+
+## v0.36
+- Split wallet theming so public pages use system light/dark styles while dashboard and welcome support four selectable themes saved to the user profile.
+
 ## v0.35
 - Lightened dark-mode highlight backgrounds to Tailwind gray-700 on landing, resources and contact pages.
 

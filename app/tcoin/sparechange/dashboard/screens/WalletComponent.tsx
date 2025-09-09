@@ -1,4 +1,5 @@
 // @ts-nocheck
+"use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
@@ -13,6 +14,7 @@ import {
   OffRampModal,
   QrScanModal,
   ShareQrModal,
+  UserProfileModal,
   // Note: The TopUpModal is defined below.
 } from "@tcoin/sparechange/components/modals";
 import {
@@ -22,6 +24,9 @@ import {
   LuSend,
   LuShare2,
   LuUsers,
+  LuHome,
+  LuMoreHorizontal,
+  LuPalette,
 } from "react-icons/lu";
 import { FiCopy } from 'react-icons/fi'
 import { FiUser } from "react-icons/fi";
@@ -241,11 +246,11 @@ function ReceiveCard({
           )}
         </div>
         <div className="space-y-2">
-          <p>Tcoin</p>
+          <p>TCOIN</p>
           <Input
             name="qrTcoin"
             elSize="md"
-            label="Tcoin"
+            label="TCOIN"
             className="w-full"
             value={qrTcoinAmount}
             onChange={handleQrTcoinChange}
@@ -813,40 +818,32 @@ function AccountCard({
   );
 }
 
-// Other Card
-function OtherCard({ openModal, closeModal }: { openModal: any; closeModal: any }) {
+function ContactsCard({ openModal, closeModal, setToSendData }: { openModal: any; closeModal: any; setToSendData: any }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Other</CardTitle>
+        <CardTitle>Contacts</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <Button
-            className="w-full"
-            onClick={() => {
-              openModal({
-                content: <TopUpModal closeModal={closeModal} />,
-                title: "Top Up with Interac eTransfer",
-                description: "Send an Interac eTransfer to top up your TCOIN Balance.",
-              });
-            }}
-          >
-            <LuCreditCard className="mr-2 h-4 w-4" /> Top Up with Interac eTransfer
-          </Button>
-          <Button
-            className="w-full"
-            onClick={() => {
-              openModal({
-                content: <OffRampModal closeModal={closeModal} />,
-                title: "Convert and Off-ramp",
-                description: "Convert your TCOIN to CAD and transfer to your bank account.",
-              });
-            }}
-          >
-            <LuDollarSign className="mr-2 h-4 w-4" /> Convert to CAD and Cash Out
-          </Button>
-        </div>
+        <Button
+          className="w-full"
+          onClick={() => {
+            openModal({
+              content: (
+                <ContactSelectModal
+                  closeModal={closeModal}
+                  amount=""
+                  setToSendData={setToSendData}
+                  method="Send"
+                />
+              ),
+              title: "Select Contact",
+              description: "Choose a contact to send or request TCOIN.",
+            });
+          }}
+        >
+          Manage Contacts
+        </Button>
       </CardContent>
     </Card>
   );
@@ -911,7 +908,7 @@ export function TopUpModal({ closeModal }) {
       }).select("*")
       toast.success("Top up recorded successfully!");
       await insertSuccessNotification({
-        user_id: userData?.cubidData.id, notification: `${amount} topped up successfully into Tcoin Wallet`, additionalData: {
+        user_id: userData?.cubidData.id, notification: `${amount} topped up successfully into TCOIN Wallet`, additionalData: {
           trx_entry_id: acc_transactions?.[0]?.id
         }
       })
@@ -1002,13 +999,13 @@ export function TopUpModal({ closeModal }) {
 
 export function MobileWalletDashboardComponent() {
   // Active tab for mobile view.
-  const [activeTab, setActiveTab] = useState("account");
+  const [activeTab, setActiveTab] = useState("home");
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
   const tabs = [
-    { key: "contributions", label: "Contributions", icon: LuUsers },
+    { key: "home", label: "Home", icon: LuHome },
     { key: "receive", label: "Receive", icon: LuShare2 },
     { key: "send", label: "Send", icon: LuSend },
-    { key: "account", label: "My Account", icon: FiUser },
-    { key: "other", label: "Other", icon: LuCreditCard },
+    { key: "contacts", label: "Contacts", icon: LuUsers },
   ];
 
   const { openModal, closeModal } = useModal();
@@ -1219,15 +1216,18 @@ export function MobileWalletDashboardComponent() {
     <div className="container mx-auto p-4 space-y-8">
       {/* --- Mobile View (Single Card with Tab Navigation) --- */}
       <div className="md:hidden">
-        <div className="space-y-8 max-w-[400px] min-h-[60vh] mx-auto">
-          {activeTab === "contributions" && (
-            <ContributionsCard
-              selectedCharity={selectedCharity}
-              setSelectedCharity={setSelectedCharity}
-              charityData={charityData}
-              openModal={openModal}
-              closeModal={closeModal}
-            />
+        <div className="space-y-8 max-w-[400px] min-h-[60vh] mx-auto pb-24">
+          {activeTab === "home" && (
+            <>
+              <AccountCard balance={balance} senderWallet={senderWallet} openModal={openModal} closeModal={closeModal} />
+              <ContributionsCard
+                selectedCharity={selectedCharity}
+                setSelectedCharity={setSelectedCharity}
+                charityData={charityData}
+                openModal={openModal}
+                closeModal={closeModal}
+              />
+            </>
           )}
 
           {activeTab === "receive" && (
@@ -1262,16 +1262,13 @@ export function MobileWalletDashboardComponent() {
               setExplorerLink={setExplorerLink}
             />
           )}
-          {activeTab === "account" && (
-            <AccountCard balance={balance} senderWallet={senderWallet} openModal={openModal} closeModal={closeModal} />
-          )}
-          {activeTab === "other" && (
-            <OtherCard openModal={openModal} closeModal={closeModal} />
+          {activeTab === "contacts" && (
+            <ContactsCard openModal={openModal} closeModal={closeModal} setToSendData={setToSendData} />
           )}
         </div>
 
         {/* Mobile Navigation */}
-        <nav className="flex px-3 mx-auto w-[fit-content] py-3 rounded-xl bg-gray-900 justify-center gap-4">
+        <nav className="fixed bottom-0 left-0 right-0 flex justify-center gap-4 bg-gray-900 py-3">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -1285,11 +1282,98 @@ export function MobileWalletDashboardComponent() {
               <tab.icon className="h-6 w-6" />
             </button>
           ))}
+          <button
+            onClick={() => setIsMoreOpen((v) => !v)}
+            className="p-2 rounded-md transition-colors bg-gray-700 text-white hover:bg-gray-300"
+            title="More"
+          >
+            <LuMoreHorizontal className="h-6 w-6" />
+          </button>
         </nav>
+        <div
+          className={`fixed bottom-16 right-4 z-50 transform transition-transform ${
+            isMoreOpen ? "translate-y-0" : "translate-y-full"
+          }`}
+        >
+          <div className="bg-background border rounded-lg shadow-lg p-4 space-y-2">
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: <TopUpModal closeModal={closeModal} />,
+                  title: "Top Up with Interac eTransfer",
+                  description: "Send an Interac eTransfer to top up your TCOIN Balance.",
+                });
+                setIsMoreOpen(false);
+              }}
+            >
+              <LuCreditCard className="mr-2 h-4 w-4" /> Top Up
+            </Button>
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: <OffRampModal closeModal={closeModal} />,
+                  title: "Convert and Off-ramp",
+                  description: "Convert your TCOIN to CAD and transfer to your bank account.",
+                });
+                setIsMoreOpen(false);
+              }}
+            >
+              <LuDollarSign className="mr-2 h-4 w-4" /> Cash Out
+            </Button>
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: (
+                    <CharitySelectModal
+                      closeModal={closeModal}
+                      selectedCharity={selectedCharity}
+                      setSelectedCharity={setSelectedCharity}
+                    />
+                  ),
+                  title: "My Default Charity",
+                  description: "Choose your default charity.",
+                });
+                setIsMoreOpen(false);
+              }}
+            >
+              <FiHeart className="mr-2 h-4 w-4" /> My Default Charity
+            </Button>
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: <UserProfileModal closeModal={closeModal} />,
+                  title: "Edit Profile",
+                  description: "Update your profile information.",
+                });
+                setIsMoreOpen(false);
+              }}
+            >
+              <FiUser className="mr-2 h-4 w-4" /> Edit Profile
+            </Button>
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: <UserProfileModal closeModal={closeModal} />,
+                  title: "Select Theme",
+                  description: "Choose your preferred theme.",
+                });
+                setIsMoreOpen(false);
+              }}
+            >
+              <LuPalette className="mr-2 h-4 w-4" /> Select Theme
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* --- Desktop Grid View (All Cards Visible) --- */}
       <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <AccountCard balance={balance} senderWallet={senderWallet} openModal={openModal} closeModal={closeModal} />
         <ContributionsCard
           selectedCharity={selectedCharity}
           setSelectedCharity={setSelectedCharity}
@@ -1323,8 +1407,7 @@ export function MobileWalletDashboardComponent() {
           explorerLink={explorerLink}
           setExplorerLink={setExplorerLink}
         />
-        <AccountCard balance={balance} senderWallet={senderWallet} openModal={openModal} closeModal={closeModal} />
-        <OtherCard openModal={openModal} closeModal={closeModal} />
+        <ContactsCard openModal={openModal} closeModal={closeModal} setToSendData={setToSendData} />
       </div>
     </div>
   );

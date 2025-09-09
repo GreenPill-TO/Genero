@@ -18,6 +18,10 @@
   [citycoin]/wallet/
   [citycoin]/sparechange/
   shared/ # Shared UI + logic
+  - Wallet dashboard/welcome pages load a local theme stylesheet and `ThemeProvider` enabling light/dark grayscale and colourful themes saved per user; public landing/resources/contact pages use a lightweight layout respecting system preferences only. Theme selection writes to the user record and remains isolated from Cubid styling.
+  - The `TextPage` wrapper imports the wallet stylesheet so Tailwind utilities are present even on direct navigation to public pages.
+  - The `useTheme` hook returns an `available` flag so components (e.g., profile modals) only show theme controls when wrapped in `ThemeProvider`, letting SpareChange keep its `DarkModeProvider`.
+  - The wallet dashboard's QR code area forces `bg-white` and `text-black` classes so the code renders black on white regardless of the selected theme.
 - **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
 
@@ -38,14 +42,14 @@
 - ESLint config disables react/no-unescaped-entities.
 - Banner and tagline are placed in the fixed header so the page scrolls underneath, and the header has no shadow.
 - Footer background is white with black text.
-- Body content and banner span roughly 60% width on large screens to reduce side margins.
+- Body content and banner span roughly 50% width on large screens to reduce side margins.
 - Tagline reads "Local Currency. Value = $3.35. Proceeds to charity." as plain text, right-aligned with margin below.
-- The first section includes extra top padding so content clears the fixed header.
+- The first section retains top padding (reduced from previous implementation) so content clears the fixed header without excessive white space.
 - Header split into three columns with left blank, centre column equal to body width containing banner and right-aligned tagline, right column with the "<open my wallet>" link.
 - Footer now lists links to Whitepaper, Github and a new contact page.
 - Added a Resources page with links to the hackathon submission, whitepaper, presentation and source code and a return-home link.
 - Contact page features a form that records user requests in Supabase `user_requests` along with an array of detected IP addresses and offers clearer spacing before the return-home link.
-- Resources and Contact pages reuse the landing page header and footer, adopt the wider layout and are accessible without authentication.
+- Resources and Contact pages reuse the landing page header and footer, adopt the wider layout, resolve at /resources and /contact and are accessible without authentication.
 - Landing page links resolve to the whitepaper, Telegram chat, presentation and source code repository.
 - Twilio API routes initialise clients inside handlers so builds succeed without environment variables.
 - All section headings use the `font-extrabold` class for extra emphasis.
@@ -54,7 +58,7 @@
 - Dark mode hook initialises based on `prefers-color-scheme` and syncs theme across pages, applying the `dark` class to the body so background colours and banner images switch appropriately.
 - Dashboard background swaps between white and black according to the current theme.
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
-- Footer component uses themed colours and is injected by the layout to avoid duplicates.
+- Public pages include a themed footer via the `TextPage` wrapper, while the dashboard replaces it with a fixed bottom tab bar.
 - On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.
@@ -66,3 +70,5 @@
 - Hamburger icon in the landing header uses #05656F in light mode.
 - Theme background variables are now pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels force black backgrounds when dark mode is active.
 - Public page wrappers now use `bg-background` so panels take their colour from the theme variable instead of hard-coded white.
+- Dashboard features a bottom tab bar with Home, Receive, Send, Contacts and More buttons; the More button opens a slide-up menu with actions for Top Up, Cash Out, My Default Charity, Edit Profile and Select Theme.
+- Dashboard screen files carry "use client" directives so navigation from the landing page instantiates them without React component errors.

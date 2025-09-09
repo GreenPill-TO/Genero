@@ -17,7 +17,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Banner is limited to content width and the "<open my wallet>" link sits in the right margin, linking to the dashboard.
 - Top banner image sourced from Supabase displays light and dark variants based on the active theme on the wallet homepage, and the dark banner appends a version query so the latest asset loads.
 - Banner and tagline now sit in the fixed header so the page scrolls under them.
-- Body content and banner expand to roughly 60% width on large screens to reduce side margins.
+- Body content and banner expand to roughly 50% width on large screens to reduce side margins.
 - Tagline text now reads "Local Currency. Value = $3.35. Proceeds to charity." and is right-aligned beneath the banner image.
 - Headings are extra bold for greater emphasis.
 - Supports demurrage logic (e.g., 1% monthly balance decay).
@@ -28,28 +28,36 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Extra top padding pushes the first section below the header.
 - Footer includes links to Whitepaper, Github and Contact, which opens a new contact page.
 - Resources and Contact pages share the landing page header and footer, adopt the wider layout and are publicly accessible without authentication.
+- Resources and Contact pages resolve at top-level paths (/resources and /contact) while sharing the landing header and footer and remain publicly accessible.
 - Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository and ends with a return-home link.
 - Contact page contains a form that saves user requests to Supabase including IP addresses and separates the send button from the return-home link.
-- Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository, with a trimmed top margin and wider content area.
+- Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository, with sections occupying the full TextPage width (≈50% of the viewport) and a reduced top margin above the opening heading.
 - Dark mode applies to the entire layout via a body-level class so backgrounds and banner images switch between themes.
 - Landing, Resources and Contact pages respond to the theme selector without exposing the toggle.
-- Footer is rendered once across all wallet pages.
+- TextPage imports the wallet stylesheet so public pages retain layout when accessed directly.
+- Public wallet pages render a footer, while the dashboard uses a fixed tabbed navigation bar.
+- The dashboard's QR code displays with a white background and black modules regardless of the active theme.
 - Theme defaults to the system preference on load and carries across navigation.
 - On small screens the landing header hides the tagline and replaces the open-wallet link with a hamburger menu that opens a slide-out panel with the tagline and "<open my wallet>" link.
 - Page backgrounds are white in light mode and black in dark mode, while headers, footers and inline panels use the themed background colour.
 - The top-right "<open my wallet>" link or menu aligns vertically with the banner image, and the same link appears centred below the "We’re building one." line.
 - Both "<open my wallet>" links render as rectangular buttons with #05656F backgrounds and white text in light mode and invert colours in dark mode.
+- Authenticated wallet pages expose a profile modal with four theme options (light/dark grayscale and colourful variants); the choice persists in the `users.style` column and defaults to system-driven grayscale when unset.
+- Dashboard includes a bottom tab bar with Home, Receive, Send, Contacts and More buttons; More reveals a slide-up menu for Top Up, Cash Out, My Default Charity, Edit Profile and Select Theme.
+- Theme storage is decoupled from Cubid data so selecting a theme never alters Cubid component styling.
 - Contact page send button uses a #05656F background in light mode.
 - Hamburger menu icon adopts #05656F in light mode.
 - Highlighted phrases in landing, resources and contact copy use a light grey background in light mode and a slightly lighter dark grey (Tailwind gray-700) background in dark mode.
 - Theme background colours are pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels enforce black backgrounds in dark mode.
 - Main panels derive their background from the theme variable instead of fixed white so they correctly switch to black in dark mode.
+- Dashboard screen components explicitly declare client-side execution so opening the wallet from public pages renders without runtime errors.
 
 ### 2. SpareChange
 
 - Micro-donation interface for tipping or charitable giving.
 - Panhandlers, artists, and nonprofits use static QR codes to receive donations.
 - Donors scan and pay instantly via the wallet.
+- Profile modal hides theme controls unless a ThemeProvider is present, keeping SpareChange styling separate.
 
 ## Key User Flows
 

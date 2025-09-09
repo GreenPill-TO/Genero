@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import { createClient } from "@shared/lib/supabase/client";
+import { useTheme } from "@shared/providers/theme-provider";
 
 interface UserProfileModalProps {
   closeModal: () => void;
@@ -115,6 +116,14 @@ interface ViewProfileContentProps {
 
 const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => {
   const { signOut, userData } = useAuth();
+  const { theme, setTheme, available: canTheme } = useTheme();
+
+  const options = [
+    { id: 0, label: "Light Gray" },
+    { id: 1, label: "Dark Gray" },
+    { id: 2, label: "Light Colour" },
+    { id: 3, label: "Dark Colour" },
+  ];
 
   console.log({ userData })
 
@@ -137,6 +146,23 @@ const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => 
           <strong>Email:</strong> {userData?.cubidData.email}
         </p>
       </div>
+      {canTheme && (
+        <div className="mb-4">
+          <p className="font-medium mb-2">Theme</p>
+          <div className="flex flex-wrap gap-2">
+            {options.map((o) => (
+              <Button
+                key={o.id}
+                variant={theme === o.id ? "default" : "outline"}
+                onClick={() => setTheme(o.id)}
+                className="px-2"
+              >
+                {o.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
       <>
         <Button variant="default" onClick={onEdit} className="flex-1">
           Edit Profile

@@ -12,7 +12,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LuCamera } from "react-icons/lu";
 import NavLink from "./NavLink";
-import { ThemeToggleButton } from "./ThemeToggleButton";
 
 export default function Navbar() {
   const { openModal, closeModal } = useModal();
@@ -117,7 +116,6 @@ export default function Navbar() {
             {isAuthenticated && navLinksProtected}
           </div>
           <div className="flex items-center">
-            <ThemeToggleButton />
             {isAuthenticated && (
               <Button
                 variant="ghost"
