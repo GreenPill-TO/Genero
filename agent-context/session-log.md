@@ -1,3 +1,6 @@
+## v0.39
+- Made `/dashboard` a public wallet route so it no longer requires authentication.
+
 ## v0.38
 - Removed '/tcoin/wallet' prefix from wallet links so routes serve from the domain root.
 
