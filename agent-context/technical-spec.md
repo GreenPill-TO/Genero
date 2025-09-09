@@ -22,6 +22,7 @@
   - The `TextPage` wrapper imports the wallet stylesheet so Tailwind utilities are present even on direct navigation to public pages.
   - The `useTheme` hook returns an `available` flag so components (e.g., profile modals) only show theme controls when wrapped in `ThemeProvider`, letting SpareChange keep its `DarkModeProvider`.
   - The wallet dashboard's QR code area forces `bg-white` and `text-black` classes so the code renders black on white regardless of the selected theme.
+  - Dashboard page sources its screen components from `app/tcoin/wallet/dashboard/screens`, eliminating cross-app imports that previously caused runtime errors when opening the wallet.
 - **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
 

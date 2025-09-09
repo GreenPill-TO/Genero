@@ -1,3 +1,6 @@
+## v0.44
+- Fixed dashboard page to import its own WalletScreen so the "<open my wallet>" link no longer throws a client-side React error.
+
 ## v0.43
 - Declared dashboard screen modules as client components so the "<open my wallet>" link loads without runtime errors.
 
