@@ -110,7 +110,7 @@ export default function HomePage() {
           <h2 className="font-extrabold text-center my-5">How to Get Involved</h2>
           <div className="space-y-4">
             <p>
-              <span className="bg-gray-200 dark:bg-gray-700 px-1">Sign up.</span> <Link href="/tcoin/wallet/contact">Join the mailing list</Link> and get early access to buy TCOINs.
+              <span className="bg-gray-200 dark:bg-gray-700 px-1">Sign up.</span> <Link href="/contact">Join the mailing list</Link> and get early access to buy TCOINs.
             </p>
             <p>
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Help build it.</span> We’re a grassroots team. <Link href="https://t.me/+EPRHfB_R2kkzZDlh">Message us on Telegram</Link>.
