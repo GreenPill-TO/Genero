@@ -6,6 +6,7 @@
 - **Language**: TypeScript
 - **Package Manager**: pnpm
 - **Styling**: TailwindCSS + Radix UI
+- **Testing**: Vitest with tsconfig path resolution for unit tests
 - **Authentication**: Twilio SMS OTP via API routes
 - **Storage**: Supabase (Postgres + Auth)
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)

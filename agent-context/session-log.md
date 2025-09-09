@@ -1,3 +1,6 @@
+## v0.40
+- Added Vitest testing framework with path alias support and a script to run unit tests.
+
 ## v0.39
 - Made `/dashboard` a public wallet route so it no longer requires authentication.
 
