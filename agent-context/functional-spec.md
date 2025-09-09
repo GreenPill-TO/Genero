@@ -45,6 +45,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Theme background colours are pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels enforce black backgrounds in dark mode.
 - Main panels derive their background from the theme variable instead of fixed white so they correctly switch to black in dark mode.
 - Wallet routes are available from the domain root so links use paths like `/dashboard` rather than `/tcoin/wallet/dashboard`.
+- Unauthenticated visitors may open `/dashboard` directly when control variable `require_authenticated_on_dashboard` is not `true`, `TRUE` or `1`.
 
 ### 2. SpareChange
 

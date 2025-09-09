@@ -7,15 +7,20 @@ import { Footer } from "@tcoin/wallet/components/footer";
 import Navbar from "@tcoin/sparechange/components/navbar/Navbar";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import useRequireAuthOnDashboard from "./useRequireAuthOnDashboard";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { walletRelativePath } from "./path";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
+  const { requireAuth, loading } = useRequireAuthOnDashboard();
   const router = useRouter();
   const pathname = usePathname();
+  const relativePath = walletRelativePath(pathname);
   const publicPaths = ["/", "/resources", "/contact"];
-  const isPublic = publicPaths.includes(pathname);
+  const isDashboardPublic = relativePath === "/dashboard" && !requireAuth;
+  const isPublic = publicPaths.includes(relativePath) || isDashboardPublic;
 
   const bodyClass = cn(
     "min-h-screen",
@@ -27,10 +32,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     // Replace this with your actual authentication logic
 
-    if (!isLoading && !isAuthenticated && !isPublic) {
+    if (!isLoading && !isAuthenticated && !isPublic && !loading) {
       router.push("/");
     }
-  }, [isAuthenticated, isLoading, isPublic, router]);
+  }, [isAuthenticated, isLoading, isPublic, loading, router]);
 
   if (isLoading) {
     return <div className={bodyClass}>...loading </div>;

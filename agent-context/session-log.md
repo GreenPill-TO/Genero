@@ -1,3 +1,7 @@
+## v0.39
+- Fetch latest `require_authenticated_on_dashboard` control variable so unauthenticated `/dashboard` links stop redirecting.
+- Trim trailing slashes from wallet-relative paths.
+
 ## v0.38
 - Removed '/tcoin/wallet' prefix from wallet links so routes serve from the domain root.
 
