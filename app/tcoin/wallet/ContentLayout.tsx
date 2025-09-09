@@ -10,15 +10,17 @@ import { useEffect } from "react";
 import useRequireAuthOnDashboard from "./useRequireAuthOnDashboard";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { walletRelativePath } from "./path";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
   const { requireAuth, loading } = useRequireAuthOnDashboard();
   const router = useRouter();
   const pathname = usePathname();
+  const relativePath = walletRelativePath(pathname);
   const publicPaths = ["/", "/resources", "/contact"];
-  const isDashboardPublic = pathname === "/dashboard" && !requireAuth;
-  const isPublic = publicPaths.includes(pathname) || isDashboardPublic;
+  const isDashboardPublic = relativePath === "/dashboard" && !requireAuth;
+  const isPublic = publicPaths.includes(relativePath) || isDashboardPublic;
 
   const bodyClass = cn(
     "min-h-screen",
