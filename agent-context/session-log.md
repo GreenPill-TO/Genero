@@ -1,3 +1,6 @@
+## v0.37
+- Redirect unauthenticated wallet dashboard visits to the landing page after closing the sign-in modal.
+
 ## v0.36
 - Locked wallet dashboard QR code colours to black on white.
 

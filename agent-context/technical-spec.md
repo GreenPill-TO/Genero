@@ -66,3 +66,4 @@
 - Hamburger icon in the landing header uses #05656F in light mode.
 - Theme background variables are now pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels force black backgrounds when dark mode is active.
 - Public page wrappers now use `bg-background` so panels take their colour from the theme variable instead of hard-coded white.
+- Unauthenticated visits to `/dashboard` trigger the sign-in modal and closing it without signing in redirects to `/tcoin/wallet`.
