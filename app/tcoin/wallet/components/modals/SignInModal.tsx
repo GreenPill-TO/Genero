@@ -45,7 +45,7 @@ type SignInModalProps = {
 };
 
 function SignInModal({ closeModal }: SignInModalProps) {
-  const [authMethod, setAuthMethod] = useState<"phone" | "email">("phone");
+  const [authMethod, setAuthMethod] = useState<"phone" | "email">("email");
   const [countryCode, setCountryCode] = useState("+1");
   const [contact, setContact] = useState("");
   const [passcode, setPasscode] = useState("");
@@ -134,6 +134,10 @@ function SignInModal({ closeModal }: SignInModalProps) {
             setContact={setContact}
             setPasscode={setPasscode}
             onSubmit={isPasscodeSent ? handleVerifyPasscode : handleSendPasscode}
+            canResend={true}
+            onResend={() => {
+              sendCodeMut.mutate({ contact, method: authMethod });
+            }}
             isOtpSent={isPasscodeSent}
             errorMessage={null}
             handleAuthMethodChange={handleAuthMethodChange}
