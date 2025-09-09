@@ -38,6 +38,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - On small screens the landing header hides the tagline and replaces the open-wallet link with a hamburger menu that opens a slide-out panel with the tagline and "<open my wallet>" link.
 - Page backgrounds are white in light mode and black in dark mode, while headers, footers and inline panels use the themed background colour.
 - The top-right "<open my wallet>" link or menu aligns vertically with the banner image, and the same link appears centred below the "We’re building one." line.
+- Dashboard replaces its original footer and mobile tabs with a persistent footer visible on all screen sizes, offering Home, Receive, Send, Contacts and a More menu that slides up with options for Top Up, Cash Out, setting the default charity, editing the profile and selecting a theme (inactive). The dashboard Receive card's QR code always renders black on white, and branding uses "TCOIN" in place of "Tcoin".
 - Both "<open my wallet>" links render as rectangular buttons with #05656F backgrounds and white text in light mode and invert colours in dark mode.
 - Contact page send button uses a #05656F background in light mode.
 - Hamburger menu icon adopts #05656F in light mode.

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/
 import { Input } from "@shared/components/ui/Input";
 import { Label } from "@shared/components/ui/Label";
 import { Switch } from "@shared/components/ui/Switch";
-import { TabContent, Tabs, TabTrigger } from "@shared/components/ui/Tabs";
+import { Tabs, TabsContent, TabsTrigger } from "@shared/components/ui/Tabs";
 import { useModal } from "@shared/contexts/ModalContext";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { createClient } from "@shared/lib/supabase/client";
@@ -297,8 +297,8 @@ export function MobileWalletDashboardComponent() {
           </CardHeader>
           <CardContent className="overflow-auto mx-6 p-0">
             <Tabs className="w-full" variant="bordered">
-              <TabTrigger name="tab_insight" ariaLabel="Graph" defaultChecked />
-              <TabContent>
+              <TabsTrigger name="tab_insight" ariaLabel="Graph" defaultChecked />
+              <TabsContent>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={balanceHistory}>
@@ -310,17 +310,17 @@ export function MobileWalletDashboardComponent() {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              </TabContent>
-              <TabTrigger name="tab_insight" ariaLabel="Balance" />
-              <TabContent>
+              </TabsContent>
+              <TabsTrigger name="tab_insight" ariaLabel="Balance" />
+              <TabsContent>
                 <div className="text-center">
                   <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
                   <p className="text-4xl font-bold">{formatNumber(balance.toString(), false)}</p>
                   <p className="text-xl">{formatNumber(convertToCad(balance), true)}</p>
                 </div>
-              </TabContent>
-              <TabTrigger name="tab_insight" ariaLabel="Transactions" />
-              <TabContent>
+              </TabsContent>
+              <TabsTrigger name="tab_insight" ariaLabel="Transactions" />
+              <TabsContent>
                 <div className="flex items-center space-x-2 mb-4">
                   <Switch id="currency-toggle" checked={showAmountInCad} onCheckedChange={setShowAmountInCad} />
                   <Label htmlFor="currency-toggle">Show amounts in {showAmountInCad ? "CAD" : "TCOIN"}</Label>
@@ -355,9 +355,9 @@ export function MobileWalletDashboardComponent() {
                     </li>
                   ))}
                 </ul>
-              </TabContent>
-              <TabTrigger name="tab_insight" ariaLabel="Charity" />
-              <TabContent>
+              </TabsContent>
+              <TabsTrigger name="tab_insight" ariaLabel="Charity" />
+              <TabsContent>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={charityContributionData}>
@@ -370,7 +370,7 @@ export function MobileWalletDashboardComponent() {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-              </TabContent>
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>

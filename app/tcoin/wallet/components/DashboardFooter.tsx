@@ -3,7 +3,7 @@
 import { Button } from '@shared/components/ui/Button'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { LuHome, LuQrCode, LuSend, LuUsers, LuMoreHorizontal } from 'react-icons/lu'
+import { LuHouse, LuQrCode, LuSend, LuUsers, LuEllipsis } from 'react-icons/lu'
 import { useModal } from '@shared/contexts/ModalContext'
 import {
   CharitySelectModal,
@@ -32,7 +32,7 @@ export default function DashboardFooter() {
           className="flex-1 flex flex-col items-center gap-1 py-2"
           onClick={() => router.push('/tcoin/wallet/dashboard')}
         >
-          <LuHome className="h-5 w-5" />
+          <LuHouse className="h-5 w-5" />
           <span className="text-xs">Home</span>
         </Button>
         <Button
@@ -71,7 +71,7 @@ export default function DashboardFooter() {
             className="w-full flex flex-col items-center gap-1 py-2"
             onClick={() => setShowMore((p) => !p)}
           >
-            <LuMoreHorizontal className="h-5 w-5" />
+            <LuEllipsis className="h-5 w-5" />
             <span className="text-xs">More</span>
           </Button>
           {showMore && (

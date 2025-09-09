@@ -1,3 +1,6 @@
+## v0.36
+- Replaced missing dashboard footer icons and corrected tab component imports so the wallet build succeeds.
+
 ## v0.35
 - Lightened dark-mode highlight backgrounds to Tailwind gray-700 on landing, resources and contact pages.
 

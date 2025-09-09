@@ -38,6 +38,7 @@
 - ESLint config disables react/no-unescaped-entities.
 - Banner and tagline are placed in the fixed header so the page scrolls underneath, and the header has no shadow.
 - Footer background is white with black text.
+- Wallet dashboard features a fixed footer with navigation tabs (Home, Receive, Send, Contacts, More) and a slide-up "More" menu for Top Up, Cash Out, charity selection and profile editing.
 - Body content and banner span roughly 60% width on large screens to reduce side margins.
 - Tagline reads "Local Currency. Value = $3.35. Proceeds to charity." as plain text, right-aligned with margin below.
 - The first section includes extra top padding so content clears the fixed header.
