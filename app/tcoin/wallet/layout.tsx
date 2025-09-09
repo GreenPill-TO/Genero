@@ -4,6 +4,7 @@ import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
 import "@tcoin/wallet/styles/app.scss";
 import type { Metadata } from "next";
+import { Special_Elite } from "next/font/google";
 import ContentLayout from "./ContentLayout";
 import dynamic from "next/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,6 +24,18 @@ import 'cubid-sdk/dist/index.css'
 
 const queryClient = new QueryClient();
 
+const specialElite = Special_Elite({
+  weight: "400",
+  subsets: ["latin"],
+  fallback: ["system-ui"],
+});
+
+export const metadata: Metadata = {
+  icons: {
+    icon: "/favicon.png",
+  },
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,11 +43,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');`}</style>
-        <style>{`.special-elite-regular { font-family: 'Special Elite', system-ui; font-weight: 400; font-style: normal; }`}</style>
-      </head>
-      <body className="special-elite-regular">
+      <body className={specialElite.className}>
         <style jsx global>{`
           body {
             line-height: 1.333;
