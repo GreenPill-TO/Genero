@@ -2,16 +2,19 @@
 "use client";
 
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { useModal } from "@shared/contexts/ModalContext";
 import { cn } from "@shared/utils/classnames";
 import { Footer } from "@tcoin/wallet/components/footer";
+import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 import Navbar from "@tcoin/sparechange/components/navbar/Navbar";
-import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect } from "react";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
+  const { openModal, closeModal, isOpen } = useModal();
   const router = useRouter();
   const pathname = usePathname();
   const publicPaths = ["/tcoin/wallet", "/tcoin/wallet/resources", "/tcoin/wallet/contact"];
@@ -24,13 +27,28 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     "text-foreground text-sm"
   );
 
-  useEffect(() => {
-    // Replace this with your actual authentication logic
+  const handleModalClose = useCallback(() => {
+    closeModal();
+    router.push("/tcoin/wallet");
+  }, [closeModal, router]);
 
-    if (!isLoading && !isAuthenticated && !isPublic) {
-      router.push("/");
+  useEffect(() => {
+    if (isLoading || isAuthenticated || isOpen) return;
+
+    if (pathname === "/tcoin/wallet/dashboard") {
+      openModal({
+        content: (
+          <SignInModal
+            closeModal={handleModalClose}
+            extraObject={{ isSignIn: true }}
+          />
+        ),
+        elSize: "4xl",
+      });
+    } else if (!isPublic) {
+      router.push("/tcoin/wallet");
     }
-  }, [isAuthenticated, isLoading, isPublic, router]);
+  }, [handleModalClose, isAuthenticated, isLoading, isOpen, isPublic, openModal, pathname, router]);
 
   if (isLoading) {
     return <div className={bodyClass}>...loading </div>;

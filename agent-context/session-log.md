@@ -1,4 +1,10 @@
-## v0.37
+## v0.38
+- Memoised modal context callbacks so the sign-in modal opens once and avoids infinite render loops.
+
+## v0.37-B
+- Redirect unauthenticated wallet dashboard visits to the landing page after closing the sign-in modal.
+
+## v0.37-A
 - Capitalised wallet dashboard branding to TCOIN and added optional QR padding.
 
 ## v0.36
