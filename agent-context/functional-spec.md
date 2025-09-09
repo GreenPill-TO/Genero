@@ -28,9 +28,10 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Extra top padding pushes the first section below the header.
 - Footer includes links to Whitepaper, Github and Contact, which opens a new contact page.
 - Resources and Contact pages share the landing page header and footer, adopt the wider layout and are publicly accessible without authentication.
+- Resources and Contact pages resolve at top-level paths (/resources and /contact) while sharing the landing header and footer and remain publicly accessible.
 - Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository and ends with a return-home link.
 - Contact page contains a form that saves user requests to Supabase including IP addresses and separates the send button from the return-home link.
-- Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository, with a trimmed top margin and wider content area.
+- Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository, with sections occupying the full TextPage width (≈50% of the viewport) and a reduced top margin above the opening heading.
 - Dark mode applies to the entire layout via a body-level class so backgrounds and banner images switch between themes.
 - Landing, Resources and Contact pages respond to the theme selector without exposing the toggle.
 - TextPage imports the wallet stylesheet so public pages retain layout when accessed directly.

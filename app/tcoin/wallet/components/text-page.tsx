@@ -24,7 +24,7 @@ export function TextPage({
       <LandingHeader />
       <main
         className={cn(
-          "flex-grow pt-40 px-6 mx-auto lg:w-1/2",
+          "flex-grow pt-16 px-6 mx-auto lg:w-1/2",
           className
         )}
       >

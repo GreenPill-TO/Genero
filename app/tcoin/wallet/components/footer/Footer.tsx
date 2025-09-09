@@ -18,9 +18,9 @@ export function Footer({ isPublic = false }: { isPublic?: boolean }) {
             <h5>&copy; {new Date().getFullYear()} Toronto Coin. All rights reserved.</h5>
           </div>
           <div className="space-x-4 text-sm">
-            <Link href="/tcoin/wallet/resources">Resources</Link>
+            <Link href="/resources">Resources</Link>
             <Link href="https://github.com/GreenPill-TO/TorontoCoin">Github</Link>
-            <Link href="/tcoin/wallet/contact">Contact</Link>
+            <Link href="/contact">Contact</Link>
           </div>
         </div>
       </div>

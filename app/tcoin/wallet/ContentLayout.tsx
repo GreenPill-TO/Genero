@@ -13,7 +13,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const { isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const publicPaths = ["/tcoin/wallet", "/tcoin/wallet/resources", "/tcoin/wallet/contact"];
+  const publicPaths = ["/tcoin/wallet", "/resources", "/contact"];
   const isPublic = publicPaths.includes(pathname);
 
   const bodyClass = cn(

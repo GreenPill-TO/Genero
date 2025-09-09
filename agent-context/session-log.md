@@ -1,6 +1,11 @@
 ## v0.41
 - Forced dashboard QR code to remain black on white regardless of theme.
 
+## v0.42
+- Expanded landing sections to full TextPage width for ≥50% body text and trimmed hero top margin.
+- Updated footer and routing so Resources and Contact resolve at /resources and /contact.
+- Corrected "<open my wallet>" links and removed redundant dashboard redirect causing client-side errors.
+
 ## v0.40
 - Added a fixed dashboard tab bar with a slide-up More menu and removed the old footer.
 - Moved the footer into TextPage and widened public copy to 50% of the viewport.

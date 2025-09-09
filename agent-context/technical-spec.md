@@ -44,12 +44,12 @@
 - Footer background is white with black text.
 - Body content and banner span roughly 50% width on large screens to reduce side margins.
 - Tagline reads "Local Currency. Value = $3.35. Proceeds to charity." as plain text, right-aligned with margin below.
-- The first section includes extra top padding so content clears the fixed header.
+- The first section retains top padding (reduced from previous implementation) so content clears the fixed header without excessive white space.
 - Header split into three columns with left blank, centre column equal to body width containing banner and right-aligned tagline, right column with the "<open my wallet>" link.
 - Footer now lists links to Whitepaper, Github and a new contact page.
 - Added a Resources page with links to the hackathon submission, whitepaper, presentation and source code and a return-home link.
 - Contact page features a form that records user requests in Supabase `user_requests` along with an array of detected IP addresses and offers clearer spacing before the return-home link.
-- Resources and Contact pages reuse the landing page header and footer, adopt the wider layout and are accessible without authentication.
+- Resources and Contact pages reuse the landing page header and footer, adopt the wider layout, resolve at /resources and /contact and are accessible without authentication.
 - Landing page links resolve to the whitepaper, Telegram chat, presentation and source code repository.
 - Twilio API routes initialise clients inside handlers so builds succeed without environment variables.
 - All section headings use the `font-extrabold` class for extra emphasis.
