@@ -46,6 +46,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Main panels derive their background from the theme variable instead of fixed white so they correctly switch to black in dark mode.
 - Wallet routes are available from the domain root so links use paths like `/dashboard` rather than `/tcoin/wallet/dashboard`.
 - Direct visits to `/dashboard` only require authentication when the Supabase `require_authenticated_on_dashboard` control variable is set to `true` or `1`.
+ - Wallet and SpareChange layouts consult the `require_authenticated_on_dashboard` control variable before redirecting, allowing unauthenticated visits to `/dashboard` when the flag is false.
 
 ### 2. SpareChange
 

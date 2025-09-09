@@ -2,6 +2,7 @@
 "use client";
 
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { createClient } from "@shared/lib/supabase/client";
 import { cn } from "@shared/utils/classnames";
 import { Footer } from "@tcoin/wallet/components/footer";
 import Navbar from "@tcoin/sparechange/components/navbar/Navbar";
@@ -16,6 +17,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const publicPaths = ["/", "/resources", "/contact"];
   const isPublic = publicPaths.includes(pathname);
+  const supabase = createClient();
 
   const bodyClass = cn(
     "min-h-screen",
@@ -25,12 +27,24 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   );
 
   useEffect(() => {
-    // Replace this with your actual authentication logic
-
-    if (!isLoading && !isAuthenticated && !isPublic) {
-      router.push("/");
+    if (!isLoading && !isAuthenticated) {
+      if (pathname === "/dashboard") {
+        supabase
+          .from("control_variables")
+          .select("value")
+          .eq("variable", "require_authenticated_on_dashboard")
+          .single()
+          .then(({ data }) => {
+            const requireAuth = ["true", "1"].includes(`${data?.value}`.toLowerCase());
+            if (requireAuth) {
+              router.push("/");
+            }
+          });
+      } else if (!isPublic) {
+        router.push("/");
+      }
     }
-  }, [isAuthenticated, isLoading, isPublic, router]);
+  }, [isAuthenticated, isLoading, isPublic, pathname, router, supabase]);
 
   if (isLoading) {
     return <div className={bodyClass}>...loading </div>;

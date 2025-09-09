@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { updateSession } from './shared/lib/supabase/middleware';
 import { createServerClient } from '@supabase/ssr';
 
@@ -22,19 +22,28 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost';
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
   vi.resetAllMocks();
+  vi.spyOn(NextResponse, 'next').mockReturnValue(new NextResponse());
 });
 
 describe('dashboard access control', () => {
   it('allows unauthenticated access when flag is false', async () => {
     mockSupabase(null, 'false');
-    const req = new NextRequest('http://example.com/dashboard');
+    const url = new URL('http://example.com/dashboard');
+    const req = {
+      cookies: { getAll: () => [], set: () => {} },
+      nextUrl: Object.assign(url, { clone: () => new URL(url.toString()) }),
+    } as any;
     const res = await updateSession(req);
     expect(res.status).toBe(200);
   });
 
   it('redirects when flag is true', async () => {
     mockSupabase(null, 'true');
-    const req = new NextRequest('http://example.com/dashboard');
+    const url = new URL('http://example.com/dashboard');
+    const req = {
+      cookies: { getAll: () => [], set: () => {} },
+      nextUrl: Object.assign(url, { clone: () => new URL(url.toString()) }),
+    } as any;
     const res = await updateSession(req);
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toBe('http://example.com/');

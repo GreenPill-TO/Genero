@@ -1,3 +1,6 @@
+## v0.40
+- Fixed client layouts to honour `require_authenticated_on_dashboard`, permitting unauthenticated dashboard visits when the flag is false, and added jsdom-based tests for middleware access control.
+
 ## v0.39
 - Gated dashboard access on the `require_authenticated_on_dashboard` control variable and added unit tests.
 

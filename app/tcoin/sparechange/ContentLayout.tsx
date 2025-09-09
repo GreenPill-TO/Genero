@@ -2,11 +2,12 @@
 "use client";
 
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { createClient } from "@shared/lib/supabase/client";
 import { cn } from "@shared/utils/classnames";
 import { Footer } from "@tcoin/sparechange/components/footer";
 import Navbar from "@tcoin/sparechange/components/navbar";
 import { GeistSans } from "geist/font/sans";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -14,6 +15,8 @@ import "react-toastify/dist/ReactToastify.css";
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const supabase = createClient();
 
   const bodyClass = cn(
     "min-h-screen",
@@ -23,12 +26,24 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   );
 
   useEffect(() => {
-    // Replace this with your actual authentication logic
-
     if (!isLoading && !isAuthenticated) {
-      router.push("/"); // Redirect to the main page or login page
+      if (pathname === "/dashboard") {
+        supabase
+          .from("control_variables")
+          .select("value")
+          .eq("variable", "require_authenticated_on_dashboard")
+          .single()
+          .then(({ data }) => {
+            const requireAuth = ["true", "1"].includes(`${data?.value}`.toLowerCase());
+            if (requireAuth) {
+              router.push("/");
+            }
+          });
+      } else {
+        router.push("/"); // Redirect to the main page or login page
+      }
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, pathname, router, supabase]);
 
   return (
     <div className={GeistSans.className}>

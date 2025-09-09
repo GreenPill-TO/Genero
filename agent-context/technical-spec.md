@@ -67,4 +67,4 @@
 - Theme background variables are now pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels force black backgrounds when dark mode is active.
 - Public page wrappers now use `bg-background` so panels take their colour from the theme variable instead of hard-coded white.
 - Internal links use root-relative URLs and rewrites map them to the wallet app, eliminating `/tcoin/wallet` from page paths.
-- Dashboard authentication is toggled via the `require_authenticated_on_dashboard` control variable; when unset or false, unauthenticated visits to `/dashboard` are allowed.
+- Dashboard authentication is toggled via the `require_authenticated_on_dashboard` control variable; when unset or false, unauthenticated visits to `/dashboard` are allowed and client layouts honour the flag before redirecting.
