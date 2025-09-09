@@ -10,11 +10,12 @@ import { useEffect } from "react";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+export const publicPaths = ["/", "/resources", "/contact", "/dashboard"];
+
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const publicPaths = ["/", "/resources", "/contact"];
   const isPublic = publicPaths.includes(pathname);
 
   const bodyClass = cn(

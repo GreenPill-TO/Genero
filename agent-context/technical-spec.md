@@ -6,6 +6,7 @@
 - **Language**: TypeScript
 - **Package Manager**: pnpm
 - **Styling**: TailwindCSS + Radix UI
+- **Testing**: Vitest with tsconfig path resolution for unit tests
 - **Authentication**: Twilio SMS OTP via API routes
 - **Storage**: Supabase (Postgres + Auth)
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
@@ -46,6 +47,7 @@
 - Added a Resources page with links to the hackathon submission, whitepaper, presentation and source code and a return-home link.
 - Contact page features a form that records user requests in Supabase `user_requests` along with an array of detected IP addresses and offers clearer spacing before the return-home link.
 - Resources and Contact pages reuse the landing page header and footer, adopt the wider layout and are accessible without authentication.
+- Wallet dashboard (`/dashboard`) is also a public route, allowing unauthenticated access and rendering without the navbar or toast notifications.
 - Landing page links resolve to the whitepaper, Telegram chat, presentation and source code repository.
 - Twilio API routes initialise clients inside handlers so builds succeed without environment variables.
 - All section headings use the `font-extrabold` class for extra emphasis.
