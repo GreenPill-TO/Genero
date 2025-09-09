@@ -66,5 +66,9 @@
 - Hamburger icon in the landing header uses #05656F in light mode.
 - Theme background variables are now pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels force black backgrounds when dark mode is active.
 - Public page wrappers now use `bg-background` so panels take their colour from the theme variable instead of hard-coded white.
-- Unauthenticated visits to `/dashboard` trigger the sign-in modal and closing it without signing in redirects to `/tcoin/wallet`.
+- Unauthenticated visits to `/dashboard` trigger the sign-in modal and closing it without signing in redirects to `/`.
 - Modal context callbacks are memoised so the sign-in modal opens only once per unauthenticated dashboard visit.
+- "Open My Wallet" checks authentication and opens the sign-in modal on the landing page when needed.
+- Internal links drop the `/tcoin/wallet` prefix so resources and contact live at `/resources` and `/contact`.
+- Dashboard footer replaced with a fixed bottom navigation for Home, Receive, Send, Contacts and More; the More menu slides up from the bottom-right with top up, cash out, default charity, profile and theme options.
+- The fixed navigation is visible on all screen sizes and the dashboard home tab shows the full grid on desktop and just the balance on mobile.

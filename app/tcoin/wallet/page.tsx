@@ -1,8 +1,27 @@
 "use client";
 import Link from "next/link";
 import { LandingHeader } from "@tcoin/wallet/components/landing-header";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@shared/api/hooks/useAuth";
+import { useModal } from "@shared/contexts/ModalContext";
+import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 
 export default function HomePage() {
+  const { isAuthenticated } = useAuth();
+  const { openModal, closeModal } = useModal();
+  const router = useRouter();
+
+  const handleOpenWallet = () => {
+    if (isAuthenticated) {
+      router.push("/dashboard");
+    } else {
+      openModal({
+        content: <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />,
+        elSize: "4xl",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground text-base">
       <LandingHeader />
@@ -110,7 +129,7 @@ export default function HomePage() {
           <h2 className="font-extrabold text-center my-5">How to Get Involved</h2>
           <div className="space-y-4">
             <p>
-              <span className="bg-gray-200 dark:bg-gray-700 px-1">Sign up.</span> <Link href="/tcoin/wallet/contact">Join the mailing list</Link> and get early access to buy TCOINs.
+              <span className="bg-gray-200 dark:bg-gray-700 px-1">Sign up.</span> <Link href="/contact">Join the mailing list</Link> and get early access to buy TCOINs.
             </p>
             <p>
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Help build it.</span> We’re a grassroots team. <Link href="https://t.me/+EPRHfB_R2kkzZDlh">Message us on Telegram</Link>.
@@ -140,12 +159,12 @@ export default function HomePage() {
             We’re building one.
           </p>
           <div className="text-center my-6">
-            <Link
-              href="/dashboard"
-              className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline"
+            <button
+              onClick={handleOpenWallet}
+              className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black"
             >
               &lt;open my wallet&gt;
-            </Link>
+            </button>
           </div>
         </section>
       </main>

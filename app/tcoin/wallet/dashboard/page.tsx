@@ -1,39 +1,29 @@
 "use client";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useEffect, useMemo } from "react";
-import { WalletScreen } from "../../sparechange/dashboard/screens/WalletScreen";
+import { WalletScreen } from "./screens";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
 
   const mainClass = "p-4 sm:p-8 bg-background text-foreground min-h-screen";
-  const router = useRouter()
+  const router = useRouter();
 
   const screenContent = useMemo(() => {
     if (isLoadingUser || error) return null;
 
     switch (userData?.cubidData?.persona) {
-      // case "ph":
-      //   return <PanhandlerScreen />;
-      // case "dr":
-      //   return <DonorScreen />;
       default:
-        return (
-          <WalletScreen
-            qrBgColor="#fff"
-            qrFgColor="#000"
-            qrWrapperClassName="bg-white p-1"
-            tokenLabel="TCOIN"
-          />
-        );
+        return <WalletScreen />;
     }
-  }, [userData]);
+  }, [userData, error, isLoadingUser]);
+
   useEffect(() => {
     if (Boolean(userData?.cubidData?.full_name)) {
-      router.replace('/dashboard')
+      router.replace("/dashboard");
     }
-  }, [userData, router])
+  }, [userData, router]);
 
   if (error) {
     return <div className={mainClass}>Error loading data: {error.message}</div>;

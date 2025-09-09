@@ -10,7 +10,6 @@ import { Switch } from "@shared/components/ui/Switch";
 import { TabContent, Tabs, TabTrigger } from "@shared/components/ui/Tabs";
 import { useModal } from "@shared/contexts/ModalContext";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
-import { createClient } from "@shared/lib/supabase/client";
 import {
   CharitySelectModal,
   ContactSelectModal,
@@ -18,19 +17,37 @@ import {
   QrScanModal,
   ShareQrModal,
   TopUpModal,
+  UserProfileModal,
 } from "@tcoin/wallet/components/modals";
 import dynamic from "next/dynamic";
-const WalletComponent = dynamic(
-  () => import('cubid-wallet').then((mod) => mod.WalletComponent),
-  { ssr: false }
-);
-const CubidWidget = dynamic(
-  () => import('cubid-sdk').then((mod) => mod.CubidWidget),
-  { ssr: false }
-);
 import { useState } from "react";
-import { LuCamera, LuCreditCard, LuDollarSign, LuQrCode, LuSend, LuShare2, LuUsers } from "react-icons/lu";
-import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  LuCamera,
+  LuCreditCard,
+  LuDollarSign,
+  LuHome,
+  LuMoreHorizontal,
+  LuQrCode,
+  LuSend,
+  LuShare2,
+  LuUsers,
+} from "react-icons/lu";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+const CubidWidget = dynamic(
+  () => import("cubid-sdk").then((mod) => mod.CubidWidget),
+  { ssr: false }
+);
 
 const balanceHistory = [
   { date: "2023-06-01", balance: 800 },
@@ -58,6 +75,7 @@ const charityContributionData = [
 
 export function MobileWalletDashboardComponent() {
   const { openModal, closeModal } = useModal();
+  const { userData } = useAuth();
   const [balance, setBalance] = useState(1000);
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");
   const [qrCadAmount, setQrCadAmount] = useState("");
@@ -65,12 +83,23 @@ export function MobileWalletDashboardComponent() {
   const [cadAmount, setCadAmount] = useState("");
   const [showAmountInCad, setShowAmountInCad] = useState(false);
   const [selectedCharity, setSelectedCharity] = useState("The FoodBank");
-  const { exchangeRate } = useControlVariables()
-  const [charityData, setCharityData] = useState({
+  const { exchangeRate } = useControlVariables();
+  const [charityData] = useState({
     personalContribution: 50,
     allUsersToCharity: 600,
     allUsersToAllCharities: 7000,
   });
+
+  const [activeTab, setActiveTab] = useState("home");
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+
+  const tabs = [
+    { key: "home", label: "Home", icon: LuHome },
+    { key: "receive", label: "Receive", icon: LuQrCode },
+    { key: "send", label: "Send", icon: LuSend },
+    { key: "contacts", label: "Contacts", icon: LuUsers },
+    { key: "more", label: "More", icon: LuMoreHorizontal },
+  ];
 
   const convertToCad = (tcoin: number) => (tcoin * exchangeRate).toFixed(2);
   const convertToTcoin = (cad: number) => (cad / exchangeRate).toFixed(2);
@@ -78,7 +107,10 @@ export function MobileWalletDashboardComponent() {
   const formatNumber = (value: string, isCad: boolean) => {
     const num = parseFloat(value.replace(/[^\d.]/g, ""));
     if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
-    const formatted = num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatted = num.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
     return isCad ? `$${formatted}` : `${formatted} TCOIN`;
   };
 
@@ -110,303 +142,533 @@ export function MobileWalletDashboardComponent() {
     }
   };
 
-  const { userData } = useAuth()
+  const homeDesktop = (
+    <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Cubid Stamps</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <CubidWidget
+              stampToRender="phone"
+              uuid={userData?.user?.cubid_id}
+              page_id="37"
+              api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+            />
+            <CubidWidget
+              stampToRender="email"
+              uuid={userData?.user?.cubid_id}
+              page_id="37"
+              api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+            />
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Charitable Contributions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <p>
+              My default charity: <strong>{selectedCharity}</strong>
+              <Button
+                variant="link"
+                className="p-0 ml-2 h-auto font-normal"
+                onClick={() => {
+                  openModal({
+                    content: (
+                      <CharitySelectModal
+                        closeModal={closeModal}
+                        selectedCharity={selectedCharity}
+                        setSelectedCharity={setSelectedCharity}
+                      />
+                    ),
+                    title: "Change Default Charity",
+                    description: "Select a new default charity for your contributions.",
+                  });
+                }}
+              >
+                change
+              </Button>
+            </p>
+            <p>My contribution to {selectedCharity}: {charityData.personalContribution} TCOIN</p>
+            <p>All users to {selectedCharity}: {charityData.allUsersToCharity} TCOIN</p>
+            <p>All users to all charities: {charityData.allUsersToAllCharities} TCOIN</p>
+          </div>
+        </CardContent>
+      </Card>
+      {/** Receive Card **/}
+      <Card>
+        <CardHeader>
+          <CardTitle>Receive</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+            <LuQrCode className="mx-auto h-32 w-32" />
+            <p className="mt-2">Your default QR code (unspecified amount)</p>
+          </div>
+          <div className="space-y-2">
+            <Input
+              name="qrTcoin"
+              elSize="md"
+              className="w-full"
+              value={qrTcoinAmount}
+              onChange={handleQrAmountChange}
+              placeholder="Enter TCOIN amount"
+            />
+            <Input
+              name="qrCad"
+              elSize="md"
+              className="w-full"
+              value={qrCadAmount}
+              onChange={handleQrAmountChange}
+              placeholder="Enter CAD amount"
+            />
+            <Button
+              onClick={() => {
+                const qrTextElement = document.querySelector(".qr-code-text");
+                if (qrTextElement) {
+                  qrTextElement.textContent = `QR code for ${qrTcoinAmount}`;
+                }
+              }}
+              className="w-full"
+            >
+              Update QR Code
+            </Button>
+          </div>
+          <div className="flex flex-col space-y-4 sm:space-x-2 sm:space-y-0 sm:flex-row">
+            <Button
+              className="flex-1"
+              onClick={() => {
+                openModal({
+                  content: <ContactSelectModal closeModal={closeModal} amount={qrTcoinAmount} method="Request" />,
+                  title: "Request from Contact",
+                  description: "Select a contact to request TCOIN from.",
+                });
+              }}
+            >
+              <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                openModal({
+                  content: <ShareQrModal closeModal={closeModal} />,
+                  title: "Share QR Code",
+                  description: "Share your QR code via different methods.",
+                });
+              }}
+            >
+              <LuShare2 className="mr-2 h-4 w-4" /> Share
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      {/** Send Card **/}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pay / Send</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button
+            className="w-full"
+            onClick={() => {
+              openModal({
+                content: <QrScanModal closeModal={closeModal} />,
+                title: "Scan QR to Pay",
+                description: "Use your device's camera to scan a QR code for payment.",
+              });
+            }}
+          >
+            <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
+          </Button>
+          <div className="space-y-2">
+            <Input
+              className="w-full"
+              elSize="md"
+              name="tcoin"
+              value={tcoinAmount}
+              onChange={(e) => handleAmountChange(e, setCadAmount, setTcoinAmount)}
+              placeholder="Enter TCOIN amount"
+            />
+            <Input
+              name="cad"
+              elSize="md"
+              className="w-full"
+              value={cadAmount}
+              onChange={(e) => handleAmountChange(e, setCadAmount, setTcoinAmount)}
+              placeholder="Enter CAD amount"
+            />
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => {
+              openModal({
+                content: <ContactSelectModal closeModal={closeModal} amount={tcoinAmount} method="Send" />,
+                title: "Send to Contact",
+                description: "Select a contact to send TCOIN to.",
+              });
+            }}
+          >
+            <LuSend className="mr-2 h-4 w-4" /> Send to Contact
+          </Button>
+        </CardContent>
+      </Card>
+      {/** My Account **/}
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>My Account</CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-auto mx-6 p-0">
+          <Tabs className="w-full" variant="bordered">
+            <TabTrigger name="tab_insight" ariaLabel="Graph" defaultChecked />
+            <TabContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={balanceHistory}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="balance" stroke="#8884d8" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </TabContent>
+            <TabTrigger name="tab_insight" ariaLabel="Balance" />
+            <TabContent>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
+                <p className="text-4xl font-bold">{formatNumber(balance.toString(), false)}</p>
+                <p className="text-xl">{formatNumber(convertToCad(balance), true)}</p>
+              </div>
+            </TabContent>
+            <TabTrigger name="tab_insight" ariaLabel="Transactions" />
+            <TabContent>
+              <div className="flex items-center space-x-2 mb-4">
+                <Switch id="currency-toggle" checked={showAmountInCad} onCheckedChange={setShowAmountInCad} />
+                <Label htmlFor="currency-toggle">Show amounts in {showAmountInCad ? "CAD" : "TCOIN"}</Label>
+              </div>
+              <ul className="space-y-2">
+                {recentTransactions.map((transaction) => (
+                  <li key={transaction.id} className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold">{transaction.type}</p>
+                      <p className="text-sm text-gray-500">
+                        {transaction.from ? `From: ${transaction.from}` : `To: ${transaction.to}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={`font-semibold ${transaction.type === "Received" ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {transaction.type === "Received" ? "+" : "-"}
+                        {showAmountInCad
+                          ? formatNumber(convertToCad(transaction.amount), true)
+                          : formatNumber(transaction.amount.toString(), false)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Charity:{" "}
+                        {showAmountInCad
+                          ? formatNumber((transaction.amount * 0.03 * exchangeRate).toString(), true)
+                          : formatNumber((transaction.amount * 0.03).toString(), false)}
+                      </p>
+                      <p className="text-sm text-gray-500">{transaction.date}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </TabContent>
+            <TabTrigger name="tab_insight" ariaLabel="Charity" />
+            <TabContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={charityContributionData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="TheShelter" stackId="1" stroke="#8884d8" fill="#8884d8" />
+                    <Area type="monotone" dataKey="TheFoodBank" stackId="1" stroke="#82ca9d" fill="#82ca9d" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </TabContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+      {/** Other Card **/}
+      <Card>
+        <CardHeader>
+          <CardTitle>Other</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: <TopUpModal closeModal={closeModal} />,
+                  title: "Top Up with Interac eTransfer",
+                  description: "Send an Interac eTransfer to top up your TCOIN Balance.",
+                });
+              }}
+            >
+              <LuCreditCard className="mr-2 h-4 w-4" /> Top Up with Interac eTransfer
+            </Button>
+            <Button
+              className="w-full"
+              onClick={() => {
+                openModal({
+                  content: <OffRampModal closeModal={closeModal} />,
+                  title: "Convert and Off-ramp",
+                  description: "Convert your TCOIN to CAD and transfer to your bank account.",
+                });
+              }}
+            >
+              <LuDollarSign className="mr-2 h-4 w-4" /> Convert TCOIN to CAD and Off-ramp
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const homeMobile = (
+    <Card>
+      <CardHeader>
+        <CardTitle>My Account</CardTitle>
+      </CardHeader>
+      <CardContent className="text-center">
+        <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
+        <p className="text-4xl font-bold">{formatNumber(balance.toString(), false)}</p>
+        <p className="text-xl">{formatNumber(convertToCad(balance), true)}</p>
+      </CardContent>
+    </Card>
+  );
+
+  const receiveContent = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Receive</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+          <LuQrCode className="mx-auto h-32 w-32" />
+          <p className="mt-2">Your default QR code (unspecified amount)</p>
+        </div>
+        <div className="space-y-2">
+          <Input
+            name="qrTcoin"
+            elSize="md"
+            className="w-full"
+            value={qrTcoinAmount}
+            onChange={handleQrAmountChange}
+            placeholder="Enter TCOIN amount"
+          />
+          <Input
+            name="qrCad"
+            elSize="md"
+            className="w-full"
+            value={qrCadAmount}
+            onChange={handleQrAmountChange}
+            placeholder="Enter CAD amount"
+          />
+        </div>
+        <div className="flex flex-col space-y-4 sm:space-x-2 sm:space-y-0 sm:flex-row">
+          <Button
+            className="flex-1"
+            onClick={() => {
+              openModal({
+                content: <ContactSelectModal closeModal={closeModal} amount={qrTcoinAmount} method="Request" />,
+                title: "Request from Contact",
+                description: "Select a contact to request TCOIN from.",
+              });
+            }}
+          >
+            <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={() => {
+              openModal({
+                content: <ShareQrModal closeModal={closeModal} />,
+                title: "Share QR Code",
+                description: "Share your QR code via different methods.",
+              });
+            }}
+          >
+            <LuShare2 className="mr-2 h-4 w-4" /> Share
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const sendContent = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Pay / Send</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button
+          className="w-full"
+          onClick={() => {
+            openModal({
+              content: <QrScanModal closeModal={closeModal} />,
+              title: "Scan QR to Pay",
+              description: "Use your device's camera to scan a QR code for payment.",
+            });
+          }}
+        >
+          <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
+        </Button>
+        <div className="space-y-2">
+          <Input
+            className="w-full"
+            elSize="md"
+            name="tcoin"
+            value={tcoinAmount}
+            onChange={(e) => handleAmountChange(e, setCadAmount, setTcoinAmount)}
+            placeholder="Enter TCOIN amount"
+          />
+          <Input
+            name="cad"
+            elSize="md"
+            className="w-full"
+            value={cadAmount}
+            onChange={(e) => handleAmountChange(e, setCadAmount, setTcoinAmount)}
+            placeholder="Enter CAD amount"
+          />
+        </div>
+        <Button
+          className="w-full"
+          onClick={() => {
+            openModal({
+              content: <ContactSelectModal closeModal={closeModal} amount={tcoinAmount} method="Send" />,
+              title: "Send to Contact",
+              description: "Select a contact to send TCOIN to.",
+            });
+          }}
+        >
+          <LuSend className="mr-2 h-4 w-4" /> Send to Contact
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const contactsContent = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Contacts</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button
+          className="w-full"
+          onClick={() => {
+            openModal({
+              content: <ContactSelectModal closeModal={closeModal} method="Send" />,
+              title: "Contacts",
+              description: "Select a contact.",
+            });
+          }}
+        >
+          Manage Contacts
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const moreMenu = (
+    <div className="fixed bottom-16 right-4 bg-background border rounded-lg shadow p-4 space-y-2">
+      <Button
+        className="w-full"
+        onClick={() => {
+          openModal({
+            content: <TopUpModal closeModal={closeModal} />,
+            title: "Top Up with Interac eTransfer",
+            description: "Send an Interac eTransfer to top up your TCOIN Balance.",
+          });
+          setIsMoreOpen(false);
+        }}
+      >
+        Top Up
+      </Button>
+      <Button
+        className="w-full"
+        onClick={() => {
+          openModal({
+            content: <OffRampModal closeModal={closeModal} />,
+            title: "Convert and Off-ramp",
+            description: "Convert your TCOIN to CAD and transfer to your bank account.",
+          });
+          setIsMoreOpen(false);
+        }}
+      >
+        Cash Out
+      </Button>
+      <Button className="w-full" disabled>
+        Set Default Charity
+      </Button>
+      <Button
+        className="w-full"
+        onClick={() => {
+          openModal({
+            content: <UserProfileModal closeModal={closeModal} />,
+            title: "Edit Profile",
+            description: "Manage your account settings and preferences.",
+          });
+          setIsMoreOpen(false);
+        }}
+      >
+        Edit Profile
+      </Button>
+      <Button className="w-full" disabled>
+        Select Theme
+      </Button>
+    </div>
+  );
 
   return (
-    <div className="container mx-auto sm:p-4 space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Cubid Stamps</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <CubidWidget
-                stampToRender="phone" uuid={userData?.user?.cubid_id}
-                page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-              />
-              <CubidWidget stampToRender="email"
-                uuid={userData?.user?.cubid_id}
-                page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-              />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Charitable Contributions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p>
-                My default charity: <strong>{selectedCharity}</strong>
-                <Button
-                  variant="link"
-                  className="p-0 ml-2 h-auto font-normal"
-                  onClick={() => {
-                    openModal({
-                      content: (
-                        <CharitySelectModal
-                          closeModal={closeModal}
-                          selectedCharity={selectedCharity}
-                          setSelectedCharity={setSelectedCharity}
-                        />
-                      ),
-                      title: "Change Default Charity",
-                      description: "Select a new default charity for your contributions.",
-                    });
-                  }}
-                >
-                  change
-                </Button>
-              </p>
-              <p>
-                My contribution to {selectedCharity}: {charityData.personalContribution} TCOIN
-              </p>
-              <p>
-                All users to {selectedCharity}: {charityData.allUsersToCharity} TCOIN
-              </p>
-              <p>All users to all charities: {charityData.allUsersToAllCharities} TCOIN</p>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="pb-20">
+      {activeTab === "home" && (
+        <>
+          <div className="hidden md:block">{homeDesktop}</div>
+          <div className="md:hidden p-4 space-y-6">{homeMobile}</div>
+        </>
+      )}
+      {activeTab === "receive" && <div className="p-4">{receiveContent}</div>}
+      {activeTab === "send" && <div className="p-4">{sendContent}</div>}
+      {activeTab === "contacts" && <div className="p-4">{contactsContent}</div>}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Receive</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-              <LuQrCode className="mx-auto h-32 w-32" />
-              <p className="mt-2 qr-code-text">Your default QR code (unspecified amount)</p>
-            </div>
-            <div className="space-y-2">
-              <Input
-                name="qrTcoin"
-                elSize="md"
-                className="w-full"
-                value={qrTcoinAmount}
-                onChange={handleQrAmountChange}
-                placeholder="Enter TCOIN amount"
-              />
-              <Input
-                name="qrCad"
-                elSize="md"
-                className="w-full"
-                value={qrCadAmount}
-                onChange={handleQrAmountChange}
-                placeholder="Enter CAD amount"
-              />
-              <Button
-                onClick={() => {
-                  const qrTextElement = document.querySelector(".qr-code-text");
-                  if (qrTextElement) {
-                    qrTextElement.textContent = `QR code for ${qrTcoinAmount}`;
-                  }
-                }}
-                className="w-full"
-              >
-                Update QR Code
-              </Button>
-            </div>
-            <div className="flex flex-col space-y-4 sm:space-x-2 sm:space-y-0 sm:flex-row">
-              <Button
-                className="flex-1"
-                onClick={() => {
-                  openModal({
-                    content: <ContactSelectModal closeModal={closeModal} amount={qrTcoinAmount} method="Request" />,
-                    title: "Request from Contact",
-                    description: "Select a contact to request TCOIN from.",
-                  });
-                }}
-              >
-                <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
-              </Button>
-
-              <Button
-                className="flex-1"
-                onClick={() => {
-                  openModal({
-                    content: <ShareQrModal closeModal={closeModal} />,
-                    title: "Share QR Code",
-                    description: "Share your QR code via different methods.",
-                  });
-                }}
-              >
-                <LuShare2 className="mr-2 h-4 w-4" /> Share
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Pay / Send</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              className="w-full"
+      <footer className="fixed bottom-0 left-0 right-0 bg-background border-t">
+        <nav className="flex justify-around py-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
               onClick={() => {
-                openModal({
-                  content: <QrScanModal closeModal={closeModal} />,
-                  title: "Scan QR to Pay",
-                  description: "Use your device's camera to scan a QR code for payment.",
-                });
+                if (tab.key === "more") {
+                  setIsMoreOpen((prev) => !prev);
+                } else {
+                  setActiveTab(tab.key);
+                  setIsMoreOpen(false);
+                }
               }}
+              className={`flex flex-col items-center gap-1 p-2 ${
+                activeTab === tab.key ? "text-blue-600" : "text-foreground"
+              }`}
             >
-              <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
-            </Button>
-            <div className="space-y-2">
-              <Input
-                className="w-full"
-                elSize="md"
-                name="tcoin"
-                value={tcoinAmount}
-                onChange={(e) => handleAmountChange(e, setCadAmount, setTcoinAmount)}
-                placeholder="Enter TCOIN amount"
-              />
-              <Input
-                name="cad"
-                elSize="md"
-                className="w-full"
-                value={cadAmount}
-                onChange={(e) => handleAmountChange(e, setCadAmount, setTcoinAmount)}
-                placeholder="Enter CAD amount"
-              />
-            </div>
-            <Button
-              className="w-full"
-              onClick={() => {
-                openModal({
-                  content: <ContactSelectModal closeModal={closeModal} amount={tcoinAmount} method="Send" />,
-                  title: "Send to Contact",
-                  description: "Select a contact to send TCOIN to.",
-                });
-              }}
-            >
-              <LuSend className="mr-2 h-4 w-4" /> Send to Contact
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>My Account</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-auto mx-6 p-0">
-            <Tabs className="w-full" variant="bordered">
-              <TabTrigger name="tab_insight" ariaLabel="Graph" defaultChecked />
-              <TabContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={balanceHistory}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="balance" stroke="#8884d8" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </TabContent>
-              <TabTrigger name="tab_insight" ariaLabel="Balance" />
-              <TabContent>
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
-                  <p className="text-4xl font-bold">{formatNumber(balance.toString(), false)}</p>
-                  <p className="text-xl">{formatNumber(convertToCad(balance), true)}</p>
-                </div>
-              </TabContent>
-              <TabTrigger name="tab_insight" ariaLabel="Transactions" />
-              <TabContent>
-                <div className="flex items-center space-x-2 mb-4">
-                  <Switch id="currency-toggle" checked={showAmountInCad} onCheckedChange={setShowAmountInCad} />
-                  <Label htmlFor="currency-toggle">Show amounts in {showAmountInCad ? "CAD" : "TCOIN"}</Label>
-                </div>
-                <ul className="space-y-2">
-                  {recentTransactions.map((transaction) => (
-                    <li key={transaction.id} className="flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold">{transaction.type}</p>
-                        <p className="text-sm text-gray-500">
-                          {transaction.from ? `From: ${transaction.from}` : `To: ${transaction.to}`}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p
-                          className={`font-semibold ${transaction.type === "Received" ? "text-green-600" : "text-red-600"
-                            }`}
-                        >
-                          {transaction.type === "Received" ? "+" : "-"}
-                          {showAmountInCad
-                            ? formatNumber(convertToCad(transaction.amount), true)
-                            : formatNumber(transaction.amount.toString(), false)}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Charity:{" "}
-                          {showAmountInCad
-                            ? formatNumber((transaction.amount * 0.03 * exchangeRate).toString(), true)
-                            : formatNumber((transaction.amount * 0.03).toString(), false)}
-                        </p>
-                        <p className="text-sm text-gray-500">{transaction.date}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </TabContent>
-              <TabTrigger name="tab_insight" ariaLabel="Charity" />
-              <TabContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={charityContributionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="TheShelter" stackId="1" stroke="#8884d8" fill="#8884d8" />
-                      <Area type="monotone" dataKey="TheFoodBank" stackId="1" stroke="#82ca9d" fill="#82ca9d" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </TabContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Other</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Button
-                className="w-full"
-                onClick={() => {
-                  openModal({
-                    content: <TopUpModal closeModal={closeModal} />,
-                    title: "Top Up with Interac eTransfer",
-                    description: "Send an Interac eTransfer to top up your TCOIN Balance.",
-                  });
-                }}
-              >
-                <LuCreditCard className="mr-2 h-4 w-4" /> Top Up with Interac eTransfer
-              </Button>
-              <Button
-                className="w-full"
-                onClick={() => {
-                  openModal({
-                    content: <OffRampModal closeModal={closeModal} />,
-                    title: "Convert and Off-ramp",
-                    description: "Convert your TCOIN to CAD and transfer to your bank account.",
-                  });
-                }}
-              >
-                <LuDollarSign className="mr-2 h-4 w-4" /> Convert TCOIN to CAD and Off-ramp
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              <tab.icon className="h-6 w-6" />
+              <span className="text-xs">{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+      </footer>
+      {isMoreOpen && moreMenu}
     </div>
   );
 }
+
+export default MobileWalletDashboardComponent;

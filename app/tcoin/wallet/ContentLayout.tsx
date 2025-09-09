@@ -17,7 +17,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const { openModal, closeModal, isOpen } = useModal();
   const router = useRouter();
   const pathname = usePathname();
-  const publicPaths = ["/tcoin/wallet", "/tcoin/wallet/resources", "/tcoin/wallet/contact"];
+  const publicPaths = ["/", "/resources", "/contact"];
   const isPublic = publicPaths.includes(pathname);
 
   const bodyClass = cn(
@@ -29,13 +29,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   const handleModalClose = useCallback(() => {
     closeModal();
-    router.push("/tcoin/wallet");
+    router.push("/");
   }, [closeModal, router]);
 
   useEffect(() => {
     if (isLoading || isAuthenticated || isOpen) return;
 
-    if (pathname === "/tcoin/wallet/dashboard") {
+    if (pathname === "/dashboard") {
       openModal({
         content: (
           <SignInModal
@@ -46,7 +46,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         elSize: "4xl",
       });
     } else if (!isPublic) {
-      router.push("/tcoin/wallet");
+      router.push("/");
     }
   }, [handleModalClose, isAuthenticated, isLoading, isOpen, isPublic, openModal, pathname, router]);
 
@@ -58,7 +58,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     <section className={bodyClass}>
       {!isPublic && <Navbar title="TCOIN" />}
       <div className={cn(!isPublic && "flex-grow flex flex-col pt-16 bg-background text-foreground")}>{children}</div>
-      <Footer />
+      {isPublic && <Footer />}
       {!isPublic && (
         <ToastContainer autoClose={3000} transition={Flip} theme="colored" />
       )}

@@ -1,3 +1,8 @@
+## v0.39
+- Removed wallet path prefixes so resources and contact live at root and unauthenticated dashboard visits return home.
+- Landing page "Open My Wallet" checks authentication and opens the sign-in modal instead of routing when needed.
+- Dashboard footer replaced with a fixed tab bar for Home, Receive, Send, Contacts and More.
+
 ## v0.38
 - Memoised modal context callbacks so the sign-in modal opens once and avoids infinite render loops.
 
