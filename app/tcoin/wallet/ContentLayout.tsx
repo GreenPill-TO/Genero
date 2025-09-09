@@ -56,7 +56,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <section className={bodyClass}>
-      {!isPublic && <Navbar title="Tcoin" />}
+      {!isPublic && <Navbar title="TCOIN" />}
       <div className={cn(!isPublic && "flex-grow flex flex-col pt-16 bg-background text-foreground")}>{children}</div>
       <Footer />
       {!isPublic && (
