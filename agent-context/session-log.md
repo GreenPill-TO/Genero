@@ -1,3 +1,6 @@
+## v0.39
+- Gated dashboard access on the `require_authenticated_on_dashboard` control variable and added unit tests.
+
 ## v0.38
 - Removed '/tcoin/wallet' prefix from wallet links so routes serve from the domain root.
 
