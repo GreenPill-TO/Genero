@@ -45,6 +45,7 @@ import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { adminInsertNotification, insertSuccessNotification } from "@shared/utils/insertNotification";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { FiDollarSign, FiTrendingUp, FiList, FiHeart } from 'react-icons/fi';
+import { cn } from "@shared/utils/classnames";
 
 // ---------------- Sample Data ----------------
 const balanceHistory = [
@@ -173,7 +174,11 @@ function ReceiveCard({
   closeModal,
   senderWallet,
   handleQrTcoinBlur,
-  handleQrCadBlur
+  handleQrCadBlur,
+  qrBgColor,
+  qrFgColor,
+  qrWrapperClassName,
+  tokenLabel = "Tcoin"
 
 }: {
   handleQrTcoinBlur: any;
@@ -186,6 +191,10 @@ function ReceiveCard({
   openModal: any;
   closeModal: any;
   senderWallet: string;
+  qrBgColor?: string;
+  qrFgColor?: string;
+  qrWrapperClassName?: string;
+  tokenLabel?: string;
 }) {
   const { isDarkMode } = useDarkMode();
   const { ...rest } = useTokenBalance(senderWallet);
@@ -217,7 +226,7 @@ function ReceiveCard({
           method="Request" />
       ),
       title: "Request from Contact",
-      description: "Select a contact to request TCOIN from.",
+      description: `Select a contact to request ${tokenLabel.toUpperCase()} from.`,
     });
   };
 
@@ -228,31 +237,34 @@ function ReceiveCard({
       </CardHeader>
       <CardContent className="space-y-4 mt-[-10px]">
         <p>{(Boolean(qrTcoinAmount) && qrTcoinAmount !== '0.00 TCOIN') ? `Receive ${qrTcoinAmount}` : "Receive any amount"}</p>
-        <div className="relative flex flex-col items-center justify-center p-2 rounded-xl transform transition duration-500 hover:scale-105">
-          {qrCodeData ? (
-            <QRCode
-              value={qrCodeData}
-              size={250}
-              bgColor="transparent"
-              fgColor={isDarkMode ? "#fff" : "#000"}
-            />
-          ) : (
-            <p className="text-white">Loading QR Code...</p>
-          )}
-        </div>
-        <div className="space-y-2">
-          <p>Tcoin</p>
-          <Input
-            name="qrTcoin"
-            elSize="md"
-            label="Tcoin"
-            className="w-full"
-            value={qrTcoinAmount}
-            onChange={handleQrTcoinChange}
-            onBlur={handleQrTcoinBlur}
-            placeholder="Enter TCOIN amount"
-          />
-          <p>Cad</p>
+    <div className={cn(
+      "relative flex flex-col items-center justify-center rounded-xl transform transition duration-500 hover:scale-105",
+      qrWrapperClassName ?? "p-2"
+    )}>
+      {qrCodeData ? (
+        <QRCode
+          value={qrCodeData}
+          size={250}
+          bgColor={qrBgColor ?? "transparent"}
+          fgColor={qrFgColor ?? (isDarkMode ? "#fff" : "#000")}
+        />
+      ) : (
+        <p className="text-white">Loading QR Code...</p>
+      )}
+    </div>
+    <div className="space-y-2">
+      <p>{tokenLabel}</p>
+      <Input
+        name="qrTcoin"
+        elSize="md"
+        label={tokenLabel}
+        className="w-full"
+        value={qrTcoinAmount}
+        onChange={handleQrTcoinChange}
+        onBlur={handleQrTcoinBlur}
+        placeholder={`Enter ${tokenLabel.toUpperCase()} amount`}
+      />
+      <p>Cad</p>
           <Input
             name="qrCad"
             elSize="md"
@@ -826,9 +838,9 @@ function OtherCard({ openModal, closeModal }: { openModal: any; closeModal: any 
             className="w-full"
             onClick={() => {
               openModal({
-                content: <TopUpModal closeModal={closeModal} />,
+                content: <TopUpModal closeModal={closeModal} tokenLabel={tokenLabel} />,
                 title: "Top Up with Interac eTransfer",
-                description: "Send an Interac eTransfer to top up your TCOIN Balance.",
+                description: `Send an Interac eTransfer to top up your ${tokenLabel.toUpperCase()} Balance.`,
               });
             }}
           >
@@ -861,7 +873,7 @@ const generateReferenceCode = () => {
   return `${base}-${randomPart}`;
 };
 
-export function TopUpModal({ closeModal }) {
+export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: any; tokenLabel?: string }) {
   // "input", "confirmation", or "final" steps
   const [step, setStep] = useState("input");
   const [amount, setAmount] = useState("");
@@ -911,12 +923,12 @@ export function TopUpModal({ closeModal }) {
       }).select("*")
       toast.success("Top up recorded successfully!");
       await insertSuccessNotification({
-        user_id: userData?.cubidData.id, notification: `${amount} topped up successfully into Tcoin Wallet`, additionalData: {
+        user_id: userData?.cubidData.id, notification: `${amount} topped up successfully into ${tokenLabel} Wallet`, additionalData: {
           trx_entry_id: acc_transactions?.[0]?.id
         }
       })
       await adminInsertNotification({
-        user_id: userData?.cubidData.id, notification: `Sent ${amount} to TCOIN wallet needs to be verified`,
+        user_id: userData?.cubidData.id, notification: `Sent ${amount} to ${tokenLabel.toUpperCase()} wallet needs to be verified`,
       })
       setRefCode(generateReferenceCode());
       // Instead of closing immediately, move to the final confirmation screen.
@@ -933,11 +945,11 @@ export function TopUpModal({ closeModal }) {
       {step === "input" && (
         <div className="space-y-4">
           <h3 className="text-lg font-bold">Top Up via Interac eTransfer</h3>
-          <h3 className="text-sm font-bold">TCOIN amount to top up</h3>
+          <h3 className="text-sm font-bold">{tokenLabel.toUpperCase()} amount to top up</h3>
           <div className="justify-between space-x-4 flex w-full">
             <Input
               type="number"
-              placeholder="Enter amount of TCOIN"
+              placeholder={`Enter amount of ${tokenLabel.toUpperCase()}`}
               className="border-gray-500"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -987,7 +999,7 @@ export function TopUpModal({ closeModal }) {
       {step === "final" && (
         <div className="space-y-4">
           <h3 className="text-lg font-bold">Thank You!</h3>
-          <p>Thank you! Check back here in 24 hours when the TCOIN balance should be updated.</p>
+          <p>Thank you! Check back here in 24 hours when the {tokenLabel.toUpperCase()} balance should be updated.</p>
           <div className="flex justify-end">
             <Button onClick={closeModal}>Close</Button>
           </div>
@@ -1000,7 +1012,17 @@ export function TopUpModal({ closeModal }) {
 
 // ---------------- Main Component ----------------
 
-export function MobileWalletDashboardComponent() {
+export function MobileWalletDashboardComponent({
+  qrBgColor,
+  qrFgColor,
+  qrWrapperClassName,
+  tokenLabel = "Tcoin",
+}: {
+  qrBgColor?: string;
+  qrFgColor?: string;
+  qrWrapperClassName?: string;
+  tokenLabel?: string;
+}) {
   // Active tab for mobile view.
   const [activeTab, setActiveTab] = useState("account");
   const tabs = [
@@ -1242,6 +1264,10 @@ export function MobileWalletDashboardComponent() {
               openModal={openModal}
               closeModal={closeModal}
               senderWallet={senderWallet}
+              qrBgColor={qrBgColor}
+              qrFgColor={qrFgColor}
+              qrWrapperClassName={qrWrapperClassName}
+              tokenLabel={tokenLabel}
             />
           )}
           {activeTab === "send" && (
@@ -1306,6 +1332,10 @@ export function MobileWalletDashboardComponent() {
           openModal={openModal}
           closeModal={closeModal}
           senderWallet={senderWallet}
+          qrBgColor={qrBgColor}
+          qrFgColor={qrFgColor}
+          qrWrapperClassName={qrWrapperClassName}
+          tokenLabel={tokenLabel}
         />
         <SendCard
           toSendData={toSendData}

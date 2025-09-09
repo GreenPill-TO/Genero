@@ -19,7 +19,14 @@ export default function Dashboard() {
       // case "dr":
       //   return <DonorScreen />;
       default:
-        return <WalletScreen />;
+        return (
+          <WalletScreen
+            qrBgColor="#fff"
+            qrFgColor="#000"
+            qrWrapperClassName="bg-white p-1"
+            tokenLabel="TCOIN"
+          />
+        );
     }
   }, [userData]);
   useEffect(() => {
