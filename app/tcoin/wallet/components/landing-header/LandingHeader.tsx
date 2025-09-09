@@ -3,10 +3,32 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
+
+import { useAuth } from "@shared/api/hooks/useAuth";
+import { useModal } from "@shared/contexts/ModalContext";
+import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 
 export function LandingHeader() {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const { openModal, closeModal } = useModal();
+
+  const handleOpenWallet = (
+    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
+  ) => {
+    e.preventDefault();
+    if (isAuthenticated) router.push("/dashboard");
+    else
+      openModal({
+        content: (
+          <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />
+        ),
+        elSize: "4xl",
+      });
+  };
 
   return (
     <header className="fixed top-0 left-0 w-full bg-background text-foreground z-50 shadow-none border-none">
@@ -35,6 +57,7 @@ export function LandingHeader() {
         <nav className="hidden md:flex items-center justify-start px-6">
           <Link
             href="/dashboard"
+            onClick={handleOpenWallet}
             className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline"
           >
             &lt;open my wallet&gt;
@@ -67,6 +90,10 @@ export function LandingHeader() {
         <p>Proceeds to charity.</p>
         <Link
           href="/dashboard"
+          onClick={(e) => {
+            handleOpenWallet(e);
+            setOpen(false);
+          }}
           className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline mt-4"
         >
           &lt;open my wallet&gt;

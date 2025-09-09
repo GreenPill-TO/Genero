@@ -1,8 +1,31 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LandingHeader } from "@tcoin/wallet/components/landing-header";
 
+import { useAuth } from "@shared/api/hooks/useAuth";
+import { useModal } from "@shared/contexts/ModalContext";
+import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
+
 export default function HomePage() {
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const { openModal, closeModal } = useModal();
+
+  const handleOpenWallet = (
+    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
+  ) => {
+    e.preventDefault();
+    if (isAuthenticated) router.push("/dashboard");
+    else
+      openModal({
+        content: (
+          <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />
+        ),
+        elSize: "4xl",
+      });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground text-base">
       <LandingHeader />
@@ -142,6 +165,7 @@ export default function HomePage() {
           <div className="text-center my-6">
             <Link
               href="/dashboard"
+              onClick={handleOpenWallet}
               className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline"
             >
               &lt;open my wallet&gt;
