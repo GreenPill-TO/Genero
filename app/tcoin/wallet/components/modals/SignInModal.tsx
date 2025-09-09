@@ -3,7 +3,7 @@ import { useSendPasscodeMutation, useVerifyPasscodeMutation } from "@shared/api/
 import ImageCarousel from "@shared/components/ui/ImageCarousel";
 import OTPForm from "@tcoin/sparechange/components/forms/OTPForm";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 import { createCubidUser } from "@shared/api/services/cubidService";
@@ -51,6 +51,17 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const [passcode, setPasscode] = useState("");
   const [isPasscodeSent, setIsPasscodeSent] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeModal]);
 
   const fullContact = useMemo(() => {
     return authMethod === "phone" ? `${countryCode}${contact}` : contact;

@@ -4,13 +4,13 @@
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { cn } from "@shared/utils/classnames";
 import { Footer } from "@tcoin/wallet/components/footer";
-import Navbar from "@tcoin/sparechange/components/navbar/Navbar";
+import Navbar from "@tcoin/wallet/components/navbar";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export const publicPaths = ["/", "/resources", "/contact", "/dashboard"];
+export const publicPaths = ["/", "/resources", "/contact"];
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
