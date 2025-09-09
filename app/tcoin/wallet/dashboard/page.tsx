@@ -19,7 +19,7 @@ export default function Dashboard() {
       // case "dr":
       //   return <DonorScreen />;
       default:
-        return <WalletScreen />;
+        return <WalletScreen qrBgColor="#fff" qrFgColor="#000" />;
     }
   }, [userData]);
   useEffect(() => {

@@ -173,7 +173,9 @@ function ReceiveCard({
   closeModal,
   senderWallet,
   handleQrTcoinBlur,
-  handleQrCadBlur
+  handleQrCadBlur,
+  qrBgColor,
+  qrFgColor
 
 }: {
   handleQrTcoinBlur: any;
@@ -186,6 +188,8 @@ function ReceiveCard({
   openModal: any;
   closeModal: any;
   senderWallet: string;
+  qrBgColor?: string;
+  qrFgColor?: string;
 }) {
   const { isDarkMode } = useDarkMode();
   const { ...rest } = useTokenBalance(senderWallet);
@@ -233,8 +237,8 @@ function ReceiveCard({
             <QRCode
               value={qrCodeData}
               size={250}
-              bgColor="transparent"
-              fgColor={isDarkMode ? "#fff" : "#000"}
+              bgColor={qrBgColor ?? "transparent"}
+              fgColor={qrFgColor ?? (isDarkMode ? "#fff" : "#000")}
             />
           ) : (
             <p className="text-white">Loading QR Code...</p>
@@ -1000,7 +1004,13 @@ export function TopUpModal({ closeModal }) {
 
 // ---------------- Main Component ----------------
 
-export function MobileWalletDashboardComponent() {
+export function MobileWalletDashboardComponent({
+  qrBgColor,
+  qrFgColor,
+}: {
+  qrBgColor?: string;
+  qrFgColor?: string;
+}) {
   // Active tab for mobile view.
   const [activeTab, setActiveTab] = useState("account");
   const tabs = [
@@ -1242,6 +1252,8 @@ export function MobileWalletDashboardComponent() {
               openModal={openModal}
               closeModal={closeModal}
               senderWallet={senderWallet}
+              qrBgColor={qrBgColor}
+              qrFgColor={qrFgColor}
             />
           )}
           {activeTab === "send" && (
@@ -1306,6 +1318,8 @@ export function MobileWalletDashboardComponent() {
           openModal={openModal}
           closeModal={closeModal}
           senderWallet={senderWallet}
+          qrBgColor={qrBgColor}
+          qrFgColor={qrFgColor}
         />
         <SendCard
           toSendData={toSendData}

@@ -1,3 +1,6 @@
+## v0.36
+- Locked wallet dashboard QR code colours to black on white.
+
 ## v0.35
 - Lightened dark-mode highlight backgrounds to Tailwind gray-700 on landing, resources and contact pages.
 
