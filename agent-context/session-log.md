@@ -1,3 +1,6 @@
+## v0.37
+- Capitalised wallet dashboard branding to TCOIN and added optional QR padding.
+
 ## v0.36
 - Locked wallet dashboard QR code colours to black on white.
 
