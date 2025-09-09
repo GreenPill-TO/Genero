@@ -1,3 +1,6 @@
+## v0.38
+- Removed '/tcoin/wallet' prefix from wallet links so routes serve from the domain root.
+
 ## v0.37
 - Capitalised wallet dashboard branding to TCOIN and added optional QR padding.
 
