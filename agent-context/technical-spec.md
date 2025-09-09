@@ -68,3 +68,4 @@
 - Public page wrappers now use `bg-background` so panels take their colour from the theme variable instead of hard-coded white.
 - Internal links use root-relative URLs and rewrites map them to the wallet app, eliminating `/tcoin/wallet` from page paths.
 - Dashboard authentication toggles via Supabase control variable `require_authenticated_on_dashboard`; `/dashboard` stays public unless that value is `true`, `TRUE` or `1`.
+ - Failed control-variable queries default to public access so `/dashboard` remains reachable when the flag cannot be read.

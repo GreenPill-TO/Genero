@@ -46,6 +46,8 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Main panels derive their background from the theme variable instead of fixed white so they correctly switch to black in dark mode.
 - Wallet routes are available from the domain root so links use paths like `/dashboard` rather than `/tcoin/wallet/dashboard`.
 - Unauthenticated visitors may open `/dashboard` directly when control variable `require_authenticated_on_dashboard` is not `true`, `TRUE` or `1`.
+ - Unauthenticated visitors may open `/dashboard` directly when control variable `require_authenticated_on_dashboard` is not `true`, `TRUE` or `1`.
+ - If the control variable cannot be retrieved, `/dashboard` stays public by default.
 
 ### 2. SpareChange
 

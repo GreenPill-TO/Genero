@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldRequireAuth } from './useRequireAuthOnDashboard'
+import { shouldRequireAuth, fetchRequireAuth } from './useRequireAuthOnDashboard'
 
 describe('shouldRequireAuth', () => {
   it('returns true for truthy values', () => {
@@ -16,5 +16,19 @@ describe('shouldRequireAuth', () => {
     expect(shouldRequireAuth(0)).toBe(false)
     expect(shouldRequireAuth('0')).toBe(false)
     expect(shouldRequireAuth(undefined)).toBe(false)
+  })
+})
+
+describe('fetchRequireAuth', () => {
+  it('returns false when fetch fails', async () => {
+    const result = await fetchRequireAuth(async () => {
+      throw new Error('RLS policy')
+    })
+    expect(result).toBe(false)
+  })
+
+  it('parses fetched value', async () => {
+    const result = await fetchRequireAuth(async () => ({ data: { value: '1' }, error: null }))
+    expect(result).toBe(true)
   })
 })

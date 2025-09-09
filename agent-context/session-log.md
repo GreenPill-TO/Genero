@@ -1,3 +1,6 @@
+## v0.40
+- Default dashboard access to public when control-variable lookup fails, preventing unwanted redirects.
+
 ## v0.39
 - Fetch latest `require_authenticated_on_dashboard` control variable so unauthenticated `/dashboard` links stop redirecting.
 - Trim trailing slashes from wallet-relative paths.
