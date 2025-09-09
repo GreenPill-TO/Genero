@@ -29,8 +29,9 @@ const CubidWidget = dynamic(
   { ssr: false }
 );
 import { useState } from "react";
-import { LuCamera, LuCreditCard, LuDollarSign, LuQrCode, LuSend, LuShare2, LuUsers } from "react-icons/lu";
+import { LuCamera, LuCreditCard, LuDollarSign, LuSend, LuShare2, LuUsers } from "react-icons/lu";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import QRCode from "react-qr-code";
 
 const balanceHistory = [
   { date: "2023-06-01", balance: 800 },
@@ -111,6 +112,7 @@ export function MobileWalletDashboardComponent() {
   };
 
   const { userData } = useAuth()
+  const qrCodeData = userData?.user?.cubid_id || ""
 
   return (
     <div className="container mx-auto sm:p-4 space-y-6">
@@ -171,13 +173,13 @@ export function MobileWalletDashboardComponent() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="receive-card">
           <CardHeader>
             <CardTitle>Receive</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-              <LuQrCode className="mx-auto h-32 w-32" />
+              <QRCode value={qrCodeData} size={128} bgColor="#ffffff" fgColor="#000000" />
               <p className="mt-2 qr-code-text">Your default QR code (unspecified amount)</p>
             </div>
             <div className="space-y-2">
@@ -239,7 +241,7 @@ export function MobileWalletDashboardComponent() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="send-card">
           <CardHeader>
             <CardTitle>Pay / Send</CardTitle>
           </CardHeader>

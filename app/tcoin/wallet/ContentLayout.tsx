@@ -3,10 +3,10 @@
 
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { cn } from "@shared/utils/classnames";
-import { Footer } from "@tcoin/wallet/components/footer";
 import Navbar from "@tcoin/sparechange/components/navbar/Navbar";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { Footer } from "@tcoin/wallet/components/footer";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -16,6 +16,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const publicPaths = ["/tcoin/wallet", "/tcoin/wallet/resources", "/tcoin/wallet/contact"];
   const isPublic = publicPaths.includes(pathname);
+  const showFooter = pathname !== "/tcoin/wallet/dashboard";
 
   const bodyClass = cn(
     "min-h-screen",
@@ -38,9 +39,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <section className={bodyClass}>
-      {!isPublic && <Navbar title="Tcoin" />}
+      {!isPublic && <Navbar title="TCOIN" />}
       <div className={cn(!isPublic && "flex-grow flex flex-col pt-16 bg-background text-foreground")}>{children}</div>
-      <Footer />
+      {showFooter && <Footer />}
       {!isPublic && (
         <ToastContainer autoClose={3000} transition={Flip} theme="colored" />
       )}
