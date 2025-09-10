@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
@@ -55,7 +54,8 @@ export default function Navbar({ title }: { title?: string }) {
   }, [isAuthenticated]);
 
   const Account = () => {
-    if (isAuthenticated)
+    if (isAuthenticated) {
+      const profileImage = userData?.cubidData?.profile_image_url as unknown;
       return (
         <Avatar
           onClick={() => {
@@ -68,12 +68,16 @@ export default function Navbar({ title }: { title?: string }) {
           }}
           className="mx-2"
         >
-          <AvatarImage src={userData?.cubidData?.profile_image_url ?? undefined} alt="User avatar" />
-          <AvatarFallback>
-            <LuUser />
-          </AvatarFallback>
+          {typeof profileImage === "string" ? (
+            <AvatarImage src={profileImage} alt="User avatar" />
+          ) : (
+            <AvatarFallback>
+              <LuUser />
+            </AvatarFallback>
+          )}
         </Avatar>
       );
+    }
     return <Button onClick={onAuth}>Authenticate</Button>;
   };
 

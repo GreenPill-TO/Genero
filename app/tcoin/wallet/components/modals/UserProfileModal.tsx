@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 import React from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
@@ -15,13 +14,15 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   const { signOut, userData } = useAuth();
   useEscapeKey(closeModal);
 
+  const profileImage = userData?.cubidData?.profile_image_url as unknown;
+
   return (
     <div className="mt-2 p-0">
       <div className="space-y-4">
         <div className="flex items-center space-x-4 mb-4">
           <Avatar className="w-20 h-20">
-            {userData?.cubidData?.profile_image_url ? (
-              <AvatarImage src={userData.cubidData.profile_image_url as string} alt="User avatar" />
+            {typeof profileImage === "string" ? (
+              <AvatarImage src={profileImage} alt="User avatar" />
             ) : (
               <AvatarFallback>
                 <LuUser />
