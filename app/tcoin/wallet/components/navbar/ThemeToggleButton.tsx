@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Button } from "@shared/components/ui/Button";
 import useDarkMode from "@shared/hooks/useDarkMode";
 import { LuMoon, LuSun } from "react-icons/lu";

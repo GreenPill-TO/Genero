@@ -9,6 +9,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 ### 1. Wallet
 
 - Digital wallet for holding, sending, and receiving CityCoins.
+- Modal windows close when the Escape key is pressed, and zero-value requests prompt for confirmation before sending.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.
 - Closing line states "build up - not extract from - our communities" with space-dash-space style.

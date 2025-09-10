@@ -1,9 +1,11 @@
+"use client";
 // @ts-nocheck
 import { useSendPasscodeMutation, useVerifyPasscodeMutation } from "@shared/api/mutations/usePasscode";
 import ImageCarousel from "@shared/components/ui/ImageCarousel";
 import OTPForm from "@tcoin/sparechange/components/forms/OTPForm";
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import useEscapeKey from "@shared/hooks/useEscapeKey";
 import { toast } from "react-toastify";
 
 import { createCubidUser } from "@shared/api/services/cubidService";
@@ -52,16 +54,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const [isPasscodeSent, setIsPasscodeSent] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        closeModal();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeModal]);
+  useEscapeKey(closeModal);
 
   const fullContact = useMemo(() => {
     return authMethod === "phone" ? `${countryCode}${contact}` : contact;
@@ -114,13 +107,12 @@ function SignInModal({ closeModal }: SignInModalProps) {
 
       setTimeout(() => {
         closeModal();
-        router.push("/welcome");
+        router.push("/dashboard");
       }, 2000);
     } else {
       setTimeout(() => {
         closeModal();
-        if (user.has_completed_intro) router.push("/dashboard");
-        else router.push("/welcome");
+        router.push("/dashboard");
       }, 2000);
     }
   };

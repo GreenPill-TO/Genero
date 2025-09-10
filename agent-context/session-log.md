@@ -1,3 +1,7 @@
+## v0.41
+- Closed modals with the Escape key and confirmed missing request amounts with a follow-up modal.
+- Restored camera access for QR payments and ensured top ups display their modal again.
+
 ## v0.40
 - Added Vitest testing framework with path alias support and a script to run unit tests.
 

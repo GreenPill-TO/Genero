@@ -1,11 +1,15 @@
+"use client";
+import React from "react";
 import { Button } from "@shared/components/ui/Button";
 import { toast } from "react-toastify";
+import useEscapeKey from "@shared/hooks/useEscapeKey";
 
 interface ShareQrModalProps {
   closeModal: () => void;
 }
 
 const ShareQrModal = ({ closeModal }: ShareQrModalProps) => {
+  useEscapeKey(closeModal);
   return (
     <div className="mt-2 p-0">
       <div className="space-y-4">

@@ -1,7 +1,9 @@
+"use client";
+import React, { useState } from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import InputField from "@shared/components/ui/InputField";
-import { useState } from "react";
+import useEscapeKey from "@shared/hooks/useEscapeKey";
 
 interface OffRampProps {
   closeModal: () => void;
@@ -9,6 +11,7 @@ interface OffRampProps {
 
 const OffRampModal = ({ closeModal }: OffRampProps) => {
   const [amount, setAmount] = useState(0);
+  useEscapeKey(closeModal);
 
   return (
     <div className="mt-2 p-0">

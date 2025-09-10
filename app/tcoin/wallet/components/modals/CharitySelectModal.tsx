@@ -1,6 +1,8 @@
+"use client";
+import React, { useState } from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Radio } from "@shared/components/ui/Radio";
-import { useState } from "react";
+import useEscapeKey from "@shared/hooks/useEscapeKey";
 
 interface CharitySelectModalProps {
   closeModal: () => void;
@@ -16,6 +18,7 @@ const charities = [
 
 const CharitySelectModal = ({ closeModal, selectedCharity, setSelectedCharity }: CharitySelectModalProps) => {
   const [charity, setCharity] = useState(selectedCharity);
+  useEscapeKey(closeModal);
 
   return (
     <div className="mt-2 p-0">

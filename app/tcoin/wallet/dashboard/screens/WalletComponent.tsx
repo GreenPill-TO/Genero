@@ -14,6 +14,7 @@ import { createClient } from "@shared/lib/supabase/client";
 import {
   CharitySelectModal,
   ContactSelectModal,
+  BlankAmountModal,
   OffRampModal,
   QrScanModal,
   ShareQrModal,
@@ -213,6 +214,13 @@ export function MobileWalletDashboardComponent() {
               <Button
                 className="flex-1"
                 onClick={() => {
+                  if (!qrTcoinAmount || Number(qrTcoinAmount) === 0) {
+                    openModal({
+                      content: <BlankAmountModal closeModal={closeModal} openModal={openModal} />,
+                      title: "Request from Contact",
+                    });
+                    return;
+                  }
                   openModal({
                     content: <ContactSelectModal closeModal={closeModal} amount={qrTcoinAmount} method="Request" />,
                     title: "Request from Contact",

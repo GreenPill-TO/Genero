@@ -1,7 +1,9 @@
+"use client";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Radio } from "@shared/components/ui/Radio";
-import { useState } from "react";
+import React, { useState } from "react";
+import useEscapeKey from "@shared/hooks/useEscapeKey";
 
 interface ContactSelectModalProps {
   closeModal: () => void;
@@ -17,6 +19,7 @@ const contacts = [
 
 const ContactSelectModal = ({ closeModal, amount, method }: ContactSelectModalProps) => {
   const [selectedContact, setSelectedContact] = useState(contacts[0].value);
+  useEscapeKey(closeModal);
   return (
     <div className="mt-2 p-0">
       <div className="space-y-4">
