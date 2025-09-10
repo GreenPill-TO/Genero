@@ -1,4 +1,6 @@
+"use client";
 // @ts-nocheck
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
@@ -8,7 +10,6 @@ import { cn } from "@shared/utils/classnames";
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
 import { LuCamera, LuUser } from "react-icons/lu";
 import NavLink from "./NavLink";
 import { ThemeToggleButton } from "./ThemeToggleButton";
@@ -67,13 +68,10 @@ export default function Navbar({ title }: { title?: string }) {
           }}
           className="mx-2"
         >
-          {userData?.cubidData?.profile_image_url ? (
-            <AvatarImage src={userData.cubidData.profile_image_url as string} alt="User avatar" />
-          ) : (
-            <AvatarFallback>
-              <LuUser />
-            </AvatarFallback>
-          )}
+          <AvatarImage src={userData?.cubidData?.profile_image_url ?? undefined} alt="User avatar" />
+          <AvatarFallback>
+            <LuUser />
+          </AvatarFallback>
         </Avatar>
       );
     return <Button onClick={onAuth}>Authenticate</Button>;

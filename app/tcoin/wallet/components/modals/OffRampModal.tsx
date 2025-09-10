@@ -1,7 +1,8 @@
+"use client";
+import React, { useState } from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import InputField from "@shared/components/ui/InputField";
-import { useState } from "react";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
 
 interface OffRampProps {

@@ -1,3 +1,5 @@
+"use client";
+import React from "react";
 import { Button } from "@shared/components/ui/Button";
 import { toast } from "react-toastify";
 import useEscapeKey from "@shared/hooks/useEscapeKey";

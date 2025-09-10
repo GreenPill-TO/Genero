@@ -47,7 +47,7 @@ describe("SignInModal", () => {
 
     act(() => {
       const event = new KeyboardEvent("keydown", { key: "Escape" });
-      window.dispatchEvent(event);
+      document.dispatchEvent(event);
     });
 
     expect(closeModal).toHaveBeenCalled();

@@ -1,6 +1,7 @@
+"use client";
+import React, { useState } from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Radio } from "@shared/components/ui/Radio";
-import { useState } from "react";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
 
 interface CharitySelectModalProps {

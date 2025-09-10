@@ -1,4 +1,6 @@
+"use client";
 // @ts-nocheck
+import React from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
