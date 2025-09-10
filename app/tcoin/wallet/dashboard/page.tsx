@@ -1,7 +1,7 @@
 "use client";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useEffect, useMemo } from "react";
-import { WalletScreen } from "../../sparechange/dashboard/screens/WalletScreen";
+import { WalletScreen } from "./screens/WalletScreen";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
@@ -19,14 +19,7 @@ export default function Dashboard() {
       // case "dr":
       //   return <DonorScreen />;
       default:
-        return (
-          <WalletScreen
-            qrBgColor="#fff"
-            qrFgColor="#000"
-            qrWrapperClassName="bg-white p-1"
-            tokenLabel="TCOIN"
-          />
-        );
+        return <WalletScreen />;
     }
   }, [userData]);
   useEffect(() => {

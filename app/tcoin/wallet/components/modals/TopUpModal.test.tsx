@@ -1,6 +1,8 @@
+/** @vitest-environment jsdom */
+import React from "react";
 import { fireEvent, render } from "@testing-library/react";
 import { TopUpModal } from "./TopUpModal";
-import { vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 describe("TopUpModal", () => {
   it("closes on Escape", () => {
