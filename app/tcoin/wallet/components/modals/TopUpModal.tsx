@@ -1,8 +1,11 @@
+import useEscapeKey from "@shared/hooks/useEscapeKey";
+
 interface TopUpModalProps {
   closeModal: () => void;
 }
 
 const TopUpModal = ({ closeModal }: TopUpModalProps) => {
+  useEscapeKey(closeModal);
   return (
     <div className="mt-2 p-0">
       <div className="space-y-4">

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { Avatar } from "@shared/components/ui/Avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
 import { useModal } from "@shared/contexts/ModalContext";
 import { cn } from "@shared/utils/classnames";
@@ -9,13 +9,13 @@ import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LuCamera } from "react-icons/lu";
+import { LuCamera, LuUser } from "react-icons/lu";
 import NavLink from "./NavLink";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 
 export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userData } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
@@ -65,10 +65,16 @@ export default function Navbar({ title }: { title?: string }) {
               description: "Manage your account settings and preferences.",
             });
           }}
-          src={"https://github.com/shadcn.png"}
-          alt={"Avatar"}
           className="mx-2"
-        />
+        >
+          {userData?.cubidData?.profile_image_url ? (
+            <AvatarImage src={userData.cubidData.profile_image_url as string} alt="User avatar" />
+          ) : (
+            <AvatarFallback>
+              <LuUser />
+            </AvatarFallback>
+          )}
+        </Avatar>
       );
     return <Button onClick={onAuth}>Authenticate</Button>;
   };

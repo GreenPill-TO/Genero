@@ -1,7 +1,9 @@
 // @ts-nocheck
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { Avatar } from "@shared/components/ui/Avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
+import useEscapeKey from "@shared/hooks/useEscapeKey";
+import { LuUser } from "react-icons/lu";
 
 interface UserProfileModalProps {
   closeModal: () => void;
@@ -9,12 +11,21 @@ interface UserProfileModalProps {
 
 const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   const { signOut, userData } = useAuth();
+  useEscapeKey(closeModal);
 
   return (
     <div className="mt-2 p-0">
       <div className="space-y-4">
         <div className="flex items-center space-x-4 mb-4">
-          <Avatar className="w-20 h-20" src="https://github.com/shadcn.png" alt="@shadcn" />
+          <Avatar className="w-20 h-20">
+            {userData?.cubidData?.profile_image_url ? (
+              <AvatarImage src={userData.cubidData.profile_image_url as string} alt="User avatar" />
+            ) : (
+              <AvatarFallback>
+                <LuUser />
+              </AvatarFallback>
+            )}
+          </Avatar>
           <Button variant="link" className="p-0 h-auto" onClick={() => console.log("Change avatar")}>
             Change avatar
           </Button>
