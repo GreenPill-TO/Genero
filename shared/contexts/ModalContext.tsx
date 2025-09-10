@@ -1,7 +1,8 @@
 "use client";
 // ModalContext.tsx
 import Modal from "@shared/components/ui/Modal";
-import React, { createContext, ReactNode, useContext, useState } from "react";
+import useEscapeKey from "@shared/hooks/useEscapeKey";
+import React, { createContext, ReactNode, useCallback, useContext, useState } from "react";
 
 export interface ModalContentType {
   content?: ReactNode | null;
@@ -44,6 +45,12 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
     setIsOpen(false);
     setModalContent(null);
   };
+
+  const handleEscape = useCallback(() => {
+    if (isOpen) closeModal();
+  }, [isOpen, closeModal]);
+
+  useEscapeKey(handleEscape);
 
   return (
     <ModalContext.Provider value={{ isOpen, modalContent, openModal, closeModal }}>

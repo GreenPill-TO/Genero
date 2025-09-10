@@ -30,6 +30,8 @@
 ## Notable Features
 
 - NFC/RFID support planned for physical tBill integrations.
+- Modal provider listens for the Escape key to dismiss any open modal.
+- QR scanning modal requests camera access via `navigator.mediaDevices.getUserMedia`.
 - Demurrage timers for token decay embedded in wallet logic.
 - Wallet landing page styled after Thinking Machines with mission-driven copy.
 - Homepage sets body font to the Special Elite typewriter font via a style tag with system-ui fallback; headings are bold, centred, same size as body text, and spaced with one blank line above and below.
