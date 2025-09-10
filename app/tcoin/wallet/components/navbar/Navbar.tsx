@@ -4,17 +4,16 @@ import { Avatar } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
 import { useModal } from "@shared/contexts/ModalContext";
 import { cn } from "@shared/utils/classnames";
-import { QrScanModal } from "@tcoin/sparechange/components/modals";
 
-import SignInModal from "@tcoin/sparechange/components/modals/SignInModal";
-import { UserProfileModal } from "@tcoin/sparechange/components/modals/UserProfileModal";
+import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
+import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LuCamera } from "react-icons/lu";
 import NavLink from "./NavLink";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 
-export default function Navbar() {
+export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
   const { isAuthenticated } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
@@ -103,7 +102,7 @@ export default function Navbar() {
   return (
     <nav
       className={cn(
-        "w-full z-20 fixed top-0",
+        "w-full z-20 fixed top-0 bg-[#05656F] text-white dark:bg-white dark:text-black",
         "transition-transform duration-300",
         { "translate-y-0": isVisible },
         { "-translate-y-full": !isVisible }
@@ -111,7 +110,7 @@ export default function Navbar() {
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center max-w-7xl mx-auto">
-          <NavLink link="/" title="SpareChange" optionalClass="text-2xl font-bold" />
+          <NavLink link="/" title={title ?? "TCOIN"} optionalClass="text-2xl font-bold no-underline" />
           <div className="hidden sm:flex sm:items-center sm:space-x-8 mx-auto">
             {homePageLinks}
             {isAuthenticated && navLinksProtected}
@@ -123,7 +122,7 @@ export default function Navbar() {
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  localStorage.setItem("openQR", "true")
+                  localStorage.setItem("openQR", "true");
                 }}
                 className="mr-2"
               >

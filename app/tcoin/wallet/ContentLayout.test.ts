@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { publicPaths } from "./ContentLayout";
 
 describe("ContentLayout public paths", () => {
-  it("includes /dashboard", () => {
-    expect(publicPaths).toContain("/dashboard");
+  it("does not include /dashboard", () => {
+    expect(publicPaths).not.toContain("/dashboard");
   });
 });
