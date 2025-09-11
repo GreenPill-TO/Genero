@@ -1,6 +1,8 @@
+/** @vitest-environment jsdom */
+import React from "react";
 import { fireEvent, render } from "@testing-library/react";
 import { BlankAmountModal } from "./BlankAmountModal";
-import { vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./ContactSelectModal", () => ({
   ContactSelectModal: () => <div>contact-select</div>,
@@ -18,8 +20,10 @@ describe("BlankAmountModal", () => {
   it("opens contact selector on confirm", () => {
     const closeModal = vi.fn();
     const openModal = vi.fn();
-    const { getByText } = render(<BlankAmountModal closeModal={closeModal} openModal={openModal} />);
-    fireEvent.click(getByText("Send blank request"));
+    const { getAllByText } = render(
+      <BlankAmountModal closeModal={closeModal} openModal={openModal} />
+    );
+    fireEvent.click(getAllByText("Send blank request")[0]);
     expect(openModal).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Request from Contact" })
     );

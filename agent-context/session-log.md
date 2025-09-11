@@ -1,3 +1,6 @@
+## v0.42
+- Replaced single verification field with six auto-advancing inputs in sign-in modals and added a unit test.
+
 ## v0.41
 - Closed modals with the Escape key and confirmed missing request amounts with a follow-up modal.
 - Restored camera access for QR payments and ensured top ups display their modal again.
