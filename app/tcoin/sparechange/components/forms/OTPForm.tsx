@@ -4,8 +4,8 @@ import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Loading } from "@shared/components/ui/Loading";
 import { Select } from "@shared/components/ui/Select";
-import { countryCodes, formatPhoneNumber } from "@shared/utils/phone";
-import { ChangeEvent, FormEvent } from "react";
+import { formatPhoneNumber } from "@shared/utils/phone";
+import React, { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 
 type OTPFormProps = {
   authMethod: "phone" | "email";
@@ -43,6 +43,48 @@ function OTPForm({
   const handleContactChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setContact(authMethod === "phone" ? formatPhoneNumber(value, countryCode) : value);
+  };
+
+  const [digits, setDigits] = useState(Array(6).fill(""));
+  const inputsRef = useRef([]);
+
+  useEffect(() => {
+    if (isOtpSent) {
+      setDigits(Array(6).fill(""));
+      setPasscode("");
+      inputsRef.current[0]?.focus();
+    }
+  }, [isOtpSent, setPasscode]);
+
+  const handleDigitChange = (value: string, idx: number) => {
+    if (!/^\d?$/.test(value)) return;
+    const newDigits = [...digits];
+    newDigits[idx] = value;
+    setDigits(newDigits);
+    setPasscode(newDigits.join(""));
+    if (value && idx < 5) inputsRef.current[idx + 1]?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
+    if (e.key === "Backspace" && !digits[idx] && idx > 0) {
+      const newDigits = [...digits];
+      newDigits[idx - 1] = "";
+      setDigits(newDigits);
+      setPasscode(newDigits.join(""));
+      inputsRef.current[idx - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (paste) {
+      e.preventDefault();
+      const newDigits = Array(6).fill("");
+      for (let i = 0; i < paste.length; i++) newDigits[i] = paste[i];
+      setDigits(newDigits);
+      setPasscode(newDigits.join(""));
+      inputsRef.current[Math.min(paste.length, 5)]?.focus();
+    }
   };
 
   return (
@@ -105,13 +147,22 @@ function OTPForm({
             <label className="label">
               <span className="label-text text-xs">Verification Code</span>
             </label>
-            <Input
-              type="text"
-              value={passcode}
-              className="border-gray-500"
-              placeholder="Ex- 123456"
-              onChange={(e) => setPasscode(e.target.value)}
-            />
+            <div className="flex gap-2">
+              {digits.map((digit, idx) => (
+                <input
+                  key={idx}
+                  ref={(el) => (inputsRef.current[idx] = el)}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  className="w-10 h-10 text-center border border-gray-500 rounded-md bg-white"
+                  value={digit}
+                  onChange={(e) => handleDigitChange(e.target.value, idx)}
+                  onKeyDown={(e) => handleKeyDown(e, idx)}
+                  onPaste={handlePaste}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
