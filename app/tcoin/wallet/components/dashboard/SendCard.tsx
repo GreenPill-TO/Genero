@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { LuCamera, LuSend, LuUsers } from "react-icons/lu";
+import { LuSend } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
@@ -8,12 +8,11 @@ import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
 import { createClient } from "@shared/lib/supabase/client";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
-import { ContactSelectModal, QrScanModal } from "@tcoin/wallet/components/modals";
 import { Hypodata } from "./types";
 
 interface SendCardProps {
   sendMoney: (amount: string) => Promise<string>;
-  toSendData: Hypodata | null;
+  toSendData: Hypodata;
   setToSendData: (data: Hypodata | null) => void;
   tcoinAmount: string;
   cadAmount: string;
@@ -45,23 +44,20 @@ export function SendCard({
   const { openModal, closeModal } = useModal();
 
   useEffect(() => {
-    if (toSendData?.id) {
-      const fetchConnections = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from("connections")
-          .select("*")
-          .match({
-            connected_user_id: toSendData?.id,
-            owner_user_id: userData?.cubidData?.id,
-          })
-          .neq("state", "new");
-        setConnections(data?.[0]);
-      };
-      fetchConnections();
-    }
+    const fetchConnections = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("connections")
+        .select("*")
+        .match({
+          connected_user_id: toSendData.id,
+          owner_user_id: userData?.cubidData?.id,
+        })
+        .neq("state", "new");
+      setConnections(data?.[0]);
+    };
+    fetchConnections();
   }, [toSendData, userData]);
-
 
   const tcoinValue = parseFloat(tcoinAmount);
   const cadValue = parseFloat(cadAmount);
@@ -78,121 +74,73 @@ export function SendCard({
         <CardTitle>Pay / Send</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!toSendData && (
-          <div className="space-y-2">
-            <Button
-              className="w-full"
-              onClick={() => {
-                openModal({
-                  content: (
-                    <QrScanModal
-                      setTcoin={setTcoin}
-                      setCad={setCad}
-                      setToSendData={setToSendData}
-                      closeModal={closeModal}
-                    />
-                  ),
-                  title: "Scan QR to Pay",
-                  description: "Use your device's camera to scan a QR code for payment.",
-                });
-              }}
-            >
-              <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
-            </Button>
-            <Button
-              className="w-full"
-              onClick={() => {
-                openModal({
-                  content: (
-                    <ContactSelectModal
-                      closeModal={closeModal}
-                      setToSendData={setToSendData}
-                      method={"Send"}
-                    />
-                  ),
-                  title: "Select Contact to Pay",
-                  description: "Choose a contact from your connections to send TCOIN to.",
-                });
-              }}
-            >
-              <LuUsers className="mr-2 h-4 w-4" /> Select Contact to Pay
-            </Button>
-          </div>
-        )}
+        <div className="p-4 mt-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700 relative">
+          <button
+            onClick={() => {
+              setToSendData(null);
+              setTcoin("");
+              setCad("");
+            }}
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-300"
+          >
+            &times;
+          </button>
+          <p className="text-lg font-bold mb-2">{toSendData.full_name}</p>
+          <p className="text-sm text-gray-400 mb-2">@{toSendData.username}</p>
+          {toSendData.profile_image_url && (
+            <img
+              src={toSendData.profile_image_url}
+              alt={toSendData.full_name}
+              className="w-16 h-16 rounded-full object-cover"
+            />
+          )}
+        </div>
 
-        {toSendData && (
-          <div className="p-4 mt-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700 relative">
-            <button
-              onClick={() => {
-                setToSendData(null);
-                setTcoin("");
-                setCad("");
-              }}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-300"
-            >
-              &times;
-            </button>
-            <p className="text-lg font-bold mb-2">{toSendData.full_name}</p>
-            <p className="text-sm text-gray-400 mb-2">@{toSendData.username}</p>
-            {toSendData.profile_image_url && (
-              <img
-                src={toSendData.profile_image_url}
-                alt={toSendData.full_name}
-                className="w-16 h-16 rounded-full object-cover"
-              />
-            )}
-          </div>
-        )}
-
-        {toSendData && (
-          <>
-            <div className="space-y-2">
-              <Input
-                className="w-full"
-                elSize="md"
-                name="tcoin"
-                value={tcoinAmount}
-                onChange={handleTcoinChange}
-                placeholder="Enter TCOIN amount"
-              />
-              <Input
-                name="cad"
-                elSize="md"
-                className="w-full"
-                value={cadAmount}
-                onChange={handleCadChange}
-                placeholder="Enter CAD amount"
-              />
-            </div>
-            <Button
-              className="w-full"
-              disabled={!isValidAmount}
-              onClick={() => {
-                if (!isValidAmount) {
-                  toast.error(
-                    "Please enter valid amounts. Ensure they are positive and within your available balance."
-                  );
-                  return;
-                }
-                openModal({
-                  content: (
-                    <ConfirmTransactionModal
-                      tcoinAmount={tcoinAmount}
-                      cadAmount={cadAmount}
-                      toSendData={toSendData}
-                      closeModal={closeModal}
-                      sendMoney={sendMoney}
-                      setExplorerLink={setExplorerLink}
-                    />
-                  ),
-                  title: "Confirm Payment",
-                });
-              }}
-            >
-              <LuSend className="mr-2 h-4 w-4" /> Send to Contact
-            </Button>
-          </>
-        )}
+        <div className="space-y-2">
+          <Input
+            className="w-full"
+            elSize="md"
+            name="tcoin"
+            value={tcoinAmount}
+            onChange={handleTcoinChange}
+            placeholder="Enter TCOIN amount"
+          />
+          <Input
+            name="cad"
+            elSize="md"
+            className="w-full"
+            value={cadAmount}
+            onChange={handleCadChange}
+            placeholder="Enter CAD amount"
+          />
+        </div>
+        <Button
+          className="w-full"
+          disabled={!isValidAmount}
+          onClick={() => {
+            if (!isValidAmount) {
+              toast.error(
+                "Please enter valid amounts. Ensure they are positive and within your available balance."
+              );
+              return;
+            }
+            openModal({
+              content: (
+                <ConfirmTransactionModal
+                  tcoinAmount={tcoinAmount}
+                  cadAmount={cadAmount}
+                  toSendData={toSendData}
+                  closeModal={closeModal}
+                  sendMoney={sendMoney}
+                  setExplorerLink={setExplorerLink}
+                />
+              ),
+              title: "Confirm Payment",
+            });
+          }}
+        >
+          <LuSend className="mr-2 h-4 w-4" /> Send to Contact
+        </Button>
 
         {explorerLink && (
           <div className="p-4 bg-green-900/20 rounded-lg">
@@ -220,14 +168,14 @@ export function SendCard({
                           .from("connections")
                           .update({ state: "added" })
                           .match({
-                            connected_user_id: toSendData?.id,
+                            connected_user_id: toSendData.id,
                             owner_user_id: userData?.cubidData?.id,
                           });
                         await supabase
                           .from("connections")
                           .update({ state: "added" })
                           .match({
-                            owner_user_id: toSendData?.id,
+                            owner_user_id: toSendData.id,
                             connected_user_id: userData?.cubidData?.id,
                           });
                         toast.success("Contact added!");
@@ -244,14 +192,14 @@ export function SendCard({
                           .from("connections")
                           .update({ state: "removed" })
                           .match({
-                            connected_user_id: toSendData?.id,
+                            connected_user_id: toSendData.id,
                             owner_user_id: userData?.cubidData?.id,
                           });
                         await supabase
                           .from("connections")
                           .update({ state: "removed" })
                           .match({
-                            owner_user_id: toSendData?.id,
+                            owner_user_id: toSendData.id,
                             connected_user_id: userData?.cubidData?.id,
                           });
                         toast.success("Contact removed!");

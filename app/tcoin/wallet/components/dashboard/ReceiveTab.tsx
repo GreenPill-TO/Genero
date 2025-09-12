@@ -69,6 +69,9 @@ export function ReceiveTab() {
       handleQrTcoinBlur={handleQrTcoinBlur}
       handleQrCadBlur={handleQrCadBlur}
       tokenLabel="TCOIN"
+      qrBgColor="#fff"
+      qrFgColor="#000"
+      qrWrapperClassName="bg-white p-1"
     />
   );
 }

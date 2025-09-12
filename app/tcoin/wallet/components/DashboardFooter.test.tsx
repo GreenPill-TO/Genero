@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
 import { fireEvent, render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { DashboardFooter } from "./DashboardFooter";
 
 vi.mock("lucide-react", () => ({
@@ -13,6 +13,11 @@ vi.mock("lucide-react", () => ({
 }));
 
 describe("DashboardFooter", () => {
+  // jsdom doesn't implement scrollTo
+  beforeAll(() => {
+    (window as any).scrollTo = () => {};
+  });
+
   it("calls onChange with correct key", () => {
     const onChange = vi.fn();
     const { getByTestId } = render(<DashboardFooter active="home" onChange={onChange} />);

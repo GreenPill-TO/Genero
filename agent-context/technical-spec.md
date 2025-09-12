@@ -68,6 +68,11 @@
 - Global footer removed from layout; the dashboard renders its own fixed footer navigation.
 - Wallet dashboard is composed from modular cards (Contributions, Receive, Send, Account and Other) within `WalletHome`.
 - Deep-link scans on the wallet dashboard run only when the URL includes a `pay` query, and success toasts fire after user lookup and connection insertion.
+- Footer navigation icons are evenly spaced and centred, with a prominent Send action.
+- Send tab embeds a QR scanner panel by default and can switch to a contact list without using the modal.
+- Receive tab renders its QR code with a white background for visibility in dark mode.
+- Dark mode preference persists across tab switches via localStorage.
+- Header camera button immediately opens the scan modal from any tab.
 - On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.

@@ -6,7 +6,6 @@ import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { createClient } from "@shared/lib/supabase/client";
-import { QrScanModal } from "@tcoin/wallet/components/modals";
 import { ContributionsCard } from "./ContributionsCard";
 import { ReceiveCard } from "./ReceiveCard";
 import { SendCard } from "./SendCard";
@@ -122,29 +121,6 @@ export function WalletHome({
     }
   }, [handleScan]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const interval = setInterval(() => {
-      if (window.localStorage.getItem("openQR")) {
-        openModal({
-          content: (
-            <QrScanModal
-              setTcoin={setTcoinAmount}
-              setCad={setCadAmount}
-              setToSendData={setToSendData}
-              closeModal={closeModal}
-            />
-          ),
-          title: "Scan QR to Pay",
-          description: "Use your device's camera to scan a QR code for payment.",
-        });
-        window.localStorage.removeItem("openQR");
-      }
-    }, 1000);
-    return () => {
-      clearInterval(interval);
-    };
-  }, [openModal, closeModal]);
 
   const formatNumber = (value: string, isCad: boolean) => {
     const num = parseFloat(value);

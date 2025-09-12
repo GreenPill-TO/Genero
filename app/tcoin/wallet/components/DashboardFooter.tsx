@@ -18,32 +18,37 @@ const items = [
 export function DashboardFooter({ active, onChange }: FooterProps) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 border-t bg-background">
-      <ul className="flex justify-between px-4 py-2">
-        {items.map((item) => (
-          <li key={item.key} className="flex-1">
-            <button
-              data-testid={`footer-${item.key}`}
-              onClick={() => onChange(item.key)}
-              className={cn(
-                "flex flex-col items-center text-xs gap-1",
-                item.key === "send" ? "-mt-4" : "",
-                active === item.key ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              <span
+      <ul className="grid grid-cols-5">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <li key={item.key} className="flex justify-center">
+              <button
+                data-testid={`footer-${item.key}`}
+                onClick={() => {
+                  onChange(item.key);
+                  window.scrollTo({ top: 0 });
+                  document.dispatchEvent(new Event("hide-header"));
+                }}
                 className={cn(
-                  "flex items-center justify-center",
-                  item.key === "send"
-                    ? "p-3 rounded-full bg-primary text-white"
-                    : "p-2"
+                  "w-full flex flex-col items-center justify-center text-xs gap-1",
+                  item.key === "send" ? "-mt-4" : "",
+                  active === item.key ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <item.icon className="h-5 w-5" />
-              </span>
-              <span>{item.label}</span>
-            </button>
-          </li>
-        ))}
+                <span
+                  className={cn(
+                    "flex items-center justify-center",
+                    item.key === "send" ? "p-3 rounded-full bg-primary" : "p-2"
+                  )}
+                >
+                  <Icon className={cn("h-5 w-5", item.key === "send" && "text-white")} />
+                </span>
+                <span>{item.label}</span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
