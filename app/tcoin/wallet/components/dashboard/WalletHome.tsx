@@ -83,24 +83,31 @@ export function WalletHome({
   const handleScan = useCallback(
     async (data: any) => {
       const rest = extractAndDecodeBase64(data);
+      if (!rest?.nano_id) return;
+
       const supabase = createClient();
-      toast.success("Scanned User Successfully");
-      if (rest?.nano_id) {
-        const { data: userDataFromSupabaseTable } = await supabase
-          .from("users")
-          .select("*")
-          .match({ user_identifier: rest.nano_id });
-        await supabase.from("connections").insert({
+
+      const { data: userDataFromSupabaseTable, error } = await supabase
+        .from("users")
+        .select("*")
+        .match({ user_identifier: rest.nano_id });
+
+      if (!error) {
+        const { error: insertError } = await supabase.from("connections").insert({
           owner_user_id: userData?.cubidData?.id,
           connected_user_id: userDataFromSupabaseTable?.[0]?.id,
           state: "new",
         });
-        setToSendData(userDataFromSupabaseTable?.[0]);
-        if (rest?.qrTcoinAmount) {
-          setTcoinAmount(rest.qrTcoinAmount);
-          setCadAmount(
-            extractDecimalFromString(rest.qrTcoinAmount) * exchangeRate + ""
-          );
+
+        if (!insertError) {
+          setToSendData(userDataFromSupabaseTable?.[0]);
+          if (rest?.qrTcoinAmount) {
+            setTcoinAmount(rest.qrTcoinAmount);
+            setCadAmount(
+              extractDecimalFromString(rest.qrTcoinAmount) * exchangeRate + ""
+            );
+          }
+          toast.success("Scanned User Successfully");
         }
       }
     },
@@ -108,8 +115,10 @@ export function WalletHome({
   );
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      handleScan(window.location.href);
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("pay")) {
+      handleScan(url.toString());
     }
   }, [handleScan]);
 

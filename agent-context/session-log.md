@@ -1,3 +1,6 @@
+## v0.51
+- Guarded wallet dashboard deep-link scans to run only when the URL includes a `pay` payload and trigger success toasts after user lookup and connection insertion.
+
 ## v0.50
 - Ensured Send tab supplies sender and receiver IDs to `useSendMoney` and added a unit test to prevent regressions.
 
