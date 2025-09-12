@@ -38,6 +38,7 @@
 - Demurrage timers for token decay embedded in wallet logic.
 - Wallet landing page styled after Thinking Machines with mission-driven copy.
 - Homepage sets body font to the Special Elite typewriter font via a style tag with system-ui fallback; headings are bold, centred, same size as body text, and spaced with one blank line above and below.
+- Wallet dashboard overrides the global typeface with the device's native sans-serif font and provides dedicated tabs for Home, Send, Receive, and Contacts.
 - Section padding removed so the net spacing around headings is exactly one blank line.
 - Banner image matches text width and the "<open my wallet>" link is positioned within the right margin, linking to the dashboard.
 - Sections have slimmer spacing and the prior blue accent line is removed.

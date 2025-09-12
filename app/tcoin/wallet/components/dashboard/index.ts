@@ -5,3 +5,6 @@ export * from "./SendCard";
 export * from "./AccountCard";
 export * from "./OtherCard";
 export * from "./types";
+export * from "./ContactsTab";
+export * from "./SendTab";
+export * from "./ReceiveTab";

@@ -1,8 +1,11 @@
-## v0.45
-- Established a Tailwind preset and per-app configs to remove ambiguous class warnings for wallet and sparechange builds.
+## v0.47
+- Switched wallet dashboard to system fonts and added functional tabs for contacts, sending, and receiving.
 
 ## v0.46
 - Replaced custom 48% slide animations with built-in half-screen variants and cleared Tailwind's ambiguous class warnings.
+
+## v0.45
+- Established a Tailwind preset and per-app configs to remove ambiguous class warnings for wallet and sparechange builds.
 
 ## v0.44
 - Refactored wallet dashboard into reusable components with a dedicated footer navigation and added unit tests.

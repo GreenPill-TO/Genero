@@ -1,16 +1,22 @@
 "use client";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useEffect, useMemo, useState } from "react";
-import { WalletHome } from "@tcoin/wallet/components/dashboard";
+import {
+  WalletHome,
+  ContactsTab,
+  SendTab,
+  ReceiveTab,
+} from "@tcoin/wallet/components/dashboard";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
   const [activeTab, setActiveTab] = useState("home");
+  const [sendRecipient, setSendRecipient] = useState<any>(null);
   const router = useRouter();
 
-  const mainClass = "pb-24 p-4 sm:p-8 bg-background text-foreground min-h-screen";
+  const mainClass = "font-sans pb-24 p-4 sm:p-8 bg-background text-foreground min-h-screen";
 
   const content = useMemo(() => {
     if (isLoadingUser || error) return null;
@@ -24,11 +30,27 @@ export default function Dashboard() {
         />
       );
     }
+    if (activeTab === "contacts") {
+      return (
+        <ContactsTab
+          onSend={(contact) => {
+            setSendRecipient(contact);
+            setActiveTab("send");
+          }}
+        />
+      );
+    }
+    if (activeTab === "send") {
+      return <SendTab recipient={sendRecipient} />;
+    }
+    if (activeTab === "receive") {
+      return <ReceiveTab />;
+    }
     const label = activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
     return (
       <div className="flex items-center justify-center h-full">{`${label} screen coming soon`}</div>
     );
-  }, [activeTab, isLoadingUser, error, userData]);
+  }, [activeTab, isLoadingUser, error, sendRecipient]);
 
   useEffect(() => {
     if (Boolean(userData?.cubidData?.full_name)) {
