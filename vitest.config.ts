@@ -5,7 +5,7 @@ export default defineConfig(async () => {
   return {
     plugins: [tsconfigPaths()],
     test: {
-      environment: "node",
+      environment: "jsdom",
     },
   };
 });

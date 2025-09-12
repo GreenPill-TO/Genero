@@ -9,6 +9,7 @@
   - Tailwind preset centralizes theme and plugins; wallet and sparechange supply app-specific configs with custom content globs.
   - Slide animations use built-in fractional distances to avoid ambiguous utility classes during builds.
 - **Testing**: Vitest with tsconfig path resolution for unit tests
+  - Tests run in a jsdom environment to provide DOM APIs
   - React Query hooks in tests are wrapped with `QueryClientProvider` and external modules are mocked as needed
 - **Authentication**: Twilio SMS OTP via API routes
 - **Storage**: Supabase (Postgres + Auth)

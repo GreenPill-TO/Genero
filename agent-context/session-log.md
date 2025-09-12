@@ -1,3 +1,6 @@
+## v0.48
+- Configured Vitest to run tests in a jsdom environment for DOM APIs.
+
 ## v0.47
 - Switched wallet dashboard to system fonts and added functional tabs for contacts, sending, and receiving.
 
