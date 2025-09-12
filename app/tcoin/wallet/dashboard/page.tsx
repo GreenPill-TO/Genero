@@ -1,39 +1,40 @@
 "use client";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { useEffect, useMemo } from "react";
-import { WalletScreen } from "../../sparechange/dashboard/screens/WalletScreen";
+import { useEffect, useMemo, useState } from "react";
+import { WalletHome } from "@tcoin/wallet/components/dashboard";
+import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
+  const [activeTab, setActiveTab] = useState("home");
+  const router = useRouter();
 
-  const mainClass = "p-4 sm:p-8 bg-background text-foreground min-h-screen";
-  const router = useRouter()
+  const mainClass = "pb-24 p-4 sm:p-8 bg-background text-foreground min-h-screen";
 
-  const screenContent = useMemo(() => {
+  const content = useMemo(() => {
     if (isLoadingUser || error) return null;
-
-    switch (userData?.cubidData?.persona) {
-      // case "ph":
-      //   return <PanhandlerScreen />;
-      // case "dr":
-      //   return <DonorScreen />;
-      default:
-        return (
-          <WalletScreen
-            qrBgColor="#fff"
-            qrFgColor="#000"
-            qrWrapperClassName="bg-white p-1"
-            tokenLabel="TCOIN"
-          />
-        );
+    if (activeTab === "home") {
+      return (
+        <WalletHome
+          qrBgColor="#fff"
+          qrFgColor="#000"
+          qrWrapperClassName="bg-white p-1"
+          tokenLabel="TCOIN"
+        />
+      );
     }
-  }, [userData]);
+    const label = activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
+    return (
+      <div className="flex items-center justify-center h-full">{`${label} screen coming soon`}</div>
+    );
+  }, [activeTab, isLoadingUser, error, userData]);
+
   useEffect(() => {
     if (Boolean(userData?.cubidData?.full_name)) {
-      router.replace('/dashboard')
+      router.replace("/dashboard");
     }
-  }, [userData, router])
+  }, [userData, router]);
 
   if (error) {
     return <div className={mainClass}>Error loading data: {error.message}</div>;
@@ -41,5 +42,10 @@ export default function Dashboard() {
 
   if (isLoadingUser) return <div className={mainClass}> ... Loading </div>;
 
-  return <div className={mainClass}>{screenContent}</div>;
+  return (
+    <div className={mainClass}>
+      {content}
+      <DashboardFooter active={activeTab} onChange={setActiveTab} />
+    </div>
+  );
 }

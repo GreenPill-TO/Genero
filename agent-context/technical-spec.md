@@ -7,6 +7,7 @@
 - **Package Manager**: pnpm
 - **Styling**: TailwindCSS + Radix UI
 - **Testing**: Vitest with tsconfig path resolution for unit tests
+  - React Query hooks in tests are wrapped with `QueryClientProvider` and external modules are mocked as needed
 - **Authentication**: Twilio SMS OTP via API routes
 - **Storage**: Supabase (Postgres + Auth)
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
@@ -58,7 +59,8 @@
 - Dark mode hook initialises based on `prefers-color-scheme` and syncs theme across pages, applying the `dark` class to the body so background colours and banner images switch appropriately.
 - Dashboard background swaps between white and black according to the current theme.
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
-- Footer component uses themed colours and is injected by the layout to avoid duplicates.
+- Global footer removed from layout; the dashboard renders its own fixed footer navigation.
+- Wallet dashboard is composed from modular cards (Contributions, Receive, Send, Account and Other) within `WalletHome`.
 - On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.

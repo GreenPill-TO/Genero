@@ -23,7 +23,8 @@ describe("BlankAmountModal", () => {
     const { getAllByText } = render(
       <BlankAmountModal closeModal={closeModal} openModal={openModal} />
     );
-    fireEvent.click(getAllByText("Send blank request")[0]);
+    const buttons = getAllByText("Send blank request");
+    fireEvent.click(buttons[buttons.length - 1]);
     expect(openModal).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Request from Contact" })
     );
