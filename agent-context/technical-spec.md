@@ -6,9 +6,14 @@
 - **Language**: TypeScript
 - **Package Manager**: pnpm
 - **Styling**: TailwindCSS + Radix UI
+  - Tailwind preset centralizes theme and plugins; wallet and sparechange supply app-specific configs with custom content globs.
+  - Slide animations use built-in fractional distances to avoid ambiguous utility classes during builds.
 - **Testing**: Vitest with tsconfig path resolution for unit tests
+  - Tests run in a jsdom environment to provide DOM APIs
+  - React Query hooks in tests are wrapped with `QueryClientProvider` and external modules are mocked as needed
 - **Authentication**: Twilio SMS OTP via API routes
 - **Storage**: Supabase (Postgres + Auth)
+  - Browser storage (e.g. `localStorage`) is accessed inside `useEffect` hooks with window guards to avoid Node build-time warnings
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
 
@@ -33,8 +38,10 @@
 - Modal provider listens for the Escape key to dismiss any open modal.
 - QR scanning modal requests camera access via `navigator.mediaDevices.getUserMedia`.
 - Demurrage timers for token decay embedded in wallet logic.
+- Send tab binds `useSendMoney` with the authenticated user's ID and selected recipient to avoid undefined sender errors.
 - Wallet landing page styled after Thinking Machines with mission-driven copy.
 - Homepage sets body font to the Special Elite typewriter font via a style tag with system-ui fallback; headings are bold, centred, same size as body text, and spaced with one blank line above and below.
+- Wallet dashboard overrides the global typeface with the device's native sans-serif font and provides dedicated tabs for Home, Send, Receive, and Contacts.
 - Section padding removed so the net spacing around headings is exactly one blank line.
 - Banner image matches text width and the "<open my wallet>" link is positioned within the right margin, linking to the dashboard.
 - Sections have slimmer spacing and the prior blue accent line is removed.
@@ -58,7 +65,14 @@
 - Dark mode hook initialises based on `prefers-color-scheme` and syncs theme across pages, applying the `dark` class to the body so background colours and banner images switch appropriately.
 - Dashboard background swaps between white and black according to the current theme.
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
-- Footer component uses themed colours and is injected by the layout to avoid duplicates.
+- Global footer removed from layout; the dashboard renders its own fixed footer navigation.
+- Wallet dashboard is composed from modular cards (Contributions, Receive, Send, Account and Other) within `WalletHome`.
+- Deep-link scans on the wallet dashboard run only when the URL includes a `pay` query, and success toasts fire after user lookup and connection insertion.
+- Footer navigation icons are evenly spaced and centred, with a prominent Send action.
+- Send tab embeds a QR scanner panel by default and can switch to a contact list without using the modal.
+- Receive tab renders its QR code with a white background for visibility in dark mode.
+- Dark mode preference persists across tab switches via localStorage.
+- Header camera button immediately opens the scan modal from any tab.
 - On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.

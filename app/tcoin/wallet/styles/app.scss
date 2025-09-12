@@ -1,11 +1,5 @@
 @import "@shared/styles/globals.scss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* styles/globals.css */
-
 @layer base {
   :root {
     --background: 0 0% 100%; /* White background */

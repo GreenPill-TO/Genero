@@ -10,6 +10,7 @@ import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
 import { usePathname } from "next/navigation";
 import { LuCamera, LuUser } from "react-icons/lu";
+import { QrScanModal } from "@tcoin/wallet/components/modals";
 import NavLink from "./NavLink";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 
@@ -32,7 +33,12 @@ export default function Navbar({ title }: { title?: string }) {
       lastScrollY.current = scrollY;
     };
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const hideListener = () => setIsVisible(false);
+    document.addEventListener("hide-header", hideListener);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("hide-header", hideListener);
+    };
   }, []);
 
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>, id: string) => {
@@ -129,12 +135,23 @@ export default function Navbar({ title }: { title?: string }) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => {
-                  localStorage.setItem("openQR", "true");
-                }}
+                onClick={() =>
+                  openModal({
+                    content: (
+                      <QrScanModal
+                        closeModal={closeModal}
+                        setToSendData={() => {}}
+                        setTcoin={() => {}}
+                        setCad={() => {}}
+                      />
+                    ),
+                    title: "Scan QR",
+                    description: "Use your device's camera to scan a code.",
+                  })
+                }
                 className="mr-2"
               >
-                <LuCamera style={{ height: '26px', width: "26px" }} />
+                <LuCamera style={{ height: "26px", width: "26px" }} />
               </Button>
             )}
             <div className="relative">

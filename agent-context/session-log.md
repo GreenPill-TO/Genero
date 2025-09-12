@@ -1,3 +1,33 @@
+## v0.52
+- Refined wallet dashboard footer and send flow: centered tab icons, inline QR scanner with contact option, white receive QR background and persistent dark mode.
+
+## v0.51
+- Guarded wallet dashboard deep-link scans to run only when the URL includes a `pay` payload and trigger success toasts after user lookup and connection insertion.
+
+## v0.50
+- Ensured Send tab supplies sender and receiver IDs to `useSendMoney` and added a unit test to prevent regressions.
+
+## v0.49
+- Deferred browser storage access like localStorage to `useEffect` hooks to silence build-time warnings in Node.
+
+## v0.48
+- Configured Vitest to run tests in a jsdom environment for DOM APIs.
+
+## v0.47
+- Switched wallet dashboard to system fonts and added functional tabs for contacts, sending, and receiving.
+
+## v0.46
+- Replaced custom 48% slide animations with built-in half-screen variants and cleared Tailwind's ambiguous class warnings.
+
+## v0.45
+- Established a Tailwind preset and per-app configs to remove ambiguous class warnings for wallet and sparechange builds.
+
+## v0.44
+- Refactored wallet dashboard into reusable components with a dedicated footer navigation and added unit tests.
+
+## v0.43
+- Added React imports and escape-key handling to wallet modals and wrapped modal tests with a QueryClient provider so unit tests pass.
+
 ## v0.42
 - Replaced single verification field with six auto-advancing inputs in sign-in modals and added a unit test.
 

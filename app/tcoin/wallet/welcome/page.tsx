@@ -18,7 +18,6 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import useDarkMode from "@shared/hooks/useDarkMode";
 
-const supabase = createClient();
 
 // Dynamically import external components so they only render on the client
 const WalletComponent = dynamic(
@@ -315,14 +314,16 @@ export default function NewWelcomePage() {
     // Persist form data if desired.
     const formData = watch();
     useEffect(() => {
-        const storedData = localStorage.getItem("newWelcomeData");
-        if (storedData) {
-            const parsed = JSON.parse(storedData);
-            if (parsed.firstName) setValue("firstName", parsed.firstName);
-            if (parsed.lastName) setValue("lastName", parsed.lastName);
-            if (parsed.nickname) setValue("nickname", parsed.nickname);
-            if (parsed.country) setValue("country", parsed.country);
-            if (parsed.phone) setValue("phone", parsed.phone);
+        if (typeof window !== "undefined") {
+            const storedData = window.localStorage.getItem("newWelcomeData");
+            if (storedData) {
+                const parsed = JSON.parse(storedData);
+                if (parsed.firstName) setValue("firstName", parsed.firstName);
+                if (parsed.lastName) setValue("lastName", parsed.lastName);
+                if (parsed.nickname) setValue("nickname", parsed.nickname);
+                if (parsed.country) setValue("country", parsed.country);
+                if (parsed.phone) setValue("phone", parsed.phone);
+            }
         }
     }, [setValue]);
 
@@ -333,21 +334,30 @@ export default function NewWelcomePage() {
     }, [userData, router])
 
     useEffect(() => {
-        localStorage.setItem("newWelcomeData", JSON.stringify(formData));
+        if (typeof window !== "undefined") {
+            window.localStorage.setItem("newWelcomeData", JSON.stringify(formData));
+        }
     }, [formData]);
 
     const insertOrUpdateDataInWallet = async (userId, data) => {
-        const { data: wallet_data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })
+        const supabase = createClient();
+        const { data: wallet_data } = await supabase
+            .from("wallet_list")
+            .select("*")
+            .match({ user_id: userId });
         if (wallet_data?.[0]) {
-            await supabase.from("wallet_list").update({
-                ...data
-            }).match({
-                user_id: userId
-            })
+            await supabase
+                .from("wallet_list")
+                .update({
+                    ...data,
+                })
+                .match({
+                    user_id: userId,
+                });
         } else {
-            await supabase.from("wallet_list").insert({ user_id: userId, ...data })
+            await supabase.from("wallet_list").insert({ user_id: userId, ...data });
         }
-    }
+    };
 
     // Step 1: Submit the form and update the user’s data.
     const onSubmit = useCallback(
@@ -535,9 +545,10 @@ export default function NewWelcomePage() {
                                         salt: usershare.salt,
                                         credentialId: bufferToBase64(usershare.credentialId)
                                     };
+                                    const supabase = createClient();
                                     await supabase.from("user_encrypted_share").insert({
                                         user_share_encrypted: jsonData,
-                                        user_id: userData?.cubidData?.id
+                                        user_id: userData?.cubidData?.id,
                                     });
                                 }}
                                 onAppShare={async (share) => {
