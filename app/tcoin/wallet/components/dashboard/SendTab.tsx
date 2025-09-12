@@ -15,14 +15,19 @@ interface SendTabProps {
 export function SendTab({ recipient }: SendTabProps) {
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables();
-  const { sendMoney } = useSendMoney();
-  const { balance } = useTokenBalance(userData?.cubidData?.wallet_address || "");
-  const { openModal, closeModal } = useModal();
-
   const [toSendData, setToSendData] = useState<Hypodata | null>(recipient);
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
+
+  const { sendMoney } = useSendMoney({
+    senderId: userData?.cubidData?.id,
+    receiverId: toSendData?.id ?? null,
+  });
+  const { balance } = useTokenBalance(
+    userData?.cubidData?.wallet_address || ""
+  );
+  const { openModal, closeModal } = useModal();
 
   useEffect(() => {
     setToSendData(recipient);

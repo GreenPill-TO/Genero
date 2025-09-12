@@ -1,3 +1,6 @@
+## v0.50
+- Ensured Send tab supplies sender and receiver IDs to `useSendMoney` and added a unit test to prevent regressions.
+
 ## v0.49
 - Deferred browser storage access like localStorage to `useEffect` hooks to silence build-time warnings in Node.
 
