@@ -1,3 +1,6 @@
+## v0.49
+- Deferred browser storage access like localStorage to `useEffect` hooks to silence build-time warnings in Node.
+
 ## v0.48
 - Configured Vitest to run tests in a jsdom environment for DOM APIs.
 

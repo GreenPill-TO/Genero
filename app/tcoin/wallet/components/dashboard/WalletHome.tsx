@@ -108,12 +108,15 @@ export function WalletHome({
   );
 
   useEffect(() => {
-    handleScan(window.location.href);
+    if (typeof window !== "undefined") {
+      handleScan(window.location.href);
+    }
   }, [handleScan]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const interval = setInterval(() => {
-      if (localStorage.getItem("openQR")) {
+      if (window.localStorage.getItem("openQR")) {
         openModal({
           content: (
             <QrScanModal
@@ -126,7 +129,7 @@ export function WalletHome({
           title: "Scan QR to Pay",
           description: "Use your device's camera to scan a QR code for payment.",
         });
-        localStorage.removeItem("openQR");
+        window.localStorage.removeItem("openQR");
       }
     }, 1000);
     return () => {

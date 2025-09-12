@@ -13,6 +13,7 @@
   - React Query hooks in tests are wrapped with `QueryClientProvider` and external modules are mocked as needed
 - **Authentication**: Twilio SMS OTP via API routes
 - **Storage**: Supabase (Postgres + Auth)
+  - Browser storage (e.g. `localStorage`) is accessed inside `useEffect` hooks with window guards to avoid Node build-time warnings
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
 

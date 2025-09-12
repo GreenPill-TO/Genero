@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@shared/lib/supabase/client';
 import { Shamir } from '@spliterati/shamir';
 import { useAuth } from '@shared/api/hooks/useAuth';
 import { tokenAbi } from './abi';
@@ -10,11 +10,6 @@ import { toast } from 'react-toastify';
 import { transfer } from '@shared/utils/insertNotification';
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate'
 
-// Initialize Supabase client.
-const supabase = createClient(
-	process.env.NEXT_PUBLIC_SUPABASE_URL!,
-	process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 // Helper: Convert hex string to Uint8Array.
 const hexToUint8Array = (hex: string): Uint8Array => {
@@ -80,7 +75,8 @@ export const useSendMoney = ({
 	const fetchWalletAddress = async (
 		userId: number,
 		setWallet: (wallet: string | null) => void
-	) => {
+        ) => {
+                const supabase = createClient();
 		try {
 			const { data, error } = await supabase
 				.from('users')
@@ -105,6 +101,7 @@ export const useSendMoney = ({
 
 
 	const burnMoney = async (amount: string) => {
+                const supabase = createClient();
 		if (!senderWallet) {
 			setError('Wallet addresses not found');
 			return;

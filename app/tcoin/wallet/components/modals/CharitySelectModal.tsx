@@ -25,12 +25,12 @@ const CharitySelectModal = ({
 }: CharitySelectModalProps) => {
   const [charity, setCharity] = useState(selectedCharity);
   const [charities, setCharities] = useState<Charity[]>([]);
-  const supabase = createClient();
   const { userData } = useAuth()
   useEscapeKey(closeModal);
 
   useEffect(() => {
     const fetchCharities = async () => {
+      const supabase = createClient();
       const { data, error } = await supabase
         .from("charities")
         .select("*");
@@ -42,7 +42,7 @@ const CharitySelectModal = ({
     };
 
     fetchCharities();
-  }, [supabase]);
+  }, []);
 
   const handleSelect = async () => {
     // Update the parent component state
@@ -51,6 +51,7 @@ const CharitySelectModal = ({
     // Get the current user
 
     // Update the charity column in the users table
+    const supabase = createClient();
     const { error } = await supabase
       .from("users")
       .update({ charity })

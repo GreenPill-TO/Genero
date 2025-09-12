@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { LuSend } from "react-icons/lu";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
-import { createClient } from "@shared/lib/supabase/client";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { createClient } from "@shared/lib/supabase/client";
 import { Hypodata } from "./types";
 
 interface ContactsTabProps {
@@ -12,11 +12,11 @@ interface ContactsTabProps {
 
 export function ContactsTab({ onSend }: ContactsTabProps) {
   const { userData } = useAuth();
-  const supabase = createClient();
   const [contacts, setContacts] = useState<Hypodata[]>([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    const supabase = createClient();
     async function fetchContacts() {
       if (!userData?.cubidData?.id) return;
       const { data } = await supabase
@@ -30,7 +30,7 @@ export function ContactsTab({ onSend }: ContactsTabProps) {
       }
     }
     fetchContacts();
-  }, [supabase, userData]);
+  }, [userData]);
 
   const filtered = contacts.filter((c) =>
     c.full_name.toLowerCase().includes(search.toLowerCase())

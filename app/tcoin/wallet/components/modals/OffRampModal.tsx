@@ -25,7 +25,6 @@ interface OffRampFormValues {
   otp?: string;
 }
 
-const supabase = createClient();
 
 const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   const { control, handleSubmit, watch, setValue, reset } = useForm<OffRampFormValues>({
@@ -182,6 +181,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
     await burnMoney(donationAmount);
 
+    const supabase = createClient();
     const { data: off_ramp_req_data, error } = await supabase
       .from("off_ramp_req")
       .select("*")

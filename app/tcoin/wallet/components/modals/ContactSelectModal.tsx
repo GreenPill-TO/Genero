@@ -28,8 +28,6 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
   const [searchTerm, setSearchTerm] = useState<string>("");
   // activeTab can be "all" or "my"
   const [activeTab, setActiveTab] = useState<"all" | "my">("my");
-
-  const supabase = createClient();
   const { userData } = useAuth();
   useEscapeKey(closeModal);
 
@@ -38,7 +36,7 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
     async function fetchContacts() {
       if (!userData?.cubidData?.id) return;
 
-      // Fetch connections where the current user is the owner.
+      const supabase = createClient();
       const { data, error } = await supabase
         .from("connections")
         .select("*, connected_user_id(*), state")
@@ -47,7 +45,6 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
       if (error) {
         console.error("Error fetching contacts:", error);
       } else if (data) {
-        // Map each connection and include the state from the backend.
         const mappedContacts = data.map((connection: any) => ({
           value: connection.connected_user_id,
           label: connection.connected_user_id?.full_name,
@@ -55,7 +52,6 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
           state: connection.state,
         }));
 
-        // Remove any contacts with state "rejected" from both tabs.
         const validContacts = mappedContacts.filter((contact: Contact) => contact.state !== "rejected");
 
         setContacts(validContacts);
@@ -65,7 +61,7 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
       }
     }
     fetchContacts();
-  }, [userData, supabase]);
+  }, [userData]);
 
   // Filter by search term
   const filteredContacts = contacts.filter((contact) =>

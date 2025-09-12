@@ -18,7 +18,6 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
   const [amount, setAmount] = useState("");
   const [refCode, setRefCode] = useState(generateReferenceCode());
   const { userData } = useAuth();
-  const supabase = createClient();
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeModal();
@@ -32,6 +31,7 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
       toast.error("Please enter a valid amount.");
       return;
     }
+    const supabase = createClient();
     await supabase.from("interac_transfer").insert({
       user_id: userData?.cubidData?.id,
       interac_code: refCode,
@@ -51,6 +51,7 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
 
   const handleConfirm = async () => {
     try {
+      const supabase = createClient();
       await supabase
         .from("interac_transfer")
         .update({ is_sent: true })

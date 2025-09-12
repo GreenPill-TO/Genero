@@ -130,7 +130,9 @@ export default function Navbar({ title }: { title?: string }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  localStorage.setItem("openQR", "true");
+                  if (typeof window !== "undefined") {
+                    window.localStorage.setItem("openQR", "true");
+                  }
                 }}
                 className="mr-2"
               >

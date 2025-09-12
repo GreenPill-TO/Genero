@@ -62,7 +62,6 @@ export function SendCard({
     }
   }, [toSendData, userData]);
 
-  const supabase = createClient();
 
   const tcoinValue = parseFloat(tcoinAmount);
   const cadValue = parseFloat(cadAmount);
@@ -216,6 +215,7 @@ export function SendCard({
                     <Button
                       size="sm"
                       onClick={async () => {
+                        const supabase = createClient();
                         await supabase
                           .from("connections")
                           .update({ state: "added" })
@@ -239,6 +239,7 @@ export function SendCard({
                       variant="outline"
                       size="sm"
                       onClick={async () => {
+                        const supabase = createClient();
                         await supabase
                           .from("connections")
                           .update({ state: "removed" })
