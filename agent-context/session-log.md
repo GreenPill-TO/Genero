@@ -1,5 +1,5 @@
-## v0.43
-- Added React imports and escape-key handling to wallet modals and wrapped modal tests with a QueryClient provider so unit tests pass.
+## v0.45
+- Established a Tailwind preset and per-app configs to remove ambiguous class warnings for wallet and sparechange builds.
 
 ## v0.44
 - Refactored wallet dashboard into reusable components with a dedicated footer navigation and added unit tests.
