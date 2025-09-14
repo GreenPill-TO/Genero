@@ -1,3 +1,6 @@
+## v0.55
+- Refined sign-in modal to show a spam warning with a hyperlink for resending codes.
+
 ## v0.54
 - Guarded dashboard send flows against null recipient data, hardened Supabase fetches, and wrapped the page in an error boundary.
 

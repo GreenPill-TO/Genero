@@ -38,6 +38,7 @@
 - Modal provider listens for the Escape key to dismiss any open modal.
 - QR scanning modal requests camera access via `navigator.mediaDevices.getUserMedia`.
 - Demurrage timers for token decay embedded in wallet logic.
+- Sign-in modal shows a spam-folder notice with an inline "Resend Code" link instead of a button.
 - Send tab binds `useSendMoney` with the authenticated user's ID and selected recipient to avoid undefined sender errors.
 - Contact selection modal returns full contact objects so downstream send logic can derive receiver IDs and display metadata.
 - Dashboard components guard against null recipient data, and send logic only fires after payload verification with resilient Supabase fetches.

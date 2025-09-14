@@ -2,7 +2,7 @@
 // @ts-nocheck
 import { useSendPasscodeMutation, useVerifyPasscodeMutation } from "@shared/api/mutations/usePasscode";
 import ImageCarousel from "@shared/components/ui/ImageCarousel";
-import OTPForm from "@tcoin/sparechange/components/forms/OTPForm";
+import OTPForm from "@tcoin/wallet/components/forms/OTPForm";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useMemo, useState } from "react";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
