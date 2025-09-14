@@ -1,3 +1,6 @@
+## v0.53
+- Ensured contact selection passes full recipient data to send flow and added unit test covering the behaviour.
+
 ## v0.52
 - Refined wallet dashboard footer and send flow: centered tab icons, inline QR scanner with contact option, white receive QR background and persistent dark mode.
 

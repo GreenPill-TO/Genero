@@ -16,14 +16,14 @@ interface ContactSelectModalProps {
 }
 
 interface Contact {
-  value: string;
+  value: any;
   label: string;
   id: number | string;
   state: string;
 }
 
 const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: ContactSelectModalProps) => {
-  const [selectedContact, setSelectedContact] = useState<string>("");
+  const [selectedContact, setSelectedContact] = useState<any>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   // activeTab can be "all" or "my"
@@ -75,7 +75,6 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
   const myContacts = filteredContacts.filter(contact => contact.state !== "new");
 
   const contactsToDisplay = activeTab === "all" ? allContacts : myContacts;
-  console.log({ selectedContact, contactsToDisplay })
 
   return (
     <div className="mt-2 p-0">
@@ -111,13 +110,12 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
               name="contact-selection"
               key={contact.id}
               label={contact.label}
-              value={contact.value.id}
-              onValueChange={(val) => {
-                console.log(JSON.stringify(val))
-                setSelectedContact(val)
+              value={String(contact.value.id)}
+              onValueChange={() => {
+                setSelectedContact(contact.value)
               }}
               id={String(contact.id)}
-              defaultChecked={contact.value === selectedContact}
+              checked={selectedContact?.id === contact.value.id}
             />
           ))
         ) : (
@@ -138,17 +136,16 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
               }
               const supabase = createClient();
               await supabase.from("invoice_pay_request").insert({
-                request_from: parseInt(selectedContact),
+                request_from: parseInt(selectedContact.id),
                 request_by: userData?.cubidData?.id,
                 amount_requested: extractDecimalFromString(amount)
               })
               insertSuccessNotification({
-                user_id: parseInt(selectedContact),
+                user_id: parseInt(selectedContact.id),
                 notification: `${amount} request by ${userData?.cubidData?.full_name}`
               })
             }
             closeModal();
-            console.log({ selectedContact });
           }}
         >
           {method} {amount}
