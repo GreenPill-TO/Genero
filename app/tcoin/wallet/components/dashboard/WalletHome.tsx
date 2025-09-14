@@ -83,31 +83,31 @@ export function WalletHome({
     async (data: any) => {
       const rest = extractAndDecodeBase64(data);
       if (!rest?.nano_id) return;
+      try {
+        const supabase = createClient();
+        const { data: userDataFromSupabaseTable, error } = await supabase
+          .from("users")
+          .select("*")
+          .match({ user_identifier: rest.nano_id });
+        if (error) throw error;
 
-      const supabase = createClient();
-
-      const { data: userDataFromSupabaseTable, error } = await supabase
-        .from("users")
-        .select("*")
-        .match({ user_identifier: rest.nano_id });
-
-      if (!error) {
         const { error: insertError } = await supabase.from("connections").insert({
           owner_user_id: userData?.cubidData?.id,
           connected_user_id: userDataFromSupabaseTable?.[0]?.id,
           state: "new",
         });
+        if (insertError) throw insertError;
 
-        if (!insertError) {
-          setToSendData(userDataFromSupabaseTable?.[0]);
-          if (rest?.qrTcoinAmount) {
-            setTcoinAmount(rest.qrTcoinAmount);
-            setCadAmount(
-              extractDecimalFromString(rest.qrTcoinAmount) * exchangeRate + ""
-            );
-          }
-          toast.success("Scanned User Successfully");
+        setToSendData(userDataFromSupabaseTable?.[0]);
+        if (rest?.qrTcoinAmount) {
+          setTcoinAmount(rest.qrTcoinAmount);
+          setCadAmount(
+            extractDecimalFromString(rest.qrTcoinAmount) * exchangeRate + ""
+          );
         }
+        toast.success("Scanned User Successfully");
+      } catch (err) {
+        console.error("handleScan error", err);
       }
     },
     [exchangeRate, userData]

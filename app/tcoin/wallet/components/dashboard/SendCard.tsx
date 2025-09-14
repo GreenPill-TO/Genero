@@ -12,7 +12,7 @@ import { Hypodata } from "./types";
 
 interface SendCardProps {
   sendMoney: (amount: string) => Promise<string>;
-  toSendData: Hypodata;
+  toSendData: Hypodata | null;
   setToSendData: (data: Hypodata | null) => void;
   tcoinAmount: string;
   cadAmount: string;
@@ -44,20 +44,26 @@ export function SendCard({
   const { openModal, closeModal } = useModal();
 
   useEffect(() => {
+    if (!toSendData?.id || !userData?.cubidData?.id) return;
     const fetchConnections = async () => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("connections")
-        .select("*")
-        .match({
-          connected_user_id: toSendData.id,
-          owner_user_id: userData?.cubidData?.id,
-        })
-        .neq("state", "new");
-      setConnections(data?.[0]);
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("connections")
+          .select("*")
+          .match({
+            connected_user_id: toSendData.id,
+            owner_user_id: userData.cubidData.id,
+          })
+          .neq("state", "new");
+        if (error) throw error;
+        setConnections(data?.[0] ?? null);
+      } catch (err) {
+        console.error("fetchConnections error", err);
+      }
     };
     fetchConnections();
-  }, [toSendData, userData]);
+  }, [toSendData?.id, userData?.cubidData?.id]);
 
   const tcoinValue = parseFloat(tcoinAmount);
   const cadValue = parseFloat(cadAmount);
@@ -74,27 +80,33 @@ export function SendCard({
         <CardTitle>Pay / Send</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="p-4 mt-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700 relative">
-          <button
-            onClick={() => {
-              setToSendData(null);
-              setTcoin("");
-              setCad("");
-            }}
-            className="absolute top-2 right-2 text-gray-500 hover:text-gray-300"
-          >
-            &times;
-          </button>
-          <p className="text-lg font-bold mb-2">{toSendData.full_name}</p>
-          <p className="text-sm text-gray-400 mb-2">@{toSendData.username}</p>
-          {toSendData.profile_image_url && (
-            <img
-              src={toSendData.profile_image_url}
-              alt={toSendData.full_name}
-              className="w-16 h-16 rounded-full object-cover"
-            />
-          )}
-        </div>
+        {toSendData ? (
+          <div className="p-4 mt-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700 relative">
+            <button
+              onClick={() => {
+                setToSendData(null);
+                setTcoin("");
+                setCad("");
+              }}
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-300"
+            >
+              &times;
+            </button>
+            <p className="text-lg font-bold mb-2">{toSendData.full_name ?? ""}</p>
+            <p className="text-sm text-gray-400 mb-2">@{toSendData.username ?? ""}</p>
+            {toSendData.profile_image_url && (
+              <img
+                src={toSendData.profile_image_url}
+                alt={toSendData.full_name ?? ""}
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            )}
+          </div>
+        ) : (
+          <div className="p-4 mt-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700 text-center">
+            <p className="text-sm text-gray-400">No recipient selected</p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Input
@@ -116,11 +128,13 @@ export function SendCard({
         </div>
         <Button
           className="w-full"
-          disabled={!isValidAmount}
+          disabled={!isValidAmount || !toSendData}
           onClick={() => {
-            if (!isValidAmount) {
+            if (!isValidAmount || !toSendData) {
               toast.error(
-                "Please enter valid amounts. Ensure they are positive and within your available balance."
+                !toSendData
+                  ? "Select a recipient first."
+                  : "Please enter valid amounts. Ensure they are positive and within your available balance."
               );
               return;
             }
@@ -156,7 +170,7 @@ export function SendCard({
                   View Transaction on Explorer
                 </a>
               </>
-              {!connections?.[0] && (
+              {!connections?.[0] && toSendData && (
                 <div className="pt-4 border-t border-gray-700">
                   <p>Add to Contacts?</p>
                   <div className="flex justify-center gap-4 mt-2">
@@ -164,21 +178,25 @@ export function SendCard({
                       size="sm"
                       onClick={async () => {
                         const supabase = createClient();
-                        await supabase
-                          .from("connections")
-                          .update({ state: "added" })
-                          .match({
-                            connected_user_id: toSendData.id,
-                            owner_user_id: userData?.cubidData?.id,
-                          });
-                        await supabase
-                          .from("connections")
-                          .update({ state: "added" })
-                          .match({
-                            owner_user_id: toSendData.id,
-                            connected_user_id: userData?.cubidData?.id,
-                          });
-                        toast.success("Contact added!");
+                        try {
+                          await supabase
+                            .from("connections")
+                            .update({ state: "added" })
+                            .match({
+                              connected_user_id: toSendData.id,
+                              owner_user_id: userData?.cubidData?.id,
+                            });
+                          await supabase
+                            .from("connections")
+                            .update({ state: "added" })
+                            .match({
+                              owner_user_id: toSendData.id,
+                              connected_user_id: userData?.cubidData?.id,
+                            });
+                          toast.success("Contact added!");
+                        } catch (err) {
+                          console.error("add contact error", err);
+                        }
                       }}
                     >
                       Yes
@@ -188,21 +206,25 @@ export function SendCard({
                       size="sm"
                       onClick={async () => {
                         const supabase = createClient();
-                        await supabase
-                          .from("connections")
-                          .update({ state: "removed" })
-                          .match({
-                            connected_user_id: toSendData.id,
-                            owner_user_id: userData?.cubidData?.id,
-                          });
-                        await supabase
-                          .from("connections")
-                          .update({ state: "removed" })
-                          .match({
-                            owner_user_id: toSendData.id,
-                            connected_user_id: userData?.cubidData?.id,
-                          });
-                        toast.success("Contact removed!");
+                        try {
+                          await supabase
+                            .from("connections")
+                            .update({ state: "removed" })
+                            .match({
+                              connected_user_id: toSendData.id,
+                              owner_user_id: userData?.cubidData?.id,
+                            });
+                          await supabase
+                            .from("connections")
+                            .update({ state: "removed" })
+                            .match({
+                              owner_user_id: toSendData.id,
+                              connected_user_id: userData?.cubidData?.id,
+                            });
+                          toast.success("Contact removed!");
+                        } catch (err) {
+                          console.error("remove contact error", err);
+                        }
                       }}
                     >
                       No
@@ -241,7 +263,7 @@ function ConfirmTransactionModal({
       <h3 className="text-lg font-bold">Confirm Transaction</h3>
       <div className="space-y-2">
         <p>Amount: {tcoinAmount} TCOIN ({cadAmount} CAD)</p>
-        <p>Recipient: {toSendData.full_name}</p>
+        <p>Recipient: {toSendData?.full_name}</p>
       </div>
       <div className="flex gap-4">
         <Button variant="outline" className="flex-1" onClick={closeModal}>

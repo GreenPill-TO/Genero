@@ -72,26 +72,31 @@ export const useSendMoney = ({
 	const { userData } = useAuth();
 
 	// Fetch wallet address from Supabase using Cubid.
-	const fetchWalletAddress = async (
-		userId: number,
-		setWallet: (wallet: string | null) => void
+        const fetchWalletAddress = async (
+                userId: number | null | undefined,
+                setWallet: (wallet: string | null) => void
         ) => {
+                if (!userId) return;
                 const supabase = createClient();
-		try {
-			const { data, error } = await supabase
-				.from('users')
-				.select('email')
-				.eq('id', userId)
-				.single();
-			if (error) throw new Error(error.message);
-			if (!data?.email) throw new Error('Email not found');
-			console.log("wallet list", { userId })
-			const { data: wallet_data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })
-			setWallet(wallet_data?.[0]?.public_key);
-		} catch (err: any) {
-			setError(err.message);
-		}
-	};
+                try {
+                        const { data, error } = await supabase
+                                .from('users')
+                                .select('email')
+                                .eq('id', userId)
+                                .single();
+                        if (error) throw new Error(error.message);
+                        if (!data?.email) throw new Error('Email not found');
+                        const { data: wallet_data, error: walletErr } = await supabase
+                                .from("wallet_list")
+                                .select("*")
+                                .match({ user_id: userId });
+                        if (walletErr) throw new Error(walletErr.message);
+                        setWallet(wallet_data?.[0]?.public_key ?? null);
+                } catch (err: any) {
+                        console.error('fetchWalletAddress error', err);
+                        setError(err.message);
+                }
+        };
 
 	useEffect(() => {
 		console.log({ receiverId })

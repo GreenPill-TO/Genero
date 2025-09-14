@@ -54,13 +54,15 @@ export function SendQrPanel({ setToSendData, setTcoin, setCad, onComplete }: Pro
     async (data: any) => {
       const decoded = extractAndDecodeBase64(data?.[0]?.rawValue);
       const { nano_id, ...rest } = decoded ?? {};
-      const supabase = createClient();
-      toast.success("Scanned User Successfully");
-      if (nano_id) {
-        const { data: userDataFromSupabaseTable } = await supabase
+      if (!nano_id) return;
+
+      try {
+        const supabase = createClient();
+        const { data: userDataFromSupabaseTable, error } = await supabase
           .from("users")
           .select("*")
           .match({ user_identifier: nano_id });
+        if (error) throw error;
         await supabase.from("connections").insert({
           owner_user_id: (userData as any)?.cubidData?.id,
           connected_user_id: userDataFromSupabaseTable?.[0]?.id,
@@ -76,8 +78,13 @@ export function SendQrPanel({ setToSendData, setTcoin, setCad, onComplete }: Pro
           setTcoin(rest.qrTcoinAmount);
           setCad(extractDecimalFromString(rest.qrTcoinAmount) * exchangeRate);
         }
+        toast.success("Scanned User Successfully");
+      } catch (err) {
+        console.error("handleScan error", err);
+        toast.error("Failed to process scan");
+      } finally {
+        onComplete();
       }
-      onComplete();
     },
     [exchangeRate, onComplete, setCad, setTcoin, setToSendData, userData]
   );

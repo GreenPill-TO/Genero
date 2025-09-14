@@ -1,3 +1,6 @@
+## v0.54
+- Guarded dashboard send flows against null recipient data, hardened Supabase fetches, and wrapped the page in an error boundary.
+
 ## v0.53
 - Ensured contact selection passes full recipient data to send flow and added unit test covering the behaviour.
 

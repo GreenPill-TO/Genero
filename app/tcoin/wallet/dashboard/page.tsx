@@ -8,6 +8,7 @@ import {
   ReceiveTab,
 } from "@tcoin/wallet/components/dashboard";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
+import { ErrorBoundary } from "@shared/components/ErrorBoundary";
 import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
@@ -65,9 +66,11 @@ export default function Dashboard() {
   if (isLoadingUser) return <div className={mainClass}> ... Loading </div>;
 
   return (
-    <div className={mainClass}>
-      {content}
-      <DashboardFooter active={activeTab} onChange={setActiveTab} />
-    </div>
+    <ErrorBoundary fallback={<div className={mainClass}>Something went wrong.</div>}>
+      <div className={mainClass}>
+        {content}
+        <DashboardFooter active={activeTab} onChange={setActiveTab} />
+      </div>
+    </ErrorBoundary>
   );
 }

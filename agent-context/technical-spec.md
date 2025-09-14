@@ -40,6 +40,8 @@
 - Demurrage timers for token decay embedded in wallet logic.
 - Send tab binds `useSendMoney` with the authenticated user's ID and selected recipient to avoid undefined sender errors.
 - Contact selection modal returns full contact objects so downstream send logic can derive receiver IDs and display metadata.
+- Dashboard components guard against null recipient data, and send logic only fires after payload verification with resilient Supabase fetches.
+- An `ErrorBoundary` wraps the wallet dashboard to gracefully handle runtime failures.
 - Wallet landing page styled after Thinking Machines with mission-driven copy.
 - Homepage sets body font to the Special Elite typewriter font via a style tag with system-ui fallback; headings are bold, centred, same size as body text, and spaced with one blank line above and below.
 - Wallet dashboard overrides the global typeface with the device's native sans-serif font and provides dedicated tabs for Home, Send, Receive, and Contacts.

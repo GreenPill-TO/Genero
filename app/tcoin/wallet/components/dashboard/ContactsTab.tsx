@@ -19,21 +19,24 @@ export function ContactsTab({ onSend }: ContactsTabProps) {
     const supabase = createClient();
     async function fetchContacts() {
       if (!userData?.cubidData?.id) return;
-      const { data } = await supabase
-        .from("connections")
-        .select("*, connected_user_id(*)")
-        .eq("owner_user_id", userData.cubidData.id)
-        .neq("state", "rejected");
-      if (data) {
-        const mapped = data.map((c: any) => c.connected_user_id);
+      try {
+        const { data, error } = await supabase
+          .from("connections")
+          .select("*, connected_user_id(*)")
+          .eq("owner_user_id", userData.cubidData.id)
+          .neq("state", "rejected");
+        if (error) throw error;
+        const mapped = (data || []).map((c: any) => c.connected_user_id);
         setContacts(mapped);
+      } catch (err) {
+        console.error("fetchContacts error", err);
       }
     }
     fetchContacts();
   }, [userData]);
 
   const filtered = contacts.filter((c) =>
-    c.full_name.toLowerCase().includes(search.toLowerCase())
+    (c.full_name ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -54,7 +57,7 @@ export function ContactsTab({ onSend }: ContactsTabProps) {
             className="flex items-center justify-between rounded-md border p-3"
           >
             <div className="flex flex-col">
-              <span className="font-medium">{contact.full_name}</span>
+              <span className="font-medium">{contact.full_name ?? "Unknown"}</span>
               {contact.wallet_address && (
                 <span className="text-sm text-muted-foreground">
                   {contact.wallet_address.slice(0, 6)}...
