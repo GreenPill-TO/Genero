@@ -196,7 +196,8 @@ export function WalletHome({
     receiverId: toSendData?.id ?? null,
   });
 
-  const { balance: userBalance } = useTokenBalance(senderWallet);
+  const { balance: rawBalance } = useTokenBalance(senderWallet);
+  const userBalance = parseFloat(rawBalance) || 0;
 
   const dynamicQrData = qrTcoinAmount
     ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount })

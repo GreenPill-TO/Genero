@@ -38,6 +38,7 @@
 - Modal provider listens for the Escape key to dismiss any open modal.
 - QR scanning modal requests camera access via `navigator.mediaDevices.getUserMedia`.
 - Demurrage timers for token decay embedded in wallet logic.
+- Token balances from Web3 are returned as strings; dashboard components parse them to numbers before applying arithmetic or `toFixed`.
 - Sign-in modal shows a spam-folder notice with an inline "Resend Code" link instead of a button.
 - Send tab binds `useSendMoney` with the authenticated user's ID and selected recipient to avoid undefined sender errors.
 - Contact selection modal returns full contact objects so downstream send logic can derive receiver IDs and display metadata.

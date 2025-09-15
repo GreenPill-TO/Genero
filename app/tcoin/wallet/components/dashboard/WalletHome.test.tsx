@@ -27,8 +27,10 @@ vi.mock("@shared/hooks/useSendMoney", () => ({
   useSendMoney: () => ({ sendMoney: vi.fn() }),
 }));
 
+const tokenBalanceMock = vi.hoisted(() => vi.fn(() => ({ balance: "0" })));
+
 vi.mock("@shared/hooks/useTokenBalance", () => ({
-  useTokenBalance: () => ({ balance: "0" }),
+  useTokenBalance: tokenBalanceMock,
 }));
 
 const matchMock = vi.hoisted(() =>
@@ -54,7 +56,10 @@ vi.mock("./ContributionsCard", () => ({
   ContributionsCard: () => <div />,
 }));
 vi.mock("./ReceiveCard", () => ({ ReceiveCard: () => <div /> }));
-vi.mock("./SendCard", () => ({ SendCard: () => <div /> }));
+const sendCardMock = vi.hoisted(() => vi.fn(() => <div />));
+vi.mock("./SendCard", () => ({
+  SendCard: (props: any) => sendCardMock(props),
+}));
 vi.mock("./AccountCard", () => ({ AccountCard: () => <div /> }));
 vi.mock("./OtherCard", () => ({ OtherCard: () => <div /> }));
 
@@ -65,6 +70,7 @@ describe("WalletHome deep-link scanning", () => {
     toastSuccess.mockReset();
     matchMock.mockClear();
     insertMock.mockClear();
+    sendCardMock.mockClear();
     window.history.replaceState({}, "", "/dashboard");
   });
 
@@ -92,6 +98,14 @@ describe("WalletHome deep-link scanning", () => {
       expect(insertMock).toHaveBeenCalled();
       expect(toastSuccess).toHaveBeenCalledWith("Scanned User Successfully");
     });
+  });
+
+  it("passes numeric userBalance to SendCard", () => {
+    tokenBalanceMock.mockReturnValueOnce({ balance: "5.5" });
+    render(<WalletHome />);
+    expect(sendCardMock).toHaveBeenCalled();
+    const props = sendCardMock.mock.calls[0][0];
+    expect(props.userBalance).toBe(5.5);
   });
 });
 
