@@ -22,7 +22,7 @@ vi.mock("@shared/hooks/useSendMoney", () => ({
 }));
 
 vi.mock("@shared/hooks/useTokenBalance", () => ({
-  useTokenBalance: () => ({ balance: 10 }),
+  useTokenBalance: () => ({ balance: "10" }),
 }));
 
 vi.mock("@shared/contexts/ModalContext", () => ({
@@ -41,6 +41,19 @@ vi.mock("@shared/utils/insertNotification", () => ({ insertSuccessNotification: 
 
 vi.mock("react-toastify", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
+let sendCardProps: any;
+
+vi.mock("./SendCard", () => ({
+  SendCard: (props: any) => {
+    sendCardProps = props;
+    return (
+      <div data-testid="sendcard">
+        <input placeholder="0" onChange={props.handleTcoinChange} />
+      </div>
+    );
+  },
+}));
+
 vi.mock("./SendQrPanel", () => ({
   SendQrPanel: () => <div data-testid="scanner" />,
 }));
@@ -53,6 +66,7 @@ import { SendTab } from "./SendTab";
 
 afterEach(() => {
   cleanup();
+  sendCardProps = undefined;
 });
 
 describe("SendTab", () => {
@@ -75,6 +89,11 @@ describe("SendTab", () => {
     // switch to QR
     fireEvent.click(screen.getByText("QR"));
     expect(screen.getByTestId("scanner")).toBeTruthy();
+  });
+
+  it("passes numeric userBalance to SendCard", () => {
+    render(<SendTab recipient={null} />);
+    expect(sendCardProps.userBalance).toBe(10);
   });
 
   it("shows contact options only after entering amount", () => {

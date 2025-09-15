@@ -33,9 +33,10 @@ export function SendTab({ recipient }: SendTabProps) {
     senderId: userData?.cubidData?.id,
     receiverId: toSendData?.id ?? null,
   });
-  const { balance } = useTokenBalance(
+  const { balance: rawBalance } = useTokenBalance(
     userData?.cubidData?.wallet_address || ""
   );
+  const balance = parseFloat(rawBalance) || 0;
 
   useEffect(() => {
     setToSendData(recipient);
@@ -43,8 +44,7 @@ export function SendTab({ recipient }: SendTabProps) {
 
   const handleUseMax = () => {
     setTcoinAmount(balance.toString());
-    const num = parseFloat(balance.toString()) || 0;
-    setCadAmount((num * exchangeRate).toString());
+    setCadAmount((balance * exchangeRate).toString());
   };
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {

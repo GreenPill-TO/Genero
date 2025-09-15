@@ -1,3 +1,6 @@
+## v0.59
+- Converted Send tab token balances from strings to numbers and added a unit test confirming `SendCard` receives a numeric `userBalance` prop.
+
 ## v0.58
 - Parsed token balance strings before arithmetic to avoid `toFixed` runtime errors and added a unit test ensuring `SendCard` receives a numeric balance.
 
