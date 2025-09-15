@@ -64,4 +64,30 @@ describe("OTPForm", () => {
     fireEvent.click(screen.getByText("Resend Code"));
     expect(onResend).toHaveBeenCalled();
   });
+
+  it("auto-submits after six digits", () => {
+    const onSubmit = vi.fn((e) => e.preventDefault());
+    render(
+      <OTPForm
+        authMethod="email"
+        countryCode="+1"
+        contact="test@example.com"
+        passcode=""
+        setCountryCode={() => {}}
+        setContact={() => {}}
+        setPasscode={() => {}}
+        onSubmit={onSubmit}
+        onResend={vi.fn()}
+        canResend={true}
+        isOtpSent={true}
+        errorMessage={null}
+        handleAuthMethodChange={() => {}}
+      />
+    );
+    const inputs = screen.getAllByRole("textbox");
+    inputs.forEach((input, idx) => {
+      fireEvent.change(input, { target: { value: String(idx) } });
+    });
+    expect(onSubmit).toHaveBeenCalled();
+  });
 });

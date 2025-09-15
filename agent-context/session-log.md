@@ -1,3 +1,7 @@
+## v0.60
+- OTP form auto-submits once all six digits are entered, removing the need for a Verify button.
+- Send tab opens the shared QR scan modal instead of embedding a scanner, and the amount input is borderless with oversized text and two-decimal conversions.
+
 ## v0.59
 - Converted Send tab token balances from strings to numbers and added a unit test confirming `SendCard` receives a numeric `userBalance` prop.
 

@@ -55,6 +55,12 @@ function OTPForm({
     }
   }, [isOtpSent, setPasscode]);
 
+  useEffect(() => {
+    if (isOtpSent && digits.every((d) => d !== "")) {
+      onSubmit(new Event("submit") as any);
+    }
+  }, [isOtpSent, digits, onSubmit]);
+
   const handleDigitChange = (value: string, idx: number) => {
     if (!/^\d?$/.test(value)) return;
     const newDigits = [...digits];
@@ -170,10 +176,12 @@ function OTPForm({
       {/* Display error only for phone authMethod */}
       {errorMessage && <div className="text-rose-500">{errorMessage}</div>}
 
-      <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
-        {isLoading && <Loading />}
-        {isOtpSent ? "Verify" : "Get Verification Code"}
-      </Button>
+      {!isOtpSent && (
+        <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
+          {isLoading && <Loading />}
+          Get Verification Code
+        </Button>
+      )}
     </form>
   );
 }

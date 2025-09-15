@@ -7,10 +7,11 @@ import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { createClient } from "@shared/lib/supabase/client";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
+import { useModal } from "@shared/contexts/ModalContext";
 import { Hypodata } from "./types";
 import { SendCard } from "./SendCard";
-import { SendQrPanel } from "./SendQrPanel";
 import { ContactsTab } from "./ContactsTab";
+import { QrScanModal } from "@tcoin/wallet/components/modals";
 import { LuCamera, LuUsers } from "react-icons/lu";
 
 interface SendTabProps {
@@ -25,9 +26,9 @@ export function SendTab({ recipient }: SendTabProps) {
   const [cadAmount, setCadAmount] = useState("");
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
   const [mode, setMode] = useState<"manual" | "qr" | "link">("manual");
-  const [scannerOpen, setScannerOpen] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
   const [payLink, setPayLink] = useState("");
+  const { openModal, closeModal } = useModal();
 
   const { sendMoney } = useSendMoney({
     senderId: userData?.cubidData?.id,
@@ -66,6 +67,21 @@ export function SendTab({ recipient }: SendTabProps) {
     setTcoinAmount("");
     setCadAmount("");
     setPayLink("");
+  };
+
+  const openScanner = () => {
+    openModal({
+      content: (
+        <QrScanModal
+          closeModal={closeModal}
+          setToSendData={(d: Hypodata) => setToSendData(d)}
+          setTcoin={setTcoinAmount}
+          setCad={setCadAmount}
+        />
+      ),
+      title: "Scan QR",
+      description: "Use your device's camera to scan a code.",
+    });
   };
 
   const extractAndDecodeBase64 = (url: string) => {
@@ -109,11 +125,10 @@ export function SendTab({ recipient }: SendTabProps) {
 
   useEffect(() => {
     reset();
+    setShowContacts(false);
     if (mode === "qr") {
-      setScannerOpen(true);
-    } else {
-      setScannerOpen(false);
-      setShowContacts(false);
+      openScanner();
+      setMode("manual");
     }
   }, [mode]);
 
@@ -160,74 +175,28 @@ export function SendTab({ recipient }: SendTabProps) {
             userBalance={balance}
             onUseMax={handleUseMax}
           />
-          {scannerOpen && (
-            <SendQrPanel
-              applyAmount={false}
-              setToSendData={(d) => {
-                setToSendData(d);
-                setScannerOpen(false);
-              }}
-              setTcoin={setTcoinAmount}
-              setCad={setCadAmount}
-              onComplete={() => setScannerOpen(false)}
-            />
-          )}
           {showContacts && (
-            <ContactsTab
-              onSend={(contact) => {
-                setToSendData(contact);
-                setShowContacts(false);
-              }}
-            />
-          )}
-          {!scannerOpen &&
-            !showContacts &&
-            !toSendData &&
-            amountEntered && (
-              <div className="flex gap-2">
-                <Button className="flex-1" onClick={() => setScannerOpen(true)}>
-                  <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
-                </Button>
-                <Button className="flex-1" onClick={() => setShowContacts(true)}>
-                  <LuUsers className="mr-2 h-4 w-4" /> Select Contact
-                </Button>
-              </div>
-            )}
-        </>
-      )}
-
-      {mode === "qr" && (
-        <>
-          {scannerOpen ? (
-            <SendQrPanel
-              setToSendData={(d) => {
-                setToSendData(d);
-              }}
-              setTcoin={setTcoinAmount}
-              setCad={setCadAmount}
-              onComplete={() => setScannerOpen(false)}
-            />
-          ) : (
             <>
-              <SendCard
-                locked
-                toSendData={toSendData}
-                setToSendData={setToSendData}
-                tcoinAmount={tcoinAmount}
-                cadAmount={cadAmount}
-                handleTcoinChange={handleTcoinChange}
-                handleCadChange={handleCadChange}
-                explorerLink={explorerLink}
-                setExplorerLink={setExplorerLink}
-                setTcoin={setTcoinAmount}
-                setCad={setCadAmount}
-                sendMoney={sendMoney}
-                userBalance={balance}
-              />
-              <Button className="w-full" onClick={() => setScannerOpen(true)}>
-                <LuCamera className="mr-2 h-4 w-4" /> Rescan
+              <Button className="w-full mb-2" onClick={openScanner}>
+                <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
               </Button>
+              <ContactsTab
+                onSend={(contact) => {
+                  setToSendData(contact);
+                  setShowContacts(false);
+                }}
+              />
             </>
+          )}
+          {!showContacts && !toSendData && amountEntered && (
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={openScanner}>
+                <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
+              </Button>
+              <Button className="flex-1" onClick={() => setShowContacts(true)}>
+                <LuUsers className="mr-2 h-4 w-4" /> Select Contact
+              </Button>
+            </div>
           )}
         </>
       )}

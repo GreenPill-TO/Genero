@@ -25,8 +25,9 @@ vi.mock("@shared/hooks/useTokenBalance", () => ({
   useTokenBalance: () => ({ balance: "10" }),
 }));
 
+const openModal = vi.fn();
 vi.mock("@shared/contexts/ModalContext", () => ({
-  useModal: () => ({ openModal: vi.fn(), closeModal: vi.fn() }),
+  useModal: () => ({ openModal, closeModal: vi.fn() }),
 }));
 
 vi.mock("@shared/lib/supabase/client", () => ({
@@ -54,8 +55,9 @@ vi.mock("./SendCard", () => ({
   },
 }));
 
-vi.mock("./SendQrPanel", () => ({
-  SendQrPanel: () => <div data-testid="scanner" />,
+
+vi.mock("@tcoin/wallet/components/modals", () => ({
+  QrScanModal: () => <div>qr-modal</div>,
 }));
 
 vi.mock("./ContactsTab", () => ({
@@ -67,6 +69,7 @@ import { SendTab } from "./SendTab";
 afterEach(() => {
   cleanup();
   sendCardProps = undefined;
+  openModal.mockReset();
 });
 
 describe("SendTab", () => {
@@ -78,17 +81,13 @@ describe("SendTab", () => {
     });
   });
 
-  it("renders mode toggle and shows scanner in QR mode", () => {
+  it("renders mode toggle and opens modal in QR mode", () => {
     render(<SendTab recipient={null} />);
     expect(screen.getByText("Manual")).toBeTruthy();
     expect(screen.getByText("QR")).toBeTruthy();
     expect(screen.getByText("Pay Link")).toBeTruthy();
-    // default manual
-    expect(screen.getByPlaceholderText("0")).toBeTruthy();
-    expect(screen.queryByTestId("scanner")).toBeNull();
-    // switch to QR
     fireEvent.click(screen.getByText("QR"));
-    expect(screen.getByTestId("scanner")).toBeTruthy();
+    expect(openModal).toHaveBeenCalled();
   });
 
   it("passes numeric userBalance to SendCard", () => {
@@ -103,6 +102,8 @@ describe("SendTab", () => {
     fireEvent.change(input, { target: { value: "1" } });
     expect(screen.getByText(/scan qr code/i)).toBeTruthy();
     expect(screen.getByText(/select contact/i)).toBeTruthy();
+    fireEvent.click(screen.getByText(/scan qr code/i));
+    expect(openModal).toHaveBeenCalled();
   });
 });
 

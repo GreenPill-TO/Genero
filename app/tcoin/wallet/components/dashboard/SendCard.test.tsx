@@ -72,4 +72,25 @@ describe("SendCard", () => {
     fireEvent.click(buttons[buttons.length - 1]);
     expect(onUseMax).toHaveBeenCalled();
   });
+
+  it("formats converted amount to two decimals", () => {
+    render(
+      <SendCard
+        toSendData={null}
+        setToSendData={noop}
+        tcoinAmount="1.2345"
+        cadAmount="2.3456"
+        handleTcoinChange={noop as any}
+        handleCadChange={noop as any}
+        explorerLink={null}
+        setExplorerLink={noop}
+        setTcoin={noop}
+        setCad={noop}
+        sendMoney={vi.fn()}
+        userBalance={5}
+        onUseMax={noop}
+      />
+    );
+    expect(screen.getByText("≈ 2.35 CAD")).toBeTruthy();
+  });
 });

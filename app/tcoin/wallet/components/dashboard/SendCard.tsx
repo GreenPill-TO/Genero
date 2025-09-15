@@ -3,7 +3,6 @@ import { LuSend } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
-import { Input } from "@shared/components/ui/Input";
 import { Switch } from "@shared/components/ui/Switch";
 import { useModal } from "@shared/contexts/ModalContext";
 import { createClient } from "@shared/lib/supabase/client";
@@ -119,29 +118,27 @@ export function SendCard({
         </div>
         {isCadInput ? (
           <>
-            <Input
-              className="w-full text-center text-5xl font-bold"
-              elSize="md"
+            <input
+              className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
               name="cad"
               value={cadAmount}
               onChange={amountLocked ? undefined : handleCadChange}
               readOnly={amountLocked}
               placeholder="0"
             />
-            <p className="text-sm text-muted-foreground">≈ {tcoinAmount || "0"} TCOIN</p>
+            <p className="text-sm text-muted-foreground">≈ {parseFloat(tcoinAmount || "0").toFixed(2)} TCOIN</p>
           </>
         ) : (
           <>
-            <Input
-              className="w-full text-center text-5xl font-bold"
-              elSize="md"
+            <input
+              className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
               name="tcoin"
               value={tcoinAmount}
               onChange={amountLocked ? undefined : handleTcoinChange}
               readOnly={amountLocked}
               placeholder="0"
             />
-            <p className="text-sm text-muted-foreground">≈ {cadAmount || "0"} CAD</p>
+            <p className="text-sm text-muted-foreground">≈ {parseFloat(cadAmount || "0").toFixed(2)} CAD</p>
           </>
         )}
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">

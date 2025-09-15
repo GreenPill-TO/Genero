@@ -41,6 +41,7 @@
 - Send tab converts string token balances to numbers before performing arithmetic.
 - Token balances from Web3 are returned as strings; dashboard components parse them to numbers before applying arithmetic or `toFixed`.
 - Sign-in modal shows a spam-folder notice with an inline "Resend Code" link instead of a button.
+- Entering the sixth digit in the sign-in modal automatically submits the verification form.
 - Send tab binds `useSendMoney` with the authenticated user's ID and selected recipient to avoid undefined sender errors.
 - Contact selection modal returns full contact objects so downstream send logic can derive receiver IDs and display metadata.
 - Dashboard components guard against null recipient data, and send logic only fires after payload verification with resilient Supabase fetches.
@@ -75,9 +76,8 @@
 - Wallet dashboard is composed from modular cards (Contributions, Receive, Send, Account and Other) within `WalletHome`.
 - Deep-link scans on the wallet dashboard run only when the URL includes a `pay` query, and success toasts fire after user lookup and connection insertion.
 - Footer navigation icons are evenly spaced and centred, with a prominent Send action.
-- Send tab embeds a QR scanner panel by default and can switch to a contact list without using the modal.
-- Send tab also offers buttons to select a contact or paste a pay link and always displays the send form with amount inputs and a send button.
-- In Manual mode the Send tab shows an oversized amount input with a CAD/TCOIN toggle, displays the converted value and available balance with a "Use Max" shortcut, and only reveals scan or contact options once a positive amount is entered.
+- Send tab uses a shared QR scanning modal instead of an embedded scanner, but still offers buttons to select a contact or paste a pay link and always displays the send form with amount inputs and a send button.
+- In Manual mode the Send tab shows a borderless oversized amount input with a CAD/TCOIN toggle, displays the converted value rounded to two decimals alongside the available balance and a "Use Max" shortcut, and only reveals scan or contact options once a positive amount is entered.
 - Receive tab renders its QR code with a white background for visibility in dark mode.
 - Dark mode preference persists across tab switches via localStorage.
 - Header camera button immediately opens the scan modal from any tab.
