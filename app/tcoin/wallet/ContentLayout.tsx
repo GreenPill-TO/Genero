@@ -9,7 +9,7 @@ import { useEffect } from "react";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export const publicPaths = ["/", "/resources", "/contact"];
+export const publicPaths = ["/", "/resources", "/contact", "/ecosystem"];
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();

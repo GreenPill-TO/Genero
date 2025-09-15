@@ -6,6 +6,7 @@ import { LandingHeader } from "@tcoin/wallet/components/landing-header";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useModal } from "@shared/contexts/ModalContext";
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
+import { Footer } from "@tcoin/wallet/components/footer";
 
 export default function HomePage() {
   const router = useRouter();
@@ -173,6 +174,7 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }

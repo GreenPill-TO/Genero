@@ -33,6 +33,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Dashboard page (`/dashboard`) is publicly accessible without authentication.
 - Dashboard's public status is verified by a Vitest unit test covering the unauthenticated path list.
 - Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository and ends with a return-home link.
+- Ecosystem page showcases related community projects and is linked from the Resources page and the landing footer.
 - Contact page contains a form that saves user requests to Supabase including IP addresses and separates the send button from the return-home link.
 - Landing page links now point directly to the whitepaper, Telegram chat, presentation and open-source repository, with a trimmed top margin and wider content area.
 - Dark mode applies to the entire layout via a body-level class so backgrounds and banner images switch between themes.

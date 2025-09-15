@@ -1,3 +1,6 @@
+## v0.61
+- Added public Ecosystem page listing related projects and linked it from resources and the landing footer for SEO.
+
 ## v0.60
 - OTP form auto-submits once all six digits are entered, removing the need for a Verify button.
 - Send tab opens the shared QR scan modal instead of embedding a scanner, and the amount input is borderless with oversized text and two-decimal conversions.
