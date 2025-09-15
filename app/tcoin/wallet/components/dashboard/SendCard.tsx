@@ -5,6 +5,7 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
+import { Switch } from "@shared/components/ui/Switch";
 import { useModal } from "@shared/contexts/ModalContext";
 import { createClient } from "@shared/lib/supabase/client";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
@@ -23,6 +24,7 @@ interface SendCardProps {
   setTcoin: any;
   setCad: any;
   userBalance: number;
+  locked?: boolean;
 }
 
 export function SendCard({
@@ -38,6 +40,7 @@ export function SendCard({
   sendMoney,
   setCad,
   userBalance,
+  locked = false,
 }: SendCardProps) {
   const [connections, setConnections] = useState<any>(null);
   const { userData } = useAuth();
@@ -74,6 +77,10 @@ export function SendCard({
     cadValue > 0 &&
     tcoinValue <= userBalance;
 
+  const [isCadInput, setIsCadInput] = useState(false);
+  const amountLocked = locked &&
+    ((isCadInput ? cadAmount : tcoinAmount) !== "0" && (isCadInput ? cadAmount : tcoinAmount) !== "");
+
   return (
     <Card>
       <CardHeader>
@@ -109,22 +116,45 @@ export function SendCard({
         )}
 
         <div className="space-y-2">
-          <Input
-            className="w-full"
-            elSize="md"
-            name="tcoin"
-            value={tcoinAmount}
-            onChange={handleTcoinChange}
-            placeholder="Enter TCOIN amount"
-          />
-          <Input
-            name="cad"
-            elSize="md"
-            className="w-full"
-            value={cadAmount}
-            onChange={handleCadChange}
-            placeholder="Enter CAD amount"
-          />
+          <div className="flex justify-end items-center gap-2">
+            <span className="text-xs">CAD</span>
+            <Switch
+              checked={isCadInput}
+              onCheckedChange={(v) => setIsCadInput(v)}
+              aria-label="Toggle CAD input"
+            />
+          </div>
+          {isCadInput ? (
+            <>
+              <Input
+                className="w-full text-4xl"
+                elSize="md"
+                name="cad"
+                value={cadAmount}
+                onChange={amountLocked ? undefined : handleCadChange}
+                readOnly={amountLocked}
+                placeholder="Enter CAD amount"
+              />
+              <p className="text-sm text-muted-foreground">
+                {tcoinAmount || "0"} TCOIN
+              </p>
+            </>
+          ) : (
+            <>
+              <Input
+                className="w-full text-4xl"
+                elSize="md"
+                name="tcoin"
+                value={tcoinAmount}
+                onChange={amountLocked ? undefined : handleTcoinChange}
+                readOnly={amountLocked}
+                placeholder="Enter TCOIN amount"
+              />
+              <p className="text-sm text-muted-foreground">
+                {cadAmount || "0"} CAD
+              </p>
+            </>
+          )}
         </div>
         <Button
           className="w-full"

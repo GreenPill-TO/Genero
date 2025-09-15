@@ -5,13 +5,13 @@ import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { createClient } from "@shared/lib/supabase/client";
+import { Button } from "@shared/components/ui/Button";
+import { Input } from "@shared/components/ui/Input";
 import { Hypodata } from "./types";
 import { SendCard } from "./SendCard";
 import { SendQrPanel } from "./SendQrPanel";
 import { ContactsTab } from "./ContactsTab";
-import { Button } from "@shared/components/ui/Button";
-import { Input } from "@shared/components/ui/Input";
-import { LuCamera, LuLink2, LuUsers } from "react-icons/lu";
+import { LuCamera, LuUsers } from "react-icons/lu";
 
 interface SendTabProps {
   recipient: Hypodata | null;
@@ -24,9 +24,9 @@ export function SendTab({ recipient }: SendTabProps) {
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
-  const [cameraOpen, setCameraOpen] = useState(!recipient);
+  const [mode, setMode] = useState<"manual" | "qr" | "link">("manual");
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
-  const [showLinkInput, setShowLinkInput] = useState(false);
   const [payLink, setPayLink] = useState("");
 
   const { sendMoney } = useSendMoney({
@@ -36,11 +36,9 @@ export function SendTab({ recipient }: SendTabProps) {
   const { balance } = useTokenBalance(
     userData?.cubidData?.wallet_address || ""
   );
+
   useEffect(() => {
     setToSendData(recipient);
-    if (recipient) {
-      setCameraOpen(false);
-    }
   }, [recipient]);
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,6 +53,13 @@ export function SendTab({ recipient }: SendTabProps) {
     setCadAmount(raw);
     const num = parseFloat(raw) || 0;
     setTcoinAmount((num / exchangeRate).toString());
+  };
+
+  const reset = () => {
+    setToSendData(null);
+    setTcoinAmount("");
+    setCadAmount("");
+    setPayLink("");
   };
 
   const extractAndDecodeBase64 = (url: string) => {
@@ -90,81 +95,163 @@ export function SendTab({ recipient }: SendTabProps) {
         const num = parseFloat(qrTcoinAmount) || 0;
         setCadAmount((num * exchangeRate).toString());
       }
-      setShowLinkInput(false);
-      setPayLink("");
     } catch (err) {
       console.error("handlePayLink error", err);
       toast.error("Failed to process link");
     }
   };
 
+  useEffect(() => {
+    reset();
+    if (mode === "qr") {
+      setScannerOpen(true);
+    } else {
+      setScannerOpen(false);
+      setShowContacts(false);
+    }
+  }, [mode]);
+
   return (
     <div className="space-y-4">
-      {cameraOpen && !showContacts && (
+      <div className="flex gap-2">
+        <Button
+          variant={mode === "manual" ? "default" : "outline"}
+          onClick={() => setMode("manual")}
+        >
+          Manual
+        </Button>
+        <Button
+          variant={mode === "qr" ? "default" : "outline"}
+          onClick={() => setMode("qr")}
+        >
+          QR
+        </Button>
+        <Button
+          variant={mode === "link" ? "default" : "outline"}
+          onClick={() => setMode("link")}
+        >
+          Pay Link
+        </Button>
+      </div>
+
+      {mode === "manual" && (
         <>
-          <SendQrPanel
-            setToSendData={(d) => {
-              setToSendData(d);
-              setCameraOpen(false);
-            }}
+          <SendCard
+            toSendData={toSendData}
+            setToSendData={setToSendData}
+            tcoinAmount={tcoinAmount}
+            cadAmount={cadAmount}
+            handleTcoinChange={handleTcoinChange}
+            handleCadChange={handleCadChange}
+            explorerLink={explorerLink}
+            setExplorerLink={setExplorerLink}
             setTcoin={setTcoinAmount}
             setCad={setCadAmount}
-            onComplete={() => setCameraOpen(false)}
+            sendMoney={sendMoney}
+            userBalance={balance}
           />
-          <div className="flex gap-2">
-            <Button className="flex-1" onClick={() => { setShowContacts(true); setCameraOpen(false); }}>
-              <LuUsers className="mr-2 h-4 w-4" /> Select Contact
-            </Button>
-            <Button className="flex-1" onClick={() => { setShowLinkInput(true); setCameraOpen(false); }}>
-              <LuLink2 className="mr-2 h-4 w-4" /> Paste Link
-            </Button>
-          </div>
+          {scannerOpen && (
+            <SendQrPanel
+              applyAmount={false}
+              setToSendData={(d) => {
+                setToSendData(d);
+                setScannerOpen(false);
+              }}
+              setTcoin={setTcoinAmount}
+              setCad={setCadAmount}
+              onComplete={() => setScannerOpen(false)}
+            />
+          )}
+          {showContacts && (
+            <ContactsTab
+              onSend={(contact) => {
+                setToSendData(contact);
+                setShowContacts(false);
+              }}
+            />
+          )}
+          {!scannerOpen && !showContacts && (
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={() => setScannerOpen(true)}>
+                <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
+              </Button>
+              <Button className="flex-1" onClick={() => setShowContacts(true)}>
+                <LuUsers className="mr-2 h-4 w-4" /> Select Contact
+              </Button>
+            </div>
+          )}
         </>
       )}
-      {showContacts && (
+
+      {mode === "qr" && (
         <>
-          <ContactsTab
-            onSend={(contact) => {
-              setToSendData(contact);
-              setShowContacts(false);
-            }}
-          />
-          <Button className="w-full mt-2" onClick={() => { setShowContacts(false); setCameraOpen(true); }}>
-            <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
-          </Button>
+          {scannerOpen ? (
+            <SendQrPanel
+              setToSendData={(d) => {
+                setToSendData(d);
+              }}
+              setTcoin={setTcoinAmount}
+              setCad={setCadAmount}
+              onComplete={() => setScannerOpen(false)}
+            />
+          ) : (
+            <>
+              <SendCard
+                locked
+                toSendData={toSendData}
+                setToSendData={setToSendData}
+                tcoinAmount={tcoinAmount}
+                cadAmount={cadAmount}
+                handleTcoinChange={handleTcoinChange}
+                handleCadChange={handleCadChange}
+                explorerLink={explorerLink}
+                setExplorerLink={setExplorerLink}
+                setTcoin={setTcoinAmount}
+                setCad={setCadAmount}
+                sendMoney={sendMoney}
+                userBalance={balance}
+              />
+              <Button className="w-full" onClick={() => setScannerOpen(true)}>
+                <LuCamera className="mr-2 h-4 w-4" /> Rescan
+              </Button>
+            </>
+          )}
         </>
       )}
-      {showLinkInput && (
-        <div className="space-y-2">
-          <Input
-            placeholder="Paste pay link"
-            value={payLink}
-            onChange={(e) => setPayLink(e.target.value)}
-          />
-          <Button className="w-full" onClick={handlePayLink}>
-            Load Link
-          </Button>
-        </div>
+
+      {mode === "link" && (
+        <>
+          {!toSendData ? (
+            <div className="space-y-2">
+              <Input
+                placeholder="Paste pay link"
+                value={payLink}
+                onChange={(e) => setPayLink(e.target.value)}
+              />
+              <Button className="w-full" onClick={handlePayLink}>
+                Load Link
+              </Button>
+            </div>
+          ) : (
+            <SendCard
+              locked
+              toSendData={toSendData}
+              setToSendData={setToSendData}
+              tcoinAmount={tcoinAmount}
+              cadAmount={cadAmount}
+              handleTcoinChange={handleTcoinChange}
+              handleCadChange={handleCadChange}
+              explorerLink={explorerLink}
+              setExplorerLink={setExplorerLink}
+              setTcoin={setTcoinAmount}
+              setCad={setCadAmount}
+              sendMoney={sendMoney}
+              userBalance={balance}
+            />
+          )}
+        </>
       )}
-      {!cameraOpen && !showContacts && !showLinkInput && (
-        <Button className="w-full" onClick={() => setCameraOpen(true)}>
-          <LuCamera className="mr-2 h-4 w-4" /> Open Camera
-        </Button>
-      )}
-      <SendCard
-        toSendData={toSendData}
-        setToSendData={setToSendData}
-        tcoinAmount={tcoinAmount}
-        cadAmount={cadAmount}
-        handleTcoinChange={handleTcoinChange}
-        handleCadChange={handleCadChange}
-        explorerLink={explorerLink}
-        setExplorerLink={setExplorerLink}
-        setTcoin={setTcoinAmount}
-        setCad={setCadAmount}
-        sendMoney={sendMoney}
-        userBalance={balance}
-      />
     </div>
   );
 }
+

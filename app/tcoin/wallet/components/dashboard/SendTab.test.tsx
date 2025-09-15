@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const useSendMoneyMock = vi.hoisted(() =>
@@ -52,12 +52,17 @@ describe("SendTab", () => {
     });
   });
 
-  it("shows scanner by default when no recipient", () => {
+  it("renders mode toggle and shows scanner in QR mode", () => {
     render(<SendTab recipient={null} />);
-    expect(screen.getByTestId("scanner")).toBeTruthy();
+    expect(screen.getByText("Manual")).toBeTruthy();
+    expect(screen.getByText("QR")).toBeTruthy();
+    expect(screen.getByText("Pay Link")).toBeTruthy();
+    // default manual
     expect(screen.getByTestId("send-card")).toBeTruthy();
-    expect(screen.getByText("Select Contact")).toBeTruthy();
-    expect(screen.getByText("Paste Link")).toBeTruthy();
+    expect(screen.queryByTestId("scanner")).toBeNull();
+    // switch to QR
+    fireEvent.click(screen.getByText("QR"));
+    expect(screen.getByTestId("scanner")).toBeTruthy();
   });
 });
 

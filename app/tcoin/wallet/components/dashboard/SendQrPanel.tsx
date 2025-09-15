@@ -16,9 +16,10 @@ interface Props {
   setTcoin: (val: string) => void;
   setCad: (val: string) => void;
   onComplete: () => void;
+  applyAmount?: boolean;
 }
 
-export function SendQrPanel({ setToSendData, setTcoin, setCad, onComplete }: Props) {
+export function SendQrPanel({ setToSendData, setTcoin, setCad, onComplete, applyAmount = true }: Props) {
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables();
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
@@ -74,10 +75,11 @@ export function SendQrPanel({ setToSendData, setTcoin, setCad, onComplete }: Pro
           state: "new",
         });
         setToSendData(userDataFromSupabaseTable?.[0]);
-        if (rest?.qrTcoinAmount) {
+        if (applyAmount && rest?.qrTcoinAmount) {
           setTcoin(rest.qrTcoinAmount);
           setCad(extractDecimalFromString(rest.qrTcoinAmount) * exchangeRate);
         }
+        playBeep();
         toast.success("Scanned User Successfully");
       } catch (err) {
         console.error("handleScan error", err);
@@ -126,6 +128,20 @@ export function SendQrPanel({ setToSendData, setTcoin, setCad, onComplete }: Pro
       </div>
     </div>
   );
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+  } catch (e) {
+    console.error("beep failed", e);
+  }
 }
 
 export default SendQrPanel;
