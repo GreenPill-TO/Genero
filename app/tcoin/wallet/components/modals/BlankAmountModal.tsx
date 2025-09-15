@@ -22,7 +22,14 @@ const BlankAmountModal = ({ closeModal, openModal }: BlankAmountModalProps) => {
         <Button
           onClick={() =>
             openModal({
-              content: <ContactSelectModal closeModal={closeModal} amount="0" method="Request" />,
+              content: (
+                <ContactSelectModal
+                  closeModal={closeModal}
+                  amount="0"
+                  method="Request"
+                  setToSendData={() => {}}
+                />
+              ),
               title: "Request from Contact",
               description: "Select a contact to request TCOIN from.",
             })

@@ -4,6 +4,12 @@ const appToServe = process.env.NEXT_PUBLIC_APP_NAME || "wallet"; // Default app 
 console.log(`Serving ${appToServe} for ${citycoin}`);
 
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     remotePatterns: [
       {

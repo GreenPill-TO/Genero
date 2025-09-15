@@ -1,3 +1,61 @@
+## v0.61
+- Added public Ecosystem page listing related projects and linked it from resources and the landing footer for SEO.
+
+## v0.60
+- OTP form auto-submits once all six digits are entered, removing the need for a Verify button.
+- Send tab opens the shared QR scan modal instead of embedding a scanner, and the amount input is borderless with oversized text and two-decimal conversions.
+
+## v0.59
+- Converted Send tab token balances from strings to numbers and added a unit test confirming `SendCard` receives a numeric `userBalance` prop.
+
+## v0.58
+- Parsed token balance strings before arithmetic to avoid `toFixed` runtime errors and added a unit test ensuring `SendCard` receives a numeric balance.
+
+## v0.57
+- Manual Send flow shows an oversized amount input with available balance, Use Max shortcut and reveals contact or scan options only after amount entry.
+
+## v0.56
+- Restored Send tab to include QR camera plus options to select a contact or paste a link, with amount entry and send button available on the page.
+
+## v0.55
+- Refined sign-in modal to show a spam warning with a hyperlink for resending codes.
+
+## v0.54
+- Guarded dashboard send flows against null recipient data, hardened Supabase fetches, and wrapped the page in an error boundary.
+
+## v0.53
+- Ensured contact selection passes full recipient data to send flow and added unit test covering the behaviour.
+
+## v0.52
+- Refined wallet dashboard footer and send flow: centered tab icons, inline QR scanner with contact option, white receive QR background and persistent dark mode.
+
+## v0.51
+- Guarded wallet dashboard deep-link scans to run only when the URL includes a `pay` payload and trigger success toasts after user lookup and connection insertion.
+
+## v0.50
+- Ensured Send tab supplies sender and receiver IDs to `useSendMoney` and added a unit test to prevent regressions.
+
+## v0.49
+- Deferred browser storage access like localStorage to `useEffect` hooks to silence build-time warnings in Node.
+
+## v0.48
+- Configured Vitest to run tests in a jsdom environment for DOM APIs.
+
+## v0.47
+- Switched wallet dashboard to system fonts and added functional tabs for contacts, sending, and receiving.
+
+## v0.46
+- Replaced custom 48% slide animations with built-in half-screen variants and cleared Tailwind's ambiguous class warnings.
+
+## v0.45
+- Established a Tailwind preset and per-app configs to remove ambiguous class warnings for wallet and sparechange builds.
+
+## v0.44
+- Refactored wallet dashboard into reusable components with a dedicated footer navigation and added unit tests.
+
+## v0.43
+- Added React imports and escape-key handling to wallet modals and wrapped modal tests with a QueryClient provider so unit tests pass.
+
 ## v0.42
 - Replaced single verification field with six auto-advancing inputs in sign-in modals and added a unit test.
 

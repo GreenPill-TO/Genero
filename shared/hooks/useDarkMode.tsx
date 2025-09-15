@@ -18,10 +18,20 @@ export default function useDarkMode() {
   };
 
   const toggleDarkMode = () => {
-    applyClass(!isDarkMode);
+    const next = !isDarkMode;
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("theme", next ? "dark" : "light");
+    }
+    applyClass(next);
   };
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("theme");
+    if (stored) {
+      applyClass(stored === "dark");
+      return;
+    }
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     applyClass(mediaQuery.matches);
     const listener = (e: MediaQueryListEvent) => applyClass(e.matches);

@@ -33,6 +33,10 @@ export default function ResourcesPage() {
           </Link>
         </p>
         <p>
+          <strong>Ecosystem:</strong>{" "}
+          <Link href="/ecosystem">Explore the projects in our wider network.</Link>
+        </p>
+        <p>
           <Link href="/">Return home</Link>
         </p>
       </main>

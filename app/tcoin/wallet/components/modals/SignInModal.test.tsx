@@ -19,7 +19,7 @@ vi.mock("@shared/components/ui/ImageCarousel", () => ({
   default: () => <div />,
 }));
 
-vi.mock("@tcoin/sparechange/components/forms/OTPForm", () => ({
+vi.mock("@tcoin/wallet/components/forms/OTPForm", () => ({
   __esModule: true,
   default: (props: any) => <form onSubmit={props.onSubmit}></form>,
 }));

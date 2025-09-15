@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize the Supabase client (replace with your own keys/environment variables)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl ?? "", supabaseAnonKey ?? "");
+import { createClient } from '@shared/lib/supabase/client';
 
 export function useControlVariables() {
     const [data, setData] = useState<any>(null);
@@ -14,10 +9,10 @@ export function useControlVariables() {
     useEffect(() => {
         async function fetchControlVariables() {
             // Replace "control variables" with your actual table name if needed.
+            const supabase = createClient();
             const { data: controlData, error } = await supabase
                 .from('control_variables')
                 .select('*').match({ variable: 'exchange_rate' })
-
             if (error) {
                 setError(error);
             } else {

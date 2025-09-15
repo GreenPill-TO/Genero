@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@shared/lib/supabase/client';
 import { Shamir } from '@spliterati/shamir';
 import { useAuth } from '@shared/api/hooks/useAuth';
 import { tokenAbi } from './abi';
@@ -10,11 +10,6 @@ import { toast } from 'react-toastify';
 import { transfer } from '@shared/utils/insertNotification';
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate'
 
-// Initialize Supabase client.
-const supabase = createClient(
-	process.env.NEXT_PUBLIC_SUPABASE_URL!,
-	process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 // Helper: Convert hex string to Uint8Array.
 const hexToUint8Array = (hex: string): Uint8Array => {
@@ -77,25 +72,31 @@ export const useSendMoney = ({
 	const { userData } = useAuth();
 
 	// Fetch wallet address from Supabase using Cubid.
-	const fetchWalletAddress = async (
-		userId: number,
-		setWallet: (wallet: string | null) => void
-	) => {
-		try {
-			const { data, error } = await supabase
-				.from('users')
-				.select('email')
-				.eq('id', userId)
-				.single();
-			if (error) throw new Error(error.message);
-			if (!data?.email) throw new Error('Email not found');
-			console.log("wallet list", { userId })
-			const { data: wallet_data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })
-			setWallet(wallet_data?.[0]?.public_key);
-		} catch (err: any) {
-			setError(err.message);
-		}
-	};
+        const fetchWalletAddress = async (
+                userId: number | null | undefined,
+                setWallet: (wallet: string | null) => void
+        ) => {
+                if (!userId) return;
+                const supabase = createClient();
+                try {
+                        const { data, error } = await supabase
+                                .from('users')
+                                .select('email')
+                                .eq('id', userId)
+                                .single();
+                        if (error) throw new Error(error.message);
+                        if (!data?.email) throw new Error('Email not found');
+                        const { data: wallet_data, error: walletErr } = await supabase
+                                .from("wallet_list")
+                                .select("*")
+                                .match({ user_id: userId });
+                        if (walletErr) throw new Error(walletErr.message);
+                        setWallet(wallet_data?.[0]?.public_key ?? null);
+                } catch (err: any) {
+                        console.error('fetchWalletAddress error', err);
+                        setError(err.message);
+                }
+        };
 
 	useEffect(() => {
 		console.log({ receiverId })
@@ -105,6 +106,7 @@ export const useSendMoney = ({
 
 
 	const burnMoney = async (amount: string) => {
+                const supabase = createClient();
 		if (!senderWallet) {
 			setError('Wallet addresses not found');
 			return;
