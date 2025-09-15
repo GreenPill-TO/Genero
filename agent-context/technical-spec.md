@@ -38,7 +38,7 @@
 - Modal provider listens for the Escape key to dismiss any open modal.
 - QR scanning modal requests camera access via `navigator.mediaDevices.getUserMedia`.
 - Demurrage timers for token decay embedded in wallet logic.
-- Public `/ecosystem` page lists allied projects and is linked from resources and the landing footer for SEO.
+- Public `/ecosystem` page lists allied projects, links from resources and the landing footer for SEO, and opens external links in new tabs with `rel="noopener noreferrer"`.
 - Send tab converts string token balances to numbers before performing arithmetic.
 - Token balances from Web3 are returned as strings; dashboard components parse them to numbers before applying arithmetic or `toFixed`.
 - Sign-in modal shows a spam-folder notice with an inline "Resend Code" link instead of a button.

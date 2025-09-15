@@ -1,7 +1,30 @@
-'use client'
-
+import type { Metadata } from "next";
 import React from "react";
-import Link from "next/link"
+import Link from "next/link";
+
+const baseUrl = "https://tcoin.me";
+
+export const metadata: Metadata = {
+  title: "TCOIN Ecosystem",
+  description:
+    "Explore our interconnected projects across identity, payments, coordination, and regenerative economies.",
+  openGraph: {
+    title: "TCOIN Ecosystem",
+    description:
+      "Explore our interconnected projects across identity, payments, coordination, and regenerative economies.",
+    type: "website",
+    url: `${baseUrl}/ecosystem`,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TCOIN Ecosystem",
+    description:
+      "Explore our interconnected projects across identity, payments, coordination, and regenerative economies.",
+  },
+  alternates: {
+    canonical: `${baseUrl}/ecosystem`,
+  },
+};
 
 export default function EcosystemPage() {
   const sites = [
@@ -36,7 +59,12 @@ export default function EcosystemPage() {
           {sites.map((site) => (
             <div key={site.url} className="p-6 bg-white dark:bg-slate-800 rounded-2xl shadow hover:shadow-lg transition">
               <h2 className="text-2xl font-semibold mb-2">
-                <Link href={site.url} target="_blank" className="hover:underline">
+                <Link
+                  href={site.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
                   {site.name}
                 </Link>
               </h2>
