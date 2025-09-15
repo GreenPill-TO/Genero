@@ -1,3 +1,6 @@
+## v0.57
+- Manual Send flow shows an oversized amount input with available balance, Use Max shortcut and reveals contact or scan options only after amount entry.
+
 ## v0.56
 - Restored Send tab to include QR camera plus options to select a contact or paste a link, with amount entry and send button available on the page.
 

@@ -41,6 +41,12 @@ export function SendTab({ recipient }: SendTabProps) {
     setToSendData(recipient);
   }, [recipient]);
 
+  const handleUseMax = () => {
+    setTcoinAmount(balance.toString());
+    const num = parseFloat(balance.toString()) || 0;
+    setCadAmount((num * exchangeRate).toString());
+  };
+
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^\d.]/g, "");
     setTcoinAmount(raw);
@@ -111,6 +117,9 @@ export function SendTab({ recipient }: SendTabProps) {
     }
   }, [mode]);
 
+  const amountEntered =
+    (parseFloat(tcoinAmount) || 0) > 0 || (parseFloat(cadAmount) || 0) > 0;
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
@@ -149,6 +158,7 @@ export function SendTab({ recipient }: SendTabProps) {
             setCad={setCadAmount}
             sendMoney={sendMoney}
             userBalance={balance}
+            onUseMax={handleUseMax}
           />
           {scannerOpen && (
             <SendQrPanel
@@ -170,16 +180,19 @@ export function SendTab({ recipient }: SendTabProps) {
               }}
             />
           )}
-          {!scannerOpen && !showContacts && (
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={() => setScannerOpen(true)}>
-                <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
-              </Button>
-              <Button className="flex-1" onClick={() => setShowContacts(true)}>
-                <LuUsers className="mr-2 h-4 w-4" /> Select Contact
-              </Button>
-            </div>
-          )}
+          {!scannerOpen &&
+            !showContacts &&
+            !toSendData &&
+            amountEntered && (
+              <div className="flex gap-2">
+                <Button className="flex-1" onClick={() => setScannerOpen(true)}>
+                  <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
+                </Button>
+                <Button className="flex-1" onClick={() => setShowContacts(true)}>
+                  <LuUsers className="mr-2 h-4 w-4" /> Select Contact
+                </Button>
+              </div>
+            )}
         </>
       )}
 

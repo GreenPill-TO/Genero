@@ -75,6 +75,7 @@
 - Footer navigation icons are evenly spaced and centred, with a prominent Send action.
 - Send tab embeds a QR scanner panel by default and can switch to a contact list without using the modal.
 - Send tab also offers buttons to select a contact or paste a pay link and always displays the send form with amount inputs and a send button.
+- In Manual mode the Send tab shows an oversized amount input with a CAD/TCOIN toggle, displays the converted value and available balance with a "Use Max" shortcut, and only reveals scan or contact options once a positive amount is entered.
 - Receive tab renders its QR code with a white background for visibility in dark mode.
 - Dark mode preference persists across tab switches via localStorage.
 - Header camera button immediately opens the scan modal from any tab.

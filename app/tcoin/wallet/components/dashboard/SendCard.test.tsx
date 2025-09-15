@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { SendCard } from "./SendCard";
 
@@ -41,9 +41,35 @@ describe("SendCard", () => {
         setCad={noop}
         sendMoney={vi.fn()}
         userBalance={0}
+        onUseMax={noop}
       />
     );
     const button = screen.getByRole("button", { name: /send to contact/i }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
+  });
+
+  it("shows available balance and triggers onUseMax", () => {
+    const onUseMax = vi.fn();
+    render(
+      <SendCard
+        toSendData={null}
+        setToSendData={noop}
+        tcoinAmount=""
+        cadAmount=""
+        handleTcoinChange={noop as any}
+        handleCadChange={noop as any}
+        explorerLink={null}
+        setExplorerLink={noop}
+        setTcoin={noop}
+        setCad={noop}
+        sendMoney={vi.fn()}
+        userBalance={5}
+        onUseMax={onUseMax}
+      />
+    );
+    expect(screen.getByText(/available: 5.0000/i)).toBeTruthy();
+    const buttons = screen.getAllByText(/use max/i);
+    fireEvent.click(buttons[buttons.length - 1]);
+    expect(onUseMax).toHaveBeenCalled();
   });
 });
