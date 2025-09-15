@@ -1,3 +1,6 @@
+## v0.62
+- Secured Ecosystem links with `rel="noopener noreferrer"` and added tests.
+
 ## v0.61
 - Added public Ecosystem page listing related projects and linked it from resources and the landing footer for SEO.
 
