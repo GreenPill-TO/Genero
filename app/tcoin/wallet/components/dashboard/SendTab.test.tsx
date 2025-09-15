@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const useSendMoneyMock = vi.hoisted(() =>
   vi.fn().mockReturnValue({ sendMoney: vi.fn() })
@@ -39,6 +39,10 @@ vi.mock("./ContactsTab", () => ({
 
 import { SendTab } from "./SendTab";
 
+afterEach(() => {
+  cleanup();
+});
+
 describe("SendTab", () => {
   it("provides sender and receiver IDs to useSendMoney", () => {
     render(<SendTab recipient={{ id: 123 } as any} />);
@@ -49,8 +53,11 @@ describe("SendTab", () => {
   });
 
   it("shows scanner by default when no recipient", () => {
-    const { getByTestId } = render(<SendTab recipient={null} />);
-    expect(getByTestId("scanner")).toBeTruthy();
+    render(<SendTab recipient={null} />);
+    expect(screen.getByTestId("scanner")).toBeTruthy();
+    expect(screen.getByTestId("send-card")).toBeTruthy();
+    expect(screen.getByText("Select Contact")).toBeTruthy();
+    expect(screen.getByText("Paste Link")).toBeTruthy();
   });
 });
 

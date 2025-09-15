@@ -74,6 +74,7 @@
 - Deep-link scans on the wallet dashboard run only when the URL includes a `pay` query, and success toasts fire after user lookup and connection insertion.
 - Footer navigation icons are evenly spaced and centred, with a prominent Send action.
 - Send tab embeds a QR scanner panel by default and can switch to a contact list without using the modal.
+- Send tab also offers buttons to select a contact or paste a pay link and always displays the send form with amount inputs and a send button.
 - Receive tab renders its QR code with a white background for visibility in dark mode.
 - Dark mode preference persists across tab switches via localStorage.
 - Header camera button immediately opens the scan modal from any tab.

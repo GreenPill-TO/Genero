@@ -1,3 +1,6 @@
+## v0.56
+- Restored Send tab to include QR camera plus options to select a contact or paste a link, with amount entry and send button available on the page.
+
 ## v0.55
 - Refined sign-in modal to show a spam warning with a hyperlink for resending codes.
 
