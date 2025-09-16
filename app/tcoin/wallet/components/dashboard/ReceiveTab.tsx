@@ -59,19 +59,21 @@ export function ReceiveTab() {
   };
 
   return (
-    <ReceiveCard
-      qrCodeData={qrCodeData}
-      qrTcoinAmount={qrTcoinAmount}
-      qrCadAmount={qrCadAmount}
-      handleQrTcoinChange={handleQrTcoinChange}
-      handleQrCadChange={handleQrCadChange}
-      senderWallet={userData?.cubidData?.wallet_address || ""}
-      handleQrTcoinBlur={handleQrTcoinBlur}
-      handleQrCadBlur={handleQrCadBlur}
-      tokenLabel="TCOIN"
-      qrBgColor="#fff"
-      qrFgColor="#000"
-      qrWrapperClassName="bg-white p-1"
-    />
+    <div className="lg:px-[25vw]">
+      <ReceiveCard
+        qrCodeData={qrCodeData}
+        qrTcoinAmount={qrTcoinAmount}
+        qrCadAmount={qrCadAmount}
+        handleQrTcoinChange={handleQrTcoinChange}
+        handleQrCadChange={handleQrCadChange}
+        senderWallet={userData?.cubidData?.wallet_address || ""}
+        handleQrTcoinBlur={handleQrTcoinBlur}
+        handleQrCadBlur={handleQrCadBlur}
+        tokenLabel="TCOIN"
+        qrBgColor="#fff"
+        qrFgColor="#000"
+        qrWrapperClassName="bg-white p-1"
+      />
+    </div>
   );
 }

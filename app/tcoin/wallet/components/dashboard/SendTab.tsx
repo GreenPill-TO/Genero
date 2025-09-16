@@ -200,7 +200,7 @@ export function SendTab({ recipient }: SendTabProps) {
     (parseFloat(tcoinAmount) || 0) > 0 || (parseFloat(cadAmount) || 0) > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:px-[25vw]">
       <div className="flex gap-2">
         <Button
           variant={mode === "manual" ? "default" : "outline"}

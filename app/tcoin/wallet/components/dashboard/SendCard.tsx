@@ -132,66 +132,71 @@ export function SendCard({
         </div>
       )}
 
-      <div className="space-y-2 text-center">
-        {isCadInput ? (
-          <input
-            className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
-            name="cad"
-            value={isCadFocused ? cadAmount : formatCadDisplay(cadAmount)}
-            onChange={amountLocked ? undefined : handleCadChange}
-            onFocus={() => setIsCadFocused(true)}
-            onBlur={() => {
-              setIsCadFocused(false);
-              handleCadBlur();
-            }}
-            readOnly={amountLocked}
-            placeholder="0"
-          />
-        ) : (
-          <input
-            className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
-            name="tcoin"
-            value={isTcoinFocused ? tcoinAmount : formatTcoinDisplay(tcoinAmount)}
-            onChange={amountLocked ? undefined : handleTcoinChange}
-            onFocus={() => setIsTcoinFocused(true)}
-            onBlur={() => {
-              setIsTcoinFocused(false);
-              handleTcoinBlur();
-            }}
-            readOnly={amountLocked}
-            placeholder="0"
-          />
-        )}
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Toggle between TCOIN and CAD"
-            onClick={() => {
-              if (isCadInput) {
-                handleCadBlur();
-              } else {
-                handleTcoinBlur();
-              }
-              setIsCadInput((prev) => !prev);
-              setIsCadFocused(false);
-              setIsTcoinFocused(false);
-            }}
-          >
-            <LuRefreshCcw className="h-5 w-5" />
-          </Button>
-        </div>
-        <p className="text-sm text-muted-foreground text-right">
-          {isCadInput
-            ? `≈ ${formatTcoinDisplay(tcoinAmount) || "0.00 TCOIN"}`
-            : `≈ ${formatCadDisplay(cadAmount) || "$0.00"} CAD`}
-        </p>
-        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <span>Available: {userBalance.toFixed(4)}</span>
-          <Button variant="link" className="p-0 h-auto text-xs" onClick={onUseMax}>
-            Use Max
-          </Button>
+      <div className="mx-auto w-full max-w-2xl">
+        <div className="relative mx-auto flex w-full max-w-xl flex-col items-center justify-center gap-4 rounded-3xl border border-border/60 bg-background/70 px-6 py-8 shadow-lg sm:px-10 sm:py-10 lg:max-w-lg min-h-[24rem] sm:min-h-[26rem]">
+          <div className="w-full text-center">
+            {isCadInput ? (
+              <input
+                className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
+                name="cad"
+                value={isCadFocused ? cadAmount : formatCadDisplay(cadAmount)}
+                onChange={amountLocked ? undefined : handleCadChange}
+                onFocus={() => setIsCadFocused(true)}
+                onBlur={() => {
+                  setIsCadFocused(false);
+                  handleCadBlur();
+                }}
+                readOnly={amountLocked}
+                placeholder="0"
+              />
+            ) : (
+              <input
+                className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
+                name="tcoin"
+                value={isTcoinFocused ? tcoinAmount : formatTcoinDisplay(tcoinAmount)}
+                onChange={amountLocked ? undefined : handleTcoinChange}
+                onFocus={() => setIsTcoinFocused(true)}
+                onBlur={() => {
+                  setIsTcoinFocused(false);
+                  handleTcoinBlur();
+                }}
+                readOnly={amountLocked}
+                placeholder="0"
+              />
+            )}
+          </div>
+          <div className="flex w-full justify-end pr-6">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Toggle between TCOIN and CAD"
+              className="rounded-full border border-border/60"
+              onClick={() => {
+                if (isCadInput) {
+                  handleCadBlur();
+                } else {
+                  handleTcoinBlur();
+                }
+                setIsCadInput((prev) => !prev);
+                setIsCadFocused(false);
+                setIsTcoinFocused(false);
+              }}
+            >
+              <LuRefreshCcw className="h-5 w-5" />
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground text-center">
+            {isCadInput
+              ? `≈ ${formatTcoinDisplay(tcoinAmount) || "0.00 TCOIN"}`
+              : `≈ ${formatCadDisplay(cadAmount) || "$0.00"} CAD`}
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <span>Available: {userBalance.toFixed(4)}</span>
+            <Button variant="link" className="p-0 h-auto text-xs" onClick={onUseMax}>
+              Use Max
+            </Button>
+          </div>
         </div>
       </div>
 
