@@ -31,7 +31,6 @@ export function SendTab({ recipient }: SendTabProps) {
   const [cadAmount, setCadAmount] = useState("");
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
   const [mode, setMode] = useState<"manual" | "qr" | "link">("manual");
-  const [showContacts, setShowContacts] = useState(false);
   const [payLink, setPayLink] = useState("");
   const { openModal, closeModal } = useModal();
 
@@ -189,7 +188,6 @@ export function SendTab({ recipient }: SendTabProps) {
 
   useEffect(() => {
     reset();
-    setShowContacts(false);
     if (mode === "qr") {
       openScanner();
       setMode("manual");
@@ -198,6 +196,20 @@ export function SendTab({ recipient }: SendTabProps) {
 
   const amountEntered =
     (parseFloat(tcoinAmount) || 0) > 0 || (parseFloat(cadAmount) || 0) > 0;
+
+  const openContactsModal = () => {
+    openModal({
+      title: "Select Contact",
+      content: (
+        <ContactsTab
+          onSend={(contact) => {
+            setToSendData(contact);
+            closeModal();
+          }}
+        />
+      ),
+    });
+  };
 
   return (
     <div className="space-y-4 lg:px-[25vw]">
@@ -241,25 +253,12 @@ export function SendTab({ recipient }: SendTabProps) {
             userBalance={balance}
             onUseMax={handleUseMax}
           />
-          {showContacts && (
-            <>
-              <Button className="w-full mb-2" onClick={openScanner}>
-                <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
-              </Button>
-              <ContactsTab
-                onSend={(contact) => {
-                  setToSendData(contact);
-                  setShowContacts(false);
-                }}
-              />
-            </>
-          )}
-          {!showContacts && !toSendData && amountEntered && (
+          {!toSendData && amountEntered && (
             <div className="flex gap-2">
               <Button className="flex-1" onClick={openScanner}>
                 <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
               </Button>
-              <Button className="flex-1" onClick={() => setShowContacts(true)}>
+              <Button className="flex-1" onClick={openContactsModal}>
                 <LuUsers className="mr-2 h-4 w-4" /> Select Contact
               </Button>
             </div>

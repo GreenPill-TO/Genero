@@ -40,9 +40,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     <section className={bodyClass}>
       {!isPublic && <Navbar title="TCOIN" />}
       <div className={cn(!isPublic && "flex-grow flex flex-col pt-16 bg-background text-foreground")}>{children}</div>
-      {!isPublic && (
-        <ToastContainer autoClose={3000} transition={Flip} theme="colored" />
-      )}
+      <ToastContainer autoClose={3000} transition={Flip} theme="colored" />
     </section>
   );
 }

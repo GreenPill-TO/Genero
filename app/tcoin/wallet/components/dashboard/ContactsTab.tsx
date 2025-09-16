@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { LuSend } from "react-icons/lu";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { useAuth } from "@shared/api/hooks/useAuth";
@@ -65,11 +64,8 @@ export function ContactsTab({ onSend }: ContactsTabProps) {
                 </span>
               )}
             </div>
-            <Button
-              size="sm"
-              onClick={() => onSend(contact)}
-            >
-              <LuSend className="mr-2 h-4 w-4" /> Send
+            <Button size="sm" onClick={() => onSend(contact)}>
+              Select
             </Button>
           </li>
         ))}

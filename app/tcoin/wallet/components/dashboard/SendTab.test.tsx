@@ -104,6 +104,10 @@ describe("SendTab", () => {
     expect(screen.getByText(/select contact/i)).toBeTruthy();
     fireEvent.click(screen.getByText(/scan qr code/i));
     expect(openModal).toHaveBeenCalled();
+    fireEvent.click(screen.getByText(/select contact/i));
+    expect(openModal).toHaveBeenCalledTimes(2);
+    const modalArgs = openModal.mock.calls[1][0];
+    expect(modalArgs.title).toBe("Select Contact");
   });
 });
 

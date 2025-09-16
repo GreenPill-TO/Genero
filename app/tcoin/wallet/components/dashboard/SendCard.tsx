@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { LuRefreshCcw, LuSend } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
@@ -7,6 +7,25 @@ import { useModal } from "@shared/contexts/ModalContext";
 import { createClient } from "@shared/lib/supabase/client";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
 import { Hypodata } from "./types";
+
+const FONT_SIZE_MAX_REM = 4.5;
+const FONT_SIZE_MIN_REM = 2.75;
+
+export function calculateResponsiveFontSize(displayValue: string) {
+  const trimmed = displayValue.replace(/\s+/g, "");
+  const visibleChars = trimmed.length;
+  if (visibleChars === 0) {
+    return `min(${FONT_SIZE_MAX_REM.toFixed(2)}rem, 12vw)`;
+  }
+
+  const overflow = Math.max(0, visibleChars - 10);
+  const adjusted = Math.max(
+    FONT_SIZE_MIN_REM,
+    FONT_SIZE_MAX_REM - overflow * 0.5
+  );
+
+  return `min(${adjusted.toFixed(2)}rem, 12vw)`;
+}
 
 const formatTcoinDisplay = (value: string) => {
   const trimmed = value.trim();
@@ -106,6 +125,15 @@ export function SendCard({
   const amountLocked = locked &&
     ((isCadInput ? cadAmount : tcoinAmount) !== "0" && (isCadInput ? cadAmount : tcoinAmount) !== "");
 
+  const displayValue = useMemo(() => {
+    if (isCadInput) {
+      return isCadFocused ? cadAmount : formatCadDisplay(cadAmount);
+    }
+    return isTcoinFocused ? tcoinAmount : formatTcoinDisplay(tcoinAmount);
+  }, [isCadInput, isCadFocused, cadAmount, isTcoinFocused, tcoinAmount]);
+
+  const fontSize = useMemo(() => calculateResponsiveFontSize(displayValue), [displayValue]);
+
   return (
     <div className="space-y-4">
       {toSendData && (
@@ -137,9 +165,9 @@ export function SendCard({
           <div className="w-full text-center">
             {isCadInput ? (
               <input
-                className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
+                className="w-full text-center font-bold bg-transparent focus:outline-none leading-tight"
                 name="cad"
-                value={isCadFocused ? cadAmount : formatCadDisplay(cadAmount)}
+                value={displayValue}
                 onChange={amountLocked ? undefined : handleCadChange}
                 onFocus={() => setIsCadFocused(true)}
                 onBlur={() => {
@@ -148,12 +176,13 @@ export function SendCard({
                 }}
                 readOnly={amountLocked}
                 placeholder="0"
+                style={{ fontSize }}
               />
             ) : (
               <input
-                className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
+                className="w-full text-center font-bold bg-transparent focus:outline-none leading-tight"
                 name="tcoin"
-                value={isTcoinFocused ? tcoinAmount : formatTcoinDisplay(tcoinAmount)}
+                value={displayValue}
                 onChange={amountLocked ? undefined : handleTcoinChange}
                 onFocus={() => setIsTcoinFocused(true)}
                 onBlur={() => {
@@ -162,6 +191,7 @@ export function SendCard({
                 }}
                 readOnly={amountLocked}
                 placeholder="0"
+                style={{ fontSize }}
               />
             )}
           </div>
@@ -171,7 +201,7 @@ export function SendCard({
               variant="ghost"
               size="icon"
               aria-label="Toggle between TCOIN and CAD"
-              className="rounded-full border border-border/60"
+              className="rounded-full border border-border/60 h-12 w-12 [&_svg]:h-6 [&_svg]:w-6"
               onClick={() => {
                 if (isCadInput) {
                   handleCadBlur();
@@ -183,7 +213,7 @@ export function SendCard({
                 setIsTcoinFocused(false);
               }}
             >
-              <LuRefreshCcw className="h-5 w-5" />
+              <LuRefreshCcw className="h-6 w-6" />
             </Button>
           </div>
           <p className="text-sm text-muted-foreground text-center">
@@ -227,7 +257,7 @@ export function SendCard({
           });
         }}
       >
-        <LuSend className="mr-2 h-4 w-4" /> Send to Contact
+        <LuSend className="mr-2 h-4 w-4" /> Review Payment
       </Button>
 
       {explorerLink && (

@@ -2,7 +2,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { SendCard } from "./SendCard";
+import { SendCard, calculateResponsiveFontSize } from "./SendCard";
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => ({ userData: { cubidData: { id: 1 } } }),
@@ -46,7 +46,7 @@ describe("SendCard", () => {
         onUseMax={noop}
       />
     );
-    const button = screen.getByRole("button", { name: /send to contact/i }) as HTMLButtonElement;
+    const button = screen.getByRole("button", { name: /review payment/i }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
 
@@ -121,5 +121,19 @@ describe("SendCard", () => {
       />
     );
     expect(screen.getByDisplayValue("1.20 TCOIN")).toBeTruthy();
+  });
+});
+
+describe("calculateResponsiveFontSize", () => {
+  it("returns the max size for short values", () => {
+    expect(calculateResponsiveFontSize("123")).toBe("min(4.50rem, 12vw)");
+  });
+
+  it("shrinks the size for longer values", () => {
+    expect(calculateResponsiveFontSize("123456789012")).toBe("min(3.50rem, 12vw)");
+  });
+
+  it("caps the size at the minimum for very long values", () => {
+    expect(calculateResponsiveFontSize("12345678901234567890")).toBe("min(2.75rem, 12vw)");
   });
 });
