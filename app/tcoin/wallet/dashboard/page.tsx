@@ -22,14 +22,7 @@ export default function Dashboard() {
   const content = useMemo(() => {
     if (isLoadingUser || error) return null;
     if (activeTab === "home") {
-      return (
-        <WalletHome
-          qrBgColor="#fff"
-          qrFgColor="#000"
-          qrWrapperClassName="bg-white p-1"
-          tokenLabel="TCOIN"
-        />
-      );
+      return <WalletHome tokenLabel="TCOIN" />;
     }
     if (activeTab === "contacts") {
       return (

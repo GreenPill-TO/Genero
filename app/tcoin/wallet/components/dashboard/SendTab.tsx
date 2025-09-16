@@ -21,6 +21,11 @@ interface SendTabProps {
 export function SendTab({ recipient }: SendTabProps) {
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables();
+  const safeExchangeRate =
+    typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
+      ? exchangeRate
+      : 0;
+  const sanitizeNumeric = (value: string) => value.replace(/[^\d.]/g, "");
   const [toSendData, setToSendData] = useState<Hypodata | null>(recipient);
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
@@ -44,22 +49,75 @@ export function SendTab({ recipient }: SendTabProps) {
   }, [recipient]);
 
   const handleUseMax = () => {
-    setTcoinAmount(balance.toString());
-    setCadAmount((balance * exchangeRate).toString());
+    const cadNumeric = safeExchangeRate === 0 ? 0 : balance * safeExchangeRate;
+    setTcoinAmount(balance.toFixed(2));
+    setCadAmount(cadNumeric.toFixed(2));
   };
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^\d.]/g, "");
+    const raw = sanitizeNumeric(e.target.value);
     setTcoinAmount(raw);
-    const num = parseFloat(raw) || 0;
-    setCadAmount((num * exchangeRate).toString());
+    if (raw === "") {
+      setCadAmount("");
+      return;
+    }
+    const num = Number.parseFloat(raw);
+    if (!Number.isFinite(num)) {
+      setCadAmount("");
+      return;
+    }
+    if (safeExchangeRate === 0) {
+      setCadAmount("");
+      return;
+    }
+    setCadAmount((num * safeExchangeRate).toString());
   };
 
   const handleCadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^\d.]/g, "");
+    const raw = sanitizeNumeric(e.target.value);
     setCadAmount(raw);
-    const num = parseFloat(raw) || 0;
-    setTcoinAmount((num / exchangeRate).toString());
+    if (raw === "") {
+      setTcoinAmount("");
+      return;
+    }
+    const num = Number.parseFloat(raw);
+    if (!Number.isFinite(num) || safeExchangeRate === 0) {
+      setTcoinAmount("");
+      return;
+    }
+    setTcoinAmount((num / safeExchangeRate).toString());
+  };
+
+  const handleTcoinBlur = () => {
+    if (tcoinAmount.trim() === "") {
+      setCadAmount("");
+      return;
+    }
+    const numeric = Number.parseFloat(tcoinAmount);
+    if (!Number.isFinite(numeric)) {
+      setTcoinAmount("");
+      setCadAmount("");
+      return;
+    }
+    const cadNumeric = safeExchangeRate === 0 ? 0 : numeric * safeExchangeRate;
+    setTcoinAmount(numeric.toFixed(2));
+    setCadAmount(cadNumeric.toFixed(2));
+  };
+
+  const handleCadBlur = () => {
+    if (cadAmount.trim() === "") {
+      setTcoinAmount("");
+      return;
+    }
+    const numeric = Number.parseFloat(cadAmount);
+    if (!Number.isFinite(numeric)) {
+      setCadAmount("");
+      setTcoinAmount("");
+      return;
+    }
+    const tcoinNumeric = safeExchangeRate === 0 ? 0 : numeric / safeExchangeRate;
+    setCadAmount(numeric.toFixed(2));
+    setTcoinAmount(tcoinNumeric.toFixed(2));
   };
 
   const reset = () => {
@@ -113,9 +171,15 @@ export function SendTab({ recipient }: SendTabProps) {
       if (error) throw error;
       setToSendData(userDataFromSupabaseTable?.[0]);
       if (qrTcoinAmount) {
-        setTcoinAmount(qrTcoinAmount);
-        const num = parseFloat(qrTcoinAmount) || 0;
-        setCadAmount((num * exchangeRate).toString());
+        const sanitized = sanitizeNumeric(String(qrTcoinAmount));
+        if (sanitized) {
+          const num = Number.parseFloat(sanitized);
+          if (Number.isFinite(num)) {
+            const cadNumeric = safeExchangeRate === 0 ? 0 : num * safeExchangeRate;
+            setTcoinAmount(num.toFixed(2));
+            setCadAmount(cadNumeric.toFixed(2));
+          }
+        }
       }
     } catch (err) {
       console.error("handlePayLink error", err);
@@ -167,6 +231,8 @@ export function SendTab({ recipient }: SendTabProps) {
             cadAmount={cadAmount}
             handleTcoinChange={handleTcoinChange}
             handleCadChange={handleCadChange}
+            handleTcoinBlur={handleTcoinBlur}
+            handleCadBlur={handleCadBlur}
             explorerLink={explorerLink}
             setExplorerLink={setExplorerLink}
             setTcoin={setTcoinAmount}
@@ -223,6 +289,8 @@ export function SendTab({ recipient }: SendTabProps) {
               cadAmount={cadAmount}
               handleTcoinChange={handleTcoinChange}
               handleCadChange={handleCadChange}
+              handleTcoinBlur={handleTcoinBlur}
+              handleCadBlur={handleCadBlur}
               explorerLink={explorerLink}
               setExplorerLink={setExplorerLink}
               setTcoin={setTcoinAmount}

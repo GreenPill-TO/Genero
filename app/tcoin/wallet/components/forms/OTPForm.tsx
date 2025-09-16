@@ -46,18 +46,32 @@ function OTPForm({
 
   const [digits, setDigits] = useState(Array(6).fill(""));
   const inputsRef = useRef([]);
+  const hasAutoSubmittedRef = useRef(false);
 
   useEffect(() => {
     if (isOtpSent) {
       setDigits(Array(6).fill(""));
       setPasscode("");
       inputsRef.current[0]?.focus();
+      hasAutoSubmittedRef.current = false;
     }
   }, [isOtpSent, setPasscode]);
 
   useEffect(() => {
-    if (isOtpSent && digits.every((d) => d !== "")) {
+    if (!isOtpSent) {
+      hasAutoSubmittedRef.current = false;
+      return;
+    }
+
+    const isComplete = digits.every((d) => d !== "");
+
+    if (isComplete && !hasAutoSubmittedRef.current) {
+      hasAutoSubmittedRef.current = true;
       onSubmit(new Event("submit") as any);
+    }
+
+    if (!isComplete) {
+      hasAutoSubmittedRef.current = false;
     }
   }, [isOtpSent, digits, onSubmit]);
 

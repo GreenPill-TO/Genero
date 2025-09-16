@@ -1,13 +1,32 @@
 import React, { useEffect, useState } from "react";
-import { LuSend } from "react-icons/lu";
+import { LuRefreshCcw, LuSend } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
-import { Switch } from "@shared/components/ui/Switch";
 import { useModal } from "@shared/contexts/ModalContext";
 import { createClient } from "@shared/lib/supabase/client";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
 import { Hypodata } from "./types";
+
+const formatTcoinDisplay = (value: string) => {
+  const trimmed = value.trim();
+  if (trimmed === "") return "";
+  const num = Number.parseFloat(trimmed);
+  if (!Number.isFinite(num)) {
+    return `${trimmed} TCOIN`;
+  }
+  return `${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TCOIN`;
+};
+
+const formatCadDisplay = (value: string) => {
+  const trimmed = value.trim();
+  if (trimmed === "") return "";
+  const num = Number.parseFloat(trimmed);
+  if (!Number.isFinite(num)) {
+    return `$${trimmed}`;
+  }
+  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 
 interface SendCardProps {
   sendMoney: (amount: string) => Promise<string>;
@@ -17,6 +36,8 @@ interface SendCardProps {
   cadAmount: string;
   handleTcoinChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleCadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleTcoinBlur: () => void;
+  handleCadBlur: () => void;
   explorerLink: string | null;
   setExplorerLink: (link: string | null) => void;
   setTcoin: any;
@@ -33,6 +54,8 @@ export function SendCard({
   cadAmount,
   handleTcoinChange,
   handleCadChange,
+  handleTcoinBlur,
+  handleCadBlur,
   explorerLink,
   setExplorerLink,
   setTcoin,
@@ -78,6 +101,8 @@ export function SendCard({
     tcoinValue <= userBalance;
 
   const [isCadInput, setIsCadInput] = useState(false);
+  const [isTcoinFocused, setIsTcoinFocused] = useState(false);
+  const [isCadFocused, setIsCadFocused] = useState(false);
   const amountLocked = locked &&
     ((isCadInput ? cadAmount : tcoinAmount) !== "0" && (isCadInput ? cadAmount : tcoinAmount) !== "");
 
@@ -108,39 +133,60 @@ export function SendCard({
       )}
 
       <div className="space-y-2 text-center">
-        <div className="flex justify-end items-center gap-2">
-          <span className="text-xs">CAD</span>
-          <Switch
-            checked={isCadInput}
-            onCheckedChange={(v) => setIsCadInput(v)}
-            aria-label="Toggle CAD input"
-          />
-        </div>
         {isCadInput ? (
-          <>
-            <input
-              className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
-              name="cad"
-              value={cadAmount}
-              onChange={amountLocked ? undefined : handleCadChange}
-              readOnly={amountLocked}
-              placeholder="0"
-            />
-            <p className="text-sm text-muted-foreground">≈ {parseFloat(tcoinAmount || "0").toFixed(2)} TCOIN</p>
-          </>
+          <input
+            className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
+            name="cad"
+            value={isCadFocused ? cadAmount : formatCadDisplay(cadAmount)}
+            onChange={amountLocked ? undefined : handleCadChange}
+            onFocus={() => setIsCadFocused(true)}
+            onBlur={() => {
+              setIsCadFocused(false);
+              handleCadBlur();
+            }}
+            readOnly={amountLocked}
+            placeholder="0"
+          />
         ) : (
-          <>
-            <input
-              className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
-              name="tcoin"
-              value={tcoinAmount}
-              onChange={amountLocked ? undefined : handleTcoinChange}
-              readOnly={amountLocked}
-              placeholder="0"
-            />
-            <p className="text-sm text-muted-foreground">≈ {parseFloat(cadAmount || "0").toFixed(2)} CAD</p>
-          </>
+          <input
+            className="w-full text-center text-7xl font-bold bg-transparent focus:outline-none"
+            name="tcoin"
+            value={isTcoinFocused ? tcoinAmount : formatTcoinDisplay(tcoinAmount)}
+            onChange={amountLocked ? undefined : handleTcoinChange}
+            onFocus={() => setIsTcoinFocused(true)}
+            onBlur={() => {
+              setIsTcoinFocused(false);
+              handleTcoinBlur();
+            }}
+            readOnly={amountLocked}
+            placeholder="0"
+          />
         )}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle between TCOIN and CAD"
+            onClick={() => {
+              if (isCadInput) {
+                handleCadBlur();
+              } else {
+                handleTcoinBlur();
+              }
+              setIsCadInput((prev) => !prev);
+              setIsCadFocused(false);
+              setIsTcoinFocused(false);
+            }}
+          >
+            <LuRefreshCcw className="h-5 w-5" />
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground text-right">
+          {isCadInput
+            ? `≈ ${formatTcoinDisplay(tcoinAmount) || "0.00 TCOIN"}`
+            : `≈ ${formatCadDisplay(cadAmount) || "$0.00"} CAD`}
+        </p>
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <span>Available: {userBalance.toFixed(4)}</span>
           <Button variant="link" className="p-0 h-auto text-xs" onClick={onUseMax}>
@@ -279,12 +325,14 @@ function ConfirmTransactionModal({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const { userData } = useAuth();
+  const formattedTcoin = formatTcoinDisplay(tcoinAmount) || "0.00 TCOIN";
+  const formattedCad = formatCadDisplay(cadAmount) || "$0.00";
 
   return (
     <div className="p-4 space-y-4">
       <h3 className="text-lg font-bold">Confirm Transaction</h3>
       <div className="space-y-2">
-        <p>Amount: {tcoinAmount} TCOIN ({cadAmount} CAD)</p>
+        <p>Amount: {formattedTcoin} ({formattedCad} CAD)</p>
         <p>Recipient: {toSendData?.full_name}</p>
       </div>
       <div className="flex gap-4">

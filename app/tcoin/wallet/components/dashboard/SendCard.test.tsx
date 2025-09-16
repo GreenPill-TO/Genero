@@ -35,6 +35,8 @@ describe("SendCard", () => {
         cadAmount=""
         handleTcoinChange={noop as any}
         handleCadChange={noop as any}
+        handleTcoinBlur={noop}
+        handleCadBlur={noop}
         explorerLink={null}
         setExplorerLink={noop}
         setTcoin={noop}
@@ -58,6 +60,8 @@ describe("SendCard", () => {
         cadAmount=""
         handleTcoinChange={noop as any}
         handleCadChange={noop as any}
+        handleTcoinBlur={noop}
+        handleCadBlur={noop}
         explorerLink={null}
         setExplorerLink={noop}
         setTcoin={noop}
@@ -82,6 +86,8 @@ describe("SendCard", () => {
         cadAmount="2.3456"
         handleTcoinChange={noop as any}
         handleCadChange={noop as any}
+        handleTcoinBlur={noop}
+        handleCadBlur={noop}
         explorerLink={null}
         setExplorerLink={noop}
         setTcoin={noop}
@@ -91,6 +97,29 @@ describe("SendCard", () => {
         onUseMax={noop}
       />
     );
-    expect(screen.getByText("≈ 2.35 CAD")).toBeTruthy();
+    expect(screen.getByText("≈ $2.35 CAD")).toBeTruthy();
+  });
+
+  it("shows formatted primary amount when not focused", () => {
+    render(
+      <SendCard
+        toSendData={null}
+        setToSendData={noop}
+        tcoinAmount="1.2"
+        cadAmount=""
+        handleTcoinChange={noop as any}
+        handleCadChange={noop as any}
+        handleTcoinBlur={noop}
+        handleCadBlur={noop}
+        explorerLink={null}
+        setExplorerLink={noop}
+        setTcoin={noop}
+        setCad={noop}
+        sendMoney={vi.fn()}
+        userBalance={5}
+        onUseMax={noop}
+      />
+    );
+    expect(screen.getByDisplayValue("1.20 TCOIN")).toBeTruthy();
   });
 });

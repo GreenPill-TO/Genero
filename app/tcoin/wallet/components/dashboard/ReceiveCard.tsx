@@ -73,17 +73,19 @@ export function ReceiveCard({
     });
   };
 
+  const rawAmount = qrTcoinAmount?.trim() ?? "";
+  const cleanedAmount = rawAmount.replace(/\s*TCOIN\s*$/i, "").trim();
+  const hasAmount = cleanedAmount !== "" && cleanedAmount !== "0.00";
+  const qrCaption = hasAmount
+    ? `Receive ${cleanedAmount} ${tokenLabel.toUpperCase()}`
+    : `Receive any amount ${tokenLabel.toUpperCase()}`;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Receive</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 mt-[-10px]">
-        <p>
-          {Boolean(qrTcoinAmount) && qrTcoinAmount !== "0.00 TCOIN"
-            ? `Receive ${qrTcoinAmount}`
-            : "Receive any amount"}
-        </p>
         <div
           className={cn(
             "relative flex flex-col items-center justify-center rounded-xl transform transition duration-500 hover:scale-105",
@@ -91,12 +93,17 @@ export function ReceiveCard({
           )}
         >
           {qrCodeData ? (
-            <QRCode
-              value={qrCodeData}
-              size={250}
-              bgColor={qrBgColor ?? "transparent"}
-              fgColor={qrFgColor ?? (isDarkMode ? "#fff" : "#000")}
-            />
+            <>
+              <p className="mb-3 text-center text-base font-semibold text-gray-900">
+                {qrCaption}
+              </p>
+              <QRCode
+                value={qrCodeData}
+                size={250}
+                bgColor={qrBgColor ?? "transparent"}
+                fgColor={qrFgColor ?? (isDarkMode ? "#fff" : "#000")}
+              />
+            </>
           ) : (
             <p className="text-white">Loading QR Code...</p>
           )}

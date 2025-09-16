@@ -55,7 +55,6 @@ vi.mock("@tcoin/wallet/components/modals", () => ({
 vi.mock("./ContributionsCard", () => ({
   ContributionsCard: () => <div />,
 }));
-vi.mock("./ReceiveCard", () => ({ ReceiveCard: () => <div /> }));
 const sendCardMock = vi.hoisted(() => vi.fn(() => <div />));
 vi.mock("./SendCard", () => ({
   SendCard: (props: any) => sendCardMock(props),
