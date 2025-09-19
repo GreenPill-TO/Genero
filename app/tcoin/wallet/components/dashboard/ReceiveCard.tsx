@@ -62,7 +62,6 @@ export function ReceiveCard({
     openModal({
       content: (
         <ContactSelectModal
-          setToSendData={handleQrTcoinChange}
           closeModal={closeModal}
           amount={qrTcoinAmount}
           method="Request"

@@ -1,0 +1,147 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const supabaseState = vi.hoisted(() => ({
+  connections: [] as Array<{ connected_user_id: unknown; state: string | null }>,
+  connectionsError: null as { message: string } | null,
+  users: [] as Array<{
+    id: unknown;
+    full_name: string | null;
+    username: string | null;
+    profile_image_url: string | null;
+    wallet_address: string | null;
+  }>,
+  usersError: null as { message: string } | null,
+  connectionsCalls: 0,
+  usersCalls: 0,
+}));
+
+vi.mock("@shared/lib/supabase/client", () => ({
+  createClient: () => ({
+    from: (table: string) => {
+      if (table === "connections") {
+        return {
+          select: () => ({
+            eq: () => ({
+              neq: () => {
+                supabaseState.connectionsCalls += 1;
+                return Promise.resolve({
+                  data: supabaseState.connections,
+                  error: supabaseState.connectionsError,
+                });
+              },
+            }),
+          }),
+        };
+      }
+
+      if (table === "users") {
+        return {
+          select: () => ({
+            in: () => {
+              supabaseState.usersCalls += 1;
+              return Promise.resolve({
+                data: supabaseState.users,
+                error: supabaseState.usersError,
+              });
+            },
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  }),
+}));
+
+import { fetchContactsForOwner } from "./supabaseService";
+
+describe("fetchContactsForOwner", () => {
+  beforeEach(() => {
+    supabaseState.connections = [];
+    supabaseState.connectionsError = null;
+    supabaseState.users = [];
+    supabaseState.usersError = null;
+    supabaseState.connectionsCalls = 0;
+    supabaseState.usersCalls = 0;
+  });
+
+  it("returns an empty array when the owner id is invalid", async () => {
+    const result = await fetchContactsForOwner(null);
+    expect(result).toEqual([]);
+    expect(supabaseState.connectionsCalls).toBe(0);
+    expect(supabaseState.usersCalls).toBe(0);
+  });
+
+  it("maps connection rows to contact records", async () => {
+    supabaseState.connections = [
+      { connected_user_id: 7, state: "accepted" },
+    ];
+    supabaseState.users = [
+      {
+        id: 7,
+        full_name: "Test User",
+        username: "test",
+        profile_image_url: "avatar.png",
+        wallet_address: "0xabc",
+      },
+    ];
+
+    const result = await fetchContactsForOwner(1);
+    expect(result).toEqual([
+      {
+        id: 7,
+        full_name: "Test User",
+        username: "test",
+        profile_image_url: "avatar.png",
+        wallet_address: "0xabc",
+        state: "accepted",
+      },
+    ]);
+    expect(supabaseState.connectionsCalls).toBe(1);
+    expect(supabaseState.usersCalls).toBe(1);
+  });
+
+  it("deduplicates multiple rows for the same contact", async () => {
+    supabaseState.connections = [
+      { connected_user_id: "8", state: "accepted" },
+      { connected_user_id: "8", state: "new" },
+    ];
+    supabaseState.users = [
+      {
+        id: 8,
+        full_name: "Duplicate",
+        username: null,
+        profile_image_url: null,
+        wallet_address: null,
+      },
+    ];
+
+    const result = await fetchContactsForOwner(1);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 8, state: "accepted" });
+  });
+
+  it("filters out connections without a corresponding user row", async () => {
+    supabaseState.connections = [
+      { connected_user_id: 9, state: "accepted" },
+    ];
+    supabaseState.users = [];
+
+    const result = await fetchContactsForOwner(1);
+    expect(result).toEqual([]);
+  });
+
+  it("throws when fetching connections fails", async () => {
+    supabaseState.connectionsError = { message: "boom" };
+    await expect(fetchContactsForOwner(1)).rejects.toEqual({ message: "boom" });
+  });
+
+  it("throws when fetching user profiles fails", async () => {
+    supabaseState.connections = [
+      { connected_user_id: 10, state: "accepted" },
+    ];
+    supabaseState.usersError = { message: "nope" };
+
+    await expect(fetchContactsForOwner(1)).rejects.toEqual({ message: "nope" });
+  });
+});

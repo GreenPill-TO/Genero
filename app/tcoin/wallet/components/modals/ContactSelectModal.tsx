@@ -1,84 +1,151 @@
-// @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Radio } from "@shared/components/ui/Radio";
 import { createClient } from "@shared/lib/supabase/client";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { fetchContactsForOwner, type ContactRecord } from "@shared/api/services/supabaseService";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
+import { Hypodata } from "@tcoin/wallet/components/dashboard";
 
 interface ContactSelectModalProps {
   closeModal: () => void;
   amount: string;
-  setToSendData: any;
+  setToSendData?: (contact: Hypodata) => void;
   method: "Request" | "Send";
 }
+const parseAmountFromString = (raw: string): number | null => {
+  const match = raw.match(/-?\d+(?:\.\d+)?/);
+  if (!match) {
+    return null;
+  }
+  const parsed = Number.parseFloat(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+};
 
-interface Contact {
-  value: any;
-  label: string;
-  id: number | string;
-  state: string;
-}
+const formatContactLabel = (contact: ContactRecord) => {
+  const name = contact.full_name?.trim();
+  const username = contact.username?.trim();
+  if (name && username) {
+    return `${name} (@${username})`;
+  }
+  return name || (username ? `@${username}` : "Unknown contact");
+};
 
 const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: ContactSelectModalProps) => {
-  const [selectedContact, setSelectedContact] = useState<any>(null);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  // activeTab can be "all" or "my"
+  const [contacts, setContacts] = useState<ContactRecord[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "my">("my");
   const { userData } = useAuth();
   useEscapeKey(closeModal);
 
-
   useEffect(() => {
-    async function fetchContacts() {
-      if (!userData?.cubidData?.id) return;
-
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("connections")
-        .select("*, connected_user_id(*), state")
-        .eq("owner_user_id", userData.cubidData.id);
-
-      if (error) {
-        console.error("Error fetching contacts:", error);
-      } else if (data) {
-        const mappedContacts = data.map((connection: any) => ({
-          value: connection.connected_user_id,
-          label: connection.connected_user_id?.full_name,
-          id: connection.id,
-          state: connection.state,
-        }));
-
-        const validContacts = mappedContacts.filter((contact: Contact) => contact.state !== "rejected");
-
-        setContacts(validContacts);
-        if (validContacts.length > 0) {
-          setSelectedContact(validContacts[0].value);
-        }
-      }
+    let isMounted = true;
+    const ownerId = userData?.cubidData?.id;
+    if (!ownerId) {
+      setContacts([]);
+      setSelectedId(null);
+      return () => {
+        isMounted = false;
+      };
     }
-    fetchContacts();
-  }, [userData]);
 
-  // Filter by search term
-  const filteredContacts = contacts.filter((contact) =>
-    contact.label.toLowerCase().includes(searchTerm.toLowerCase())
+    fetchContactsForOwner(ownerId)
+      .then((records) => {
+        if (!isMounted) return;
+        setContacts(records);
+        setSelectedId(records[0]?.id ?? null);
+      })
+      .catch((error) => {
+        console.error("Error fetching contacts:", error);
+        if (isMounted) {
+          setContacts([]);
+          setSelectedId(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userData?.cubidData?.id]);
+
+  const filteredContacts = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return contacts;
+    return contacts.filter((contact) => {
+      const name = contact.full_name?.toLowerCase() ?? "";
+      const username = contact.username?.toLowerCase() ?? "";
+      return name.includes(query) || username.includes(query);
+    });
+  }, [contacts, searchTerm]);
+
+  const allContacts = useMemo(
+    () => filteredContacts.filter((contact) => contact.state === "new"),
+    [filteredContacts]
   );
-
-  // Separate contacts into tabs:
-  // "All Contacts" will show contacts with state "new".
-  // "My Contacts" will show the remaining valid contacts.
-  const allContacts = filteredContacts.filter(contact => contact.state === "new");
-  const myContacts = filteredContacts.filter(contact => contact.state !== "new");
+  const myContacts = useMemo(
+    () => filteredContacts.filter((contact) => contact.state !== "new"),
+    [filteredContacts]
+  );
 
   const contactsToDisplay = activeTab === "all" ? allContacts : myContacts;
 
+  useEffect(() => {
+    if (contactsToDisplay.length === 0) {
+      if (filteredContacts.length === 0) {
+        setSelectedId(null);
+      }
+      return;
+    }
+
+    if (!contactsToDisplay.some((contact) => contact.id === selectedId)) {
+      setSelectedId(contactsToDisplay[0]?.id ?? null);
+    }
+  }, [contactsToDisplay, filteredContacts.length, selectedId]);
+
+  const selectedContact = useMemo(
+    () => contacts.find((contact) => contact.id === selectedId) ?? null,
+    [contacts, selectedId]
+  );
+
+  const handleSubmit = async () => {
+    if (!selectedContact) return;
+
+    if (method === "Send") {
+      setToSendData?.(selectedContact);
+      closeModal();
+      return;
+    }
+
+    const requestBy = userData?.cubidData?.id;
+    const parsedAmount = parseAmountFromString(amount);
+    if (!requestBy || parsedAmount === null) {
+      console.error("Invalid request payload", { requestBy, amount });
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      await supabase.from("invoice_pay_request").insert({
+        request_from: selectedContact.id,
+        request_by: requestBy,
+        amount_requested: parsedAmount,
+      });
+      insertSuccessNotification({
+        user_id: selectedContact.id,
+        notification: `${amount} request by ${userData?.cubidData?.full_name}`,
+      });
+    } catch (error) {
+      console.error("Failed to create request:", error);
+    } finally {
+      closeModal();
+    }
+  };
+
   return (
     <div className="mt-2 p-0">
-      {/* Tabs */}
       <div className="mb-4 flex">
         <button
           type="button"
@@ -109,45 +176,21 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
             <Radio
               name="contact-selection"
               key={contact.id}
-              label={contact.label}
-              value={String(contact.value.id)}
-              onValueChange={() => {
-                setSelectedContact(contact.value)
+              label={formatContactLabel(contact)}
+              value={String(contact.id)}
+              onValueChange={(value) => {
+                const parsed = Number.parseInt(value, 10);
+                setSelectedId(Number.isFinite(parsed) ? parsed : null);
               }}
-              id={String(contact.id)}
-              checked={selectedContact?.id === contact.value.id}
+              id={`contact-${contact.id}`}
+              checked={selectedId === contact.id}
             />
           ))
         ) : (
           <p>No contacts found.</p>
         )}
 
-        <Button
-          className="w-full"
-          disabled={!selectedContact}
-          onClick={async () => {
-            if (method === "Send") {
-              setToSendData(selectedContact);
-            }
-            if (method === "Request") {
-              function extractDecimalFromString(str: string): number {
-                const match = str.match(/-?\d+(\.\d+)?/);
-                return match ? Number(match[0]) : NaN;
-              }
-              const supabase = createClient();
-              await supabase.from("invoice_pay_request").insert({
-                request_from: parseInt(selectedContact.id),
-                request_by: userData?.cubidData?.id,
-                amount_requested: extractDecimalFromString(amount)
-              })
-              insertSuccessNotification({
-                user_id: parseInt(selectedContact.id),
-                notification: `${amount} request by ${userData?.cubidData?.full_name}`
-              })
-            }
-            closeModal();
-          }}
-        >
+        <Button className="w-full" disabled={!selectedContact} onClick={handleSubmit}>
           {method} {amount}
         </Button>
       </div>

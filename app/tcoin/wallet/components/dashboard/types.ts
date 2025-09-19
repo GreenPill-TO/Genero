@@ -1,6 +1,8 @@
 export interface Hypodata {
-  id: string;
-  full_name: string;
-  username: string;
-  profile_image_url?: string;
+  id: number;
+  full_name?: string | null;
+  username?: string | null;
+  profile_image_url?: string | null;
+  wallet_address?: string | null;
+  state?: string | null;
 }

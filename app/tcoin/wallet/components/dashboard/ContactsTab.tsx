@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { createClient } from "@shared/lib/supabase/client";
+import { fetchContactsForOwner, type ContactRecord } from "@shared/api/services/supabaseService";
 import { Hypodata } from "./types";
 
 interface ContactsTabProps {
@@ -11,32 +11,42 @@ interface ContactsTabProps {
 
 export function ContactsTab({ onSend }: ContactsTabProps) {
   const { userData } = useAuth();
-  const [contacts, setContacts] = useState<Hypodata[]>([]);
+  const [contacts, setContacts] = useState<ContactRecord[]>([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const supabase = createClient();
-    async function fetchContacts() {
-      if (!userData?.cubidData?.id) return;
-      try {
-        const { data, error } = await supabase
-          .from("connections")
-          .select("*, connected_user_id(*)")
-          .eq("owner_user_id", userData.cubidData.id)
-          .neq("state", "rejected");
-        if (error) throw error;
-        const mapped = (data || []).map((c: any) => c.connected_user_id);
-        setContacts(mapped);
-      } catch (err) {
-        console.error("fetchContacts error", err);
-      }
+    let isMounted = true;
+    const ownerId = userData?.cubidData?.id;
+    if (!ownerId) {
+      setContacts([]);
+      return () => {
+        isMounted = false;
+      };
     }
-    fetchContacts();
-  }, [userData]);
 
-  const filtered = contacts.filter((c) =>
-    (c.full_name ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+    fetchContactsForOwner(ownerId)
+      .then((records) => {
+        if (!isMounted) return;
+        setContacts(records);
+      })
+      .catch((err) => {
+        console.error("fetchContacts error", err);
+        if (isMounted) {
+          setContacts([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userData?.cubidData?.id]);
+
+  const filtered = contacts.filter((contact) => {
+    const name = contact.full_name?.toLowerCase() ?? "";
+    const username = contact.username?.toLowerCase() ?? "";
+    const query = search.toLowerCase();
+    return name.includes(query) || username.includes(query);
+  });
 
   return (
     <div className="space-y-4">
@@ -57,6 +67,9 @@ export function ContactsTab({ onSend }: ContactsTabProps) {
           >
             <div className="flex flex-col">
               <span className="font-medium">{contact.full_name ?? "Unknown"}</span>
+              {contact.username && (
+                <span className="text-sm text-muted-foreground">@{contact.username}</span>
+              )}
               {contact.wallet_address && (
                 <span className="text-sm text-muted-foreground">
                   {contact.wallet_address.slice(0, 6)}...
