@@ -46,8 +46,7 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
   const { data: connectionRows, error } = await supabase
     .from("connections")
     .select("connected_user_id, state")
-    .eq("owner_user_id", ownerId)
-    .neq("state", "rejected");
+    .eq("owner_user_id", ownerId);
 
   if (error) {
     throw error;
@@ -61,8 +60,13 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
     if (id === null || seen.has(id)) {
       continue;
     }
+    const rawState = typeof row.state === "string" ? row.state.trim() : null;
+    const state = rawState ? rawState.toLowerCase() : null;
+    if (state === "rejected") {
+      continue;
+    }
     seen.add(id);
-    dedupedConnections.push({ id, state: row.state ?? null });
+    dedupedConnections.push({ id, state });
   }
 
   if (dedupedConnections.length === 0) {

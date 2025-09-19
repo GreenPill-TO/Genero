@@ -21,15 +21,13 @@ vi.mock("@shared/lib/supabase/client", () => ({
       if (table === "connections") {
         return {
           select: () => ({
-            eq: () => ({
-              neq: () => {
-                supabaseState.connectionsCalls += 1;
-                return Promise.resolve({
-                  data: supabaseState.connections,
-                  error: supabaseState.connectionsError,
-                });
-              },
-            }),
+            eq: () => {
+              supabaseState.connectionsCalls += 1;
+              return Promise.resolve({
+                data: supabaseState.connections,
+                error: supabaseState.connectionsError,
+              });
+            },
           }),
         };
       }
@@ -104,7 +102,7 @@ describe("fetchContactsForOwner", () => {
   it("deduplicates multiple rows for the same contact", async () => {
     supabaseState.connections = [
       { connected_user_id: "8", state: "accepted" },
-      { connected_user_id: "8", state: "new" },
+      { connected_user_id: "8", state: "NEW" },
     ];
     supabaseState.users = [
       {
@@ -129,6 +127,27 @@ describe("fetchContactsForOwner", () => {
 
     const result = await fetchContactsForOwner(1);
     expect(result).toEqual([]);
+  });
+
+  it("ignores rejected connections", async () => {
+    supabaseState.connections = [
+      { connected_user_id: 11, state: " rejected " },
+      { connected_user_id: 12, state: "ACCEPTED" },
+    ];
+    supabaseState.users = [
+      {
+        id: 12,
+        full_name: "Allowed",
+        username: null,
+        profile_image_url: null,
+        wallet_address: null,
+      },
+    ];
+
+    const result = await fetchContactsForOwner(1);
+    expect(result).toEqual([
+      expect.objectContaining({ id: 12, state: "accepted" }),
+    ]);
   });
 
   it("throws when fetching connections fails", async () => {
