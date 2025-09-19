@@ -73,13 +73,24 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
     return [];
   }
 
+  const contactIds = Array.from(seen);
+
   const { data: contactRows, error: contactError } = await supabase
     .from("users")
-    .select("id, full_name, username, profile_image_url, wallet_address")
-    .in("id", Array.from(seen));
+    .select("id, full_name, username, profile_image_url")
+    .in("id", contactIds);
 
   if (contactError) {
     throw contactError;
+  }
+
+  const { data: walletRows, error: walletError } = await supabase
+    .from("wallet_list")
+    .select("user_id, public_key")
+    .in("user_id", contactIds);
+
+  if (walletError) {
+    throw walletError;
   }
 
   const contactsById = new Map<number, any>();
@@ -87,6 +98,14 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
     const normalised = normaliseNumericId(contact.id);
     if (normalised !== null) {
       contactsById.set(normalised, contact);
+    }
+  }
+
+  const walletsById = new Map<number, string>();
+  for (const wallet of walletRows ?? []) {
+    const userId = normaliseNumericId(wallet.user_id);
+    if (userId !== null && typeof wallet.public_key === "string" && wallet.public_key.trim() !== "") {
+      walletsById.set(userId, wallet.public_key);
     }
   }
 
@@ -99,7 +118,7 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
       full_name: user.full_name ?? null,
       username: user.username ?? null,
       profile_image_url: user.profile_image_url ?? null,
-      wallet_address: user.wallet_address ?? null,
+      wallet_address: walletsById.get(connection.id) ?? null,
       state: connection.state ?? null,
     });
   }

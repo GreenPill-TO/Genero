@@ -8,11 +8,13 @@ const supabaseState = vi.hoisted(() => ({
     full_name: string | null;
     username: string | null;
     profile_image_url: string | null;
-    wallet_address: string | null;
   }>,
   usersError: null as { message: string } | null,
+  walletList: [] as Array<{ user_id: unknown; public_key: string | null }>,
+  walletListError: null as { message: string } | null,
   connectionsCalls: 0,
   usersCalls: 0,
+  walletListCalls: 0,
 }));
 
 vi.mock("@shared/lib/supabase/client", () => ({
@@ -46,6 +48,20 @@ vi.mock("@shared/lib/supabase/client", () => ({
         };
       }
 
+      if (table === "wallet_list") {
+        return {
+          select: () => ({
+            in: () => {
+              supabaseState.walletListCalls += 1;
+              return Promise.resolve({
+                data: supabaseState.walletList,
+                error: supabaseState.walletListError,
+              });
+            },
+          }),
+        };
+      }
+
       throw new Error(`Unexpected table: ${table}`);
     },
   }),
@@ -59,8 +75,11 @@ describe("fetchContactsForOwner", () => {
     supabaseState.connectionsError = null;
     supabaseState.users = [];
     supabaseState.usersError = null;
+    supabaseState.walletList = [];
+    supabaseState.walletListError = null;
     supabaseState.connectionsCalls = 0;
     supabaseState.usersCalls = 0;
+    supabaseState.walletListCalls = 0;
   });
 
   it("returns an empty array when the owner id is invalid", async () => {
@@ -80,7 +99,12 @@ describe("fetchContactsForOwner", () => {
         full_name: "Test User",
         username: "test",
         profile_image_url: "avatar.png",
-        wallet_address: "0xabc",
+      },
+    ];
+    supabaseState.walletList = [
+      {
+        user_id: 7,
+        public_key: "0xabc",
       },
     ];
 
@@ -97,6 +121,7 @@ describe("fetchContactsForOwner", () => {
     ]);
     expect(supabaseState.connectionsCalls).toBe(1);
     expect(supabaseState.usersCalls).toBe(1);
+    expect(supabaseState.walletListCalls).toBe(1);
   });
 
   it("deduplicates multiple rows for the same contact", async () => {
@@ -110,7 +135,12 @@ describe("fetchContactsForOwner", () => {
         full_name: "Duplicate",
         username: null,
         profile_image_url: null,
-        wallet_address: null,
+      },
+    ];
+    supabaseState.walletList = [
+      {
+        user_id: 8,
+        public_key: null,
       },
     ];
 
@@ -124,6 +154,7 @@ describe("fetchContactsForOwner", () => {
       { connected_user_id: 9, state: "accepted" },
     ];
     supabaseState.users = [];
+    supabaseState.walletList = [];
 
     const result = await fetchContactsForOwner(1);
     expect(result).toEqual([]);
@@ -140,7 +171,12 @@ describe("fetchContactsForOwner", () => {
         full_name: "Allowed",
         username: null,
         profile_image_url: null,
-        wallet_address: null,
+      },
+    ];
+    supabaseState.walletList = [
+      {
+        user_id: 12,
+        public_key: null,
       },
     ];
 
@@ -162,5 +198,22 @@ describe("fetchContactsForOwner", () => {
     supabaseState.usersError = { message: "nope" };
 
     await expect(fetchContactsForOwner(1)).rejects.toEqual({ message: "nope" });
+  });
+
+  it("throws when fetching wallet rows fails", async () => {
+    supabaseState.connections = [
+      { connected_user_id: 13, state: "accepted" },
+    ];
+    supabaseState.users = [
+      {
+        id: 13,
+        full_name: "Wallet User",
+        username: null,
+        profile_image_url: null,
+      },
+    ];
+    supabaseState.walletListError = { message: "wallets down" };
+
+    await expect(fetchContactsForOwner(1)).rejects.toEqual({ message: "wallets down" });
   });
 });
