@@ -54,6 +54,10 @@ describe("SendCard", () => {
     expect(button.disabled).toBe(true);
   });
 
+  it("renders safely when contacts data is unavailable", () => {
+    expect(() => renderSendCard({ contacts: undefined as any })).not.toThrow();
+  });
+
   it("shows available balance and triggers onUseMax", () => {
     const onUseMax = vi.fn();
     renderSendCard({ userBalance: 5, onUseMax });

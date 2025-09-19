@@ -85,7 +85,7 @@ interface SendCardProps {
   userBalance: number;
   onUseMax: () => void;
   locked?: boolean;
-  contacts: ContactRecord[];
+  contacts?: ContactRecord[];
   isFetchingContacts?: boolean;
 }
 
@@ -106,9 +106,10 @@ export function SendCard({
   userBalance,
   onUseMax,
   locked = false,
-  contacts,
+  contacts: rawContacts,
   isFetchingContacts = false,
 }: SendCardProps) {
+  const contacts = rawContacts ?? [];
   const [connections, setConnections] = useState<any>(null);
   const { userData } = useAuth();
   const { openModal, closeModal } = useModal();
