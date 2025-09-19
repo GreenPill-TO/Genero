@@ -1,6 +1,6 @@
 import React from "react";
 import QRCode from "react-qr-code";
-import { LuShare2, LuUsers } from "react-icons/lu";
+import { LuShare2, LuUsers, LuX } from "react-icons/lu";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
@@ -9,6 +9,8 @@ import useDarkMode from "@shared/hooks/useDarkMode";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { cn } from "@shared/utils/classnames";
 import { ContactSelectModal, ShareQrModal } from "@tcoin/wallet/components/modals";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
+import { Hypodata } from "./types";
 
 export function ReceiveCard({
   qrCodeData,
@@ -23,6 +25,8 @@ export function ReceiveCard({
   qrFgColor,
   qrWrapperClassName,
   tokenLabel = "Tcoin",
+  requestContact = null,
+  onClearRequestContact,
 }: {
   qrCodeData: string;
   qrTcoinAmount: string;
@@ -36,6 +40,8 @@ export function ReceiveCard({
   qrFgColor?: string;
   qrWrapperClassName?: string;
   tokenLabel?: string;
+  requestContact?: Hypodata | null;
+  onClearRequestContact?: () => void;
 }) {
   const { isDarkMode } = useDarkMode();
   const { ...rest } = useTokenBalance(senderWallet);
@@ -65,6 +71,7 @@ export function ReceiveCard({
           closeModal={closeModal}
           amount={qrTcoinAmount}
           method="Request"
+          defaultContactId={requestContact?.id}
         />
       ),
       title: "Request from Contact",
@@ -78,6 +85,9 @@ export function ReceiveCard({
   const qrCaption = hasAmount
     ? `Receive ${cleanedAmount} ${tokenLabel.toUpperCase()}`
     : `Receive any amount ${tokenLabel.toUpperCase()}`;
+
+  const formatContactName = (contact: Hypodata) =>
+    contact.full_name?.trim() || contact.username?.trim() || "Unknown";
 
   return (
     <Card>
@@ -131,6 +141,44 @@ export function ReceiveCard({
             placeholder="Enter CAD amount"
           />
         </div>
+        {requestContact && (
+          <div className="rounded-2xl border border-border bg-background/70 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-11 w-11">
+                  <AvatarImage
+                    src={requestContact.profile_image_url ?? undefined}
+                    alt={formatContactName(requestContact)}
+                  />
+                  <AvatarFallback>
+                    {formatContactName(requestContact).charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium">
+                    Request From {formatContactName(requestContact)}
+                  </p>
+                  {requestContact.username && (
+                    <p className="text-xs text-muted-foreground">
+                      @{requestContact.username}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {onClearRequestContact && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClearRequestContact}
+                  aria-label="Clear request contact"
+                >
+                  <LuX className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
         <div className="flex flex-col gap-4 sm:flex-row">
           <Button className="flex-1" onClick={handleRequestClick}>
             <LuUsers className="mr-2 h-4 w-4" /> Request from Contact

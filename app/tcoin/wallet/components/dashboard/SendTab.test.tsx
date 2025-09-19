@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const useSendMoneyMock = vi.hoisted(() =>
@@ -44,6 +44,10 @@ vi.mock("react-toastify", () => ({ toast: { error: vi.fn(), success: vi.fn() } }
 
 let sendCardProps: any;
 
+const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn().mockResolvedValue([
+  { id: 5, full_name: "Contact", username: "contact", profile_image_url: null, wallet_address: null, state: "accepted" },
+]));
+
 vi.mock("./SendCard", () => ({
   SendCard: (props: any) => {
     sendCardProps = props;
@@ -60,8 +64,8 @@ vi.mock("@tcoin/wallet/components/modals", () => ({
   QrScanModal: () => <div>qr-modal</div>,
 }));
 
-vi.mock("./ContactsTab", () => ({
-  ContactsTab: () => <div>contacts</div>,
+vi.mock("@shared/api/services/supabaseService", () => ({
+  fetchContactsForOwner: fetchContactsForOwnerMock,
 }));
 
 import { SendTab } from "./SendTab";
@@ -70,6 +74,7 @@ afterEach(() => {
   cleanup();
   sendCardProps = undefined;
   openModal.mockReset();
+  fetchContactsForOwnerMock.mockClear();
 });
 
 describe("SendTab", () => {
@@ -84,9 +89,9 @@ describe("SendTab", () => {
   it("renders mode toggle and opens modal in QR mode", () => {
     render(<SendTab recipient={null} />);
     expect(screen.getByText("Manual")).toBeTruthy();
-    expect(screen.getByText("QR")).toBeTruthy();
+    expect(screen.getByText("Scan QR Code")).toBeTruthy();
     expect(screen.getByText("Pay Link")).toBeTruthy();
-    fireEvent.click(screen.getByText("QR"));
+    fireEvent.click(screen.getByText("Scan QR Code"));
     expect(openModal).toHaveBeenCalled();
   });
 
@@ -95,19 +100,17 @@ describe("SendTab", () => {
     expect(sendCardProps.userBalance).toBe(10);
   });
 
-  it("shows contact options only after entering amount", () => {
+  it("loads contacts and forwards them to the SendCard", async () => {
     render(<SendTab recipient={null} />);
-    expect(screen.queryByText(/scan qr code/i)).toBeNull();
-    const input = screen.getByPlaceholderText("0");
-    fireEvent.change(input, { target: { value: "1" } });
-    expect(screen.getByText(/scan qr code/i)).toBeTruthy();
-    expect(screen.getByText(/select contact/i)).toBeTruthy();
-    fireEvent.click(screen.getByText(/scan qr code/i));
-    expect(openModal).toHaveBeenCalled();
-    fireEvent.click(screen.getByText(/select contact/i));
-    expect(openModal).toHaveBeenCalledTimes(2);
-    const modalArgs = openModal.mock.calls[1][0];
-    expect(modalArgs.title).toBe("Select Contact");
+
+    expect(fetchContactsForOwnerMock).toHaveBeenCalledWith(42);
+
+    await waitFor(() => {
+      expect(sendCardProps.contacts).toEqual([
+        expect.objectContaining({ id: 5, username: "contact" }),
+      ]);
+      expect(sendCardProps.isFetchingContacts).toBe(false);
+    });
   });
 });
 

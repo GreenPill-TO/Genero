@@ -34,6 +34,7 @@ export interface ContactRecord {
   profile_image_url: string | null;
   wallet_address: string | null;
   state: string | null;
+  last_interaction: string | null;
 }
 
 export const fetchContactsForOwner = async (ownerUserId: number | string | null | undefined): Promise<ContactRecord[]> => {
@@ -45,14 +46,18 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
   const supabase = createClient();
   const { data: connectionRows, error } = await supabase
     .from("connections")
-    .select("connected_user_id, state")
+    .select("connected_user_id, state, modified_at, created_at")
     .eq("owner_user_id", ownerId);
 
   if (error) {
     throw error;
   }
 
-  const dedupedConnections: { id: number; state: string | null }[] = [];
+  const dedupedConnections: Array<{
+    id: number;
+    state: string | null;
+    lastInteraction: string | null;
+  }> = [];
   const seen = new Set<number>();
 
   for (const row of connectionRows ?? []) {
@@ -66,7 +71,11 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
       continue;
     }
     seen.add(id);
-    dedupedConnections.push({ id, state });
+    const timestamps = [row.modified_at, row.created_at].filter(
+      (value): value is string => typeof value === "string" && value.trim() !== ""
+    );
+    const lastInteraction = timestamps[0] ?? null;
+    dedupedConnections.push({ id, state, lastInteraction });
   }
 
   if (dedupedConnections.length === 0) {
@@ -120,6 +129,7 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
       profile_image_url: user.profile_image_url ?? null,
       wallet_address: walletsById.get(connection.id) ?? null,
       state: connection.state ?? null,
+      last_interaction: connection.lastInteraction ?? null,
     });
   }
 

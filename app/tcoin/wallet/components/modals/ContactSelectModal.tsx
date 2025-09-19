@@ -14,6 +14,7 @@ interface ContactSelectModalProps {
   amount: string;
   setToSendData?: (contact: Hypodata) => void;
   method: "Request" | "Send";
+  defaultContactId?: number | null;
 }
 const parseAmountFromString = (raw: string): number | null => {
   const match = raw.match(/-?\d+(?:\.\d+)?/);
@@ -33,7 +34,13 @@ const formatContactLabel = (contact: ContactRecord) => {
   return name || (username ? `@${username}` : "Unknown contact");
 };
 
-const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: ContactSelectModalProps) => {
+const ContactSelectModal = ({
+  setToSendData,
+  closeModal,
+  amount,
+  method,
+  defaultContactId,
+}: ContactSelectModalProps) => {
   const [contacts, setContacts] = useState<ContactRecord[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,7 +63,15 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
       .then((records) => {
         if (!isMounted) return;
         setContacts(records);
-        setSelectedId(records[0]?.id ?? null);
+        if (records.length === 0) {
+          setSelectedId(null);
+          return;
+        }
+        const preferredId =
+          typeof defaultContactId === "number"
+            ? records.find((contact) => contact.id === defaultContactId)?.id ?? null
+            : null;
+        setSelectedId(preferredId ?? records[0]?.id ?? null);
       })
       .catch((error) => {
         console.error("Error fetching contacts:", error);
@@ -69,7 +84,13 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
     return () => {
       isMounted = false;
     };
-  }, [userData?.cubidData?.id]);
+  }, [userData?.cubidData?.id, defaultContactId]);
+
+  useEffect(() => {
+    if (typeof defaultContactId !== "number") return;
+    if (!contacts.some((contact) => contact.id === defaultContactId)) return;
+    setSelectedId(defaultContactId);
+  }, [contacts, defaultContactId]);
 
   const filteredContacts = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();

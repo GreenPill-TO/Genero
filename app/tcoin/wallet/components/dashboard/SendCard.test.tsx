@@ -23,54 +23,40 @@ vi.mock("@shared/lib/supabase/client", () => ({
 }));
 vi.mock("@shared/utils/insertNotification", () => ({ insertSuccessNotification: vi.fn() }));
 
-function noop() {}
+const createProps = () => ({
+  toSendData: null as any,
+  setToSendData: vi.fn(),
+  tcoinAmount: "",
+  cadAmount: "",
+  handleTcoinChange: vi.fn(),
+  handleCadChange: vi.fn(),
+  handleTcoinBlur: vi.fn(),
+  handleCadBlur: vi.fn(),
+  explorerLink: null as string | null,
+  setExplorerLink: vi.fn(),
+  setTcoin: vi.fn(),
+  setCad: vi.fn(),
+  sendMoney: vi.fn(),
+  userBalance: 0,
+  onUseMax: vi.fn(),
+  contacts: [] as any[],
+});
+
+const renderSendCard = (overrides: Partial<ReturnType<typeof createProps>> = {}) => {
+  const props = { ...createProps(), ...overrides };
+  return render(<SendCard {...(props as any)} />);
+};
 
 describe("SendCard", () => {
   it("disables send button when no recipient", () => {
-    render(
-      <SendCard
-        toSendData={null}
-        setToSendData={noop}
-        tcoinAmount=""
-        cadAmount=""
-        handleTcoinChange={noop as any}
-        handleCadChange={noop as any}
-        handleTcoinBlur={noop}
-        handleCadBlur={noop}
-        explorerLink={null}
-        setExplorerLink={noop}
-        setTcoin={noop}
-        setCad={noop}
-        sendMoney={vi.fn()}
-        userBalance={0}
-        onUseMax={noop}
-      />
-    );
-    const button = screen.getByRole("button", { name: /review payment/i }) as HTMLButtonElement;
+    renderSendCard();
+    const button = screen.getByRole("button", { name: "Send..." }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
 
   it("shows available balance and triggers onUseMax", () => {
     const onUseMax = vi.fn();
-    render(
-      <SendCard
-        toSendData={null}
-        setToSendData={noop}
-        tcoinAmount=""
-        cadAmount=""
-        handleTcoinChange={noop as any}
-        handleCadChange={noop as any}
-        handleTcoinBlur={noop}
-        handleCadBlur={noop}
-        explorerLink={null}
-        setExplorerLink={noop}
-        setTcoin={noop}
-        setCad={noop}
-        sendMoney={vi.fn()}
-        userBalance={5}
-        onUseMax={onUseMax}
-      />
-    );
+    renderSendCard({ userBalance: 5, onUseMax });
     expect(screen.getByText(/available: 5.0000/i)).toBeTruthy();
     const buttons = screen.getAllByText(/use max/i);
     fireEvent.click(buttons[buttons.length - 1]);
@@ -78,49 +64,37 @@ describe("SendCard", () => {
   });
 
   it("formats converted amount to two decimals", () => {
-    render(
-      <SendCard
-        toSendData={null}
-        setToSendData={noop}
-        tcoinAmount="1.2345"
-        cadAmount="2.3456"
-        handleTcoinChange={noop as any}
-        handleCadChange={noop as any}
-        handleTcoinBlur={noop}
-        handleCadBlur={noop}
-        explorerLink={null}
-        setExplorerLink={noop}
-        setTcoin={noop}
-        setCad={noop}
-        sendMoney={vi.fn()}
-        userBalance={5}
-        onUseMax={noop}
-      />
-    );
+    renderSendCard({ tcoinAmount: "1.2345", cadAmount: "2.3456" });
     expect(screen.getByText("≈ $2.35 CAD")).toBeTruthy();
   });
 
   it("shows formatted primary amount when not focused", () => {
-    render(
-      <SendCard
-        toSendData={null}
-        setToSendData={noop}
-        tcoinAmount="1.2"
-        cadAmount=""
-        handleTcoinChange={noop as any}
-        handleCadChange={noop as any}
-        handleTcoinBlur={noop}
-        handleCadBlur={noop}
-        explorerLink={null}
-        setExplorerLink={noop}
-        setTcoin={noop}
-        setCad={noop}
-        sendMoney={vi.fn()}
-        userBalance={5}
-        onUseMax={noop}
-      />
-    );
+    renderSendCard({ tcoinAmount: "1.2" });
     expect(screen.getByDisplayValue("1.20 TCOIN")).toBeTruthy();
+  });
+
+  it("shows the select contact button when no recipient is chosen", () => {
+    renderSendCard();
+    const selectButtons = screen.getAllByRole("button", { name: /Select Contact/i });
+    expect(selectButtons.length).toBeGreaterThan(0);
+  });
+
+  it("clears the selected recipient when the clear button is pressed", () => {
+    const setToSendData = vi.fn();
+    renderSendCard({
+      toSendData: {
+        id: 42,
+        full_name: "Recipient",
+        username: "recipient",
+        profile_image_url: null,
+        wallet_address: null,
+        state: "accepted",
+      } as any,
+      setToSendData,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /clear recipient/i }));
+    expect(setToSendData).toHaveBeenCalledWith(null);
   });
 });
 

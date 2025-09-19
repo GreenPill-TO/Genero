@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { ReceiveCard } from "./ReceiveCard";
+import { Hypodata } from "./types";
 
-export function ReceiveTab() {
+export function ReceiveTab({ contact }: { contact?: Hypodata | null }) {
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables();
 
@@ -12,6 +13,9 @@ export function ReceiveTab() {
   const [qrCodeData, setQrCodeData] = useState("");
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");
   const [qrCadAmount, setQrCadAmount] = useState("");
+  const [requestContact, setRequestContact] = useState<Hypodata | null>(
+    contact ?? null
+  );
 
   useEffect(() => {
     if (!user_id) return;
@@ -58,6 +62,10 @@ export function ReceiveTab() {
     setQrTcoinAmount(formatNumber((num / exchangeRate).toString(), false));
   };
 
+  useEffect(() => {
+    setRequestContact(contact ?? null);
+  }, [contact]);
+
   return (
     <div className="lg:px-[25vw]">
       <ReceiveCard
@@ -73,6 +81,8 @@ export function ReceiveTab() {
         qrBgColor="#fff"
         qrFgColor="#000"
         qrWrapperClassName="bg-white p-1"
+        requestContact={requestContact}
+        onClearRequestContact={() => setRequestContact(null)}
       />
     </div>
   );

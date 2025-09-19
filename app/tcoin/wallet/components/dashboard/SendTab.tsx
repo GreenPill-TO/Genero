@@ -10,9 +10,11 @@ import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
 import { Hypodata } from "./types";
 import { SendCard } from "./SendCard";
-import { ContactsTab } from "./ContactsTab";
 import { QrScanModal } from "@tcoin/wallet/components/modals";
-import { LuCamera, LuUsers } from "react-icons/lu";
+import {
+  fetchContactsForOwner,
+  type ContactRecord,
+} from "@shared/api/services/supabaseService";
 
 interface SendTabProps {
   recipient: Hypodata | null;
@@ -33,6 +35,8 @@ export function SendTab({ recipient }: SendTabProps) {
   const [mode, setMode] = useState<"manual" | "qr" | "link">("manual");
   const [payLink, setPayLink] = useState("");
   const { openModal, closeModal } = useModal();
+  const [contacts, setContacts] = useState<ContactRecord[]>([]);
+  const [isFetchingContacts, setIsFetchingContacts] = useState(false);
 
   const { sendMoney } = useSendMoney({
     senderId: userData?.cubidData?.id,
@@ -52,6 +56,38 @@ export function SendTab({ recipient }: SendTabProps) {
     setTcoinAmount(balance.toFixed(2));
     setCadAmount(cadNumeric.toFixed(2));
   };
+
+  const ownerId = userData?.cubidData?.id;
+
+  useEffect(() => {
+    if (!ownerId) {
+      setContacts([]);
+      return;
+    }
+
+    let isActive = true;
+    setIsFetchingContacts(true);
+    fetchContactsForOwner(ownerId)
+      .then((records) => {
+        if (!isActive) return;
+        setContacts(records);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch contacts", error);
+        if (isActive) {
+          setContacts([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsFetchingContacts(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [ownerId]);
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = sanitizeNumeric(e.target.value);
@@ -194,23 +230,6 @@ export function SendTab({ recipient }: SendTabProps) {
     }
   }, [mode]);
 
-  const amountEntered =
-    (parseFloat(tcoinAmount) || 0) > 0 || (parseFloat(cadAmount) || 0) > 0;
-
-  const openContactsModal = () => {
-    openModal({
-      title: "Select Contact",
-      content: (
-        <ContactsTab
-          onSend={(contact) => {
-            setToSendData(contact);
-            closeModal();
-          }}
-        />
-      ),
-    });
-  };
-
   return (
     <div className="space-y-4 lg:px-[25vw]">
       <div className="flex gap-2">
@@ -224,7 +243,7 @@ export function SendTab({ recipient }: SendTabProps) {
           variant={mode === "qr" ? "default" : "outline"}
           onClick={() => setMode("qr")}
         >
-          QR
+          Scan QR Code
         </Button>
         <Button
           variant={mode === "link" ? "default" : "outline"}
@@ -252,17 +271,9 @@ export function SendTab({ recipient }: SendTabProps) {
             sendMoney={sendMoney}
             userBalance={balance}
             onUseMax={handleUseMax}
+            contacts={contacts}
+            isFetchingContacts={isFetchingContacts}
           />
-          {!toSendData && amountEntered && (
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={openScanner}>
-                <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
-              </Button>
-              <Button className="flex-1" onClick={openContactsModal}>
-                <LuUsers className="mr-2 h-4 w-4" /> Select Contact
-              </Button>
-            </div>
-          )}
         </>
       )}
 
@@ -296,6 +307,8 @@ export function SendTab({ recipient }: SendTabProps) {
               setCad={setCadAmount}
               sendMoney={sendMoney}
               userBalance={balance}
+              contacts={contacts}
+              isFetchingContacts={isFetchingContacts}
             />
           )}
         </>

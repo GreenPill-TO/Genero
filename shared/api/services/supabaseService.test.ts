@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const supabaseState = vi.hoisted(() => ({
-  connections: [] as Array<{ connected_user_id: unknown; state: string | null }>,
+  connections: [] as Array<{
+    connected_user_id: unknown;
+    state: string | null;
+    modified_at?: string | null;
+    created_at?: string | null;
+  }>,
   connectionsError: null as { message: string } | null,
   users: [] as Array<{
     id: unknown;
@@ -91,7 +96,11 @@ describe("fetchContactsForOwner", () => {
 
   it("maps connection rows to contact records", async () => {
     supabaseState.connections = [
-      { connected_user_id: 7, state: "accepted" },
+      {
+        connected_user_id: 7,
+        state: "accepted",
+        modified_at: "2024-01-02T00:00:00.000Z",
+      },
     ];
     supabaseState.users = [
       {
@@ -117,6 +126,7 @@ describe("fetchContactsForOwner", () => {
         profile_image_url: "avatar.png",
         wallet_address: "0xabc",
         state: "accepted",
+        last_interaction: "2024-01-02T00:00:00.000Z",
       },
     ]);
     expect(supabaseState.connectionsCalls).toBe(1);
@@ -126,8 +136,12 @@ describe("fetchContactsForOwner", () => {
 
   it("deduplicates multiple rows for the same contact", async () => {
     supabaseState.connections = [
-      { connected_user_id: "8", state: "accepted" },
-      { connected_user_id: "8", state: "NEW" },
+      {
+        connected_user_id: "8",
+        state: "accepted",
+        modified_at: "2024-01-03T00:00:00.000Z",
+      },
+      { connected_user_id: "8", state: "NEW", created_at: "2024-01-01T00:00:00.000Z" },
     ];
     supabaseState.users = [
       {
@@ -146,12 +160,16 @@ describe("fetchContactsForOwner", () => {
 
     const result = await fetchContactsForOwner(1);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ id: 8, state: "accepted" });
+    expect(result[0]).toMatchObject({
+      id: 8,
+      state: "accepted",
+      last_interaction: "2024-01-03T00:00:00.000Z",
+    });
   });
 
   it("filters out connections without a corresponding user row", async () => {
     supabaseState.connections = [
-      { connected_user_id: 9, state: "accepted" },
+      { connected_user_id: 9, state: "accepted", modified_at: null },
     ];
     supabaseState.users = [];
     supabaseState.walletList = [];
@@ -163,7 +181,7 @@ describe("fetchContactsForOwner", () => {
   it("ignores rejected connections", async () => {
     supabaseState.connections = [
       { connected_user_id: 11, state: " rejected " },
-      { connected_user_id: 12, state: "ACCEPTED" },
+      { connected_user_id: 12, state: "ACCEPTED", modified_at: "2024-01-04T00:00:00.000Z" },
     ];
     supabaseState.users = [
       {
@@ -182,7 +200,11 @@ describe("fetchContactsForOwner", () => {
 
     const result = await fetchContactsForOwner(1);
     expect(result).toEqual([
-      expect.objectContaining({ id: 12, state: "accepted" }),
+      expect.objectContaining({
+        id: 12,
+        state: "accepted",
+        last_interaction: "2024-01-04T00:00:00.000Z",
+      }),
     ]);
   });
 

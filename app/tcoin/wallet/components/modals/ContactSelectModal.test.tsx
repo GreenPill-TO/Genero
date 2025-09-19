@@ -128,6 +128,42 @@ describe("ContactSelectModal", () => {
     document.body.removeChild(container);
   });
 
+  it("selects the provided default contact id", async () => {
+    const closeModal = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const queryClient = new QueryClient();
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ContactSelectModal
+            closeModal={closeModal}
+            amount="5"
+            method="Send"
+            defaultContactId={2}
+            setToSendData={vi.fn()}
+          />
+        </QueryClientProvider>
+      );
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const selectedRadio = container.querySelector<HTMLInputElement>(
+      "input[id='contact-2']"
+    );
+    expect(selectedRadio?.checked).toBe(true);
+
+    act(() => {
+      root.unmount();
+    });
+    document.body.removeChild(container);
+  });
+
   it("creates an invoice request when the method is Request", async () => {
     const closeModal = vi.fn();
     const container = document.createElement("div");

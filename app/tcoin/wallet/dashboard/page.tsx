@@ -15,6 +15,7 @@ export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
   const [activeTab, setActiveTab] = useState("home");
   const [sendRecipient, setSendRecipient] = useState<any>(null);
+  const [requestRecipient, setRequestRecipient] = useState<any>(null);
   const router = useRouter();
 
   const mainClass = "font-sans pb-24 p-4 sm:p-8 bg-background text-foreground min-h-screen";
@@ -31,6 +32,10 @@ export default function Dashboard() {
             setSendRecipient(contact);
             setActiveTab("send");
           }}
+          onRequest={(contact) => {
+            setRequestRecipient(contact);
+            setActiveTab("receive");
+          }}
         />
       );
     }
@@ -38,13 +43,13 @@ export default function Dashboard() {
       return <SendTab recipient={sendRecipient} />;
     }
     if (activeTab === "receive") {
-      return <ReceiveTab />;
+      return <ReceiveTab contact={requestRecipient} />;
     }
     const label = activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
     return (
       <div className="flex items-center justify-center h-full">{`${label} screen coming soon`}</div>
     );
-  }, [activeTab, isLoadingUser, error, sendRecipient]);
+  }, [activeTab, isLoadingUser, error, sendRecipient, requestRecipient]);
 
   useEffect(() => {
     if (Boolean(userData?.cubidData?.full_name)) {
