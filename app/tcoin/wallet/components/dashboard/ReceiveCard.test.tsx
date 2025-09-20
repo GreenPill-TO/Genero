@@ -47,6 +47,7 @@ const createProps = () => ({
   openRequests: [],
   onCreateShareableRequest: vi.fn().mockResolvedValue(null),
   onCreateTargetedRequest: vi.fn().mockResolvedValue(null),
+  onDeleteRequest: vi.fn().mockResolvedValue(undefined),
   showQrCode: true,
 });
 
@@ -141,7 +142,7 @@ describe("ReceiveCard", () => {
       ],
     });
 
-    expect(screen.getByText(/Open Requests/i)).toBeTruthy();
+    expect(screen.getByText(/Payment requests I have sent/i)).toBeTruthy();
     const shareableLabels = screen.getAllByText(/Shareable/i, { selector: "p" });
     expect(shareableLabels.length).toBeGreaterThan(0);
     const targetedLabels = screen.getAllByText(/To Contacts/i, { selector: "p" });
@@ -150,9 +151,61 @@ describe("ReceiveCard", () => {
 
     const shareButtons = screen.getAllByRole("button", { name: /^Share$/i });
     expect(shareButtons.length).toBeGreaterThan(0);
+    const deleteButtons = screen.getAllByRole("button", { name: /^Delete$/i });
+    expect(deleteButtons.length).toBeGreaterThan(0);
 
     fireEvent.click(shareButtons[0]);
     expect(openModalMock).toHaveBeenCalled();
+  });
+
+  it("invokes the delete handler for requests", async () => {
+    const onDeleteRequest = vi.fn().mockResolvedValue(undefined);
+    renderReceiveCard({
+      openRequests: [
+        {
+          id: 55,
+          amount_requested: 2,
+          request_from: null,
+        } as any,
+      ],
+      onDeleteRequest,
+    });
+
+    const deleteButton = screen.getByRole("button", { name: /^Delete$/i });
+
+    await act(async () => {
+      fireEvent.click(deleteButton);
+      await Promise.resolve();
+    });
+
+    expect(onDeleteRequest).toHaveBeenCalledWith(55);
+    expect(toastSuccessMock).toHaveBeenCalledWith("Request removed.");
+  });
+
+  it("surfaces an error when deleting a request fails", async () => {
+    const onDeleteRequest = vi.fn().mockRejectedValue(new Error("boom"));
+    renderReceiveCard({
+      openRequests: [
+        {
+          id: 99,
+          amount_requested: 4,
+          request_from: null,
+        } as any,
+      ],
+      onDeleteRequest,
+    });
+
+    const deleteButton = screen.getByRole("button", { name: /^Delete$/i });
+
+    await act(async () => {
+      fireEvent.click(deleteButton);
+      await Promise.resolve();
+    });
+
+    expect(onDeleteRequest).toHaveBeenCalledWith(99);
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      "Failed to delete the request. Please try again."
+    );
   });
 
   it("marks zero-value requests as variable amount", () => {

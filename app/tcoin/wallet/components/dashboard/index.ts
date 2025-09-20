@@ -8,3 +8,4 @@ export * from "./types";
 export * from "./ContactsTab";
 export * from "./SendTab";
 export * from "./ReceiveTab";
+export * from "./MoreTab";

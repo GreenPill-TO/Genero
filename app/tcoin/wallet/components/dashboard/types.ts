@@ -25,4 +25,7 @@ export interface InvoicePayRequest {
   request_by?: number | null;
   created_at?: string | null;
   status?: string | null;
+  is_active?: boolean | null;
+  paid_at?: string | null;
+  transaction_id?: number | string | null;
 }

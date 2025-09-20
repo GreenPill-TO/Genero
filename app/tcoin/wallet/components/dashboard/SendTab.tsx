@@ -275,15 +275,25 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
         .from("invoice_pay_request")
         .select("*")
         .eq("request_from", currentUserId)
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
       const rows = (data ?? []) as InvoicePayRequest[];
       const filtered = rows.filter((request) => {
-        if (typeof request.status !== "string") return true;
-        const status = request.status.trim().toLowerCase();
-        return !CLOSED_REQUEST_STATUSES.has(status);
+        if (request.is_active === false) {
+          return false;
+        }
+
+        if (typeof request.status === "string") {
+          const status = request.status.trim().toLowerCase();
+          if (CLOSED_REQUEST_STATUSES.has(status)) {
+            return false;
+          }
+        }
+
+        return true;
       });
 
       const requesterIds = Array.from(
@@ -453,27 +463,63 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     [closeModal, contactsById, safeExchangeRate, updateRecipient]
   );
 
+  const handleIgnoreRequest = useCallback(
+    async (request: IncomingRequest) => {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from("invoice_pay_request")
+          .update({ is_active: false })
+          .eq("id", request.id);
+
+        if (error) throw error;
+
+        setIncomingRequests((prev) =>
+          prev.filter((existing) => existing.id !== request.id)
+        );
+        toast.success("Request ignored.");
+        return true;
+      } catch (error) {
+        console.error("Failed to ignore request:", error);
+        toast.error("Failed to ignore this request. Please try again.");
+        return false;
+      } finally {
+        void fetchIncomingRequests();
+      }
+    },
+    [fetchIncomingRequests]
+  );
+
   const openRequestsModal = useCallback(async () => {
     if (isLoadingRequests) return;
     setIsLoadingRequests(true);
     try {
       const requests = await fetchIncomingRequests();
+      setIncomingRequests(requests);
       openModal({
-        title: "Open Requests",
-        description: "Select a pending request to pay.",
+        title: "Incoming Requests To Pay",
+        description:
+          "Choose a request to pay or ignore. Ignored requests will be archived.",
         content: (
           <RequestsList
             requests={requests}
             onSelect={(selection) => {
               void handleRequestSelection(selection);
             }}
+            onIgnore={(request) => handleIgnoreRequest(request)}
           />
         ),
       });
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [fetchIncomingRequests, handleRequestSelection, isLoadingRequests, openModal]);
+  }, [
+    fetchIncomingRequests,
+    handleIgnoreRequest,
+    handleRequestSelection,
+    isLoadingRequests,
+    openModal,
+  ]);
 
   const handleManualClick = () => {
     if (selectedRequest) {
@@ -515,6 +561,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           status: "paid",
           paid_at: new Date().toISOString(),
           transaction_id: resolveTransactionId(details) ?? null,
+          is_active: false,
         };
         await supabase
           .from("invoice_pay_request")
@@ -714,32 +761,47 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
 function RequestsList({
   requests,
   onSelect,
+  onIgnore,
 }: {
   requests: IncomingRequest[];
   onSelect: (request: IncomingRequest) => void;
+  onIgnore: (request: IncomingRequest) => Promise<boolean>;
 }) {
-  if (requests.length === 0) {
+  const [visibleRequests, setVisibleRequests] = React.useState(requests);
+
+  React.useEffect(() => {
+    setVisibleRequests(requests);
+  }, [requests]);
+
+  if (visibleRequests.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        You have no open requests to pay right now.
+        You have no incoming requests to pay right now.
       </p>
     );
   }
 
   return (
     <div className="space-y-3">
-      {requests.map((request) => {
+      {visibleRequests.map((request) => {
         const { primary, secondary } = formatRequesterName(request);
         const createdLabel = request.created_at
           ? new Date(request.created_at).toLocaleDateString("en-CA")
           : null;
 
+        const handleIgnore = async () => {
+          const success = await onIgnore(request);
+          if (success) {
+            setVisibleRequests((prev) =>
+              prev.filter((existing) => existing.id !== request.id)
+            );
+          }
+        };
+
         return (
-          <button
-            type="button"
+          <div
             key={request.id}
-            className="w-full rounded-xl border border-border/60 bg-background/80 p-4 text-left transition hover:border-primary"
-            onClick={() => onSelect(request)}
+            className="w-full rounded-xl border border-border/60 bg-background/80 p-4 text-left"
           >
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-3">
@@ -757,7 +819,27 @@ function RequestsList({
                 {secondary ? ` (${secondary})` : ""}
               </span>
             </div>
-          </button>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onSelect(request)}
+              >
+                Pay
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  void handleIgnore();
+                }}
+              >
+                Ignore
+              </Button>
+            </div>
+          </div>
         );
       })}
     </div>

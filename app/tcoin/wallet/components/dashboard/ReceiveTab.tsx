@@ -94,6 +94,7 @@ export function ReceiveTab({
         .from("invoice_pay_request")
         .select("*")
         .eq("request_by", user_id)
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
       const { data, error } = await query;
       if (error) throw error;
@@ -121,6 +122,7 @@ export function ReceiveTab({
             request_from: null,
             request_by: user_id,
             amount_requested: amount,
+            is_active: true,
           })
           .select()
           .single();
@@ -155,6 +157,7 @@ export function ReceiveTab({
             request_from: contactToRequest.id,
             request_by: user_id,
             amount_requested: amount,
+            is_active: true,
           })
           .select()
           .single();
@@ -199,6 +202,29 @@ export function ReceiveTab({
     [fetchOpenRequests, userData?.cubidData?.full_name, user_id]
   );
 
+  const handleDeactivateRequest = useCallback(
+    async (requestId: number) => {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from("invoice_pay_request")
+          .update({ is_active: false })
+          .eq("id", requestId);
+
+        if (error) throw error;
+
+        setOpenRequests((previous) =>
+          previous.filter((request) => request.id !== requestId)
+        );
+        await fetchOpenRequests();
+      } catch (error) {
+        console.error("Failed to deactivate request:", error);
+        throw error;
+      }
+    },
+    [fetchOpenRequests]
+  );
+
   const handleRequestContactChange = (next: Hypodata | null) => {
     setRequestContact(next);
     onContactChange?.(next);
@@ -229,6 +255,7 @@ export function ReceiveTab({
         openRequests={openRequests}
         onCreateShareableRequest={handleCreateShareableRequest}
         onCreateTargetedRequest={handleCreateTargetedRequest}
+        onDeleteRequest={handleDeactivateRequest}
         showQrCode={showQrCode}
       />
     </div>

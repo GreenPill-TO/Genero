@@ -6,6 +6,7 @@ import {
   ContactsTab,
   SendTab,
   ReceiveTab,
+  MoreTab,
 } from "@tcoin/wallet/components/dashboard";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
 import { ErrorBoundary } from "@shared/components/ErrorBoundary";
@@ -64,6 +65,9 @@ export default function Dashboard() {
           showQrCode={receiveQrVisible}
         />
       );
+    }
+    if (activeTab === "more") {
+      return <MoreTab tokenLabel="TCOIN" />;
     }
     const label = activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
     return (

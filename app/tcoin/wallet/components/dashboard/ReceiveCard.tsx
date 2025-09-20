@@ -33,6 +33,7 @@ export function ReceiveCard({
   openRequests = [],
   onCreateShareableRequest,
   onCreateTargetedRequest,
+  onDeleteRequest,
   showQrCode = true,
 }: {
   qrCodeData: string;
@@ -58,6 +59,7 @@ export function ReceiveCard({
     amount: number,
     formattedAmount: string
   ) => Promise<InvoicePayRequest | null>;
+  onDeleteRequest?: (requestId: number) => Promise<void>;
   showQrCode?: boolean;
 }) {
   const { isDarkMode } = useDarkMode();
@@ -196,6 +198,17 @@ export function ReceiveCard({
     } catch (error) {
       console.error("Unable to save shareable request:", error);
       toast.error("Failed to save the request.");
+    }
+  };
+
+  const handleDeleteRequest = async (request: InvoicePayRequest) => {
+    if (!onDeleteRequest) return;
+    try {
+      await onDeleteRequest(request.id);
+      toast.success("Request removed.");
+    } catch (error) {
+      console.error("Failed to delete request:", error);
+      toast.error("Failed to delete the request. Please try again.");
     }
   };
 
@@ -516,7 +529,7 @@ export function ReceiveCard({
         </div>
         {hasOpenRequests && (
           <div className="space-y-4 rounded-2xl border border-border/60 bg-background/60 p-4">
-            <h3 className="text-sm font-semibold">Open Requests</h3>
+            <h3 className="text-sm font-semibold">Payment requests I have sent</h3>
             {shareableRequests.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">
@@ -528,7 +541,7 @@ export function ReceiveCard({
                   return (
                     <div
                       key={request.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/50 bg-background/80 p-3"
+                      className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/50 bg-background/80 p-3"
                     >
                       <div>
                         <p className="text-sm font-medium">{label}</p>
@@ -541,9 +554,22 @@ export function ReceiveCard({
                           </p>
                         )}
                       </div>
-                      <Button variant="outline" size="sm" onClick={openShareModal}>
-                        Share
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={openShareModal}>
+                          Share
+                        </Button>
+                        {onDeleteRequest && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              void handleDeleteRequest(request);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -561,16 +587,29 @@ export function ReceiveCard({
                   return (
                     <div
                       key={request.id}
-                      className="rounded-xl border border-border/50 bg-background/80 p-3"
+                      className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/50 bg-background/80 p-3"
                     >
-                      <p className="text-sm font-medium">{label}</p>
-                      {note && (
-                        <p className="text-xs text-muted-foreground">{note}</p>
-                      )}
-                      {recipientLabel && (
-                        <p className="text-xs text-muted-foreground">
-                          Request sent to {recipientLabel}
-                        </p>
+                      <div>
+                        <p className="text-sm font-medium">{label}</p>
+                        {note && (
+                          <p className="text-xs text-muted-foreground">{note}</p>
+                        )}
+                        {recipientLabel && (
+                          <p className="text-xs text-muted-foreground">
+                            Request sent to {recipientLabel}
+                          </p>
+                        )}
+                      </div>
+                      {onDeleteRequest && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            void handleDeleteRequest(request);
+                          }}
+                        >
+                          Delete
+                        </Button>
                       )}
                     </div>
                   );
