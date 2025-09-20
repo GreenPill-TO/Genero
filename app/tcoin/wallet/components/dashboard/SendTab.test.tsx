@@ -42,6 +42,14 @@ const invoiceRequests = [
     status: "pending",
     created_at: "2024-05-01T00:00:00Z",
   },
+  {
+    id: 2,
+    amount_requested: 0,
+    request_from: 42,
+    request_by: 100,
+    status: "pending",
+    created_at: "2024-06-01T00:00:00Z",
+  },
 ];
 const requesterRows = [
   {
@@ -50,8 +58,17 @@ const requesterRows = [
     username: "requester",
     profile_image_url: null,
   },
+  {
+    id: 100,
+    full_name: "Requester Two",
+    username: "variable",
+    profile_image_url: null,
+  },
 ];
-const walletRows = [{ user_id: 99, public_key: "0xwallet" }];
+const walletRows = [
+  { user_id: 99, public_key: "0xwallet" },
+  { user_id: 100, public_key: "0xwallet2" },
+];
 const updateEqMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
 const updateMock = vi.fn(() => ({ eq: updateEqMock }));
 
@@ -72,9 +89,17 @@ vi.mock("@shared/lib/supabase/client", () => ({
       if (table === "users") {
         return {
           select: () => ({
-            in: () => Promise.resolve({ data: requesterRows, error: null }),
-            eq: () => ({
-              single: () => Promise.resolve({ data: requesterRows[0], error: null }),
+            in: (_column: string, values: any[]) => {
+              const ids = values.map((value) => Number(value));
+              const matches = requesterRows.filter((row) => ids.includes(row.id));
+              return Promise.resolve({ data: matches, error: null });
+            },
+            eq: (_column: string, value: any) => ({
+              single: () => {
+                const id = Number(value);
+                const match = requesterRows.find((row) => row.id === id) ?? null;
+                return Promise.resolve({ data: match, error: null });
+              },
             }),
             match: () => Promise.resolve({ data: requesterRows, error: null }),
           }),
@@ -84,9 +109,17 @@ vi.mock("@shared/lib/supabase/client", () => ({
       if (table === "wallet_list") {
         return {
           select: () => ({
-            in: () => Promise.resolve({ data: walletRows, error: null }),
-            eq: () => ({
-              single: () => Promise.resolve({ data: walletRows[0], error: null }),
+            in: (_column: string, values: any[]) => {
+              const ids = values.map((value) => Number(value));
+              const matches = walletRows.filter((row) => ids.includes(Number(row.user_id)));
+              return Promise.resolve({ data: matches, error: null });
+            },
+            eq: (_column: string, value: any) => ({
+              single: () => {
+                const id = Number(value);
+                const match = walletRows.find((row) => Number(row.user_id) === id) ?? null;
+                return Promise.resolve({ data: match, error: null });
+              },
             }),
           }),
         };
@@ -187,6 +220,7 @@ describe("SendTab", () => {
     const modalArgs = openModal.mock.calls.at(-1)![0];
     const modal = render(modalArgs.content as React.ReactElement);
     expect(modal.getByText("12.00 TCOIN")).toBeTruthy();
+    expect(modal.getByText("Any Amount")).toBeTruthy();
     expect(modal.getByText(/Requested by Requester One/i)).toBeTruthy();
     modal.unmount();
   });
@@ -211,8 +245,37 @@ describe("SendTab", () => {
     modal.unmount();
 
     expect(sendCardProps.locked).toBe(true);
+    expect(sendCardProps.lockRecipient).toBe(true);
+    expect(sendCardProps.lockAmount).toBe(true);
+    expect(sendCardProps.recipientHeading).toBe("Requested By:");
     expect(sendCardProps.actionLabel).toBe("Pay this request");
     expect(typeof sendCardProps.onPaymentComplete).toBe("function");
+  });
+
+  it("keeps variable requests editable and updates the heading", async () => {
+    render(<SendTab recipient={null} />);
+    await act(async () => {
+      fireEvent.click(screen.getByText("Requests"));
+      await Promise.resolve();
+    });
+
+    const modalArgs = openModal.mock.calls.at(-1)![0];
+    const modal = render(modalArgs.content as React.ReactElement);
+    const variableButton = modal.getByRole("button", { name: /Any Amount/i });
+
+    await act(async () => {
+      fireEvent.click(variableButton);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    modal.unmount();
+
+    expect(sendCardProps.lockRecipient).toBe(true);
+    expect(sendCardProps.lockAmount).toBe(false);
+    expect(sendCardProps.recipientHeading).toBe("Requested By:");
+    expect(sendCardProps.tcoinAmount).toBe("");
+    expect(sendCardProps.cadAmount).toBe("");
   });
 
   it("marks the selected request as paid when payment completes", async () => {

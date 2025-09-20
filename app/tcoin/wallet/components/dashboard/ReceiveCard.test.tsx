@@ -155,6 +155,21 @@ describe("ReceiveCard", () => {
     expect(openModalMock).toHaveBeenCalled();
   });
 
+  it("marks zero-value requests as variable amount", () => {
+    renderReceiveCard({
+      openRequests: [
+        {
+          id: 10,
+          amount_requested: 0,
+          request_from: null,
+        } as any,
+      ],
+    });
+
+    expect(screen.getAllByText(/Any amount TCOIN/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Variable amount request/i).length).toBeGreaterThan(0);
+  });
+
   it("shows only the review action when a contact is selected", () => {
     renderReceiveCard({
       requestContact: {

@@ -98,6 +98,9 @@ interface SendCardProps {
   actionLabel?: string;
   getLastTransferRecord?: () => TransferRecordSnapshot | null;
   onPaymentComplete?: (details: PaymentCompletionDetails) => void;
+  lockRecipient?: boolean;
+  lockAmount?: boolean;
+  recipientHeading?: string;
 }
 
 export function SendCard({
@@ -120,6 +123,9 @@ export function SendCard({
   actionLabel = "Send...",
   getLastTransferRecord,
   onPaymentComplete,
+  lockRecipient,
+  lockAmount,
+  recipientHeading = "Send To",
 }: SendCardProps) {
   const [connections, setConnections] = useState<any>(null);
   const { userData } = useAuth();
@@ -140,6 +146,9 @@ export function SendCard({
       (Number.isFinite(parsedCad) && parsedCad > 0)
     );
   }, [cadAmount, tcoinAmount]);
+
+  const recipientLocked = lockRecipient ?? locked;
+  const amountLock = lockAmount ?? locked;
 
   useEffect(() => {
     if (!toSendData?.id || !userData?.cubidData?.id) return;
@@ -197,10 +206,12 @@ export function SendCard({
   const amountExceedsBalance = Number.isFinite(tcoinValue) && tcoinValue > userBalance;
   const canSend = Boolean(toSendData) && hasTcoinAmount;
 
+  const activeAmountString = isCadInput ? cadAmount : tcoinAmount;
+  const parsedActiveAmount = Number.parseFloat(activeAmountString);
   const amountLocked =
-    locked &&
-    ((isCadInput ? cadAmount : tcoinAmount) !== "0" &&
-      (isCadInput ? cadAmount : tcoinAmount) !== "");
+    amountLock &&
+    Number.isFinite(parsedActiveAmount) &&
+    Math.abs(parsedActiveAmount) > 0;
 
   const displayValue = useMemo(() => {
     if (isCadInput) {
@@ -235,7 +246,7 @@ export function SendCard({
   };
 
   const openContactSelector = () => {
-    if (locked) return;
+    if (recipientLocked) return;
     openModal({
       content: (
         <ContactSelectModal
@@ -379,7 +390,7 @@ export function SendCard({
                 variant="link"
                 className="h-auto p-0 text-xs"
                 onClick={onUseMax}
-                disabled={locked}
+                disabled={amountLock}
               >
                 Use Max
               </Button>
@@ -390,17 +401,17 @@ export function SendCard({
 
       <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Send To</h2>
+          <h2 className="text-lg font-semibold">{recipientHeading}</h2>
           <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="secondary"
               onClick={openContactSelector}
-              disabled={locked}
+              disabled={recipientLocked}
             >
               <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
             </Button>
-            {toSendData && !locked && (
+            {toSendData && !recipientLocked && (
               <Button
                 type="button"
                 variant="ghost"

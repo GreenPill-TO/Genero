@@ -122,6 +122,19 @@ export function ReceiveCard({
     })}`;
   };
 
+  const describeRequestAmount = (amount: number | null) => {
+    if (!Number.isFinite(amount ?? NaN) || (amount ?? 0) <= 0) {
+      return {
+        label: `Any amount ${uppercaseToken}`,
+        note: "Variable amount request",
+      };
+    }
+    return {
+      label: formatRequestAmount(amount),
+      note: null,
+    };
+  };
+
   const contactNamesById = React.useMemo(() => {
     const map = new Map<number, string>();
     (contacts ?? []).forEach((contact) => {
@@ -511,15 +524,17 @@ export function ReceiveCard({
                 </p>
                 {shareableRequests.map((request) => {
                   const amountValue = normaliseAmount(request.amount_requested);
+                  const { label, note } = describeRequestAmount(amountValue);
                   return (
                     <div
                       key={request.id}
                       className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/50 bg-background/80 p-3"
                     >
                       <div>
-                        <p className="text-sm font-medium">
-                          {formatRequestAmount(amountValue)}
-                        </p>
+                        <p className="text-sm font-medium">{label}</p>
+                        {note && (
+                          <p className="text-xs text-muted-foreground">{note}</p>
+                        )}
                         {request.created_at && (
                           <p className="text-xs text-muted-foreground">
                             Saved {new Date(request.created_at).toLocaleDateString("en-CA")}
@@ -542,14 +557,16 @@ export function ReceiveCard({
                 {targetedRequests.map((request) => {
                   const amountValue = normaliseAmount(request.amount_requested);
                   const recipientLabel = getContactLabel(request.request_from ?? null);
+                  const { label, note } = describeRequestAmount(amountValue);
                   return (
                     <div
                       key={request.id}
                       className="rounded-xl border border-border/50 bg-background/80 p-3"
                     >
-                      <p className="text-sm font-medium">
-                        {formatRequestAmount(amountValue)}
-                      </p>
+                      <p className="text-sm font-medium">{label}</p>
+                      {note && (
+                        <p className="text-xs text-muted-foreground">{note}</p>
+                      )}
                       {recipientLabel && (
                         <p className="text-xs text-muted-foreground">
                           Request sent to {recipientLabel}

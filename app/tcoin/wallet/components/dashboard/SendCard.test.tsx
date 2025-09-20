@@ -259,6 +259,23 @@ describe("SendCard", () => {
     ).toBeNull();
   });
 
+  it("allows editing the amount when lockAmount is false", () => {
+    renderSendCard({
+      locked: true,
+      lockRecipient: true,
+      lockAmount: false,
+      tcoinAmount: "0.00",
+    });
+
+    const amountInput = screen.getAllByLabelText("Amount in TCOIN")[0] as HTMLInputElement;
+    expect(amountInput.readOnly).toBe(false);
+  });
+
+  it("renders a custom recipient heading when provided", () => {
+    renderSendCard({ recipientHeading: "Requested By:" });
+    expect(screen.getByText("Requested By:")).toBeTruthy();
+  });
+
   it("enables the send button when amount and recipient are set", () => {
     renderSendCard({
       tcoinAmount: "1.00",

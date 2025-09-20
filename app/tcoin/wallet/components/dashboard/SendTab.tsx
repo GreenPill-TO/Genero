@@ -32,7 +32,7 @@ const CLOSED_REQUEST_STATUSES = new Set([
 
 const formatRequestAmount = (amount: number | null | undefined) => {
   if (!Number.isFinite(amount ?? NaN) || (amount ?? 0) <= 0) {
-    return "0.00 TCOIN";
+    return "Any Amount";
   }
   return `${(amount ?? 0).toLocaleString("en-CA", {
     minimumFractionDigits: 2,
@@ -137,6 +137,24 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     userData?.cubidData?.wallet_address || ""
   );
   const balance = parseFloat(rawBalance) || 0;
+
+  const selectedRequestAmount = useMemo(() => {
+    if (!selectedRequest) return null;
+    const raw = selectedRequest.amount_requested;
+    if (typeof raw === "number") {
+      return Number.isFinite(raw) ? raw : null;
+    }
+    if (typeof raw === "string" && raw.trim() !== "") {
+      const parsed = Number.parseFloat(raw);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return null;
+  }, [selectedRequest]);
+
+  const shouldLockAmount =
+    selectedRequestAmount != null ? selectedRequestAmount > 0 : false;
 
 
   useEffect(() => {
@@ -416,10 +434,15 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           : Number.parseFloat(String(request.amount_requested ?? "0"));
       const safeAmount = Number.isFinite(numericAmount) ? Math.max(numericAmount, 0) : 0;
 
-      setTcoinAmount(safeAmount.toFixed(2));
-      if (safeExchangeRate > 0) {
-        setCadAmount((safeAmount * safeExchangeRate).toFixed(2));
+      if (safeAmount > 0) {
+        setTcoinAmount(safeAmount.toFixed(2));
+        if (safeExchangeRate > 0) {
+          setCadAmount((safeAmount * safeExchangeRate).toFixed(2));
+        } else {
+          setCadAmount("");
+        }
       } else {
+        setTcoinAmount("");
         setCadAmount("");
       }
 
@@ -466,9 +489,8 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     const hadRequest = Boolean(selectedRequest);
     if (hadRequest) {
       setSelectedRequest(null);
-    } else {
-      reset();
     }
+    reset();
     setMode("manual");
     setActiveAction("scan");
     openScanner();
@@ -478,9 +500,8 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     const hadRequest = Boolean(selectedRequest);
     if (hadRequest) {
       setSelectedRequest(null);
-    } else {
-      reset();
     }
+    reset();
     setPayLink("");
     setMode("link");
     setActiveAction("link");
@@ -613,6 +634,10 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     </>
   );
 
+  const lockRecipient = Boolean(selectedRequest);
+  const lockAmount = lockRecipient ? shouldLockAmount : false;
+  const recipientHeading = selectedRequest ? "Requested By:" : undefined;
+
   return (
     <div className="space-y-4 lg:px-[25vw]">
       {mode !== "link" && (
@@ -632,10 +657,13 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           onUseMax={handleUseMax}
           contacts={contacts}
           amountHeaderActions={modeActions}
-          locked={Boolean(selectedRequest)}
+          locked={lockRecipient}
           actionLabel={selectedRequest ? "Pay this request" : "Send..."}
           getLastTransferRecord={getLastTransferRecord}
           onPaymentComplete={selectedRequest ? handleRequestPaid : undefined}
+          lockRecipient={lockRecipient}
+          lockAmount={lockAmount}
+          recipientHeading={recipientHeading}
         />
       )}
 
