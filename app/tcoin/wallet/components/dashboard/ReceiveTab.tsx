@@ -2,8 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { ReceiveCard } from "./ReceiveCard";
+import { Hypodata } from "./types";
+import type { ContactRecord } from "@shared/api/services/supabaseService";
 
-export function ReceiveTab() {
+interface ReceiveTabProps {
+  contact?: Hypodata | null;
+  onContactChange?: (contact: Hypodata | null) => void;
+  contacts?: ContactRecord[];
+}
+
+export function ReceiveTab({ contact, onContactChange, contacts }: ReceiveTabProps) {
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables();
 
@@ -12,6 +20,9 @@ export function ReceiveTab() {
   const [qrCodeData, setQrCodeData] = useState("");
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");
   const [qrCadAmount, setQrCadAmount] = useState("");
+  const [requestContact, setRequestContact] = useState<Hypodata | null>(
+    contact ?? null
+  );
 
   useEffect(() => {
     if (!user_id) return;
@@ -58,20 +69,37 @@ export function ReceiveTab() {
     setQrTcoinAmount(formatNumber((num / exchangeRate).toString(), false));
   };
 
+  useEffect(() => {
+    setRequestContact(contact ?? null);
+  }, [contact]);
+
+  const handleRequestContactChange = (next: Hypodata | null) => {
+    setRequestContact(next);
+    onContactChange?.(next);
+  };
+
   return (
-    <ReceiveCard
-      qrCodeData={qrCodeData}
-      qrTcoinAmount={qrTcoinAmount}
-      qrCadAmount={qrCadAmount}
-      handleQrTcoinChange={handleQrTcoinChange}
-      handleQrCadChange={handleQrCadChange}
-      senderWallet={userData?.cubidData?.wallet_address || ""}
-      handleQrTcoinBlur={handleQrTcoinBlur}
-      handleQrCadBlur={handleQrCadBlur}
-      tokenLabel="TCOIN"
-      qrBgColor="#fff"
-      qrFgColor="#000"
-      qrWrapperClassName="bg-white p-1"
-    />
+    <div className="lg:px-[25vw]">
+      <ReceiveCard
+        qrCodeData={qrCodeData}
+        qrTcoinAmount={qrTcoinAmount}
+        qrCadAmount={qrCadAmount}
+        handleQrTcoinChange={handleQrTcoinChange}
+        handleQrCadChange={handleQrCadChange}
+        senderWallet={userData?.cubidData?.wallet_address || ""}
+        handleQrTcoinBlur={handleQrTcoinBlur}
+        handleQrCadBlur={handleQrCadBlur}
+        tokenLabel="TCOIN"
+        qrBgColor="#fff"
+        qrFgColor="#000"
+        qrWrapperClassName="bg-white p-1"
+        requestContact={requestContact}
+        onClearRequestContact={() => handleRequestContactChange(null)}
+        contacts={contacts}
+        onSelectRequestContact={(selectedContact) =>
+          handleRequestContactChange(selectedContact)
+        }
+      />
+    </div>
   );
 }

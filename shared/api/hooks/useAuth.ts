@@ -1,6 +1,7 @@
+import { createClient } from "@shared/lib/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { fetchCubidData } from "../services/cubidService";
 import { fetchCubidDataFromSupabase, fetchUserByContact, getSession, signOut, updateCubidDataInSupabase } from "../services/supabaseService";
@@ -16,6 +17,26 @@ export const useAuth = () => {
   });
 
   const cubidDataFetched = useRef(false); // To avoid repeated fetching
+
+  useEffect(() => {
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
+      queryClient.setQueryData(["auth-data"], session ?? null);
+
+      if (session) {
+        queryClient.invalidateQueries({ queryKey: ["user-data"] });
+      } else {
+        cubidDataFetched.current = false;
+        queryClient.removeQueries({ queryKey: ["user-data"] });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [queryClient]);
 
   // Fetch user and Cubid data from Supabase and handle 24-hour update logic
   const userQuery = useQuery({

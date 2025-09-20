@@ -1,76 +1,179 @@
-import React, { useEffect, useState } from "react";
-import { LuSend } from "react-icons/lu";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { createClient } from "@shared/lib/supabase/client";
-import { Hypodata } from "./types";
+import {
+  fetchContactsForOwner,
+  type ContactRecord,
+} from "@shared/api/services/supabaseService";
+import { Hypodata, contactRecordToHypodata } from "./types";
+
+type SortOrder = "alphabetical" | "recents";
 
 interface ContactsTabProps {
   onSend: (contact: Hypodata) => void;
+  onRequest?: (contact: Hypodata) => void;
+  initialContacts?: ContactRecord[];
+  onContactsResolved?: (contacts: ContactRecord[]) => void;
 }
 
-export function ContactsTab({ onSend }: ContactsTabProps) {
+const formatName = (contact: ContactRecord) =>
+  contact.full_name?.trim() || contact.username?.trim() || "Unknown";
+
+const getInitials = (contact: ContactRecord) => {
+  const name = formatName(contact);
+  const parts = name.split(" ");
+  if (parts.length === 1) return parts[0]?.[0]?.toUpperCase() ?? "?";
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+export function ContactsTab({
+  onSend,
+  onRequest,
+  initialContacts,
+  onContactsResolved,
+}: ContactsTabProps) {
   const { userData } = useAuth();
-  const [contacts, setContacts] = useState<Hypodata[]>([]);
+  const [contacts, setContacts] = useState<ContactRecord[]>(initialContacts ?? []);
   const [search, setSearch] = useState("");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("alphabetical");
 
   useEffect(() => {
-    const supabase = createClient();
-    async function fetchContacts() {
-      if (!userData?.cubidData?.id) return;
-      try {
-        const { data, error } = await supabase
-          .from("connections")
-          .select("*, connected_user_id(*)")
-          .eq("owner_user_id", userData.cubidData.id)
-          .neq("state", "rejected");
-        if (error) throw error;
-        const mapped = (data || []).map((c: any) => c.connected_user_id);
-        setContacts(mapped);
-      } catch (err) {
-        console.error("fetchContacts error", err);
-      }
-    }
-    fetchContacts();
-  }, [userData]);
+    if (!initialContacts) return;
+    setContacts(initialContacts);
+  }, [initialContacts]);
 
-  const filtered = contacts.filter((c) =>
-    (c.full_name ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    let isMounted = true;
+    const ownerId = userData?.cubidData?.id;
+    if (!ownerId) {
+      setContacts([]);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    fetchContactsForOwner(ownerId)
+      .then((records) => {
+        if (!isMounted) return;
+        setContacts(records);
+        onContactsResolved?.(records.map((record) => ({ ...record })));
+      })
+      .catch((err) => {
+        console.error("fetchContacts error", err);
+        if (isMounted) {
+          setContacts([]);
+        }
+        onContactsResolved?.([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userData?.cubidData?.id, onContactsResolved]);
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const base = contacts.filter((contact) => {
+      if (!query) return true;
+      const name = contact.full_name?.toLowerCase() ?? "";
+      const username = contact.username?.toLowerCase() ?? "";
+      return name.includes(query) || username.includes(query);
+    });
+
+    if (sortOrder === "alphabetical") {
+      return [...base].sort((a, b) => {
+        const nameA = formatName(a).toLowerCase();
+        const nameB = formatName(b).toLowerCase();
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+        return 0;
+      });
+    }
+
+    return [...base].sort((a, b) => {
+      const getTimestamp = (contact: ContactRecord) => {
+        const raw = contact.last_interaction;
+        const parsed = raw ? Date.parse(raw) : NaN;
+        return Number.isNaN(parsed) ? -Infinity : parsed;
+      };
+      return getTimestamp(b) - getTimestamp(a);
+    });
+  }, [contacts, search, sortOrder]);
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Contacts</h1>
-        <Button variant="outline" size="sm">Add Contact</Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={sortOrder === "alphabetical" ? "default" : "outline"}
+            onClick={() => setSortOrder("alphabetical")}
+          >
+            Alphabetical
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={sortOrder === "recents" ? "default" : "outline"}
+            onClick={() => setSortOrder("recents")}
+          >
+            Recents
+          </Button>
+        </div>
       </div>
       <Input
         placeholder="Search contacts..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {filtered.map((contact) => (
           <li
             key={contact.id}
-            className="flex items-center justify-between rounded-md border p-3"
+            className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card/40 p-3"
           >
-            <div className="flex flex-col">
-              <span className="font-medium">{contact.full_name ?? "Unknown"}</span>
-              {contact.wallet_address && (
-                <span className="text-sm text-muted-foreground">
-                  {contact.wallet_address.slice(0, 6)}...
-                  {contact.wallet_address.slice(-4)}
-                </span>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={contact.profile_image_url ?? undefined} alt={formatName(contact)} />
+                <AvatarFallback>{getInitials(contact)}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="font-medium">{formatName(contact)}</span>
+                {contact.username && (
+                  <span className="text-sm text-muted-foreground">@{contact.username}</span>
+                )}
+                {contact.wallet_address && (
+                  <span className="text-xs text-muted-foreground">
+                    {contact.wallet_address.slice(0, 6)}…
+                    {contact.wallet_address.slice(-4)}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => onSend(contactRecordToHypodata(contact))}
+                aria-label={`Send to ${formatName(contact)}`}
+              >
+                Send To
+              </Button>
+              {onRequest && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onRequest(contactRecordToHypodata(contact))}
+                  aria-label={`Request from ${formatName(contact)}`}
+                >
+                  Request From
+                </Button>
               )}
             </div>
-            <Button
-              size="sm"
-              onClick={() => onSend(contact)}
-            >
-              <LuSend className="mr-2 h-4 w-4" /> Send
-            </Button>
           </li>
         ))}
         {filtered.length === 0 && <p>No contacts found.</p>}

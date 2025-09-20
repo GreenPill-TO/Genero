@@ -7,11 +7,133 @@ export const fetchUserByContact = async (authMethod: "phone" | "email" | string,
   const supabase = createClient();
   const { data: user, error } = await supabase
     .from("users")
-    .select("cubid_id, has_completed_intro")
+    .select("id, cubid_id, has_completed_intro")
     .eq(authMethod === "phone" ? "phone" : "email", fullContact)
     .single();
 
   return { user, error };
+};
+
+const normaliseNumericId = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+export interface ContactRecord {
+  id: number;
+  full_name: string | null;
+  username: string | null;
+  profile_image_url: string | null;
+  wallet_address: string | null;
+  state: string | null;
+  last_interaction: string | null;
+}
+
+export const fetchContactsForOwner = async (ownerUserId: number | string | null | undefined): Promise<ContactRecord[]> => {
+  const ownerId = normaliseNumericId(ownerUserId);
+  if (ownerId === null) {
+    return [];
+  }
+
+  const supabase = createClient();
+  const { data: connectionRows, error } = await supabase
+    .from("connections")
+    .select("connected_user_id, state, modified_at, created_at")
+    .eq("owner_user_id", ownerId);
+
+  if (error) {
+    throw error;
+  }
+
+  const dedupedConnections: Array<{
+    id: number;
+    state: string | null;
+    lastInteraction: string | null;
+  }> = [];
+  const seen = new Set<number>();
+
+  for (const row of connectionRows ?? []) {
+    const id = normaliseNumericId(row.connected_user_id);
+    if (id === null || seen.has(id)) {
+      continue;
+    }
+    const rawState = typeof row.state === "string" ? row.state.trim() : null;
+    const state = rawState ? rawState.toLowerCase() : null;
+    if (state === "rejected") {
+      continue;
+    }
+    seen.add(id);
+    const timestamps = [row.modified_at, row.created_at].filter(
+      (value): value is string => typeof value === "string" && value.trim() !== ""
+    );
+    const lastInteraction = timestamps[0] ?? null;
+    dedupedConnections.push({ id, state, lastInteraction });
+  }
+
+  if (dedupedConnections.length === 0) {
+    return [];
+  }
+
+  const contactIds = Array.from(seen);
+
+  const { data: contactRows, error: contactError } = await supabase
+    .from("users")
+    .select("id, full_name, username, profile_image_url")
+    .in("id", contactIds);
+
+  if (contactError) {
+    throw contactError;
+  }
+
+  const { data: walletRows, error: walletError } = await supabase
+    .from("wallet_list")
+    .select("user_id, public_key")
+    .in("user_id", contactIds);
+
+  if (walletError) {
+    throw walletError;
+  }
+
+  const contactsById = new Map<number, any>();
+  for (const contact of contactRows ?? []) {
+    const normalised = normaliseNumericId(contact.id);
+    if (normalised !== null) {
+      contactsById.set(normalised, contact);
+    }
+  }
+
+  const walletsById = new Map<number, string>();
+  for (const wallet of walletRows ?? []) {
+    const userId = normaliseNumericId(wallet.user_id);
+    if (userId !== null && typeof wallet.public_key === "string" && wallet.public_key.trim() !== "") {
+      walletsById.set(userId, wallet.public_key);
+    }
+  }
+
+  const contacts: ContactRecord[] = [];
+  for (const connection of dedupedConnections) {
+    const user = contactsById.get(connection.id);
+    if (!user) continue;
+    contacts.push({
+      id: connection.id,
+      full_name: user.full_name ?? null,
+      username: user.username ?? null,
+      profile_image_url: user.profile_image_url ?? null,
+      wallet_address: walletsById.get(connection.id) ?? null,
+      state: connection.state ?? null,
+      last_interaction: connection.lastInteraction ?? null,
+    });
+  }
+
+  return contacts;
 };
 
 export const createNewUser = async (authMethod: "phone" | "email", fullContact: string, uuid: string) => {

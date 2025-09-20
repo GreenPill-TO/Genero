@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
@@ -10,23 +10,28 @@ import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
 import { Hypodata } from "./types";
 import { SendCard } from "./SendCard";
-import { ContactsTab } from "./ContactsTab";
 import { QrScanModal } from "@tcoin/wallet/components/modals";
-import { LuCamera, LuUsers } from "react-icons/lu";
+import type { ContactRecord } from "@shared/api/services/supabaseService";
 
 interface SendTabProps {
   recipient: Hypodata | null;
+  onRecipientChange?: (recipient: Hypodata | null) => void;
+  contacts?: ContactRecord[];
 }
 
-export function SendTab({ recipient }: SendTabProps) {
+export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps) {
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables();
+  const safeExchangeRate =
+    typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
+      ? exchangeRate
+      : 0;
+  const sanitizeNumeric = (value: string) => value.replace(/[^\d.]/g, "");
   const [toSendData, setToSendData] = useState<Hypodata | null>(recipient);
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
   const [mode, setMode] = useState<"manual" | "qr" | "link">("manual");
-  const [showContacts, setShowContacts] = useState(false);
   const [payLink, setPayLink] = useState("");
   const { openModal, closeModal } = useModal();
 
@@ -43,38 +48,100 @@ export function SendTab({ recipient }: SendTabProps) {
     setToSendData(recipient);
   }, [recipient]);
 
+  const updateRecipient = useCallback(
+    (value: Hypodata | null | undefined) => {
+      const normalised = value ?? null;
+      setToSendData(normalised);
+      onRecipientChange?.(normalised);
+    },
+    [onRecipientChange]
+  );
+
   const handleUseMax = () => {
-    setTcoinAmount(balance.toString());
-    setCadAmount((balance * exchangeRate).toString());
+    const cadNumeric = safeExchangeRate === 0 ? 0 : balance * safeExchangeRate;
+    setTcoinAmount(balance.toFixed(2));
+    setCadAmount(cadNumeric.toFixed(2));
   };
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^\d.]/g, "");
+    const raw = sanitizeNumeric(e.target.value);
     setTcoinAmount(raw);
-    const num = parseFloat(raw) || 0;
-    setCadAmount((num * exchangeRate).toString());
+    if (raw === "") {
+      setCadAmount("");
+      return;
+    }
+    const num = Number.parseFloat(raw);
+    if (!Number.isFinite(num)) {
+      setCadAmount("");
+      return;
+    }
+    if (safeExchangeRate === 0) {
+      setCadAmount("");
+      return;
+    }
+    setCadAmount((num * safeExchangeRate).toString());
   };
 
   const handleCadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^\d.]/g, "");
+    const raw = sanitizeNumeric(e.target.value);
     setCadAmount(raw);
-    const num = parseFloat(raw) || 0;
-    setTcoinAmount((num / exchangeRate).toString());
+    if (raw === "") {
+      setTcoinAmount("");
+      return;
+    }
+    const num = Number.parseFloat(raw);
+    if (!Number.isFinite(num) || safeExchangeRate === 0) {
+      setTcoinAmount("");
+      return;
+    }
+    setTcoinAmount((num / safeExchangeRate).toString());
   };
 
-  const reset = () => {
-    setToSendData(null);
+  const handleTcoinBlur = () => {
+    if (tcoinAmount.trim() === "") {
+      setCadAmount("");
+      return;
+    }
+    const numeric = Number.parseFloat(tcoinAmount);
+    if (!Number.isFinite(numeric)) {
+      setTcoinAmount("");
+      setCadAmount("");
+      return;
+    }
+    const cadNumeric = safeExchangeRate === 0 ? 0 : numeric * safeExchangeRate;
+    setTcoinAmount(numeric.toFixed(2));
+    setCadAmount(cadNumeric.toFixed(2));
+  };
+
+  const handleCadBlur = () => {
+    if (cadAmount.trim() === "") {
+      setTcoinAmount("");
+      return;
+    }
+    const numeric = Number.parseFloat(cadAmount);
+    if (!Number.isFinite(numeric)) {
+      setCadAmount("");
+      setTcoinAmount("");
+      return;
+    }
+    const tcoinNumeric = safeExchangeRate === 0 ? 0 : numeric / safeExchangeRate;
+    setCadAmount(numeric.toFixed(2));
+    setTcoinAmount(tcoinNumeric.toFixed(2));
+  };
+
+  const reset = useCallback(() => {
+    updateRecipient(null);
     setTcoinAmount("");
     setCadAmount("");
     setPayLink("");
-  };
+  }, [updateRecipient]);
 
-  const openScanner = () => {
+  const openScanner = useCallback(() => {
     openModal({
       content: (
         <QrScanModal
           closeModal={closeModal}
-          setToSendData={(d: Hypodata) => setToSendData(d)}
+          setToSendData={(d: Hypodata) => updateRecipient(d)}
           setTcoin={setTcoinAmount}
           setCad={setCadAmount}
         />
@@ -82,7 +149,7 @@ export function SendTab({ recipient }: SendTabProps) {
       title: "Scan QR",
       description: "Use your device's camera to scan a code.",
     });
-  };
+  }, [closeModal, openModal, updateRecipient]);
 
   const extractAndDecodeBase64 = (url: string) => {
     try {
@@ -111,11 +178,17 @@ export function SendTab({ recipient }: SendTabProps) {
         .select("*")
         .match({ user_identifier: nano_id });
       if (error) throw error;
-      setToSendData(userDataFromSupabaseTable?.[0]);
+      updateRecipient(userDataFromSupabaseTable?.[0] ?? null);
       if (qrTcoinAmount) {
-        setTcoinAmount(qrTcoinAmount);
-        const num = parseFloat(qrTcoinAmount) || 0;
-        setCadAmount((num * exchangeRate).toString());
+        const sanitized = sanitizeNumeric(String(qrTcoinAmount));
+        if (sanitized) {
+          const num = Number.parseFloat(sanitized);
+          if (Number.isFinite(num)) {
+            const cadNumeric = safeExchangeRate === 0 ? 0 : num * safeExchangeRate;
+            setTcoinAmount(num.toFixed(2));
+            setCadAmount(cadNumeric.toFixed(2));
+          }
+        }
       }
     } catch (err) {
       console.error("handlePayLink error", err);
@@ -124,19 +197,19 @@ export function SendTab({ recipient }: SendTabProps) {
   };
 
   useEffect(() => {
+    if (mode === "manual") {
+      return;
+    }
+
     reset();
-    setShowContacts(false);
     if (mode === "qr") {
       openScanner();
       setMode("manual");
     }
-  }, [mode]);
-
-  const amountEntered =
-    (parseFloat(tcoinAmount) || 0) > 0 || (parseFloat(cadAmount) || 0) > 0;
+  }, [mode, openScanner, reset]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:px-[25vw]">
       <div className="flex gap-2">
         <Button
           variant={mode === "manual" ? "default" : "outline"}
@@ -148,7 +221,7 @@ export function SendTab({ recipient }: SendTabProps) {
           variant={mode === "qr" ? "default" : "outline"}
           onClick={() => setMode("qr")}
         >
-          QR
+          Scan QR Code
         </Button>
         <Button
           variant={mode === "link" ? "default" : "outline"}
@@ -162,42 +235,20 @@ export function SendTab({ recipient }: SendTabProps) {
         <>
           <SendCard
             toSendData={toSendData}
-            setToSendData={setToSendData}
+            setToSendData={updateRecipient}
             tcoinAmount={tcoinAmount}
             cadAmount={cadAmount}
             handleTcoinChange={handleTcoinChange}
             handleCadChange={handleCadChange}
+            handleTcoinBlur={handleTcoinBlur}
+            handleCadBlur={handleCadBlur}
             explorerLink={explorerLink}
             setExplorerLink={setExplorerLink}
-            setTcoin={setTcoinAmount}
-            setCad={setCadAmount}
             sendMoney={sendMoney}
             userBalance={balance}
             onUseMax={handleUseMax}
+            contacts={contacts}
           />
-          {showContacts && (
-            <>
-              <Button className="w-full mb-2" onClick={openScanner}>
-                <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
-              </Button>
-              <ContactsTab
-                onSend={(contact) => {
-                  setToSendData(contact);
-                  setShowContacts(false);
-                }}
-              />
-            </>
-          )}
-          {!showContacts && !toSendData && amountEntered && (
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={openScanner}>
-                <LuCamera className="mr-2 h-4 w-4" /> Scan QR Code
-              </Button>
-              <Button className="flex-1" onClick={() => setShowContacts(true)}>
-                <LuUsers className="mr-2 h-4 w-4" /> Select Contact
-              </Button>
-            </div>
-          )}
         </>
       )}
 
@@ -218,17 +269,19 @@ export function SendTab({ recipient }: SendTabProps) {
             <SendCard
               locked
               toSendData={toSendData}
-              setToSendData={setToSendData}
+              setToSendData={updateRecipient}
               tcoinAmount={tcoinAmount}
               cadAmount={cadAmount}
               handleTcoinChange={handleTcoinChange}
               handleCadChange={handleCadChange}
+              handleTcoinBlur={handleTcoinBlur}
+              handleCadBlur={handleCadBlur}
               explorerLink={explorerLink}
               setExplorerLink={setExplorerLink}
-              setTcoin={setTcoinAmount}
-              setCad={setCadAmount}
               sendMoney={sendMoney}
               userBalance={balance}
+              onUseMax={handleUseMax}
+              contacts={contacts}
             />
           )}
         </>

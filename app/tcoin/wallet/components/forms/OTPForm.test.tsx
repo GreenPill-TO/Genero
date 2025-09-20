@@ -88,6 +88,6 @@ describe("OTPForm", () => {
     inputs.forEach((input, idx) => {
       fireEvent.change(input, { target: { value: String(idx) } });
     });
-    expect(onSubmit).toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });

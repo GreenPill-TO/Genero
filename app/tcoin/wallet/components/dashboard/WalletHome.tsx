@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useModal } from "@shared/contexts/ModalContext";
@@ -7,28 +7,15 @@ import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { createClient } from "@shared/lib/supabase/client";
 import { ContributionsCard } from "./ContributionsCard";
-import { ReceiveCard } from "./ReceiveCard";
 import { SendCard } from "./SendCard";
 import { AccountCard } from "./AccountCard";
 import { OtherCard } from "./OtherCard";
 import { Hypodata } from "./types";
 
-export function WalletHome({
-  qrBgColor,
-  qrFgColor,
-  qrWrapperClassName,
-  tokenLabel = "Tcoin",
-}: {
-  qrBgColor?: string;
-  qrFgColor?: string;
-  qrWrapperClassName?: string;
-  tokenLabel?: string;
-}) {
+export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
 
-  const [qrTcoinAmount, setQrTcoinAmount] = useState("");
-  const [qrCadAmount, setQrCadAmount] = useState("");
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [selectedCharity, setSelectedCharity] = useState("");
@@ -47,24 +34,80 @@ export function WalletHome({
   });
 
   const user_id = userData?.cubidData.id;
-  const nano_id = userData?.cubidData.user_identifier;
-  const [qrCodeData, setQrCodeData] = useState(
-    user_id ? JSON.stringify({ nano_id, timestamp: Date.now() }) : ""
-  );
 
-  useEffect(() => {
-    if (!user_id) return;
-    setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
-    const interval = setInterval(() => {
-      setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [user_id, tcoinAmount, nano_id]);
+  const sanitizeNumeric = useCallback((value: string) => value.replace(/[^\d.]/g, ""), []);
+  const safeExchangeRate =
+    typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
+      ? exchangeRate
+      : 0;
 
-  function extractDecimalFromString(value: string) {
-    const match = value.match(/[\d.]+/);
-    return match ? parseFloat(match[0]) : 0;
-  }
+  const convertTcoinToCad = useCallback((value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num) || safeExchangeRate === 0) return "";
+    return (num * safeExchangeRate).toString();
+  }, [safeExchangeRate]);
+
+  const convertCadToTcoin = useCallback((value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num) || safeExchangeRate === 0) return "";
+    return (num / safeExchangeRate).toString();
+  }, [safeExchangeRate]);
+
+  const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = sanitizeNumeric(e.target.value);
+    setTcoinAmount(rawValue);
+    if (rawValue === "") {
+      setCadAmount("");
+      return;
+    }
+    const cadRaw = convertTcoinToCad(rawValue);
+    setCadAmount(cadRaw);
+  };
+
+  const handleCadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = sanitizeNumeric(e.target.value);
+    setCadAmount(rawValue);
+    if (rawValue === "") {
+      setTcoinAmount("");
+      return;
+    }
+    const tcoinRaw = convertCadToTcoin(rawValue);
+    setTcoinAmount(tcoinRaw);
+  };
+
+  const handleTcoinBlur = () => {
+    if (tcoinAmount.trim() === "") {
+      setCadAmount("");
+      return;
+    }
+    const numericValue = parseFloat(tcoinAmount);
+    if (isNaN(numericValue)) {
+      setTcoinAmount("");
+      setCadAmount("");
+      return;
+    }
+    const normalizedTcoin = numericValue.toFixed(2);
+    const cadNumeric = safeExchangeRate === 0 ? 0 : numericValue * safeExchangeRate;
+    setTcoinAmount(normalizedTcoin);
+    setCadAmount(cadNumeric.toFixed(2));
+  };
+
+  const handleCadBlur = () => {
+    if (cadAmount.trim() === "") {
+      setTcoinAmount("");
+      return;
+    }
+    const numericValue = parseFloat(cadAmount);
+    if (isNaN(numericValue)) {
+      setCadAmount("");
+      setTcoinAmount("");
+      return;
+    }
+    const normalizedCad = numericValue.toFixed(2);
+    const tcoinNumeric = safeExchangeRate === 0 ? 0 : numericValue / safeExchangeRate;
+    setCadAmount(normalizedCad);
+    setTcoinAmount(tcoinNumeric.toFixed(2));
+  };
 
   function extractAndDecodeBase64(url: string) {
     try {
@@ -100,17 +143,22 @@ export function WalletHome({
 
         setToSendData(userDataFromSupabaseTable?.[0]);
         if (rest?.qrTcoinAmount) {
-          setTcoinAmount(rest.qrTcoinAmount);
-          setCadAmount(
-            extractDecimalFromString(rest.qrTcoinAmount) * exchangeRate + ""
-          );
+          const sanitized = sanitizeNumeric(String(rest.qrTcoinAmount));
+          if (sanitized) {
+            const numeric = Number.parseFloat(sanitized);
+            if (Number.isFinite(numeric)) {
+              setTcoinAmount(numeric.toFixed(2));
+              const cadNumeric = safeExchangeRate === 0 ? 0 : numeric * safeExchangeRate;
+              setCadAmount(cadNumeric.toFixed(2));
+            }
+          }
         }
         toast.success("Scanned User Successfully");
       } catch (err) {
         console.error("handleScan error", err);
       }
     },
-    [exchangeRate, userData]
+    [safeExchangeRate, sanitizeNumeric, userData]
   );
 
   useEffect(() => {
@@ -120,74 +168,6 @@ export function WalletHome({
       handleScan(url.toString());
     }
   }, [handleScan]);
-
-
-  const formatNumber = (value: string, isCad: boolean) => {
-    const num = parseFloat(value);
-    if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
-    const formatted = num.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return isCad ? `$${formatted}` : `${formatted} TCOIN`;
-  };
-
-  const debounceDelay = 1000;
-  const tcoinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const qrTcoinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const qrCadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (tcoinTimeoutRef.current) clearTimeout(tcoinTimeoutRef.current);
-    const rawValue = e.target.value.replace(/[^\d.]/g, "");
-    setTcoinAmount(rawValue);
-    const num = parseFloat(rawValue) || 0;
-    const cadRaw = (num * exchangeRate).toString();
-    tcoinTimeoutRef.current = setTimeout(() => {
-      setTcoinAmount(formatNumber(rawValue, false));
-      setCadAmount(formatNumber(cadRaw, true));
-    }, debounceDelay);
-  };
-
-  const handleCadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (cadTimeoutRef.current) clearTimeout(cadTimeoutRef.current);
-    const rawValue = e.target.value.replace(/[^\d.]/g, "");
-    setCadAmount(rawValue);
-    const num = parseFloat(rawValue) || 0;
-    const tcoinRaw = (num / exchangeRate).toString();
-    cadTimeoutRef.current = setTimeout(() => {
-      setCadAmount(formatNumber(rawValue, true));
-      setTcoinAmount(formatNumber(tcoinRaw, false));
-    }, debounceDelay);
-  };
-
-  const handleQrTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/[^\d.]/g, "");
-    setQrTcoinAmount(rawValue);
-    const num = parseFloat(rawValue) || 0;
-    setQrCadAmount((num * exchangeRate).toString());
-  };
-
-  const handleQrCadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/[^\d.]/g, "");
-    setQrCadAmount(rawValue);
-    const num = parseFloat(rawValue) || 0;
-    setQrTcoinAmount((num / exchangeRate).toString());
-  };
-
-  const handleQrTcoinBlur = () => {
-    const num = parseFloat(qrTcoinAmount) || 0;
-    setQrTcoinAmount(formatNumber(qrTcoinAmount, false));
-    setQrCadAmount(formatNumber((num * exchangeRate).toString(), true));
-  };
-
-  const handleQrCadBlur = () => {
-    const num = parseFloat(qrCadAmount) || 0;
-    setQrCadAmount(formatNumber(qrCadAmount, true));
-    setQrTcoinAmount(formatNumber((num / exchangeRate).toString(), false));
-  };
-
   const [toSendData, setToSendData] = useState<Hypodata | null>(null);
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
 
@@ -199,15 +179,11 @@ export function WalletHome({
   const { balance: rawBalance } = useTokenBalance(senderWallet);
   const userBalance = parseFloat(rawBalance) || 0;
 
-  const dynamicQrData = qrTcoinAmount
-    ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount })
-    : qrCodeData;
-
-  function base64Encode(str: string) {
-    return btoa(unescape(encodeURIComponent(str)));
-  }
-
-  const qrData = `https://tcoin.me?pay=${base64Encode(dynamicQrData)}`;
+  const handleUseMax = () => {
+    const cadNumeric = safeExchangeRate === 0 ? 0 : userBalance * safeExchangeRate;
+    setTcoinAmount(userBalance.toFixed(2));
+    setCadAmount(cadNumeric.toFixed(2));
+  };
 
   return (
     <div className="container mx-auto p-4 space-y-8 pb-24">
@@ -219,22 +195,6 @@ export function WalletHome({
           openModal={openModal}
           closeModal={closeModal}
         />
-        <ReceiveCard
-          qrCodeData={qrData}
-          qrTcoinAmount={qrTcoinAmount}
-          qrCadAmount={qrCadAmount}
-          handleQrTcoinChange={handleQrTcoinChange}
-          handleQrCadChange={handleQrCadChange}
-          handleQrCadBlur={handleQrCadBlur}
-          handleQrTcoinBlur={handleQrTcoinBlur}
-          openModal={openModal}
-          closeModal={closeModal}
-          senderWallet={senderWallet}
-          qrBgColor={qrBgColor}
-          qrFgColor={qrFgColor}
-          qrWrapperClassName={qrWrapperClassName}
-          tokenLabel={tokenLabel}
-        />
         <SendCard
           toSendData={toSendData}
           setToSendData={setToSendData}
@@ -242,12 +202,15 @@ export function WalletHome({
           cadAmount={cadAmount}
           handleTcoinChange={handleTcoinChange}
           handleCadChange={handleCadChange}
+          handleTcoinBlur={handleTcoinBlur}
+          handleCadBlur={handleCadBlur}
           sendMoney={sendMoney}
           setTcoin={setTcoinAmount}
           setCad={setCadAmount}
           explorerLink={explorerLink}
           setExplorerLink={setExplorerLink}
           userBalance={userBalance}
+          onUseMax={handleUseMax}
         />
         <AccountCard
           balance={userBalance}
@@ -269,20 +232,6 @@ export function WalletHome({
           openModal={openModal}
           closeModal={closeModal}
         />
-        <ReceiveCard
-          qrCodeData={qrData}
-          qrTcoinAmount={qrTcoinAmount}
-          qrCadAmount={qrCadAmount}
-          handleQrTcoinChange={handleQrTcoinChange}
-          handleQrCadChange={handleQrCadChange}
-          openModal={openModal}
-          closeModal={closeModal}
-          senderWallet={senderWallet}
-          qrBgColor={qrBgColor}
-          qrFgColor={qrFgColor}
-          qrWrapperClassName={qrWrapperClassName}
-          tokenLabel={tokenLabel}
-        />
         <SendCard
           toSendData={toSendData}
           setToSendData={setToSendData}
@@ -290,12 +239,15 @@ export function WalletHome({
           cadAmount={cadAmount}
           handleTcoinChange={handleTcoinChange}
           handleCadChange={handleCadChange}
+          handleTcoinBlur={handleTcoinBlur}
+          handleCadBlur={handleCadBlur}
           sendMoney={sendMoney}
           setTcoin={setTcoinAmount}
           setCad={setCadAmount}
           explorerLink={explorerLink}
           setExplorerLink={setExplorerLink}
           userBalance={userBalance}
+          onUseMax={handleUseMax}
         />
         <AccountCard
           balance={userBalance}

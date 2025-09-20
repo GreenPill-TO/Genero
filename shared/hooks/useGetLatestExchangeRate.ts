@@ -1,28 +1,66 @@
-import { useState, useEffect } from 'react';
-import { createClient } from '@shared/lib/supabase/client';
+import { useEffect, useState } from "react";
+import { createClient } from "@shared/lib/supabase/client";
 
-export function useControlVariables() {
-    const [data, setData] = useState<any>(null);
-    const [error, setError] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+interface ControlVariable {
+  value?: number;
+}
 
-    useEffect(() => {
-        async function fetchControlVariables() {
-            // Replace "control variables" with your actual table name if needed.
-            const supabase = createClient();
-            const { data: controlData, error } = await supabase
-                .from('control_variables')
-                .select('*').match({ variable: 'exchange_rate' })
-            if (error) {
-                setError(error);
-            } else {
-                setData(controlData?.[0]);
-            }
-            setLoading(false);
+interface UseControlVariablesOptions {
+  isBrowser?: boolean;
+}
+
+export function useControlVariables(options?: UseControlVariablesOptions) {
+  const [data, setData] = useState<ControlVariable | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [loading, setLoading] = useState(true);
+  const isBrowser = options?.isBrowser ?? typeof window !== "undefined";
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function fetchControlVariables() {
+      if (!isBrowser) {
+        if (isActive) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const supabase = createClient();
+        const { data: controlData, error } = await supabase
+          .from("control_variables")
+          .select("*")
+          .match({ variable: "exchange_rate" });
+
+        if (!isActive) {
+          return;
         }
 
-        fetchControlVariables();
-    }, []);
+        if (error) {
+          setError(error);
+          return;
+        }
 
-    return { exchangeRate: data?.value || 3.35, error, loading };
+        setData(controlData?.[0] ?? null);
+      } catch (caughtError) {
+        if (!isActive) {
+          return;
+        }
+        setError(caughtError);
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchControlVariables();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isBrowser]);
+
+  return { exchangeRate: data?.value ?? 3.35, error, loading };
 }
