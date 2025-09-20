@@ -49,7 +49,35 @@ export const transfer = async ({
     return data ?? null;
 };
 
-export const off_ramp_req = async ({ p_current_token_balance, p_etransfer_target, p_exchange_rate = 3.3, p_is_store, p_tokens_burned, p_user_id, p_wallet_account }: { p_current_token_balance: string; p_etransfer_target: string; p_exchange_rate?: number; p_is_store: number; p_tokens_burned: number; p_user_id: number; p_wallet_account: string }) => {
+type RampRequestWalletParams = {
+    p_wallet_account_from?: string | null;
+    p_wallet_account_to?: string | null;
+    /**
+     * @deprecated Use p_wallet_account_from or p_wallet_account_to instead.
+     */
+    p_wallet_account?: string | null;
+};
+
+type RampRequestBase = {
+    p_current_token_balance: string;
+    p_etransfer_target: string;
+    p_exchange_rate?: number;
+    p_is_store: number;
+    p_tokens_burned: number;
+    p_user_id: number;
+};
+
+export const off_ramp_req = async ({
+    p_current_token_balance,
+    p_etransfer_target,
+    p_exchange_rate = 3.3,
+    p_is_store,
+    p_tokens_burned,
+    p_user_id,
+    p_wallet_account_from,
+    p_wallet_account_to,
+    p_wallet_account,
+}: RampRequestBase & RampRequestWalletParams) => {
     const supabase = createClient();
     await supabase.rpc("create_off_ramp_request", {
         p_current_token_balance,
@@ -58,11 +86,22 @@ export const off_ramp_req = async ({ p_current_token_balance, p_etransfer_target
         p_is_store,
         p_tokens_burned,
         p_user_id,
-        p_wallet_account,
+        p_wallet_account_from: p_wallet_account_from ?? p_wallet_account ?? null,
+        p_wallet_account_to: p_wallet_account_to ?? null,
     });
 };
 
-export const on_ramp_req = async ({ p_current_token_balance, p_etransfer_target, p_exchange_rate = 3.3, p_is_store, p_tokens_burned, p_user_id, p_wallet_account }: { p_current_token_balance: string; p_etransfer_target: string; p_exchange_rate?: number; p_is_store: number; p_tokens_burned: number; p_user_id: number; p_wallet_account: string }) => {
+export const on_ramp_req = async ({
+    p_current_token_balance,
+    p_etransfer_target,
+    p_exchange_rate = 3.3,
+    p_is_store,
+    p_tokens_burned,
+    p_user_id,
+    p_wallet_account_from,
+    p_wallet_account_to,
+    p_wallet_account,
+}: RampRequestBase & RampRequestWalletParams) => {
     const supabase = createClient();
     await supabase.rpc("create_on_ramp_request", {
         p_current_token_balance,
@@ -71,7 +110,8 @@ export const on_ramp_req = async ({ p_current_token_balance, p_etransfer_target,
         p_is_store,
         p_tokens_burned,
         p_user_id,
-        p_wallet_account,
+        p_wallet_account_from: p_wallet_account_from ?? null,
+        p_wallet_account_to: p_wallet_account_to ?? p_wallet_account ?? null,
     });
 };
 
