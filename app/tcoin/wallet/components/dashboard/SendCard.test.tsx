@@ -59,7 +59,7 @@ describe("SendCard", () => {
   it("disables send button when no recipient", () => {
     renderSendCard();
     const button = screen.getByRole("button", { name: "Send..." }) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("shows available balance and triggers onUseMax", () => {
@@ -106,6 +106,84 @@ describe("SendCard", () => {
     fireEvent.keyDown(amountInput, { key: "Enter", code: "Enter" });
 
     expect(document.activeElement).toBe(recipientInput);
+  });
+
+  it("focuses the send button when tabbing from the amount field with a recipient", () => {
+    const sendButtonProps = {
+      toSendData: { id: 2, full_name: "Recipient" } as any,
+      tcoinAmount: "0.00",
+    };
+    renderSendCard(sendButtonProps);
+    const amountInput = screen.getAllByLabelText("Amount in TCOIN")[0] as HTMLInputElement;
+    const sendButton = screen.getByRole("button", { name: "Send..." }) as HTMLButtonElement;
+
+    amountInput.focus();
+    fireEvent.keyDown(amountInput, { key: "Tab" });
+
+    expect(document.activeElement).toBe(sendButton);
+  });
+
+  it("focuses the send button when pressing enter from the amount field with a recipient", () => {
+    renderSendCard({
+      toSendData: { id: 3, full_name: "Recipient" } as any,
+      tcoinAmount: "0.00",
+    });
+
+    const amountInput = screen.getAllByLabelText("Amount in TCOIN")[0] as HTMLInputElement;
+    const sendButton = screen.getByRole("button", { name: "Send..." }) as HTMLButtonElement;
+
+    amountInput.focus();
+    fireEvent.keyDown(amountInput, { key: "Enter", code: "Enter" });
+
+    expect(document.activeElement).toBe(sendButton);
+  });
+
+  it("returns focus to the amount field when a recipient is selected without an amount", () => {
+    vi.useFakeTimers();
+    const baseProps = createProps();
+
+    const { rerender } = render(<SendCard {...(baseProps as any)} />);
+
+    vi.runAllTimers();
+
+    rerender(
+      <SendCard
+        {...(baseProps as any)}
+        toSendData={{ id: 4, full_name: "Recipient" } as any}
+        tcoinAmount="0"
+        cadAmount=""
+      />
+    );
+
+    vi.runAllTimers();
+
+    const amountInput = screen.getAllByLabelText("Amount in TCOIN")[0] as HTMLInputElement;
+
+    expect(document.activeElement).toBe(amountInput);
+  });
+
+  it("focuses the send button after selecting a recipient when an amount exists", () => {
+    vi.useFakeTimers();
+    const baseProps = createProps();
+
+    const { rerender } = render(<SendCard {...(baseProps as any)} />);
+
+    vi.runAllTimers();
+
+    rerender(
+      <SendCard
+        {...(baseProps as any)}
+        toSendData={{ id: 5, full_name: "Recipient" } as any}
+        tcoinAmount="10"
+        cadAmount=""
+      />
+    );
+
+    vi.runAllTimers();
+
+    const sendButton = screen.getByRole("button", { name: "Send..." }) as HTMLButtonElement;
+
+    expect(document.activeElement).toBe(sendButton);
   });
 
   it("shows contact suggestions when typing in the recipient field", () => {
@@ -178,7 +256,9 @@ describe("SendCard", () => {
     });
 
     const sendButtons = screen.getAllByRole("button", { name: "Send..." }) as HTMLButtonElement[];
-    expect(sendButtons.some((btn) => btn.disabled === false)).toBe(true);
+    expect(
+      sendButtons.some((btn) => btn.getAttribute("aria-disabled") === "false")
+    ).toBe(true);
   });
 });
 

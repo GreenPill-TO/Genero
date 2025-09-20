@@ -208,63 +208,70 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     }
   }, [mode, openScanner, reset]);
 
+  const modeActions = (
+    <>
+      <Button
+        variant={mode === "manual" ? "default" : "outline"}
+        onClick={() => setMode("manual")}
+      >
+        Manual
+      </Button>
+      <Button
+        variant={mode === "qr" ? "default" : "outline"}
+        onClick={() => setMode("qr")}
+      >
+        Scan QR Code
+      </Button>
+      <Button
+        variant={mode === "link" ? "default" : "outline"}
+        onClick={() => setMode("link")}
+      >
+        Pay Link
+      </Button>
+    </>
+  );
+
   return (
     <div className="space-y-4 lg:px-[25vw]">
-      <div className="flex gap-2">
-        <Button
-          variant={mode === "manual" ? "default" : "outline"}
-          onClick={() => setMode("manual")}
-        >
-          Manual
-        </Button>
-        <Button
-          variant={mode === "qr" ? "default" : "outline"}
-          onClick={() => setMode("qr")}
-        >
-          Scan QR Code
-        </Button>
-        <Button
-          variant={mode === "link" ? "default" : "outline"}
-          onClick={() => setMode("link")}
-        >
-          Pay Link
-        </Button>
-      </div>
-
-      {mode === "manual" && (
-        <>
-          <SendCard
-            toSendData={toSendData}
-            setToSendData={updateRecipient}
-            tcoinAmount={tcoinAmount}
-            cadAmount={cadAmount}
-            handleTcoinChange={handleTcoinChange}
-            handleCadChange={handleCadChange}
-            handleTcoinBlur={handleTcoinBlur}
-            handleCadBlur={handleCadBlur}
-            explorerLink={explorerLink}
-            setExplorerLink={setExplorerLink}
-            sendMoney={sendMoney}
-            userBalance={balance}
-            onUseMax={handleUseMax}
-            contacts={contacts}
-          />
-        </>
+      {mode !== "link" && (
+        <SendCard
+          toSendData={toSendData}
+          setToSendData={updateRecipient}
+          tcoinAmount={tcoinAmount}
+          cadAmount={cadAmount}
+          handleTcoinChange={handleTcoinChange}
+          handleCadChange={handleCadChange}
+          handleTcoinBlur={handleTcoinBlur}
+          handleCadBlur={handleCadBlur}
+          explorerLink={explorerLink}
+          setExplorerLink={setExplorerLink}
+          sendMoney={sendMoney}
+          userBalance={balance}
+          onUseMax={handleUseMax}
+          contacts={contacts}
+          amountHeaderActions={modeActions}
+        />
       )}
 
       {mode === "link" && (
         <>
           {!toSendData ? (
-            <div className="space-y-2">
-              <Input
-                placeholder="Paste pay link"
-                value={payLink}
-                onChange={(e) => setPayLink(e.target.value)}
-              />
-              <Button className="w-full" onClick={handlePayLink}>
-                Load Link
-              </Button>
-            </div>
+            <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">Amount</h2>
+                {modeActions}
+              </div>
+              <div className="mt-4 space-y-3">
+                <Input
+                  placeholder="Paste pay link"
+                  value={payLink}
+                  onChange={(e) => setPayLink(e.target.value)}
+                />
+                <Button className="w-full" onClick={handlePayLink}>
+                  Load Link
+                </Button>
+              </div>
+            </section>
           ) : (
             <SendCard
               locked
@@ -282,6 +289,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
               userBalance={balance}
               onUseMax={handleUseMax}
               contacts={contacts}
+              amountHeaderActions={modeActions}
             />
           )}
         </>

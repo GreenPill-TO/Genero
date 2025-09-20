@@ -86,6 +86,7 @@ interface SendCardProps {
   onUseMax: () => void;
   locked?: boolean;
   contacts?: ContactRecord[];
+  amountHeaderActions?: React.ReactNode;
 }
 
 export function SendCard({
@@ -104,6 +105,7 @@ export function SendCard({
   onUseMax,
   locked = false,
   contacts,
+  amountHeaderActions,
 }: SendCardProps) {
   const [connections, setConnections] = useState<any>(null);
   const { userData } = useAuth();
@@ -113,7 +115,17 @@ export function SendCard({
   const [isCadFocused, setIsCadFocused] = useState(false);
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const recipientInputRef = useRef<HTMLInputElement | null>(null);
+  const sendButtonRef = useRef<HTMLButtonElement | null>(null);
   const [recipientQuery, setRecipientQuery] = useState("");
+  const previousRecipientIdRef = useRef<number | null>(null);
+  const hasAmountForAdvance = useMemo(() => {
+    const parsedTcoin = Number.parseFloat(tcoinAmount);
+    const parsedCad = Number.parseFloat(cadAmount);
+    return (
+      (Number.isFinite(parsedTcoin) && parsedTcoin > 0) ||
+      (Number.isFinite(parsedCad) && parsedCad > 0)
+    );
+  }, [cadAmount, tcoinAmount]);
 
   useEffect(() => {
     if (!toSendData?.id || !userData?.cubidData?.id) return;
@@ -143,10 +155,27 @@ export function SendCard({
   }, []);
 
   useEffect(() => {
-    if (!toSendData) return;
-    const timer = setTimeout(() => amountInputRef.current?.focus(), 0);
+    if (!toSendData) {
+      previousRecipientIdRef.current = null;
+      return;
+    }
+
+    if (previousRecipientIdRef.current === toSendData.id) {
+      return;
+    }
+
+    previousRecipientIdRef.current = toSendData.id;
+
+    const timer = setTimeout(() => {
+      if (hasAmountForAdvance) {
+        sendButtonRef.current?.focus();
+      } else {
+        amountInputRef.current?.focus();
+      }
+    }, 0);
+
     return () => clearTimeout(timer);
-  }, [toSendData]);
+  }, [hasAmountForAdvance, toSendData]);
 
   const tcoinValue = Number.parseFloat(tcoinAmount);
   const cadValue = Number.parseFloat(cadAmount);
@@ -185,7 +214,6 @@ export function SendCard({
   const handleContactSelection = (contact: Hypodata) => {
     setToSendData(contact);
     setRecipientQuery("");
-    setTimeout(() => amountInputRef.current?.focus(), 0);
   };
 
   const handleContactRecordSelection = (contact: ContactRecord) => {
@@ -233,18 +261,26 @@ export function SendCard({
   }, [contacts, trimmedRecipientQuery]);
 
   const focusRecipientField = () => {
-    if (!toSendData) {
-      recipientInputRef.current?.focus();
-    }
+    recipientInputRef.current?.focus();
   };
 
-  const shouldFocusRecipient = () => {
-    const parsedTcoin = Number.parseFloat(tcoinAmount);
-    const parsedCad = Number.parseFloat(cadAmount);
-    return (
-      (Number.isFinite(parsedTcoin) && parsedTcoin > 0) ||
-      (Number.isFinite(parsedCad) && parsedCad > 0)
-    );
+  const focusSendButton = () => {
+    sendButtonRef.current?.focus();
+  };
+
+  const handleAmountAdvance = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" || (event.key === "Tab" && !event.shiftKey)) {
+      if (toSendData) {
+        event.preventDefault();
+        focusSendButton();
+        return;
+      }
+
+      if (hasAmountForAdvance) {
+        event.preventDefault();
+        focusRecipientField();
+      }
+    }
   };
 
   return (
@@ -252,8 +288,13 @@ export function SendCard({
       <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Amount</h2>
+          {amountHeaderActions && (
+            <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+              {amountHeaderActions}
+            </div>
+          )}
         </div>
-        <div className="relative mx-auto mt-4 flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
+        <div className="relative mx-auto mt-4 flex w-full flex-col items-center gap-4 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
           <div className="w-full text-center">
             {isCadInput ? (
               <input
@@ -267,12 +308,7 @@ export function SendCard({
                   setIsCadFocused(false);
                   handleCadBlur();
                 }}
-                onKeyDown={(event) => {
-                  if (shouldFocusRecipient() && (event.key === "Enter" || (event.key === "Tab" && !event.shiftKey))) {
-                    event.preventDefault();
-                    focusRecipientField();
-                  }
-                }}
+                onKeyDown={handleAmountAdvance}
                 readOnly={amountLocked}
                 placeholder="$0.00"
                 style={{ fontSize }}
@@ -290,12 +326,7 @@ export function SendCard({
                   setIsTcoinFocused(false);
                   handleTcoinBlur();
                 }}
-                onKeyDown={(event) => {
-                  if (shouldFocusRecipient() && (event.key === "Enter" || (event.key === "Tab" && !event.shiftKey))) {
-                    event.preventDefault();
-                    focusRecipientField();
-                  }
-                }}
+                onKeyDown={handleAmountAdvance}
                 readOnly={amountLocked}
                 placeholder="0.00"
                 style={{ fontSize }}
@@ -303,13 +334,13 @@ export function SendCard({
               />
             )}
           </div>
-          <div className="flex w-full justify-end">
+          <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <Button
               type="button"
               variant="ghost"
               size="icon"
               aria-label="Toggle between TCOIN and CAD"
-              className="h-12 w-12 rounded-full border border-border/60 [&_svg]:h-6 [&_svg]:w-6"
+              className="h-10 w-10 flex-shrink-0 rounded-full border border-border/60 [&_svg]:h-5 [&_svg]:w-5"
               onClick={() => {
                 if (isCadInput) {
                   handleCadBlur();
@@ -323,21 +354,21 @@ export function SendCard({
             >
               <LuRefreshCcw className="h-6 w-6" />
             </Button>
-          </div>
-          <p className="text-sm text-muted-foreground text-center">
-            {isCadInput
-              ? `≈ ${formatTcoinDisplay(tcoinAmount) || "0.00 TCOIN"}`
-              : `≈ ${formatCadDisplay(cadAmount) || "$0.00"} CAD`}
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-            <span>Available: {userBalance.toFixed(4)}</span>
-            <Button
-              variant="link"
-              className="h-auto p-0 text-xs"
-              onClick={onUseMax}
-            >
-              Use Max
-            </Button>
+            <p className="flex-1 text-center text-sm text-muted-foreground">
+              {isCadInput
+                ? `≈ ${formatTcoinDisplay(tcoinAmount) || "0.00 TCOIN"}`
+                : `≈ ${formatCadDisplay(cadAmount) || "$0.00"} CAD`}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+              <span>Available: {userBalance.toFixed(4)}</span>
+              <Button
+                variant="link"
+                className="h-auto p-0 text-xs"
+                onClick={onUseMax}
+              >
+                Use Max
+              </Button>
+            </div>
           </div>
         </div>
       </section>
@@ -429,8 +460,9 @@ export function SendCard({
       </section>
 
       <Button
-        className="w-full"
-        disabled={!canSend}
+        ref={sendButtonRef}
+        className={`w-full ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
+        aria-disabled={!canSend}
         onClick={() => {
           if (!toSendData) {
             toast.error("Select a recipient first.");

@@ -17,3 +17,12 @@ export const contactRecordToHypodata = (contact: ContactRecord): Hypodata => ({
   wallet_address: contact.wallet_address ?? undefined,
   state: contact.state ?? undefined,
 });
+
+export interface InvoicePayRequest {
+  id: number;
+  amount_requested: number | null;
+  request_from: number | null;
+  request_by?: number | null;
+  created_at?: string | null;
+  status?: string | null;
+}

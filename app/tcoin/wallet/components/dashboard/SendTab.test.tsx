@@ -49,6 +49,7 @@ vi.mock("./SendCard", () => ({
     sendCardProps = props;
     return (
       <div data-testid="sendcard">
+        {props.amountHeaderActions}
         <input placeholder="0" onChange={props.handleTcoinChange} />
       </div>
     );
