@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SendCard, calculateResponsiveFontSize } from "./SendCard";
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
@@ -38,6 +38,7 @@ const createProps = () => ({
   sendMoney: vi.fn(),
   userBalance: 0,
   onUseMax: vi.fn(),
+  contacts: [],
 });
 
 const renderSendCard = (overrides: Partial<ReturnType<typeof createProps>> = {}) => {
@@ -48,6 +49,11 @@ const renderSendCard = (overrides: Partial<ReturnType<typeof createProps>> = {})
 describe("SendCard", () => {
   beforeEach(() => {
     openModalMock.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
   });
 
   it("disables send button when no recipient", () => {
@@ -79,6 +85,64 @@ describe("SendCard", () => {
     renderSendCard();
     const selectButtons = screen.getAllByRole("button", { name: /Select Contact/i });
     expect(selectButtons.length).toBeGreaterThan(0);
+  });
+
+  it("focuses the amount input on mount", () => {
+    vi.useFakeTimers();
+    renderSendCard();
+    vi.runAllTimers();
+    const amountInput = screen.getAllByLabelText("Amount in TCOIN")[0] as HTMLInputElement;
+    expect(document.activeElement).toBe(amountInput);
+  });
+
+  it("moves focus to the recipient field after entering a non-zero amount and pressing enter", () => {
+    vi.useFakeTimers();
+    renderSendCard({ tcoinAmount: "5.00" });
+    vi.runAllTimers();
+    const amountInput = screen.getAllByLabelText("Amount in TCOIN")[0] as HTMLInputElement;
+    const recipientInput = screen.getByPlaceholderText("Start typing a name") as HTMLInputElement;
+
+    amountInput.focus();
+    fireEvent.keyDown(amountInput, { key: "Enter", code: "Enter" });
+
+    expect(document.activeElement).toBe(recipientInput);
+  });
+
+  it("shows contact suggestions when typing in the recipient field", () => {
+    const setToSendData = vi.fn();
+    renderSendCard({
+      contacts: [
+        {
+          id: 1,
+          full_name: "Alice Johnson",
+          username: "alice",
+          profile_image_url: null,
+          wallet_address: null,
+          state: null,
+          last_interaction: null,
+        },
+        {
+          id: 2,
+          full_name: "Bob Smith",
+          username: null,
+          profile_image_url: null,
+          wallet_address: null,
+          state: null,
+          last_interaction: null,
+        },
+      ],
+      setToSendData,
+    });
+
+    const recipientInput = screen.getByPlaceholderText("Start typing a name") as HTMLInputElement;
+    fireEvent.change(recipientInput, { target: { value: "ali" } });
+
+    const suggestionButton = screen.getByRole("button", { name: /Alice Johnson/i });
+    fireEvent.click(suggestionButton);
+
+    expect(setToSendData).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, full_name: "Alice Johnson" })
+    );
   });
 
   it("clears the selected recipient when the clear button is pressed", () => {
@@ -124,10 +188,10 @@ describe("calculateResponsiveFontSize", () => {
   });
 
   it("shrinks the size for longer values", () => {
-    expect(calculateResponsiveFontSize("123456789012")).toBe("min(3.50rem, 12vw)");
+    expect(calculateResponsiveFontSize("123456789012")).toBe("min(2.75rem, 12vw)");
   });
 
   it("caps the size at the minimum for very long values", () => {
-    expect(calculateResponsiveFontSize("12345678901234567890")).toBe("min(2.75rem, 12vw)");
+    expect(calculateResponsiveFontSize("12345678901234567890")).toBe("min(1.75rem, 12vw)");
   });
 });

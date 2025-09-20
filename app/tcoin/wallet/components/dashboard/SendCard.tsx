@@ -3,16 +3,18 @@ import { LuRefreshCcw, LuSend, LuUserPlus, LuX } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
+import { Input } from "@shared/components/ui/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { useModal } from "@shared/contexts/ModalContext";
 import { createClient } from "@shared/lib/supabase/client";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
 import { ContactSelectModal } from "@tcoin/wallet/components/modals";
-import { Hypodata } from "./types";
+import { Hypodata, contactRecordToHypodata } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 
 const FONT_SIZE_MAX_REM = 4.5;
-const FONT_SIZE_MIN_REM = 2.75;
+const FONT_SIZE_MIN_REM = 1.75;
+const FONT_SIZE_CHAR_THRESHOLD = 7;
 
 export function calculateResponsiveFontSize(displayValue: string) {
   const trimmed = displayValue.replace(/\s+/g, "");
@@ -21,10 +23,10 @@ export function calculateResponsiveFontSize(displayValue: string) {
     return `min(${FONT_SIZE_MAX_REM.toFixed(2)}rem, 12vw)`;
   }
 
-  const overflow = Math.max(0, visibleChars - 10);
+  const overflow = Math.max(0, visibleChars - FONT_SIZE_CHAR_THRESHOLD);
   const adjusted = Math.max(
     FONT_SIZE_MIN_REM,
-    FONT_SIZE_MAX_REM - overflow * 0.5
+    FONT_SIZE_MAX_REM - overflow * 0.35
   );
 
   return `min(${adjusted.toFixed(2)}rem, 12vw)`;
@@ -110,6 +112,8 @@ export function SendCard({
   const [isTcoinFocused, setIsTcoinFocused] = useState(false);
   const [isCadFocused, setIsCadFocused] = useState(false);
   const amountInputRef = useRef<HTMLInputElement | null>(null);
+  const recipientInputRef = useRef<HTMLInputElement | null>(null);
+  const [recipientQuery, setRecipientQuery] = useState("");
 
   useEffect(() => {
     if (!toSendData?.id || !userData?.cubidData?.id) return;
@@ -132,6 +136,11 @@ export function SendCard({
     };
     fetchConnections();
   }, [toSendData?.id, userData?.cubidData?.id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => amountInputRef.current?.focus(), 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!toSendData) return;
@@ -175,7 +184,12 @@ export function SendCard({
 
   const handleContactSelection = (contact: Hypodata) => {
     setToSendData(contact);
+    setRecipientQuery("");
     setTimeout(() => amountInputRef.current?.focus(), 0);
+  };
+
+  const handleContactRecordSelection = (contact: ContactRecord) => {
+    handleContactSelection(contactRecordToHypodata(contact));
   };
 
   const openContactSelector = () => {
@@ -202,10 +216,44 @@ export function SendCard({
     setTimeout(() => amountInputRef.current?.focus(), 0);
   };
 
+  const trimmedRecipientQuery = recipientQuery.trim().toLowerCase();
+  const matchingContacts = useMemo(() => {
+    if (!contacts || trimmedRecipientQuery === "") {
+      return [];
+    }
+
+    return contacts.filter((contact) => {
+      const fullName = contact.full_name?.toLowerCase() ?? "";
+      const username = contact.username?.toLowerCase() ?? "";
+      return (
+        fullName.includes(trimmedRecipientQuery) ||
+        username.includes(trimmedRecipientQuery)
+      );
+    });
+  }, [contacts, trimmedRecipientQuery]);
+
+  const focusRecipientField = () => {
+    if (!toSendData) {
+      recipientInputRef.current?.focus();
+    }
+  };
+
+  const shouldFocusRecipient = () => {
+    const parsedTcoin = Number.parseFloat(tcoinAmount);
+    const parsedCad = Number.parseFloat(cadAmount);
+    return (
+      (Number.isFinite(parsedTcoin) && parsedTcoin > 0) ||
+      (Number.isFinite(parsedCad) && parsedCad > 0)
+    );
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col space-y-4">
-      <div className="mx-auto w-full max-w-sm">
-        <div className="relative mx-auto flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
+      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Amount</h2>
+        </div>
+        <div className="relative mx-auto mt-4 flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
           <div className="w-full text-center">
             {isCadInput ? (
               <input
@@ -218,6 +266,12 @@ export function SendCard({
                 onBlur={() => {
                   setIsCadFocused(false);
                   handleCadBlur();
+                }}
+                onKeyDown={(event) => {
+                  if (shouldFocusRecipient() && (event.key === "Enter" || (event.key === "Tab" && !event.shiftKey))) {
+                    event.preventDefault();
+                    focusRecipientField();
+                  }
                 }}
                 readOnly={amountLocked}
                 placeholder="$0.00"
@@ -235,6 +289,12 @@ export function SendCard({
                 onBlur={() => {
                   setIsTcoinFocused(false);
                   handleTcoinBlur();
+                }}
+                onKeyDown={(event) => {
+                  if (shouldFocusRecipient() && (event.key === "Enter" || (event.key === "Tab" && !event.shiftKey))) {
+                    event.preventDefault();
+                    focusRecipientField();
+                  }
                 }}
                 readOnly={amountLocked}
                 placeholder="0.00"
@@ -280,7 +340,7 @@ export function SendCard({
             </Button>
           </div>
         </div>
-      </div>
+      </section>
 
       <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -331,8 +391,39 @@ export function SendCard({
             </div>
           </div>
         ) : (
-          <div className="mt-4 rounded-2xl border border-dashed border-border/60 bg-background/70 p-5 text-center text-sm text-muted-foreground">
-            Select a contact to populate the recipient field.
+          <div className="mt-4 rounded-2xl border border-dashed border-border/60 bg-background/70 p-5">
+            <label htmlFor="recipient-search" className="mb-2 block text-sm font-medium text-muted-foreground">
+              Recipient
+            </label>
+            <Input
+              id="recipient-search"
+              ref={recipientInputRef}
+              placeholder="Start typing a name"
+              value={recipientQuery}
+              onChange={(event) => setRecipientQuery(event.target.value)}
+              aria-label="Recipient search"
+            />
+            {trimmedRecipientQuery !== "" && matchingContacts.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {matchingContacts.map((contact) => {
+                  const name = contact.full_name?.trim() || contact.username?.trim() || "Unknown";
+                  return (
+                    <li key={contact.id}>
+                      <button
+                        type="button"
+                        className="flex w-full flex-col rounded-xl border border-border/60 bg-background/80 px-4 py-3 text-left transition hover:border-primary"
+                        onClick={() => handleContactRecordSelection(contact)}
+                      >
+                        <span className="text-sm font-medium">{name}</span>
+                        {contact.username && (
+                          <span className="text-xs text-muted-foreground">@{contact.username}</span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         )}
       </section>

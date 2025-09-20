@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/
 import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
 import useDarkMode from "@shared/hooks/useDarkMode";
-import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { cn } from "@shared/utils/classnames";
 import { ContactSelectModal, ShareQrModal } from "@tcoin/wallet/components/modals";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
@@ -28,6 +27,8 @@ export function ReceiveCard({
   tokenLabel = "Tcoin",
   requestContact = null,
   onClearRequestContact,
+  contacts,
+  onSelectRequestContact,
 }: {
   qrCodeData: string;
   qrTcoinAmount: string;
@@ -47,27 +48,10 @@ export function ReceiveCard({
   onSelectRequestContact?: (contact: Hypodata) => void;
 }) {
   const { isDarkMode } = useDarkMode();
-  const { ...rest } = useTokenBalance(senderWallet);
   const { openModal, closeModal } = useModal();
-
-  const formatNumber = (value: string, isCad: boolean) => {
-    const num = parseFloat(value);
-    if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
-    const formatted = num.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return isCad ? `$${formatted}` : `${formatted} TCOIN`;
-  };
-  const balance = formatNumber(rest.balance.toString(), false);
+  void senderWallet;
 
   const handleRequestClick = () => {
-    const requestedAmount = parseFloat(qrTcoinAmount);
-    const availableBalance = parseFloat(rest.balance);
-    if (isNaN(requestedAmount) || requestedAmount <= 0) {
-      alert("Please enter a valid amount.");
-      return;
-    }
     openModal({
       content: (
         <ContactSelectModal
@@ -201,10 +185,9 @@ export function ReceiveCard({
               });
             }}
           >
-            <LuShare2 className="mr-2 h-4 w-4" /> Share
+            <LuShare2 className="mr-2 h-4 w-4" /> Create a shareable request
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground">Balance: {balance}</p>
       </CardContent>
     </Card>
   );
