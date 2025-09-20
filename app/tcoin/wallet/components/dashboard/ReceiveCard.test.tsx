@@ -46,6 +46,7 @@ const createProps = () => ({
   onSelectRequestContact: vi.fn(),
   openRequests: [],
   onCreateShareableRequest: vi.fn().mockResolvedValue(null),
+  onCreateTargetedRequest: vi.fn().mockResolvedValue(null),
   showQrCode: true,
 });
 
@@ -152,5 +153,139 @@ describe("ReceiveCard", () => {
 
     fireEvent.click(shareButtons[0]);
     expect(openModalMock).toHaveBeenCalled();
+  });
+
+  it("shows only the review action when a contact is selected", () => {
+    renderReceiveCard({
+      requestContact: {
+        id: 7,
+        full_name: "Charlie Example",
+      } as any,
+    });
+
+    expect(
+      screen.getByRole("button", { name: /Review Request/i })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /Request from Contact/i })
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Create a shareable request/i })
+    ).toBeNull();
+  });
+
+  it("surfaces warnings when the amount is zero", () => {
+    renderReceiveCard({
+      requestContact: {
+        id: 3,
+        full_name: "Alex Example",
+      } as any,
+      qrTcoinAmount: "0",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Review Request/i }));
+
+    expect(openModalMock).toHaveBeenCalledTimes(1);
+    const modalArgs = openModalMock.mock.calls[0][0];
+    expect(modalArgs.title).toBe("Check request details");
+  });
+
+  it("requires acknowledging warnings before showing the review screen", async () => {
+    renderReceiveCard({
+      requestContact: {
+        id: 8,
+        full_name: "Morgan Example",
+      } as any,
+      qrTcoinAmount: "0",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Review Request/i }));
+
+    const warningArgs = openModalMock.mock.calls[0][0];
+    const warningModal = render(warningArgs.content as React.ReactElement);
+    const continueButton = warningModal.getByRole("button", {
+      name: /Continue to Review/i,
+    });
+
+    await act(async () => {
+      fireEvent.click(continueButton);
+      await Promise.resolve();
+    });
+
+    warningModal.unmount();
+
+    expect(closeModalMock).toHaveBeenCalled();
+    expect(openModalMock).toHaveBeenCalledTimes(2);
+    const reviewArgs = openModalMock.mock.calls[1][0];
+    expect(reviewArgs.title).toBe("Review Request");
+  });
+
+  it("highlights duplicate requests in the warning list", () => {
+    renderReceiveCard({
+      requestContact: {
+        id: 11,
+        full_name: "Jamie Example",
+      } as any,
+      qrTcoinAmount: "5",
+      openRequests: [
+        {
+          id: 22,
+          amount_requested: 5,
+          request_from: 11,
+        } as any,
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Review Request/i }));
+
+    const modalArgs = openModalMock.mock.calls[0][0];
+    const renderedModal = render(modalArgs.content as React.ReactElement);
+    expect(
+      renderedModal.getByText(/already have an open request for Jamie Example/i)
+    ).toBeTruthy();
+    renderedModal.unmount();
+  });
+
+  it("creates a targeted request after confirmation", async () => {
+    const requestContact = {
+      id: 15,
+      full_name: "Taylor Example",
+    } as any;
+    const onCreateTargetedRequest = vi.fn().mockResolvedValue({ id: 99 });
+    const onClearRequestContact = vi.fn();
+
+    renderReceiveCard({
+      requestContact,
+      qrTcoinAmount: "12",
+      qrCadAmount: "$36.00",
+      onCreateTargetedRequest,
+      onClearRequestContact,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Review Request/i }));
+
+    expect(openModalMock).toHaveBeenCalledTimes(1);
+    const modalArgs = openModalMock.mock.calls[0][0];
+    expect(modalArgs.title).toBe("Review Request");
+    const modal = render(modalArgs.content as React.ReactElement);
+    const confirmButton = modal.getByRole("button", { name: /Create Request/i });
+
+    await act(async () => {
+      fireEvent.click(confirmButton);
+      await Promise.resolve();
+    });
+
+    expect(onCreateTargetedRequest).toHaveBeenCalledWith(
+      requestContact,
+      12,
+      "12.00 TCOIN"
+    );
+    expect(onClearRequestContact).toHaveBeenCalled();
+    expect(closeModalMock).toHaveBeenCalled();
+    expect(toastSuccessMock).toHaveBeenCalledWith(
+      "Request for 12.00 TCOIN sent to Taylor Example."
+    );
+
+    modal.unmount();
   });
 });

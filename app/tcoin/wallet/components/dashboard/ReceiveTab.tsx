@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
+import axios from "axios";
 import { ReceiveCard } from "./ReceiveCard";
 import { Hypodata, InvoicePayRequest } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
@@ -136,6 +137,66 @@ export function ReceiveTab({
     [fetchOpenRequests, user_id]
   );
 
+  const handleCreateTargetedRequest = useCallback(
+    async (
+      contactToRequest: Hypodata,
+      amount: number,
+      formattedAmount: string
+    ) => {
+      if (!user_id || !contactToRequest?.id) {
+        throw new Error("Missing request context");
+      }
+
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("invoice_pay_request")
+          .insert({
+            request_from: contactToRequest.id,
+            request_by: user_id,
+            amount_requested: amount,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const requesterName = userData?.cubidData?.full_name ?? "Someone";
+        const notificationMessage = `${formattedAmount} request by ${requesterName}`;
+
+        await supabase.from("notifications").insert({
+          user_id: String(contactToRequest.id),
+          notification: notificationMessage,
+        });
+
+        const { data: recipientRecords } = await supabase
+          .from("users")
+          .select("phone")
+          .match({ user_id: String(contactToRequest.id) });
+
+        const recipientPhone = recipientRecords?.[0]?.phone;
+        if (recipientPhone) {
+          try {
+            await axios.post("/api/sendsms", {
+              message: notificationMessage,
+              to: recipientPhone,
+            });
+          } catch (smsError) {
+            console.error("Failed to send SMS notification:", smsError);
+          }
+        }
+
+        await fetchOpenRequests();
+
+        return data as InvoicePayRequest;
+      } catch (error) {
+        console.error("Failed to create targeted request:", error);
+        throw error;
+      }
+    },
+    [fetchOpenRequests, userData?.cubidData?.full_name, user_id]
+  );
+
   const handleRequestContactChange = (next: Hypodata | null) => {
     setRequestContact(next);
     onContactChange?.(next);
@@ -165,6 +226,7 @@ export function ReceiveTab({
         }
         openRequests={openRequests}
         onCreateShareableRequest={handleCreateShareableRequest}
+        onCreateTargetedRequest={handleCreateTargetedRequest}
         showQrCode={showQrCode}
       />
     </div>

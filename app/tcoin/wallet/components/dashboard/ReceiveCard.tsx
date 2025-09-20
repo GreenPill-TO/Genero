@@ -32,6 +32,7 @@ export function ReceiveCard({
   onSelectRequestContact,
   openRequests = [],
   onCreateShareableRequest,
+  onCreateTargetedRequest,
   showQrCode = true,
 }: {
   qrCodeData: string;
@@ -52,6 +53,11 @@ export function ReceiveCard({
   onSelectRequestContact?: (contact: Hypodata) => void;
   openRequests?: InvoicePayRequest[];
   onCreateShareableRequest?: (amount: number) => Promise<InvoicePayRequest | null>;
+  onCreateTargetedRequest?: (
+    contact: Hypodata,
+    amount: number,
+    formattedAmount: string
+  ) => Promise<InvoicePayRequest | null>;
   showQrCode?: boolean;
 }) {
   const { isDarkMode } = useDarkMode();
@@ -60,7 +66,11 @@ export function ReceiveCard({
 
   const uppercaseToken = tokenLabel.toUpperCase();
 
-  const parseAmountFromString = (value: string): number | null => {
+  const parseAmountFromString = (
+    value: string,
+    options: { allowZero?: boolean } = {}
+  ): number | null => {
+    const { allowZero = false } = options;
     if (typeof value !== "string") {
       return null;
     }
@@ -70,10 +80,13 @@ export function ReceiveCard({
       return null;
     }
     const parsed = Number.parseFloat(match[0]);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+    if (!Number.isFinite(parsed)) {
       return null;
     }
-    return parsed;
+    if (allowZero) {
+      return parsed < 0 ? null : parsed;
+    }
+    return parsed <= 0 ? null : parsed;
   };
 
   const normaliseAmount = (value: unknown): number | null => {
@@ -97,6 +110,16 @@ export function ReceiveCard({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })} ${uppercaseToken}`;
+  };
+
+  const formatCadAmount = (amount: number | null) => {
+    if (!Number.isFinite(amount ?? NaN) || (amount ?? 0) <= 0) {
+      return "$0.00";
+    }
+    return `$${(amount ?? 0).toLocaleString("en-CA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   };
 
   const contactNamesById = React.useMemo(() => {
@@ -194,6 +217,126 @@ export function ReceiveCard({
 
   const formatContactName = (contact: Hypodata) =>
     contact.full_name?.trim() || contact.username?.trim() || "Unknown";
+
+  const buildReviewWarnings = () => {
+    if (!requestContact) return [] as string[];
+    const warnings: string[] = [];
+    const parsedAmount =
+      parseAmountFromString(qrTcoinAmount, { allowZero: true }) ?? 0;
+
+    if (parsedAmount === 0) {
+      warnings.push("The amount requested is currently 0 TCOIN.");
+    }
+
+    if (requestContact.id != null) {
+      const duplicate = targetedRequests.some((request) => {
+        if (request.request_from == null) return false;
+        const recipientId = Number(request.request_from);
+        return Number.isFinite(recipientId) && recipientId === requestContact.id;
+      });
+      if (duplicate) {
+        warnings.push(
+          `You already have an open request for ${formatContactName(requestContact)}.`
+        );
+      }
+    }
+
+    return warnings;
+  };
+
+  const openReviewModal = () => {
+    if (!requestContact) return;
+
+    const parsedAmount =
+      parseAmountFromString(qrTcoinAmount, { allowZero: true }) ?? 0;
+    const parsedCad = parseAmountFromString(qrCadAmount, { allowZero: true });
+    const formattedAmount = formatRequestAmount(parsedAmount);
+    const formattedCad = formatCadAmount(parsedCad);
+    const contactLabel = formatContactName(requestContact);
+
+    const handleConfirm = async () => {
+      if (!onCreateTargetedRequest) {
+        toast.error("Targeted requests are unavailable right now.");
+        return;
+      }
+
+      try {
+        await onCreateTargetedRequest(requestContact, parsedAmount, formattedAmount);
+        onClearRequestContact?.();
+        closeModal();
+        toast.success(
+          `Request for ${formattedAmount} sent to ${contactLabel}.`
+        );
+      } catch (error) {
+        console.error("Failed to create targeted request:", error);
+        toast.error("Failed to create the request. Please try again.");
+      }
+    };
+
+    openModal({
+      title: "Review Request",
+      description: "Confirm the details before creating your request.",
+      content: (
+        <div className="space-y-4">
+          <div className="space-y-2 rounded-2xl border border-border/60 bg-background/80 p-4 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="font-medium">Amount</span>
+              <span>{formattedAmount}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="font-medium">Value (CAD)</span>
+              <span>{formattedCad}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="font-medium">Recipient</span>
+              <span>{contactLabel}</span>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={closeModal}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm}>Create Request</Button>
+          </div>
+        </div>
+      ),
+    });
+  };
+
+  const handleReviewClick = () => {
+    const warnings = buildReviewWarnings();
+    if (warnings.length === 0) {
+      openReviewModal();
+      return;
+    }
+
+    openModal({
+      title: "Check request details",
+      description: "Please acknowledge the following before continuing.",
+      content: (
+        <div className="space-y-4">
+          <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={closeModal}>
+              Go back
+            </Button>
+            <Button
+              onClick={() => {
+                closeModal();
+                openReviewModal();
+              }}
+            >
+              Continue to Review
+            </Button>
+          </div>
+        </div>
+      ),
+    });
+  };
 
   return (
     <Card>
@@ -295,15 +438,20 @@ export function ReceiveCard({
           </div>
         )}
         <div className="flex flex-col gap-4 sm:flex-row">
-          <Button className="flex-1" onClick={handleRequestClick}>
-            <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={handleShareableRequest}
-          >
-            <LuShare2 className="mr-2 h-4 w-4" /> Create a shareable request
-          </Button>
+          {requestContact ? (
+            <Button className="flex-1" onClick={handleReviewClick}>
+              Review Request
+            </Button>
+          ) : (
+            <>
+              <Button className="flex-1" onClick={handleRequestClick}>
+                <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
+              </Button>
+              <Button className="flex-1" onClick={handleShareableRequest}>
+                <LuShare2 className="mr-2 h-4 w-4" /> Create a shareable request
+              </Button>
+            </>
+          )}
         </div>
         {hasOpenRequests && (
           <div className="space-y-4 rounded-2xl border border-border/60 bg-background/60 p-4">
