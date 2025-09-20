@@ -30,19 +30,27 @@ export function useControlVariables(options?: UseControlVariablesOptions) {
           return;
         }
 
+        const canDispatch = typeof window !== "undefined";
+
         if (error) {
-          setError(error);
+          if (canDispatch) {
+            setError(error);
+          }
           return;
         }
 
-        setData(controlData?.[0] ?? null);
+        if (canDispatch) {
+          setData(controlData?.[0] ?? null);
+        }
       } catch (caughtError) {
         if (!isActive) {
           return;
         }
-        setError(caughtError);
+        if (typeof window !== "undefined") {
+          setError(caughtError);
+        }
       } finally {
-        if (isActive && isBrowser) {
+        if (isActive && isBrowser && typeof window !== "undefined") {
           setLoading(false);
         }
       }

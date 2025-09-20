@@ -4,7 +4,10 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const useSendMoneyMock = vi.hoisted(() =>
-  vi.fn().mockReturnValue({ sendMoney: vi.fn() })
+  vi.fn().mockReturnValue({
+    sendMoney: vi.fn(),
+    getLastTransferRecord: vi.fn(),
+  })
 );
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
@@ -229,14 +232,61 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const paymentComplete = sendCardProps.onPaymentComplete as () => Promise<void>;
+    const paymentComplete = sendCardProps.onPaymentComplete as (
+      details: any
+    ) => Promise<void>;
     expect(typeof paymentComplete).toBe("function");
 
     await act(async () => {
-      await paymentComplete();
+      await paymentComplete({
+        transactionHash: "0xdeadbeef",
+        transactionId: 77,
+      });
     });
 
-    expect(updateMock).toHaveBeenCalledWith({ status: "paid" });
+    expect(updateMock).toHaveBeenCalledWith({
+      status: "paid",
+      paid_at: expect.any(String),
+      transaction_id: 77,
+    });
+    expect(updateEqMock).toHaveBeenCalledWith("id", 1);
+
+    modal.unmount();
+  });
+
+  it("extracts the transaction id from transfer metadata when not provided", async () => {
+    render(<SendTab recipient={null} />);
+    await act(async () => {
+      fireEvent.click(screen.getByText("Requests"));
+      await Promise.resolve();
+    });
+
+    const modalArgs = openModal.mock.calls.at(-1)![0];
+    const modal = render(modalArgs.content as React.ReactElement);
+    const selectButton = modal.getByRole("button", { name: /Requester One/i });
+
+    await act(async () => {
+      fireEvent.click(selectButton);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const paymentComplete = sendCardProps.onPaymentComplete as (
+      details: any
+    ) => Promise<void>;
+
+    await act(async () => {
+      await paymentComplete({
+        transactionHash: "0xfeed",
+        transferRecord: { transaction_id: "88" },
+      });
+    });
+
+    expect(updateMock).toHaveBeenCalledWith({
+      status: "paid",
+      paid_at: expect.any(String),
+      transaction_id: 88,
+    });
     expect(updateEqMock).toHaveBeenCalledWith("id", 1);
 
     modal.unmount();

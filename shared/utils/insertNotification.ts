@@ -20,15 +20,33 @@ export const adminInsertNotification = async ({ user_id, notification }: { user_
     await supabase.from("app_admin_notifications").insert({ user_id, notification_name: notification });
 };
 
-export const transfer = async ({ recipient_wallet, sender_wallet, token_price = 3.3, transfer_amount, transfer_user_id }: { recipient_wallet: string; sender_wallet: string; token_price?: number; transfer_amount: number; transfer_user_id: number }) => {
+export const transfer = async ({
+    recipient_wallet,
+    sender_wallet,
+    token_price = 3.3,
+    transfer_amount,
+    transfer_user_id,
+}: {
+    recipient_wallet: string;
+    sender_wallet: string;
+    token_price?: number;
+    transfer_amount: number;
+    transfer_user_id: number;
+}) => {
     const supabase = createClient();
-    await supabase.rpc("simple_transfer", {
+    const { data, error } = await supabase.rpc("simple_transfer", {
         recipient_wallet,
         sender_wallet,
         token_price,
         transfer_amount,
         transfer_user_id,
     });
+
+    if (error) {
+        throw error;
+    }
+
+    return data ?? null;
 };
 
 export const off_ramp_req = async ({ p_current_token_balance, p_etransfer_target, p_exchange_rate = 3.3, p_is_store, p_tokens_burned, p_user_id, p_wallet_account }: { p_current_token_balance: string; p_etransfer_target: string; p_exchange_rate?: number; p_is_store: number; p_tokens_burned: number; p_user_id: number; p_wallet_account: string }) => {

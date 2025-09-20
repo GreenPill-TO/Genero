@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 import { createClient } from '@shared/lib/supabase/client';
 import { Shamir } from '@spliterati/shamir';
@@ -8,6 +8,7 @@ import { tokenAbi } from './abi';
 import { WebAuthnCrypto } from 'cubid-wallet';
 import { toast } from 'react-toastify';
 import { transfer } from '@shared/utils/insertNotification';
+import { normaliseTransferResult, TransferRecordSnapshot } from '@shared/utils/transferRecord';
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate'
 
 
@@ -62,14 +63,15 @@ export const useSendMoney = ({
 	senderId,
 	receiverId,
 }: {
-	senderId: number;
-	receiverId: number | null;
+        senderId: number;
+        receiverId: number | null;
 }) => {
-	const [senderWallet, setSenderWallet] = useState<string | null>(null);
-	const [receiverWallet, setReceiverWallet] = useState<string | null>(null);
-	const [loading, setLoading] = useState<boolean>(false);
-	const [error, setError] = useState<string | null>(null);
-	const { userData } = useAuth();
+        const [senderWallet, setSenderWallet] = useState<string | null>(null);
+        const [receiverWallet, setReceiverWallet] = useState<string | null>(null);
+        const [loading, setLoading] = useState<boolean>(false);
+        const [error, setError] = useState<string | null>(null);
+        const lastTransferRecordRef = useRef<TransferRecordSnapshot | null>(null);
+        const { userData } = useAuth();
 
 	// Fetch wallet address from Supabase using Cubid.
         const fetchWalletAddress = async (
@@ -230,12 +232,19 @@ export const useSendMoney = ({
 
 
 
-	const sendMoney = async (amount: string) => {
-		if (!senderWallet || !receiverWallet) {
-			toast.info("Receiver Wallet Not Found")
-			setError('Wallet addresses not found');
-			return;
-		}
+        const getLastTransferRecord = () => {
+                const snapshot = lastTransferRecordRef.current;
+                lastTransferRecordRef.current = null;
+                return snapshot;
+        };
+
+        const sendMoney = async (amount: string) => {
+                lastTransferRecordRef.current = null;
+                if (!senderWallet || !receiverWallet) {
+                        toast.info("Receiver Wallet Not Found")
+                        setError('Wallet addresses not found');
+                        return;
+                }
 
 		// Ensure we have a valid user ID in userData.
 		const cubidUserId = userData?.cubidData?.id;
@@ -347,21 +356,23 @@ export const useSendMoney = ({
 
 			// Wait for the transaction to be mined.
 			const txReceipt = await txResponse.wait();
-			await transfer({
-				recipient_wallet: receiverWallet,
-				sender_wallet: senderWallet,
-				token_price: exchangeRate,
-				transfer_amount: amount,
-				transfer_user_id: senderId
-			})
-			return txReceipt.transactionHash;
-		} catch (err: any) {
-			console.error('Transaction error:', err);
-			setError(err.message);
-		} finally {
-			setLoading(false);
-		}
-	};
+                        const transferResult = await transfer({
+                                recipient_wallet: receiverWallet,
+                                sender_wallet: senderWallet,
+                                token_price: exchangeRate,
+                                transfer_amount: amount,
+                                transfer_user_id: senderId
+                        })
+                        lastTransferRecordRef.current = normaliseTransferResult(transferResult);
+                        return txReceipt.transactionHash;
+                } catch (err: any) {
+                        console.error('Transaction error:', err);
+                        setError(err.message);
+                        lastTransferRecordRef.current = null;
+                } finally {
+                        setLoading(false);
+                }
+        };
 
-	return { senderWallet, receiverWallet, sendMoney, loading, error, burnMoney };
+        return { senderWallet, receiverWallet, sendMoney, loading, error, burnMoney, getLastTransferRecord };
 };

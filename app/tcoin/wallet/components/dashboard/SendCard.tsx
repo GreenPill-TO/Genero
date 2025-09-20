@@ -11,6 +11,7 @@ import { insertSuccessNotification } from "@shared/utils/insertNotification";
 import { ContactSelectModal } from "@tcoin/wallet/components/modals";
 import { Hypodata, contactRecordToHypodata } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
+import type { TransferRecordSnapshot } from "@shared/utils/transferRecord";
 
 const FONT_SIZE_MAX_REM = 4.5;
 const FONT_SIZE_MIN_REM = 1.1;
@@ -71,6 +72,12 @@ const getContactInitials = (contact: Hypodata) => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
+export interface PaymentCompletionDetails {
+  transactionHash: string;
+  transactionId?: number | null;
+  transferRecord?: unknown;
+}
+
 interface SendCardProps {
   sendMoney: (amount: string) => Promise<string>;
   toSendData: Hypodata | null;
@@ -89,7 +96,8 @@ interface SendCardProps {
   contacts?: ContactRecord[];
   amountHeaderActions?: React.ReactNode;
   actionLabel?: string;
-  onPaymentComplete?: () => void;
+  getLastTransferRecord?: () => TransferRecordSnapshot | null;
+  onPaymentComplete?: (details: PaymentCompletionDetails) => void;
 }
 
 export function SendCard({
@@ -110,6 +118,7 @@ export function SendCard({
   contacts,
   amountHeaderActions,
   actionLabel = "Send...",
+  getLastTransferRecord,
   onPaymentComplete,
 }: SendCardProps) {
   const [connections, setConnections] = useState<any>(null);
@@ -495,6 +504,7 @@ export function SendCard({
                 closeModal={closeModal}
                 sendMoney={sendMoney}
                 setExplorerLink={setExplorerLink}
+                getLastTransferRecord={getLastTransferRecord}
                 onPaymentComplete={onPaymentComplete}
               />
             ),
@@ -595,6 +605,7 @@ function ConfirmTransactionModal({
   closeModal,
   sendMoney,
   setExplorerLink,
+  getLastTransferRecord,
   onPaymentComplete,
 }: {
   tcoinAmount: string;
@@ -603,7 +614,8 @@ function ConfirmTransactionModal({
   closeModal: () => void;
   sendMoney: (amount: string) => Promise<string>;
   setExplorerLink: (link: string | null) => void;
-  onPaymentComplete?: () => void;
+  getLastTransferRecord?: () => TransferRecordSnapshot | null;
+  onPaymentComplete?: (details: PaymentCompletionDetails) => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const { userData } = useAuth();
@@ -636,9 +648,25 @@ function ConfirmTransactionModal({
                 user_id: toSendData.id,
                 notification: `You received ${tcoinAmount}`,
               });
-              setExplorerLink(`https://evm-testnet.flowscan.io/tx/${hash}`);
+              const isValidHash = typeof hash === "string" && hash.trim() !== "";
+              if (isValidHash) {
+                const trimmedHash = hash.trim();
+                setExplorerLink(`https://evm-testnet.flowscan.io/tx/${trimmedHash}`);
+                const snapshot = getLastTransferRecord?.() ?? null;
+                const completionDetails: PaymentCompletionDetails = {
+                  transactionHash: trimmedHash,
+                };
+                if (snapshot) {
+                  if (snapshot.transactionId != null) {
+                    completionDetails.transactionId = snapshot.transactionId;
+                  }
+                  completionDetails.transferRecord = snapshot.raw;
+                }
+                await onPaymentComplete?.(completionDetails);
+              } else {
+                setExplorerLink(null);
+              }
               toast.success("Payment Sent Successfully!");
-              onPaymentComplete?.();
             } catch (error) {
               toast.error("Error sending payment!");
             } finally {

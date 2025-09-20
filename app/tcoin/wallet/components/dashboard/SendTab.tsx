@@ -9,9 +9,10 @@ import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
 import { Hypodata, InvoicePayRequest, contactRecordToHypodata } from "./types";
-import { SendCard } from "./SendCard";
+import { SendCard, type PaymentCompletionDetails } from "./SendCard";
 import { QrScanModal } from "@tcoin/wallet/components/modals";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
+import { extractTransactionId } from "@shared/utils/transferRecord";
 
 interface SendTabProps {
   recipient: Hypodata | null;
@@ -71,6 +72,34 @@ const formatRequesterName = (
   };
 };
 
+const coerceTransactionId = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value.trim(), 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+const resolveTransactionId = (
+  details?: PaymentCompletionDetails
+): number | null => {
+  if (!details) return null;
+
+  const direct = coerceTransactionId(details.transactionId);
+  if (direct != null) {
+    return direct;
+  }
+
+  return extractTransactionId(details.transferRecord);
+};
+
 export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps) {
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables();
@@ -100,7 +129,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     return map;
   }, [contacts]);
 
-  const { sendMoney } = useSendMoney({
+  const { sendMoney, getLastTransferRecord } = useSendMoney({
     senderId: userData?.cubidData?.id,
     receiverId: toSendData?.id ?? null,
   });
@@ -108,6 +137,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     userData?.cubidData?.wallet_address || ""
   );
   const balance = parseFloat(rawBalance) || 0;
+
 
   useEffect(() => {
     setToSendData(recipient);
@@ -456,23 +486,31 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     setActiveAction("link");
   };
 
-  const handleRequestPaid = useCallback(async () => {
-    if (!selectedRequest) return;
-    const requestId = selectedRequest.id;
-    try {
-      const supabase = createClient();
-      await supabase
-        .from("invoice_pay_request")
-        .update({ status: "paid" })
-        .eq("id", requestId);
-    } catch (error) {
-      console.error("Failed to mark request as paid:", error);
-    } finally {
-      setSelectedRequest(null);
-      setActiveAction("manual");
-      void fetchIncomingRequests();
-    }
-  }, [fetchIncomingRequests, selectedRequest]);
+  const handleRequestPaid = useCallback(
+    async (details?: PaymentCompletionDetails) => {
+      if (!selectedRequest) return;
+      const requestId = selectedRequest.id;
+      try {
+        const supabase = createClient();
+        const updates = {
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          transaction_id: resolveTransactionId(details) ?? null,
+        };
+        await supabase
+          .from("invoice_pay_request")
+          .update(updates)
+          .eq("id", requestId);
+      } catch (error) {
+        console.error("Failed to mark request as paid:", error);
+      } finally {
+        setSelectedRequest(null);
+        setActiveAction("manual");
+        void fetchIncomingRequests();
+      }
+    },
+    [fetchIncomingRequests, selectedRequest]
+  );
 
   useEffect(() => {
     if (!selectedRequest && activeAction === "requests") {
@@ -596,6 +634,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           amountHeaderActions={modeActions}
           locked={Boolean(selectedRequest)}
           actionLabel={selectedRequest ? "Pay this request" : "Send..."}
+          getLastTransferRecord={getLastTransferRecord}
           onPaymentComplete={selectedRequest ? handleRequestPaid : undefined}
         />
       )}
@@ -637,6 +676,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
               onUseMax={handleUseMax}
               contacts={contacts}
               amountHeaderActions={modeActions}
+              getLastTransferRecord={getLastTransferRecord}
             />
           )}
         </>
