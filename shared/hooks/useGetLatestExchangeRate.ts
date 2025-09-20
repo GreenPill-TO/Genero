@@ -10,22 +10,15 @@ interface UseControlVariablesOptions {
 }
 
 export function useControlVariables(options?: UseControlVariablesOptions) {
+  const isBrowser = options?.isBrowser ?? typeof window !== "undefined";
   const [data, setData] = useState<ControlVariable | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const [loading, setLoading] = useState(true);
-  const isBrowser = options?.isBrowser ?? typeof window !== "undefined";
+  const [loading, setLoading] = useState<boolean>(isBrowser);
 
   useEffect(() => {
     let isActive = true;
 
     async function fetchControlVariables() {
-      if (!isBrowser) {
-        if (isActive) {
-          setLoading(false);
-        }
-        return;
-      }
-
       try {
         const supabase = createClient();
         const { data: controlData, error } = await supabase
@@ -49,10 +42,16 @@ export function useControlVariables(options?: UseControlVariablesOptions) {
         }
         setError(caughtError);
       } finally {
-        if (isActive) {
+        if (isActive && isBrowser) {
           setLoading(false);
         }
       }
+    }
+
+    if (!isBrowser) {
+      return () => {
+        isActive = false;
+      };
     }
 
     fetchControlVariables();

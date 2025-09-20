@@ -218,9 +218,13 @@ export function ReceiveCard({
   const formatContactName = (contact: Hypodata) =>
     contact.full_name?.trim() || contact.username?.trim() || "Unknown";
 
-  const buildReviewWarnings = () => {
-    if (!requestContact) return [] as string[];
+  const buildReviewState = () => {
+    if (!requestContact) {
+      return { warnings: [] as string[], limitExceeded: false };
+    }
+
     const warnings: string[] = [];
+    let limitExceeded = false;
     const parsedAmount =
       parseAmountFromString(qrTcoinAmount, { allowZero: true }) ?? 0;
 
@@ -229,19 +233,28 @@ export function ReceiveCard({
     }
 
     if (requestContact.id != null) {
-      const duplicate = targetedRequests.some((request) => {
-        if (request.request_from == null) return false;
+      let existingRequestCount = 0;
+      targetedRequests.forEach((request) => {
+        if (request.request_from == null) return;
         const recipientId = Number(request.request_from);
-        return Number.isFinite(recipientId) && recipientId === requestContact.id;
+        if (Number.isFinite(recipientId) && recipientId === requestContact.id) {
+          existingRequestCount += 1;
+        }
       });
-      if (duplicate) {
+
+      if (existingRequestCount >= 3) {
+        limitExceeded = true;
+        warnings.push(
+          `You already have 3 open requests for ${formatContactName(requestContact)}. Please resolve them before sending another.`
+        );
+      } else if (existingRequestCount > 0) {
         warnings.push(
           `You already have an open request for ${formatContactName(requestContact)}.`
         );
       }
     }
 
-    return warnings;
+    return { warnings, limitExceeded };
   };
 
   const openReviewModal = () => {
@@ -292,6 +305,11 @@ export function ReceiveCard({
               <span>{contactLabel}</span>
             </div>
           </div>
+          <p className="text-sm text-muted-foreground">
+            Creating this request will add a notification for the recipient to
+            see the next time they log in. They may also receive an email if
+            they have emails enabled.
+          </p>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={closeModal}>
               Cancel
@@ -304,7 +322,31 @@ export function ReceiveCard({
   };
 
   const handleReviewClick = () => {
-    const warnings = buildReviewWarnings();
+    const { warnings, limitExceeded } = buildReviewState();
+
+    if (limitExceeded) {
+      openModal({
+        title: "Resolve open requests",
+        description:
+          "You have reached the limit of open requests for this recipient.",
+        content: (
+          <div className="space-y-4">
+            {warnings.length > 0 && (
+              <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                {warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            )}
+            <div className="flex justify-end">
+              <Button onClick={closeModal}>Go back</Button>
+            </div>
+          </div>
+        ),
+      });
+      return;
+    }
+
     if (warnings.length === 0) {
       openReviewModal();
       return;

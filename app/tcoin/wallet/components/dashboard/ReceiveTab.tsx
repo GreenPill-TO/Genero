@@ -187,6 +187,8 @@ export function ReceiveTab({
         }
 
         await fetchOpenRequests();
+        setQrTcoinAmount("");
+        setQrCadAmount("");
 
         return data as InvoicePayRequest;
       } catch (error) {

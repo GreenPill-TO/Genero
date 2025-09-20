@@ -268,6 +268,9 @@ describe("ReceiveCard", () => {
     const modalArgs = openModalMock.mock.calls[0][0];
     expect(modalArgs.title).toBe("Review Request");
     const modal = render(modalArgs.content as React.ReactElement);
+    expect(
+      modal.getByText(/notification.*next time they log in/i)
+    ).toBeTruthy();
     const confirmButton = modal.getByRole("button", { name: /Create Request/i });
 
     await act(async () => {
@@ -287,5 +290,38 @@ describe("ReceiveCard", () => {
     );
 
     modal.unmount();
+  });
+
+  it("prevents creating more than three open requests for the same contact", () => {
+    const requestContact = {
+      id: 21,
+      full_name: "Jordan Example",
+    } as any;
+
+    renderReceiveCard({
+      requestContact,
+      qrTcoinAmount: "10",
+      openRequests: [
+        { id: 31, request_from: 21 } as any,
+        { id: 32, request_from: 21 } as any,
+        { id: 33, request_from: 21 } as any,
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Review Request/i }));
+
+    expect(openModalMock).toHaveBeenCalledTimes(1);
+    const modalArgs = openModalMock.mock.calls[0][0];
+    expect(modalArgs.title).toBe("Resolve open requests");
+    const renderedModal = render(modalArgs.content as React.ReactElement);
+
+    expect(
+      renderedModal.getByText(/You already have 3 open requests for Jordan Example/i)
+    ).toBeTruthy();
+    const goBackButton = renderedModal.getByRole("button", { name: /Go back/i });
+    fireEvent.click(goBackButton);
+    expect(closeModalMock).toHaveBeenCalled();
+
+    renderedModal.unmount();
   });
 });

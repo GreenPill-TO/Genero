@@ -80,6 +80,12 @@ export default function Dashboard() {
   ]);
 
   useEffect(() => {
+    if (!requestRecipient && !receiveQrVisible) {
+      setReceiveQrVisible(true);
+    }
+  }, [requestRecipient, receiveQrVisible]);
+
+  useEffect(() => {
     if (Boolean(userData?.cubidData?.full_name)) {
       router.replace("/dashboard");
     }
