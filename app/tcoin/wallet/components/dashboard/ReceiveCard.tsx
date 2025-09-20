@@ -248,8 +248,12 @@ export function ReceiveCard({
           `You already have 3 open requests for ${formatContactName(requestContact)}. Please resolve them before sending another.`
         );
       } else if (existingRequestCount > 0) {
+        const requestLabel =
+          existingRequestCount === 1
+            ? "1 open request"
+            : `${existingRequestCount} open requests`;
         warnings.push(
-          `You already have an open request for ${formatContactName(requestContact)}.`
+          `You already have ${requestLabel} for ${formatContactName(requestContact)}.`
         );
       }
     }
@@ -380,6 +384,8 @@ export function ReceiveCard({
     });
   };
 
+  const shouldShowQrCode = showQrCode && !requestContact;
+
   return (
     <Card>
       <CardHeader>
@@ -392,7 +398,7 @@ export function ReceiveCard({
             qrWrapperClassName ?? "p-2"
           )}
         >
-          {showQrCode ? (
+          {shouldShowQrCode ? (
             qrCodeData ? (
               <>
                 <p className="mb-3 text-center text-base font-semibold text-gray-900">

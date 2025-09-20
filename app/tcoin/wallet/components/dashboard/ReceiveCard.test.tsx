@@ -241,9 +241,26 @@ describe("ReceiveCard", () => {
     const modalArgs = openModalMock.mock.calls[0][0];
     const renderedModal = render(modalArgs.content as React.ReactElement);
     expect(
-      renderedModal.getByText(/already have an open request for Jamie Example/i)
+      renderedModal.getByText(
+        /already have 1 open request for Jamie Example/i
+      )
     ).toBeTruthy();
     renderedModal.unmount();
+  });
+
+  it("hides the QR code when a request contact is selected", () => {
+    renderReceiveCard({
+      requestContact: {
+        id: 55,
+        full_name: "Riley Example",
+      } as any,
+      showQrCode: true,
+    });
+
+    expect(screen.queryByTestId("qr-code")).toBeNull();
+    expect(
+      screen.getByText(/QR code hidden while preparing a direct contact request/i)
+    ).toBeTruthy();
   });
 
   it("creates a targeted request after confirmation", async () => {

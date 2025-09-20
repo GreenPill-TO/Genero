@@ -13,8 +13,9 @@ import { Hypodata, contactRecordToHypodata } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 
 const FONT_SIZE_MAX_REM = 4.5;
-const FONT_SIZE_MIN_REM = 1.75;
-const FONT_SIZE_CHAR_THRESHOLD = 7;
+const FONT_SIZE_MIN_REM = 1.1;
+const FONT_SIZE_CHAR_THRESHOLD = 6;
+const FONT_SIZE_REDUCTION_STEP = 0.4;
 
 export function calculateResponsiveFontSize(displayValue: string) {
   const trimmed = displayValue.replace(/\s+/g, "");
@@ -26,7 +27,7 @@ export function calculateResponsiveFontSize(displayValue: string) {
   const overflow = Math.max(0, visibleChars - FONT_SIZE_CHAR_THRESHOLD);
   const adjusted = Math.max(
     FONT_SIZE_MIN_REM,
-    FONT_SIZE_MAX_REM - overflow * 0.35
+    FONT_SIZE_MAX_REM - overflow * FONT_SIZE_REDUCTION_STEP
   );
 
   return `min(${adjusted.toFixed(2)}rem, 12vw)`;
@@ -87,6 +88,8 @@ interface SendCardProps {
   locked?: boolean;
   contacts?: ContactRecord[];
   amountHeaderActions?: React.ReactNode;
+  actionLabel?: string;
+  onPaymentComplete?: () => void;
 }
 
 export function SendCard({
@@ -106,6 +109,8 @@ export function SendCard({
   locked = false,
   contacts,
   amountHeaderActions,
+  actionLabel = "Send...",
+  onPaymentComplete,
 }: SendCardProps) {
   const [connections, setConnections] = useState<any>(null);
   const { userData } = useAuth();
@@ -365,6 +370,7 @@ export function SendCard({
                 variant="link"
                 className="h-auto p-0 text-xs"
                 onClick={onUseMax}
+                disabled={locked}
               >
                 Use Max
               </Button>
@@ -385,7 +391,7 @@ export function SendCard({
             >
               <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
             </Button>
-            {toSendData && (
+            {toSendData && !locked && (
               <Button
                 type="button"
                 variant="ghost"
@@ -489,13 +495,14 @@ export function SendCard({
                 closeModal={closeModal}
                 sendMoney={sendMoney}
                 setExplorerLink={setExplorerLink}
+                onPaymentComplete={onPaymentComplete}
               />
             ),
             title: "Confirm Payment",
           });
         }}
       >
-        <LuSend className="mr-2 h-4 w-4" /> Send...
+        <LuSend className="mr-2 h-4 w-4" /> {actionLabel}
       </Button>
 
       {explorerLink && (
@@ -588,6 +595,7 @@ function ConfirmTransactionModal({
   closeModal,
   sendMoney,
   setExplorerLink,
+  onPaymentComplete,
 }: {
   tcoinAmount: string;
   cadAmount: string;
@@ -595,6 +603,7 @@ function ConfirmTransactionModal({
   closeModal: () => void;
   sendMoney: (amount: string) => Promise<string>;
   setExplorerLink: (link: string | null) => void;
+  onPaymentComplete?: () => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const { userData } = useAuth();
@@ -629,6 +638,7 @@ function ConfirmTransactionModal({
               });
               setExplorerLink(`https://evm-testnet.flowscan.io/tx/${hash}`);
               toast.success("Payment Sent Successfully!");
+              onPaymentComplete?.();
             } catch (error) {
               toast.error("Error sending payment!");
             } finally {

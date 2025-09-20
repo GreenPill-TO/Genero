@@ -248,6 +248,17 @@ describe("SendCard", () => {
     expect(openModalMock).toHaveBeenCalled();
   });
 
+  it("does not render the clear recipient button when locked", () => {
+    renderSendCard({
+      toSendData: { id: 99, full_name: "Recipient" } as any,
+      locked: true,
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /clear recipient/i })
+    ).toBeNull();
+  });
+
   it("enables the send button when amount and recipient are set", () => {
     renderSendCard({
       tcoinAmount: "1.00",
@@ -260,6 +271,14 @@ describe("SendCard", () => {
       sendButtons.some((btn) => btn.getAttribute("aria-disabled") === "false")
     ).toBe(true);
   });
+
+  it("uses the provided action label on the send button", () => {
+    renderSendCard({ actionLabel: "Pay this request" });
+
+    expect(
+      screen.getByRole("button", { name: /Pay this request/i })
+    ).toBeTruthy();
+  });
 });
 
 describe("calculateResponsiveFontSize", () => {
@@ -268,10 +287,10 @@ describe("calculateResponsiveFontSize", () => {
   });
 
   it("shrinks the size for longer values", () => {
-    expect(calculateResponsiveFontSize("123456789012")).toBe("min(2.75rem, 12vw)");
+    expect(calculateResponsiveFontSize("123456789012")).toBe("min(2.10rem, 12vw)");
   });
 
   it("caps the size at the minimum for very long values", () => {
-    expect(calculateResponsiveFontSize("12345678901234567890")).toBe("min(1.75rem, 12vw)");
+    expect(calculateResponsiveFontSize("12345678901234567890")).toBe("min(1.10rem, 12vw)");
   });
 });

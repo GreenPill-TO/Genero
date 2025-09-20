@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
@@ -8,7 +8,7 @@ import { createClient } from "@shared/lib/supabase/client";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
-import { Hypodata } from "./types";
+import { Hypodata, InvoicePayRequest, contactRecordToHypodata } from "./types";
 import { SendCard } from "./SendCard";
 import { QrScanModal } from "@tcoin/wallet/components/modals";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
@@ -18,6 +18,58 @@ interface SendTabProps {
   onRecipientChange?: (recipient: Hypodata | null) => void;
   contacts?: ContactRecord[];
 }
+
+type IncomingRequest = InvoicePayRequest & { requester: Hypodata | null };
+
+const CLOSED_REQUEST_STATUSES = new Set([
+  "paid",
+  "completed",
+  "cancelled",
+  "closed",
+  "fulfilled",
+]);
+
+const formatRequestAmount = (amount: number | null | undefined) => {
+  if (!Number.isFinite(amount ?? NaN) || (amount ?? 0) <= 0) {
+    return "0.00 TCOIN";
+  }
+  return `${(amount ?? 0).toLocaleString("en-CA", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} TCOIN`;
+};
+
+const formatRequesterName = (
+  request: IncomingRequest
+): { primary: string; secondary: string } => {
+  const requester = request.requester;
+  const fallbackId = (() => {
+    const value = request.request_by;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  })();
+
+  if (!requester) {
+    const fallback = fallbackId != null ? `User #${fallbackId}` : "Unknown";
+    return { primary: fallback, secondary: "Requested via contact" };
+  }
+
+  const primary = requester.full_name?.trim() || requester.username?.trim();
+  const secondary = requester.username?.trim()
+    ? `@${requester.username.trim()}`
+    : fallbackId != null
+      ? `User #${fallbackId}`
+      : "";
+
+  return {
+    primary: primary ?? (fallbackId != null ? `User #${fallbackId}` : "Unknown"),
+    secondary,
+  };
+};
 
 export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps) {
   const { userData } = useAuth();
@@ -31,9 +83,22 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
-  const [mode, setMode] = useState<"manual" | "qr" | "link">("manual");
+  const [mode, setMode] = useState<"manual" | "link">("manual");
+  const [activeAction, setActiveAction] = useState<
+    "manual" | "scan" | "link" | "requests"
+  >("manual");
+  const [, setIncomingRequests] = useState<IncomingRequest[]>([]);
+  const [selectedRequest, setSelectedRequest] = useState<IncomingRequest | null>(null);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [payLink, setPayLink] = useState("");
   const { openModal, closeModal } = useModal();
+  const contactsById = useMemo(() => {
+    const map = new Map<number, Hypodata>();
+    (contacts ?? []).forEach((contact) => {
+      map.set(contact.id, contactRecordToHypodata(contact));
+    });
+    return map;
+  }, [contacts]);
 
   const { sendMoney } = useSendMoney({
     senderId: userData?.cubidData?.id,
@@ -151,6 +216,280 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     });
   }, [closeModal, openModal, updateRecipient]);
 
+  const fetchIncomingRequests = useCallback(async (): Promise<IncomingRequest[]> => {
+    const currentUserId = userData?.cubidData?.id;
+    if (!currentUserId) {
+      setIncomingRequests([]);
+      return [];
+    }
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("invoice_pay_request")
+        .select("*")
+        .eq("request_from", currentUserId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const rows = (data ?? []) as InvoicePayRequest[];
+      const filtered = rows.filter((request) => {
+        if (typeof request.status !== "string") return true;
+        const status = request.status.trim().toLowerCase();
+        return !CLOSED_REQUEST_STATUSES.has(status);
+      });
+
+      const requesterIds = Array.from(
+        new Set(
+          filtered
+            .map((request) => {
+              if (typeof request.request_by === "number" && Number.isFinite(request.request_by)) {
+                return request.request_by;
+              }
+              if (typeof request.request_by === "string") {
+                const parsed = Number.parseInt(request.request_by, 10);
+                if (Number.isFinite(parsed)) {
+                  return parsed;
+                }
+              }
+              return null;
+            })
+            .filter((value): value is number => value != null)
+        )
+      );
+
+      const requesterMap = new Map<number, Hypodata>();
+      contactsById.forEach((value, key) => {
+        requesterMap.set(key, value);
+      });
+
+      if (requesterIds.length > 0) {
+        const { data: userRows, error: userError } = await supabase
+          .from("users")
+          .select("id, full_name, username, profile_image_url")
+          .in("id", requesterIds);
+
+        if (userError) throw userError;
+
+        const { data: walletRows, error: walletError } = await supabase
+          .from("wallet_list")
+          .select("user_id, public_key")
+          .in("user_id", requesterIds);
+
+        if (walletError) throw walletError;
+
+        const walletMap = new Map<number, string | undefined>();
+        for (const wallet of walletRows ?? []) {
+          const id = Number(wallet.user_id);
+          if (Number.isFinite(id)) {
+            walletMap.set(id, typeof wallet.public_key === "string" ? wallet.public_key : undefined);
+          }
+        }
+
+        for (const row of userRows ?? []) {
+          const id = Number(row.id);
+          if (!Number.isFinite(id)) continue;
+          const existing = requesterMap.get(id);
+          requesterMap.set(id, {
+            id,
+            full_name: row.full_name ?? existing?.full_name ?? undefined,
+            username: row.username ?? existing?.username ?? undefined,
+            profile_image_url: row.profile_image_url ?? existing?.profile_image_url ?? undefined,
+            wallet_address: walletMap.get(id) ?? existing?.wallet_address ?? undefined,
+            state: existing?.state ?? undefined,
+          });
+        }
+      }
+
+      const enriched = filtered.map((request) => {
+        let requesterId: number | null = null;
+        if (typeof request.request_by === "number" && Number.isFinite(request.request_by)) {
+          requesterId = request.request_by;
+        } else if (typeof request.request_by === "string") {
+          const parsed = Number.parseInt(request.request_by, 10);
+          if (Number.isFinite(parsed)) {
+            requesterId = parsed;
+          }
+        }
+
+        const requester = requesterId != null ? requesterMap.get(requesterId) ?? null : null;
+        return { ...request, requester } as IncomingRequest;
+      });
+
+      setIncomingRequests(enriched);
+      return enriched;
+    } catch (error) {
+      console.error("Failed to fetch incoming requests:", error);
+      setIncomingRequests([]);
+      return [];
+    }
+  }, [contactsById, userData?.cubidData?.id]);
+
+  const handleRequestSelection = useCallback(
+    async (request: IncomingRequest) => {
+      let requester = request.requester ?? null;
+      let requesterId: number | null = null;
+      if (typeof request.request_by === "number" && Number.isFinite(request.request_by)) {
+        requesterId = request.request_by;
+      } else if (typeof request.request_by === "string") {
+        const parsed = Number.parseInt(request.request_by, 10);
+        if (Number.isFinite(parsed)) {
+          requesterId = parsed;
+        }
+      }
+
+      if (!requester && requesterId != null) {
+        requester = contactsById.get(requesterId) ?? null;
+      }
+
+      if (!requester && requesterId != null) {
+        try {
+          const supabase = createClient();
+          const { data: userRow, error: userError } = await supabase
+            .from("users")
+            .select("id, full_name, username, profile_image_url")
+            .eq("id", requesterId)
+            .single();
+
+          if (userError) throw userError;
+
+          const { data: walletRow } = await supabase
+            .from("wallet_list")
+            .select("public_key")
+            .eq("user_id", requesterId)
+            .single();
+
+          requester = {
+            id: requesterId,
+            full_name: userRow?.full_name ?? undefined,
+            username: userRow?.username ?? undefined,
+            profile_image_url: userRow?.profile_image_url ?? undefined,
+            wallet_address: walletRow?.public_key ?? undefined,
+            state: undefined,
+          };
+        } catch (error) {
+          console.error("Unable to load requester details:", error);
+        }
+      }
+
+      if (!requester) {
+        toast.error("Unable to load the requester details for this request.");
+        return;
+      }
+
+      updateRecipient(requester);
+
+      const numericAmount =
+        typeof request.amount_requested === "number"
+          ? request.amount_requested
+          : Number.parseFloat(String(request.amount_requested ?? "0"));
+      const safeAmount = Number.isFinite(numericAmount) ? Math.max(numericAmount, 0) : 0;
+
+      setTcoinAmount(safeAmount.toFixed(2));
+      if (safeExchangeRate > 0) {
+        setCadAmount((safeAmount * safeExchangeRate).toFixed(2));
+      } else {
+        setCadAmount("");
+      }
+
+      setSelectedRequest({ ...request, requester });
+      setActiveAction("requests");
+      setMode("manual");
+      setPayLink("");
+      closeModal();
+    },
+    [closeModal, contactsById, safeExchangeRate, updateRecipient]
+  );
+
+  const openRequestsModal = useCallback(async () => {
+    if (isLoadingRequests) return;
+    setIsLoadingRequests(true);
+    try {
+      const requests = await fetchIncomingRequests();
+      openModal({
+        title: "Open Requests",
+        description: "Select a pending request to pay.",
+        content: (
+          <RequestsList
+            requests={requests}
+            onSelect={(selection) => {
+              void handleRequestSelection(selection);
+            }}
+          />
+        ),
+      });
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  }, [fetchIncomingRequests, handleRequestSelection, isLoadingRequests, openModal]);
+
+  const handleManualClick = () => {
+    if (selectedRequest) {
+      setSelectedRequest(null);
+    }
+    setMode("manual");
+    setActiveAction("manual");
+  };
+
+  const handleScanClick = () => {
+    const hadRequest = Boolean(selectedRequest);
+    if (hadRequest) {
+      setSelectedRequest(null);
+    } else {
+      reset();
+    }
+    setMode("manual");
+    setActiveAction("scan");
+    openScanner();
+  };
+
+  const handleLinkClick = () => {
+    const hadRequest = Boolean(selectedRequest);
+    if (hadRequest) {
+      setSelectedRequest(null);
+    } else {
+      reset();
+    }
+    setPayLink("");
+    setMode("link");
+    setActiveAction("link");
+  };
+
+  const handleRequestPaid = useCallback(async () => {
+    if (!selectedRequest) return;
+    const requestId = selectedRequest.id;
+    try {
+      const supabase = createClient();
+      await supabase
+        .from("invoice_pay_request")
+        .update({ status: "paid" })
+        .eq("id", requestId);
+    } catch (error) {
+      console.error("Failed to mark request as paid:", error);
+    } finally {
+      setSelectedRequest(null);
+      setActiveAction("manual");
+      void fetchIncomingRequests();
+    }
+  }, [fetchIncomingRequests, selectedRequest]);
+
+  useEffect(() => {
+    if (!selectedRequest && activeAction === "requests") {
+      setActiveAction("manual");
+    }
+  }, [activeAction, selectedRequest]);
+
+  useEffect(() => {
+    if (!toSendData && selectedRequest) {
+      setSelectedRequest(null);
+    }
+  }, [selectedRequest, toSendData]);
+
+  useEffect(() => {
+    void fetchIncomingRequests();
+  }, [fetchIncomingRequests]);
+
   const extractAndDecodeBase64 = (url: string) => {
     try {
       const urlObj = new URL(url);
@@ -196,37 +535,42 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     }
   };
 
-  useEffect(() => {
-    if (mode === "manual") {
-      return;
-    }
-
-    reset();
-    if (mode === "qr") {
-      openScanner();
-      setMode("manual");
-    }
-  }, [mode, openScanner, reset]);
-
   const modeActions = (
     <>
       <Button
-        variant={mode === "manual" ? "default" : "outline"}
-        onClick={() => setMode("manual")}
+        type="button"
+        variant={activeAction === "manual" ? "default" : "outline"}
+        onClick={handleManualClick}
+        className="min-w-[120px]"
       >
         Manual
       </Button>
       <Button
-        variant={mode === "qr" ? "default" : "outline"}
-        onClick={() => setMode("qr")}
+        type="button"
+        variant={activeAction === "scan" ? "default" : "outline"}
+        onClick={handleScanClick}
+        className="min-w-[120px]"
       >
         Scan QR Code
       </Button>
       <Button
-        variant={mode === "link" ? "default" : "outline"}
-        onClick={() => setMode("link")}
+        type="button"
+        variant={activeAction === "link" ? "default" : "outline"}
+        onClick={handleLinkClick}
+        className="min-w-[120px]"
       >
         Pay Link
+      </Button>
+      <Button
+        type="button"
+        variant={activeAction === "requests" ? "default" : "outline"}
+        onClick={() => {
+          void openRequestsModal();
+        }}
+        className="min-w-[120px]"
+        disabled={isLoadingRequests}
+      >
+        Requests
       </Button>
     </>
   );
@@ -250,6 +594,9 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           onUseMax={handleUseMax}
           contacts={contacts}
           amountHeaderActions={modeActions}
+          locked={Boolean(selectedRequest)}
+          actionLabel={selectedRequest ? "Pay this request" : "Send..."}
+          onPaymentComplete={selectedRequest ? handleRequestPaid : undefined}
         />
       )}
 
@@ -294,6 +641,59 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function RequestsList({
+  requests,
+  onSelect,
+}: {
+  requests: IncomingRequest[];
+  onSelect: (request: IncomingRequest) => void;
+}) {
+  if (requests.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        You have no open requests to pay right now.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {requests.map((request) => {
+        const { primary, secondary } = formatRequesterName(request);
+        const createdLabel = request.created_at
+          ? new Date(request.created_at).toLocaleDateString("en-CA")
+          : null;
+
+        return (
+          <button
+            type="button"
+            key={request.id}
+            className="w-full rounded-xl border border-border/60 bg-background/80 p-4 text-left transition hover:border-primary"
+            onClick={() => onSelect(request)}
+          >
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">
+                  {formatRequestAmount(request.amount_requested)}
+                </span>
+                {createdLabel && (
+                  <span className="text-xs text-muted-foreground">
+                    {createdLabel}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Requested by {primary}
+                {secondary ? ` (${secondary})` : ""}
+              </span>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
