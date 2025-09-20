@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const useSendMoneyMock = vi.hoisted(() =>
   vi.fn().mockReturnValue({
+    senderWallet: "0x-sender-from-hook",
     sendMoney: vi.fn(),
     getLastTransferRecord: vi.fn(),
   })
@@ -24,8 +25,12 @@ vi.mock("@shared/hooks/useSendMoney", () => ({
   useSendMoney: useSendMoneyMock,
 }));
 
+const useTokenBalanceMock = vi.hoisted(() =>
+  vi.fn().mockReturnValue({ balance: "10" })
+);
+
 vi.mock("@shared/hooks/useTokenBalance", () => ({
-  useTokenBalance: () => ({ balance: "10" }),
+  useTokenBalance: useTokenBalanceMock,
 }));
 
 const openModal = vi.fn();
@@ -165,6 +170,7 @@ afterEach(() => {
   openModal.mockReset();
   updateMock.mockReset();
   updateEqMock.mockReset();
+  useTokenBalanceMock.mockClear();
 });
 
 describe("SendTab", () => {
@@ -189,6 +195,11 @@ describe("SendTab", () => {
   it("passes numeric userBalance to SendCard", () => {
     render(<SendTab recipient={null} />);
     expect(sendCardProps.userBalance).toBe(10);
+  });
+
+  it("derives the balance using the sender wallet from useSendMoney", () => {
+    render(<SendTab recipient={null} />);
+    expect(useTokenBalanceMock).toHaveBeenCalledWith("0x-sender-from-hook");
   });
 
   it("keeps the provided recipient when the tab initialises", () => {

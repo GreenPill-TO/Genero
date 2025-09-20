@@ -80,6 +80,11 @@ export function AccountCard({
       .catch((error) => console.error("Copy failed:", error));
   };
 
+  const explorerBaseUrl =
+    process.env.NEXT_PUBLIC_EXPLORER_URL ||
+    "https://explorer.example.com/address/";
+  const explorerHref = `${explorerBaseUrl}${senderWallet}`;
+
   return (
     <Card>
       <CardHeader>
@@ -134,7 +139,7 @@ export function AccountCard({
                 </button>
               </div>
               <a
-                href={`https://explorer.example.com/address/${senderWallet}`}
+                href={explorerHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-500 underline mb-3 block"

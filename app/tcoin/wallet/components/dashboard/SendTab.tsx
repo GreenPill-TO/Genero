@@ -129,13 +129,11 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     return map;
   }, [contacts]);
 
-  const { sendMoney, getLastTransferRecord } = useSendMoney({
+  const { senderWallet, sendMoney, getLastTransferRecord } = useSendMoney({
     senderId: userData?.cubidData?.id,
     receiverId: toSendData?.id ?? null,
   });
-  const { balance: rawBalance } = useTokenBalance(
-    userData?.cubidData?.wallet_address || ""
-  );
+  const { balance: rawBalance } = useTokenBalance(senderWallet ?? null);
   const balance = parseFloat(rawBalance) || 0;
 
   const selectedRequestAmount = useMemo(() => {
