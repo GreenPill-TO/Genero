@@ -214,4 +214,89 @@ describe("ContactSelectModal", () => {
     });
     document.body.removeChild(container);
   });
+
+  it("invokes onSelectContact when a selection is made", async () => {
+    const closeModal = vi.fn();
+    const onSelectContact = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const queryClient = new QueryClient();
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ContactSelectModal
+            closeModal={closeModal}
+            amount="5"
+            method="Send"
+            setToSendData={vi.fn()}
+            onSelectContact={onSelectContact}
+          />
+        </QueryClientProvider>
+      );
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const sendButton = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent === "Send 5"
+    ) as HTMLButtonElement;
+
+    act(() => {
+      sendButton.click();
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onSelectContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 2, full_name: "Alice" })
+    );
+
+    act(() => {
+      root.unmount();
+    });
+    document.body.removeChild(container);
+  });
+
+  it("falls back to prefetched contacts when fetching fails", async () => {
+    fetchContactsForOwnerMock.mockRejectedValueOnce(new Error("nope"));
+    const closeModal = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const queryClient = new QueryClient();
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <ContactSelectModal
+            closeModal={closeModal}
+            amount="5"
+            method="Send"
+            prefetchedContacts={mockContacts}
+            setToSendData={vi.fn()}
+          />
+        </QueryClientProvider>
+      );
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const option = container.querySelector<HTMLInputElement>(
+      "input[id='contact-2']"
+    );
+    expect(option).not.toBeNull();
+
+    act(() => {
+      root.unmount();
+    });
+    document.body.removeChild(container);
+  });
 });

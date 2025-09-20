@@ -3,13 +3,13 @@ import { LuRefreshCcw, LuSend, LuUserPlus, LuX } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
-import { Input } from "@shared/components/ui/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { useModal } from "@shared/contexts/ModalContext";
 import { createClient } from "@shared/lib/supabase/client";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
-import { type ContactRecord } from "@shared/api/services/supabaseService";
+import { ContactSelectModal } from "@tcoin/wallet/components/modals";
 import { Hypodata } from "./types";
+import type { ContactRecord } from "@shared/api/services/supabaseService";
 
 const FONT_SIZE_MAX_REM = 4.5;
 const FONT_SIZE_MIN_REM = 2.75;
@@ -56,10 +56,10 @@ const formatCadDisplay = (value: string) => {
   })}`;
 };
 
-const formatContactName = (contact: ContactRecord | Hypodata) =>
+const formatContactName = (contact: Hypodata) =>
   contact.full_name?.trim() || contact.username?.trim() || "Unknown";
 
-const getContactInitials = (contact: ContactRecord | Hypodata) => {
+const getContactInitials = (contact: Hypodata) => {
   const name = formatContactName(contact);
   const parts = name.split(" ");
   if (parts.length === 1) {
@@ -80,13 +80,10 @@ interface SendCardProps {
   handleCadBlur: () => void;
   explorerLink: string | null;
   setExplorerLink: (link: string | null) => void;
-  setTcoin: (value: string) => void;
-  setCad: (value: string) => void;
   userBalance: number;
   onUseMax: () => void;
   locked?: boolean;
   contacts?: ContactRecord[];
-  isFetchingContacts?: boolean;
 }
 
 export function SendCard({
@@ -100,26 +97,18 @@ export function SendCard({
   handleCadBlur,
   explorerLink,
   setExplorerLink,
-  setTcoin,
   sendMoney,
-  setCad,
   userBalance,
   onUseMax,
   locked = false,
-  contacts: rawContacts,
-  isFetchingContacts = false,
+  contacts,
 }: SendCardProps) {
-  const contacts = rawContacts ?? [];
   const [connections, setConnections] = useState<any>(null);
   const { userData } = useAuth();
   const { openModal, closeModal } = useModal();
   const [isCadInput, setIsCadInput] = useState(false);
   const [isTcoinFocused, setIsTcoinFocused] = useState(false);
   const [isCadFocused, setIsCadFocused] = useState(false);
-  const [recipientQuery, setRecipientQuery] = useState("");
-  const [showAllContacts, setShowAllContacts] = useState(false);
-  const suggestionsRef = useRef<HTMLDivElement | null>(null);
-  const recipientInputRef = useRef<HTMLInputElement | null>(null);
   const amountInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -145,20 +134,16 @@ export function SendCard({
   }, [toSendData?.id, userData?.cubidData?.id]);
 
   useEffect(() => {
-    if (toSendData) {
-      setRecipientQuery("");
-      setShowAllContacts(false);
-    }
+    if (!toSendData) return;
+    const timer = setTimeout(() => amountInputRef.current?.focus(), 0);
+    return () => clearTimeout(timer);
   }, [toSendData]);
 
-  const tcoinValue = parseFloat(tcoinAmount);
-  const cadValue = parseFloat(cadAmount);
-  const isValidAmount =
-    !isNaN(tcoinValue) &&
-    !isNaN(cadValue) &&
-    tcoinValue > 0 &&
-    cadValue > 0 &&
-    tcoinValue <= userBalance;
+  const tcoinValue = Number.parseFloat(tcoinAmount);
+  const cadValue = Number.parseFloat(cadAmount);
+  const hasTcoinAmount = Number.isFinite(tcoinValue) && tcoinValue > 0;
+  const amountExceedsBalance = Number.isFinite(tcoinValue) && tcoinValue > userBalance;
+  const canSend = Boolean(toSendData) && hasTcoinAmount;
 
   const amountLocked =
     locked &&
@@ -176,65 +161,51 @@ export function SendCard({
     () => calculateResponsiveFontSize(displayValue),
     [displayValue]
   );
-
-  const suggestions = useMemo(() => {
-    const query = recipientQuery.trim().toLowerCase();
-    if (!query) {
-      return contacts;
+  const contactModalAmount = useMemo(() => {
+    const trimmed = tcoinAmount.trim();
+    if (trimmed === "") {
+      return "TCOIN";
     }
-    return contacts.filter((contact) => {
-      const name = contact.full_name?.toLowerCase() ?? "";
-      const username = contact.username?.toLowerCase() ?? "";
-      return name.includes(query) || username.includes(query);
-    });
-  }, [contacts, recipientQuery]);
+    const parsed = Number.parseFloat(trimmed);
+    if (!Number.isFinite(parsed)) {
+      return "TCOIN";
+    }
+    return `${parsed.toFixed(2)} TCOIN`;
+  }, [tcoinAmount]);
 
-  const shouldShowSuggestions =
-    !locked && !toSendData && (showAllContacts || recipientQuery.trim() !== "");
-
-  const handleSelectContact = (contact: ContactRecord) => {
+  const handleContactSelection = (contact: Hypodata) => {
     setToSendData(contact);
-    setRecipientQuery("");
-    setShowAllContacts(false);
+    setTimeout(() => amountInputRef.current?.focus(), 0);
+  };
+
+  const openContactSelector = () => {
+    if (locked) return;
+    openModal({
+      content: (
+        <ContactSelectModal
+          closeModal={closeModal}
+          amount={contactModalAmount}
+          method="Send"
+          defaultContactId={toSendData?.id}
+          setToSendData={handleContactSelection}
+          prefetchedContacts={contacts}
+          onSelectContact={handleContactSelection}
+        />
+      ),
+      title: "Select Contact",
+      description: "Choose a contact to send TCOIN to.",
+    });
   };
 
   const clearRecipient = () => {
     setToSendData(null);
-    setTcoin("");
-    setCad("");
-    setRecipientQuery("");
-    setShowAllContacts(false);
+    setTimeout(() => amountInputRef.current?.focus(), 0);
   };
 
-  useEffect(() => {
-    if (!shouldShowSuggestions) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!suggestionsRef.current) return;
-      if (
-        event.target instanceof Node &&
-        suggestionsRef.current.contains(event.target)
-      ) {
-        return;
-      }
-      if (
-        recipientInputRef.current &&
-        event.target instanceof Node &&
-        recipientInputRef.current.contains(event.target)
-      ) {
-        return;
-      }
-      setShowAllContacts(false);
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [shouldShowSuggestions]);
-
   return (
-    <div className="space-y-6">
-      <div className="mx-auto w-full max-w-xl">
-        <div className="relative mx-auto flex aspect-square w-full max-w-xl flex-col items-center justify-center gap-4 rounded-3xl border border-border/60 bg-background/70 p-6 shadow-lg sm:p-8">
+    <div className="mx-auto flex w-full max-w-2xl flex-col space-y-4">
+      <div className="mx-auto w-full max-w-sm">
+        <div className="relative mx-auto flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
           <div className="w-full text-center">
             {isCadInput ? (
               <input
@@ -272,7 +243,7 @@ export function SendCard({
               />
             )}
           </div>
-          <div className="flex w-full justify-end pr-4">
+          <div className="flex w-full justify-end">
             <Button
               type="button"
               variant="ghost"
@@ -311,20 +282,30 @@ export function SendCard({
         </div>
       </div>
 
-      <section className="rounded-3xl border border-border bg-card/70 p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
+      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Send To</h2>
-          {toSendData && (
+          <div className="flex items-center gap-2">
             <Button
               type="button"
-              variant="ghost"
-              size="icon"
-              onClick={clearRecipient}
-              aria-label="Clear recipient"
+              variant="secondary"
+              onClick={openContactSelector}
+              disabled={locked}
             >
-              <LuX className="h-4 w-4" />
+              <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
             </Button>
-          )}
+            {toSendData && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={clearRecipient}
+                aria-label="Clear recipient"
+              >
+                <LuX className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {toSendData ? (
@@ -350,100 +331,30 @@ export function SendCard({
             </div>
           </div>
         ) : (
-          <div className="mt-4 space-y-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                <label className="sr-only" htmlFor="send-card-recipient">
-                  Search contacts
-                </label>
-                <Input
-                  id="send-card-recipient"
-                  ref={recipientInputRef}
-                  value={recipientQuery}
-                  onChange={(event) => {
-                    setRecipientQuery(event.target.value);
-                    if (event.target.value.trim() !== "") {
-                      setShowAllContacts(false);
-                    }
-                  }}
-                  placeholder="Type a name or username"
-                  disabled={locked}
-                  autoComplete="off"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  if (locked) return;
-                  setShowAllContacts(true);
-                  setTimeout(() => recipientInputRef.current?.focus(), 0);
-                }}
-                disabled={locked || (!isFetchingContacts && contacts.length === 0)}
-              >
-                <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
-              </Button>
-            </div>
-            {isFetchingContacts && (
-              <p className="text-sm text-muted-foreground">Loading contacts…</p>
-            )}
-            {shouldShowSuggestions && (
-              <div
-                ref={suggestionsRef}
-                className="max-h-56 overflow-y-auto rounded-2xl border border-dashed border-border/60 bg-background/80 p-2"
-              >
-                {suggestions.length > 0 ? (
-                  <ul className="space-y-1" role="listbox">
-                    {suggestions.map((contact) => (
-                      <li key={contact.id}>
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-muted"
-                          onClick={() => handleSelectContact(contact)}
-                        >
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage
-                              src={contact.profile_image_url ?? undefined}
-                              alt={formatContactName(contact)}
-                            />
-                            <AvatarFallback>{getContactInitials(contact)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{formatContactName(contact)}</p>
-                            {contact.username && (
-                              <p className="text-xs text-muted-foreground">@{contact.username}</p>
-                            )}
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="px-2 py-4 text-sm text-muted-foreground">
-                    No contacts found. Try a different search.
-                  </p>
-                )}
-              </div>
-            )}
-            {!isFetchingContacts && contacts.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                You do not have any contacts yet.
-              </p>
-            )}
+          <div className="mt-4 rounded-2xl border border-dashed border-border/60 bg-background/70 p-5 text-center text-sm text-muted-foreground">
+            Select a contact to populate the recipient field.
           </div>
         )}
       </section>
 
       <Button
         className="w-full"
-        disabled={!isValidAmount || !toSendData}
+        disabled={!canSend}
         onClick={() => {
-          if (!isValidAmount || !toSendData) {
-            toast.error(
-              !toSendData
-                ? "Select a recipient first."
-                : "Please enter valid amounts. Ensure they are positive and within your available balance."
-            );
+          if (!toSendData) {
+            toast.error("Select a recipient first.");
+            return;
+          }
+          if (!hasTcoinAmount) {
+            toast.error("Please enter an amount greater than zero.");
+            return;
+          }
+          if (!Number.isFinite(cadValue) && cadAmount.trim() !== "") {
+            toast.error("Enter a valid CAD amount or switch currencies.");
+            return;
+          }
+          if (amountExceedsBalance) {
+            toast.error("Amount exceeds your available balance.");
             return;
           }
           openModal({

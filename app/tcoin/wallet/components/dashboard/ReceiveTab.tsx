@@ -3,8 +3,15 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { ReceiveCard } from "./ReceiveCard";
 import { Hypodata } from "./types";
+import type { ContactRecord } from "@shared/api/services/supabaseService";
 
-export function ReceiveTab({ contact }: { contact?: Hypodata | null }) {
+interface ReceiveTabProps {
+  contact?: Hypodata | null;
+  onContactChange?: (contact: Hypodata | null) => void;
+  contacts?: ContactRecord[];
+}
+
+export function ReceiveTab({ contact, onContactChange, contacts }: ReceiveTabProps) {
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables();
 
@@ -66,6 +73,11 @@ export function ReceiveTab({ contact }: { contact?: Hypodata | null }) {
     setRequestContact(contact ?? null);
   }, [contact]);
 
+  const handleRequestContactChange = (next: Hypodata | null) => {
+    setRequestContact(next);
+    onContactChange?.(next);
+  };
+
   return (
     <div className="lg:px-[25vw]">
       <ReceiveCard
@@ -82,7 +94,11 @@ export function ReceiveTab({ contact }: { contact?: Hypodata | null }) {
         qrFgColor="#000"
         qrWrapperClassName="bg-white p-1"
         requestContact={requestContact}
-        onClearRequestContact={() => setRequestContact(null)}
+        onClearRequestContact={() => handleRequestContactChange(null)}
+        contacts={contacts}
+        onSelectRequestContact={(selectedContact) =>
+          handleRequestContactChange(selectedContact)
+        }
       />
     </div>
   );

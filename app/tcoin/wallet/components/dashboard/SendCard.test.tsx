@@ -1,14 +1,15 @@
 /** @vitest-environment jsdom */
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SendCard, calculateResponsiveFontSize } from "./SendCard";
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => ({ userData: { cubidData: { id: 1 } } }),
 }));
+const openModalMock = vi.fn();
 vi.mock("@shared/contexts/ModalContext", () => ({
-  useModal: () => ({ openModal: vi.fn(), closeModal: vi.fn() }),
+  useModal: () => ({ openModal: openModalMock, closeModal: vi.fn() }),
 }));
 vi.mock("@shared/lib/supabase/client", () => ({
   createClient: () => ({
@@ -34,12 +35,9 @@ const createProps = () => ({
   handleCadBlur: vi.fn(),
   explorerLink: null as string | null,
   setExplorerLink: vi.fn(),
-  setTcoin: vi.fn(),
-  setCad: vi.fn(),
   sendMoney: vi.fn(),
   userBalance: 0,
   onUseMax: vi.fn(),
-  contacts: [] as any[],
 });
 
 const renderSendCard = (overrides: Partial<ReturnType<typeof createProps>> = {}) => {
@@ -48,14 +46,14 @@ const renderSendCard = (overrides: Partial<ReturnType<typeof createProps>> = {})
 };
 
 describe("SendCard", () => {
+  beforeEach(() => {
+    openModalMock.mockReset();
+  });
+
   it("disables send button when no recipient", () => {
     renderSendCard();
     const button = screen.getByRole("button", { name: "Send..." }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
-  });
-
-  it("renders safely when contacts data is unavailable", () => {
-    expect(() => renderSendCard({ contacts: undefined as any })).not.toThrow();
   });
 
   it("shows available balance and triggers onUseMax", () => {
@@ -99,6 +97,24 @@ describe("SendCard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /clear recipient/i }));
     expect(setToSendData).toHaveBeenCalledWith(null);
+  });
+
+  it("opens the contact selector modal when Select Contact is clicked", () => {
+    renderSendCard();
+    const buttons = screen.getAllByRole("button", { name: /Select Contact/i });
+    fireEvent.click(buttons[0]);
+    expect(openModalMock).toHaveBeenCalled();
+  });
+
+  it("enables the send button when amount and recipient are set", () => {
+    renderSendCard({
+      tcoinAmount: "1.00",
+      cadAmount: "1.00",
+      toSendData: { id: 1, full_name: "Test" } as any,
+    });
+
+    const sendButtons = screen.getAllByRole("button", { name: "Send..." }) as HTMLButtonElement[];
+    expect(sendButtons.some((btn) => btn.disabled === false)).toBe(true);
   });
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
@@ -11,16 +11,15 @@ import { useModal } from "@shared/contexts/ModalContext";
 import { Hypodata } from "./types";
 import { SendCard } from "./SendCard";
 import { QrScanModal } from "@tcoin/wallet/components/modals";
-import {
-  fetchContactsForOwner,
-  type ContactRecord,
-} from "@shared/api/services/supabaseService";
+import type { ContactRecord } from "@shared/api/services/supabaseService";
 
 interface SendTabProps {
   recipient: Hypodata | null;
+  onRecipientChange?: (recipient: Hypodata | null) => void;
+  contacts?: ContactRecord[];
 }
 
-export function SendTab({ recipient }: SendTabProps) {
+export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps) {
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables();
   const safeExchangeRate =
@@ -35,8 +34,6 @@ export function SendTab({ recipient }: SendTabProps) {
   const [mode, setMode] = useState<"manual" | "qr" | "link">("manual");
   const [payLink, setPayLink] = useState("");
   const { openModal, closeModal } = useModal();
-  const [contacts, setContacts] = useState<ContactRecord[]>([]);
-  const [isFetchingContacts, setIsFetchingContacts] = useState(false);
 
   const { sendMoney } = useSendMoney({
     senderId: userData?.cubidData?.id,
@@ -51,43 +48,20 @@ export function SendTab({ recipient }: SendTabProps) {
     setToSendData(recipient);
   }, [recipient]);
 
+  const updateRecipient = useCallback(
+    (value: Hypodata | null | undefined) => {
+      const normalised = value ?? null;
+      setToSendData(normalised);
+      onRecipientChange?.(normalised);
+    },
+    [onRecipientChange]
+  );
+
   const handleUseMax = () => {
     const cadNumeric = safeExchangeRate === 0 ? 0 : balance * safeExchangeRate;
     setTcoinAmount(balance.toFixed(2));
     setCadAmount(cadNumeric.toFixed(2));
   };
-
-  const ownerId = userData?.cubidData?.id;
-
-  useEffect(() => {
-    if (!ownerId) {
-      setContacts([]);
-      return;
-    }
-
-    let isActive = true;
-    setIsFetchingContacts(true);
-    fetchContactsForOwner(ownerId)
-      .then((records) => {
-        if (!isActive) return;
-        setContacts(records);
-      })
-      .catch((error) => {
-        console.error("Failed to fetch contacts", error);
-        if (isActive) {
-          setContacts([]);
-        }
-      })
-      .finally(() => {
-        if (isActive) {
-          setIsFetchingContacts(false);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [ownerId]);
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = sanitizeNumeric(e.target.value);
@@ -155,19 +129,19 @@ export function SendTab({ recipient }: SendTabProps) {
     setTcoinAmount(tcoinNumeric.toFixed(2));
   };
 
-  const reset = () => {
-    setToSendData(null);
+  const reset = useCallback(() => {
+    updateRecipient(null);
     setTcoinAmount("");
     setCadAmount("");
     setPayLink("");
-  };
+  }, [updateRecipient]);
 
-  const openScanner = () => {
+  const openScanner = useCallback(() => {
     openModal({
       content: (
         <QrScanModal
           closeModal={closeModal}
-          setToSendData={(d: Hypodata) => setToSendData(d)}
+          setToSendData={(d: Hypodata) => updateRecipient(d)}
           setTcoin={setTcoinAmount}
           setCad={setCadAmount}
         />
@@ -175,7 +149,7 @@ export function SendTab({ recipient }: SendTabProps) {
       title: "Scan QR",
       description: "Use your device's camera to scan a code.",
     });
-  };
+  }, [closeModal, openModal, updateRecipient]);
 
   const extractAndDecodeBase64 = (url: string) => {
     try {
@@ -204,7 +178,7 @@ export function SendTab({ recipient }: SendTabProps) {
         .select("*")
         .match({ user_identifier: nano_id });
       if (error) throw error;
-      setToSendData(userDataFromSupabaseTable?.[0]);
+      updateRecipient(userDataFromSupabaseTable?.[0] ?? null);
       if (qrTcoinAmount) {
         const sanitized = sanitizeNumeric(String(qrTcoinAmount));
         if (sanitized) {
@@ -223,12 +197,16 @@ export function SendTab({ recipient }: SendTabProps) {
   };
 
   useEffect(() => {
+    if (mode === "manual") {
+      return;
+    }
+
     reset();
     if (mode === "qr") {
       openScanner();
       setMode("manual");
     }
-  }, [mode]);
+  }, [mode, openScanner, reset]);
 
   return (
     <div className="space-y-4 lg:px-[25vw]">
@@ -257,7 +235,7 @@ export function SendTab({ recipient }: SendTabProps) {
         <>
           <SendCard
             toSendData={toSendData}
-            setToSendData={setToSendData}
+            setToSendData={updateRecipient}
             tcoinAmount={tcoinAmount}
             cadAmount={cadAmount}
             handleTcoinChange={handleTcoinChange}
@@ -266,13 +244,10 @@ export function SendTab({ recipient }: SendTabProps) {
             handleCadBlur={handleCadBlur}
             explorerLink={explorerLink}
             setExplorerLink={setExplorerLink}
-            setTcoin={setTcoinAmount}
-            setCad={setCadAmount}
             sendMoney={sendMoney}
             userBalance={balance}
             onUseMax={handleUseMax}
             contacts={contacts}
-            isFetchingContacts={isFetchingContacts}
           />
         </>
       )}
@@ -294,7 +269,7 @@ export function SendTab({ recipient }: SendTabProps) {
             <SendCard
               locked
               toSendData={toSendData}
-              setToSendData={setToSendData}
+              setToSendData={updateRecipient}
               tcoinAmount={tcoinAmount}
               cadAmount={cadAmount}
               handleTcoinChange={handleTcoinChange}
@@ -303,12 +278,10 @@ export function SendTab({ recipient }: SendTabProps) {
               handleCadBlur={handleCadBlur}
               explorerLink={explorerLink}
               setExplorerLink={setExplorerLink}
-              setTcoin={setTcoinAmount}
-              setCad={setCadAmount}
               sendMoney={sendMoney}
               userBalance={balance}
+              onUseMax={handleUseMax}
               contacts={contacts}
-              isFetchingContacts={isFetchingContacts}
             />
           )}
         </>

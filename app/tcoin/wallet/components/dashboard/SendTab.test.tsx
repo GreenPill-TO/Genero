@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const useSendMoneyMock = vi.hoisted(() =>
@@ -44,10 +44,6 @@ vi.mock("react-toastify", () => ({ toast: { error: vi.fn(), success: vi.fn() } }
 
 let sendCardProps: any;
 
-const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn().mockResolvedValue([
-  { id: 5, full_name: "Contact", username: "contact", profile_image_url: null, wallet_address: null, state: "accepted" },
-]));
-
 vi.mock("./SendCard", () => ({
   SendCard: (props: any) => {
     sendCardProps = props;
@@ -64,17 +60,12 @@ vi.mock("@tcoin/wallet/components/modals", () => ({
   QrScanModal: () => <div>qr-modal</div>,
 }));
 
-vi.mock("@shared/api/services/supabaseService", () => ({
-  fetchContactsForOwner: fetchContactsForOwnerMock,
-}));
-
 import { SendTab } from "./SendTab";
 
 afterEach(() => {
   cleanup();
   sendCardProps = undefined;
   openModal.mockReset();
-  fetchContactsForOwnerMock.mockClear();
 });
 
 describe("SendTab", () => {
@@ -100,17 +91,22 @@ describe("SendTab", () => {
     expect(sendCardProps.userBalance).toBe(10);
   });
 
-  it("loads contacts and forwards them to the SendCard", async () => {
-    render(<SendTab recipient={null} />);
+  it("keeps the provided recipient when the tab initialises", () => {
+    render(<SendTab recipient={{ id: 7 } as any} />);
+    expect(sendCardProps.toSendData).toEqual({ id: 7 });
+  });
 
-    expect(fetchContactsForOwnerMock).toHaveBeenCalledWith(42);
-
-    await waitFor(() => {
-      expect(sendCardProps.contacts).toEqual([
-        expect.objectContaining({ id: 5, username: "contact" }),
-      ]);
-      expect(sendCardProps.isFetchingContacts).toBe(false);
+  it("emits recipient changes through onRecipientChange", () => {
+    const onRecipientChange = vi.fn();
+    render(<SendTab recipient={null} onRecipientChange={onRecipientChange} />);
+    act(() => {
+      sendCardProps.setToSendData({ id: 11 } as any);
     });
+    expect(onRecipientChange).toHaveBeenCalledWith({ id: 11 });
+    act(() => {
+      sendCardProps.setToSendData(null);
+    });
+    expect(onRecipientChange).toHaveBeenCalledWith(null);
   });
 });
 

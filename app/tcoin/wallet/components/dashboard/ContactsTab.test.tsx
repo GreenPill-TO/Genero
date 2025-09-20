@@ -85,4 +85,31 @@ describe("ContactsTab", () => {
       expect.objectContaining({ id: 1, full_name: "Alice" })
     );
   });
+
+  it("notifies when contacts are resolved and seeds initial contacts", async () => {
+    const onContactsResolved = vi.fn();
+    const seed = [
+      {
+        id: 5,
+        full_name: "Zara",
+        username: "zara",
+        profile_image_url: null,
+        wallet_address: null,
+        state: "accepted",
+        last_interaction: "2024-01-04T00:00:00.000Z",
+      },
+    ];
+
+    render(
+      <ContactsTab
+        onSend={vi.fn()}
+        initialContacts={seed as any}
+        onContactsResolved={onContactsResolved}
+      />
+    );
+
+    expect(await screen.findByText("Zara")).toBeTruthy();
+
+    await waitFor(() => expect(onContactsResolved).toHaveBeenCalled());
+  });
 });

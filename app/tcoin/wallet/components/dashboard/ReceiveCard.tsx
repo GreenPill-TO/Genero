@@ -11,6 +11,7 @@ import { cn } from "@shared/utils/classnames";
 import { ContactSelectModal, ShareQrModal } from "@tcoin/wallet/components/modals";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Hypodata } from "./types";
+import type { ContactRecord } from "@shared/api/services/supabaseService";
 
 export function ReceiveCard({
   qrCodeData,
@@ -42,6 +43,8 @@ export function ReceiveCard({
   tokenLabel?: string;
   requestContact?: Hypodata | null;
   onClearRequestContact?: () => void;
+  contacts?: ContactRecord[];
+  onSelectRequestContact?: (contact: Hypodata) => void;
 }) {
   const { isDarkMode } = useDarkMode();
   const { ...rest } = useTokenBalance(senderWallet);
@@ -72,6 +75,8 @@ export function ReceiveCard({
           amount={qrTcoinAmount}
           method="Request"
           defaultContactId={requestContact?.id}
+          prefetchedContacts={contacts}
+          onSelectContact={(contact) => onSelectRequestContact?.(contact)}
         />
       ),
       title: "Request from Contact",
@@ -155,8 +160,11 @@ export function ReceiveCard({
                   </AvatarFallback>
                 </Avatar>
                 <div>
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Request From:
+                  </p>
                   <p className="text-sm font-medium">
-                    Request From {formatContactName(requestContact)}
+                    {formatContactName(requestContact)}
                   </p>
                   {requestContact.username && (
                     <p className="text-xs text-muted-foreground">

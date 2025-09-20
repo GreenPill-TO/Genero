@@ -10,12 +10,15 @@ import {
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
 import { ErrorBoundary } from "@shared/components/ErrorBoundary";
 import { useRouter } from "next/navigation";
+import type { ContactRecord } from "@shared/api/services/supabaseService";
+import type { Hypodata } from "@tcoin/wallet/components/dashboard";
 
 export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
   const [activeTab, setActiveTab] = useState("home");
-  const [sendRecipient, setSendRecipient] = useState<any>(null);
-  const [requestRecipient, setRequestRecipient] = useState<any>(null);
+  const [sendRecipient, setSendRecipient] = useState<Hypodata | null>(null);
+  const [requestRecipient, setRequestRecipient] = useState<Hypodata | null>(null);
+  const [cachedContacts, setCachedContacts] = useState<ContactRecord[] | null>(null);
   const router = useRouter();
 
   const mainClass = "font-sans pb-24 p-4 sm:p-8 bg-background text-foreground min-h-screen";
@@ -28,28 +31,42 @@ export default function Dashboard() {
     if (activeTab === "contacts") {
       return (
         <ContactsTab
+          initialContacts={cachedContacts ?? undefined}
+          onContactsResolved={(records) => setCachedContacts(records)}
           onSend={(contact) => {
-            setSendRecipient(contact);
+            setSendRecipient({ ...contact });
             setActiveTab("send");
           }}
           onRequest={(contact) => {
-            setRequestRecipient(contact);
+            setRequestRecipient({ ...contact });
             setActiveTab("receive");
           }}
         />
       );
     }
     if (activeTab === "send") {
-      return <SendTab recipient={sendRecipient} />;
+      return (
+        <SendTab
+          recipient={sendRecipient}
+          onRecipientChange={setSendRecipient}
+          contacts={cachedContacts ?? undefined}
+        />
+      );
     }
     if (activeTab === "receive") {
-      return <ReceiveTab contact={requestRecipient} />;
+      return (
+        <ReceiveTab
+          contact={requestRecipient}
+          onContactChange={setRequestRecipient}
+          contacts={cachedContacts ?? undefined}
+        />
+      );
     }
     const label = activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
     return (
       <div className="flex items-center justify-center h-full">{`${label} screen coming soon`}</div>
     );
-  }, [activeTab, isLoadingUser, error, sendRecipient, requestRecipient]);
+  }, [activeTab, isLoadingUser, error, sendRecipient, requestRecipient, cachedContacts]);
 
   useEffect(() => {
     if (Boolean(userData?.cubidData?.full_name)) {

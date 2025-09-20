@@ -7,7 +7,7 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { fetchContactsForOwner, type ContactRecord } from "@shared/api/services/supabaseService";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
-import { Hypodata } from "@tcoin/wallet/components/dashboard";
+import { Hypodata, contactRecordToHypodata } from "@tcoin/wallet/components/dashboard";
 
 interface ContactSelectModalProps {
   closeModal: () => void;
@@ -15,6 +15,8 @@ interface ContactSelectModalProps {
   setToSendData?: (contact: Hypodata) => void;
   method: "Request" | "Send";
   defaultContactId?: number | null;
+  prefetchedContacts?: ContactRecord[];
+  onSelectContact?: (contact: Hypodata) => void;
 }
 const parseAmountFromString = (raw: string): number | null => {
   const match = raw.match(/-?\d+(?:\.\d+)?/);
@@ -40,13 +42,20 @@ const ContactSelectModal = ({
   amount,
   method,
   defaultContactId,
+  prefetchedContacts,
+  onSelectContact,
 }: ContactSelectModalProps) => {
-  const [contacts, setContacts] = useState<ContactRecord[]>([]);
+  const [contacts, setContacts] = useState<ContactRecord[]>(prefetchedContacts ?? []);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "my">("my");
   const { userData } = useAuth();
   useEscapeKey(closeModal);
+
+  useEffect(() => {
+    if (!prefetchedContacts) return;
+    setContacts(prefetchedContacts);
+  }, [prefetchedContacts]);
 
   useEffect(() => {
     let isMounted = true;
@@ -76,15 +85,20 @@ const ContactSelectModal = ({
       .catch((error) => {
         console.error("Error fetching contacts:", error);
         if (isMounted) {
-          setContacts([]);
-          setSelectedId(null);
+          if (prefetchedContacts?.length) {
+            setContacts(prefetchedContacts);
+            setSelectedId(prefetchedContacts[0]?.id ?? null);
+          } else {
+            setContacts([]);
+            setSelectedId(null);
+          }
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [userData?.cubidData?.id, defaultContactId]);
+  }, [userData?.cubidData?.id, defaultContactId, prefetchedContacts]);
 
   useEffect(() => {
     if (typeof defaultContactId !== "number") return;
@@ -111,7 +125,25 @@ const ContactSelectModal = ({
     [filteredContacts]
   );
 
-  const contactsToDisplay = activeTab === "all" ? allContacts : myContacts;
+  const contactsToDisplay = useMemo(() => {
+    const scoped = activeTab === "all" ? allContacts : myContacts;
+    if (scoped.length === 0) {
+      return filteredContacts;
+    }
+    return scoped;
+  }, [activeTab, allContacts, myContacts, filteredContacts]);
+
+  const showTabs = allContacts.length > 0 && myContacts.length > 0;
+
+  useEffect(() => {
+    if (myContacts.length === 0 && allContacts.length > 0) {
+      setActiveTab("all");
+      return;
+    }
+    if (allContacts.length === 0 && myContacts.length > 0) {
+      setActiveTab("my");
+    }
+  }, [allContacts.length, myContacts.length]);
 
   useEffect(() => {
     if (contactsToDisplay.length === 0) {
@@ -134,8 +166,11 @@ const ContactSelectModal = ({
   const handleSubmit = async () => {
     if (!selectedContact) return;
 
+    const normalisedContact = contactRecordToHypodata(selectedContact);
+
     if (method === "Send") {
-      setToSendData?.(selectedContact);
+      setToSendData?.(normalisedContact);
+      onSelectContact?.(normalisedContact);
       closeModal();
       return;
     }
@@ -161,30 +196,33 @@ const ContactSelectModal = ({
     } catch (error) {
       console.error("Failed to create request:", error);
     } finally {
+      onSelectContact?.(normalisedContact);
       closeModal();
     }
   };
 
   return (
     <div className="mt-2 p-0">
-      <div className="mb-4 flex">
-        <button
-          type="button"
-          className={`flex-1 py-2 ${activeTab === "all" ? "border-b-2 border-blue-500" : "text-gray-500"}`}
-          onClick={() => setActiveTab("all")}
-        >
-          All Contacts
-        </button>
-        <button
-          type="button"
-          className={`flex-1 py-2 ${activeTab === "my" ? "border-b-2 border-blue-500" : "text-gray-500"}`}
-          onClick={() => setActiveTab("my")}
-        >
-          My Contacts
-        </button>
-      </div>
+      {showTabs && (
+        <div className="mb-4 flex">
+          <button
+            type="button"
+            className={`flex-1 py-2 ${activeTab === "all" ? "border-b-2 border-blue-500" : "text-gray-500"}`}
+            onClick={() => setActiveTab("all")}
+          >
+            All Contacts
+          </button>
+          <button
+            type="button"
+            className={`flex-1 py-2 ${activeTab === "my" ? "border-b-2 border-blue-500" : "text-gray-500"}`}
+            onClick={() => setActiveTab("my")}
+          >
+            My Contacts
+          </button>
+        </div>
+      )}
       <div className="space-y-4">
-        {contactsToDisplay.length > 5 && (
+        {filteredContacts.length > 5 && (
           <Input
             placeholder="Search contacts..."
             value={searchTerm}
@@ -208,7 +246,11 @@ const ContactSelectModal = ({
             />
           ))
         ) : (
-          <p>No contacts found.</p>
+          <p>
+            {filteredContacts.length === 0
+              ? "No contacts found."
+              : "No contacts available in this view."}
+          </p>
         )}
 
         <Button className="w-full" disabled={!selectedContact} onClick={handleSubmit}>

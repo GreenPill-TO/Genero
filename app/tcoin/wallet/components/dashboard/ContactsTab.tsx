@@ -7,13 +7,15 @@ import {
   fetchContactsForOwner,
   type ContactRecord,
 } from "@shared/api/services/supabaseService";
-import { Hypodata } from "./types";
+import { Hypodata, contactRecordToHypodata } from "./types";
 
 type SortOrder = "alphabetical" | "recents";
 
 interface ContactsTabProps {
   onSend: (contact: Hypodata) => void;
   onRequest?: (contact: Hypodata) => void;
+  initialContacts?: ContactRecord[];
+  onContactsResolved?: (contacts: ContactRecord[]) => void;
 }
 
 const formatName = (contact: ContactRecord) =>
@@ -26,11 +28,21 @@ const getInitials = (contact: ContactRecord) => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
-export function ContactsTab({ onSend, onRequest }: ContactsTabProps) {
+export function ContactsTab({
+  onSend,
+  onRequest,
+  initialContacts,
+  onContactsResolved,
+}: ContactsTabProps) {
   const { userData } = useAuth();
-  const [contacts, setContacts] = useState<ContactRecord[]>([]);
+  const [contacts, setContacts] = useState<ContactRecord[]>(initialContacts ?? []);
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<SortOrder>("alphabetical");
+
+  useEffect(() => {
+    if (!initialContacts) return;
+    setContacts(initialContacts);
+  }, [initialContacts]);
 
   useEffect(() => {
     let isMounted = true;
@@ -46,18 +58,20 @@ export function ContactsTab({ onSend, onRequest }: ContactsTabProps) {
       .then((records) => {
         if (!isMounted) return;
         setContacts(records);
+        onContactsResolved?.(records.map((record) => ({ ...record })));
       })
       .catch((err) => {
         console.error("fetchContacts error", err);
         if (isMounted) {
           setContacts([]);
         }
+        onContactsResolved?.([]);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [userData?.cubidData?.id]);
+  }, [userData?.cubidData?.id, onContactsResolved]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -144,7 +158,7 @@ export function ContactsTab({ onSend, onRequest }: ContactsTabProps) {
               <Button
                 size="sm"
                 variant="default"
-                onClick={() => onSend(contact)}
+                onClick={() => onSend(contactRecordToHypodata(contact))}
                 aria-label={`Send to ${formatName(contact)}`}
               >
                 Send To
@@ -153,7 +167,7 @@ export function ContactsTab({ onSend, onRequest }: ContactsTabProps) {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => onRequest(contact)}
+                  onClick={() => onRequest(contactRecordToHypodata(contact))}
                   aria-label={`Request from ${formatName(contact)}`}
                 >
                   Request From
