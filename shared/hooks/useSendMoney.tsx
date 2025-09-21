@@ -40,6 +40,16 @@ const combineShares = (shares: string[]): string => {
 };
 
 let webAuthnInstance: WebAuthnCrypto | null = null;
+let webAuthnLocked = false;
+
+export class WebAuthnRequestInProgressError extends Error {
+        constructor() {
+                super(
+                        'A WebAuthn verification is already in progress. Complete or cancel the pending approval before trying again.'
+                );
+                this.name = 'WebAuthnRequestInProgressError';
+        }
+}
 
 const getWebAuthn = () => {
         if (typeof window === 'undefined') {
@@ -51,6 +61,45 @@ const getWebAuthn = () => {
         }
 
         return webAuthnInstance;
+};
+
+async function runWithWebAuthnLock<T>(operation: () => Promise<T>): Promise<T> {
+        if (webAuthnLocked) {
+                throw new WebAuthnRequestInProgressError();
+        }
+
+        webAuthnLocked = true;
+        try {
+                return await operation();
+        } finally {
+                webAuthnLocked = false;
+        }
+}
+
+const decodeUserShare = async (jsonData: any): Promise<string> => {
+        try {
+                return await runWithWebAuthnLock(() => getWebAuthn().decryptString(jsonData));
+        } catch (error: any) {
+                const message: string | undefined =
+                        typeof error?.message === 'string' ? error.message.toLowerCase() : undefined;
+
+                if (error instanceof WebAuthnRequestInProgressError) {
+                        throw error;
+                }
+
+                if (message?.includes('request is already pending')) {
+                        throw new WebAuthnRequestInProgressError();
+                }
+
+                throw error;
+        }
+};
+
+export const __internal = {
+        runWithWebAuthnLock,
+        resetWebAuthnLock: () => {
+                webAuthnLocked = false;
+        },
 };
 
 // Helper: Convert base64 string to ArrayBuffer.
@@ -174,7 +223,7 @@ export const useSendMoney = ({
 			};
 
 			// Decrypt to get the user share.
-                        const user_share = await getWebAuthn().decryptString(jsonData);
+                        const user_share = await decodeUserShare(jsonData);
 			console.log('Decrypted user share:', user_share);
 
 			// Reconstruct the private key.
@@ -318,7 +367,7 @@ export const useSendMoney = ({
                                 credentialId: base64ToArrayBuffer(user_share_encrypted.credentialId),
                         };
 
-                                const user_share = await getWebAuthn().decryptString(jsonData);
+                        const user_share = await decodeUserShare(jsonData);
                         console.log('Decrypted user share:', user_share);
 
                         const privateKeyHex = combineShares([app_share, user_share]);
@@ -384,7 +433,9 @@ export const useSendMoney = ({
 
                         return transactionHash;
                 } catch (err: any) {
-                        console.error('Transaction error:', err);
+                        if (!(err instanceof WebAuthnRequestInProgressError)) {
+                                console.error('Transaction error:', err);
+                        }
                         lastTransferRecordRef.current = null;
                         const message = err instanceof Error && err.message
                                 ? err.message
