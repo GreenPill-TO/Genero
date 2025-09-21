@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const openModal = vi.fn();
 const closeModal = vi.fn();
@@ -10,14 +10,25 @@ vi.mock("@shared/contexts/ModalContext", () => ({
   useModal: () => ({ openModal, closeModal }),
 }));
 
-vi.mock("@shared/api/hooks/useAuth", () => ({
-  useAuth: () => ({
+const useAuthMock = vi.hoisted(() =>
+  vi.fn(() => ({
     userData: {
       cubidData: {
         charity: "Food Bank",
+        is_admin: false,
       },
     },
-  }),
+  }))
+);
+
+vi.mock("@shared/api/hooks/useAuth", () => ({
+  useAuth: () => useAuthMock(),
+}));
+
+const pushMock = vi.hoisted(() => vi.fn());
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock("@tcoin/wallet/components/modals", () => ({
@@ -54,10 +65,22 @@ vi.mock("@tcoin/wallet/components/modals/UserProfileModal", () => ({
 import { MoreTab } from "./MoreTab";
 
 describe("MoreTab", () => {
+  beforeEach(() => {
+    useAuthMock.mockReturnValue({
+      userData: {
+        cubidData: {
+          charity: "Food Bank",
+          is_admin: false,
+        },
+      },
+    });
+  });
+
   afterEach(() => {
     cleanup();
     openModal.mockReset();
     closeModal.mockReset();
+    pushMock.mockReset();
   });
 
   it("opens the top up modal", () => {
@@ -108,5 +131,29 @@ describe("MoreTab", () => {
     fireEvent.click(screen.getByRole("button", { name: /Select Theme/i }));
     expect(openModal).toHaveBeenCalled();
     expect(openModal.mock.calls[0][0].title).toBe("Select Theme");
+  });
+
+  it("does not render admin controls for non-admin users", () => {
+    render(<MoreTab />);
+    expect(screen.queryByRole("button", { name: /Open Admin Dashboard/i })).toBeNull();
+  });
+
+  it("shows the admin dashboard shortcut when the user is an admin", () => {
+    useAuthMock.mockReturnValue({
+      userData: {
+        cubidData: {
+          charity: "Food Bank",
+          is_admin: true,
+        },
+      },
+    });
+
+    render(<MoreTab />);
+
+    const adminButton = screen.getByRole("button", { name: /Open Admin Dashboard/i });
+    expect(adminButton).toBeTruthy();
+
+    fireEvent.click(adminButton);
+    expect(pushMock).toHaveBeenCalledWith("/admin");
   });
 });

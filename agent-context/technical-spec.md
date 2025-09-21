@@ -76,6 +76,7 @@
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
 - Global footer removed from layout; the dashboard renders its own fixed footer navigation.
 - Wallet dashboard is composed from modular cards (Contributions, Receive, Send, Account and Other) within `WalletHome`.
+- `/admin` route renders an admin-only dashboard that fetches on-ramp/off-ramp requests from Supabase, lets admins adjust status, fees and notes, and is linked from the More tab when `is_admin` is true.
 - Deep-link scans on the wallet dashboard run only when the URL includes a `pay` query, and success toasts fire after user lookup and connection insertion.
 - Footer navigation icons are evenly spaced and centred, with a prominent Send action.
 - Send tab uses a shared QR scanning modal instead of an embedded scanner, but still offers buttons to select a contact or paste a pay link and always displays the send form with amount inputs and a send button.

@@ -11,7 +11,9 @@ import {
   ThemeSelectModal,
 } from "@tcoin/wallet/components/modals";
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
-import { LuCreditCard, LuDollarSign, LuHeart, LuPalette, LuUser } from "react-icons/lu";
+import { LuCreditCard, LuDollarSign, LuHeart, LuPalette, LuShield, LuUser } from "react-icons/lu";
+import { hasAdminAccess } from "@shared/utils/access";
+import { useRouter } from "next/navigation";
 
 const DEFAULT_CHARITY_DATA = {
   personalContribution: 50,
@@ -22,6 +24,7 @@ const DEFAULT_CHARITY_DATA = {
 export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
+  const router = useRouter();
   const [selectedCharity, setSelectedCharity] = useState("None");
   const charityData = useMemo(() => DEFAULT_CHARITY_DATA, []);
 
@@ -96,6 +99,12 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     });
   };
 
+  const isAdmin = hasAdminAccess(userData?.cubidData?.is_admin ?? userData?.user?.is_admin);
+
+  const handleOpenAdmin = () => {
+    router.push("/admin");
+  };
+
   return (
     <div className="lg:px-[25vw]">
       <Card>
@@ -118,6 +127,11 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           <Button type="button" className="w-full justify-start" onClick={openThemeModal}>
             <LuPalette className="mr-2 h-4 w-4" /> Select Theme
           </Button>
+          {isAdmin && (
+            <Button type="button" className="w-full justify-start" onClick={handleOpenAdmin}>
+              <LuShield className="mr-2 h-4 w-4" /> Open Admin Dashboard
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>

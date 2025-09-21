@@ -1,3 +1,6 @@
+## v0.64
+- Finalised the `/admin` wallet dashboard by fixing the ramp request save test with explicit DOM cleanup and ensuring admin-only routing remains enforced.
+
 ## v0.63
 - Pulled the Supabase OpenAPI metadata and generated `sql-schema-v0.sql` capturing tables, enums, and exposed RPC signatures.
 
