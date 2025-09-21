@@ -1,3 +1,6 @@
+## v0.63
+- Pulled the Supabase OpenAPI metadata and generated `sql-schema-v0.sql` capturing tables, enums, and exposed RPC signatures.
+
 ## v0.62
 - Secured Ecosystem links with `rel="noopener noreferrer"` and added tests.
 
