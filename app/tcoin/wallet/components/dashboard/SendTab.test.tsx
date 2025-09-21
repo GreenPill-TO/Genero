@@ -248,8 +248,12 @@ describe("SendTab", () => {
     expect(modal.getByText("12.00 TCOIN")).toBeTruthy();
     expect(modal.getByText("Any Amount")).toBeTruthy();
     expect(modal.getByText(/Requested by Requester One/i)).toBeTruthy();
-    expect(modal.getAllByRole("button", { name: /^Pay$/i })).toHaveLength(2);
-    expect(modal.getAllByRole("button", { name: /^Ignore$/i })).toHaveLength(2);
+    const payButtons = modal.getAllByRole("button", { name: /^Pay$/i });
+    const ignoreButtons = modal.getAllByRole("button", { name: /^Ignore$/i });
+    expect(payButtons).toHaveLength(2);
+    expect(ignoreButtons).toHaveLength(2);
+    expect(payButtons[0].className).toContain("bg-primary");
+    expect(ignoreButtons[0].className).toContain("bg-white");
     modal.unmount();
   });
 
