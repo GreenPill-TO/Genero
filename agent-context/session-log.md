@@ -1,3 +1,9 @@
+## v0.65
+- Styled the incoming request modal with a pink Pay button and white Ignore button, renamed outgoing requests to "Payment requests I have sent" with delete actions, and routed new users to `/welcome` with username availability checks, clearer continue guidance, and phone verification feedback.
+
+## v0.64
+- Finalised the `/admin` wallet dashboard by fixing the ramp request save test with explicit DOM cleanup and ensuring admin-only routing remains enforced.
+
 ## v0.63
 - Pulled the Supabase OpenAPI metadata and generated `sql-schema-v0.sql` capturing tables, enums, and exposed RPC signatures.
 

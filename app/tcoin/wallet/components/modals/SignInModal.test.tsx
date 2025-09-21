@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { act } from "react-dom/test-utils";
@@ -24,10 +24,15 @@ vi.mock("@tcoin/wallet/components/forms/OTPForm", () => ({
   default: (props: any) => <form onSubmit={props.onSubmit}></form>,
 }));
 
+const { createNewUserMock, fetchUserByContactMock } = vi.hoisted(() => ({
+  createNewUserMock: vi.fn().mockResolvedValue({ error: null }),
+  fetchUserByContactMock: vi.fn().mockResolvedValue({ user: null, error: null }),
+}));
+
 vi.mock("@shared/api/services/cubidService", () => ({ createCubidUser: vi.fn().mockResolvedValue("uuid") }));
 vi.mock("@shared/api/services/supabaseService", () => ({
-  createNewUser: vi.fn().mockResolvedValue({ error: null }),
-  fetchUserByContact: vi.fn().mockResolvedValue({ user: null, error: null }),
+  createNewUser: createNewUserMock,
+  fetchUserByContact: fetchUserByContactMock,
 }));
 
 vi.mock("react-toastify", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -35,6 +40,11 @@ const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 describe("SignInModal", () => {
+  beforeEach(() => {
+    fetchUserByContactMock.mockResolvedValue({ user: null, error: null });
+    push.mockReset();
+  });
+
   it("calls closeModal on Escape key press", () => {
     const closeModal = vi.fn();
     const container = document.createElement("div");
@@ -58,7 +68,7 @@ describe("SignInModal", () => {
     document.body.removeChild(container);
   });
 
-  it("redirects to dashboard on successful sign-in", async () => {
+  it("redirects new users to the welcome flow", async () => {
     vi.useFakeTimers();
     const closeModal = vi.fn();
     const container = document.createElement("div");
@@ -67,6 +77,35 @@ describe("SignInModal", () => {
 
     act(() => {
       root.render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
+    });
+
+    await act(async () => {
+      await verifySuccess?.();
+    });
+    vi.runAllTimers();
+
+    expect(push).toHaveBeenCalledWith("/welcome");
+
+    act(() => {
+      root.unmount();
+    });
+    document.body.removeChild(container);
+    vi.useRealTimers();
+  });
+
+  it("returns existing users to the dashboard", async () => {
+    vi.useFakeTimers();
+    const closeModal = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42 }, error: null });
+
+    act(() => {
+      root.render(
+        <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />
+      );
     });
 
     await act(async () => {

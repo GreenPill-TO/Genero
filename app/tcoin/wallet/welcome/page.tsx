@@ -14,9 +14,8 @@ import { useForm, Controller } from "react-hook-form";
 // Imports for country and phone input
 import Select from "react-select";
 import countryList from "react-select-country-list";
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
 import useDarkMode from "@shared/hooks/useDarkMode";
+import { toast } from "react-toastify";
 
 
 // Dynamically import external components so they only render on the client
@@ -275,11 +274,14 @@ const dialCodes = {
 
 export default function NewWelcomePage() {
     const router = useRouter();
-    const { userData } = useAuth();
+    const { userData, authData } = useAuth();
 
     // Multi-step: 1 = user details form, 2 = wallet connection, 3 = video demo
     const [step, setStep] = useState(1);
     const [wallets, setWallets] = useState([]);
+    const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+    const [hasSuggestedUsername, setHasSuggestedUsername] = useState(false);
+    const [usernameStatus, setUsernameStatus] = useState("idle");
 
     // Prepare country options using react-select-country-list and augment each with its dial code
     const customCountryOptions = useMemo(() => {
@@ -298,6 +300,8 @@ export default function NewWelcomePage() {
         handleSubmit,
         watch,
         setValue,
+        setError,
+        clearErrors,
         control,
         formState: { errors, isValid, isSubmitting }
     } = useForm({
@@ -306,6 +310,7 @@ export default function NewWelcomePage() {
             firstName: "",
             lastName: "",
             nickname: "",
+            username: "",
             country: "",
             phone: ""
         }
@@ -313,6 +318,43 @@ export default function NewWelcomePage() {
 
     // Persist form data if desired.
     const formData = watch();
+    const usernameValue = watch("username") || "";
+    const originalUsername = userData?.cubidData?.username?.trim() || "";
+    const currentUsername = originalUsername.toLowerCase();
+    const isUsernameReady = usernameStatus === "available" || usernameStatus === "current";
+    const disableContinue = !isValid || isSubmitting || !isUsernameReady || usernameStatus === "checking";
+    const usernameFeedback = (() => {
+        switch (usernameStatus) {
+            case "available":
+                return { message: "Great choice! This username is available.", className: "text-green-600" };
+            case "current":
+                return { message: "This is your current username.", className: "text-gray-500" };
+            case "checking":
+                return { message: "Checking availability…", className: "text-gray-500" };
+            default:
+                return { message: "Choose a unique username to share with friends.", className: "text-gray-500" };
+        }
+    })();
+    const continueHelper = (() => {
+        switch (usernameStatus) {
+            case "checking":
+                return { message: "Checking username availability…", className: "text-gray-500" };
+            case "taken":
+                return { message: "That username is taken. Choose another to continue.", className: "text-red-500" };
+            case "error":
+                return {
+                    message: "We couldn't confirm that username. Please try again.",
+                    className: "text-red-500",
+                };
+            case "invalid":
+                return {
+                    message: "Usernames must be at least 3 characters.",
+                    className: "text-red-500",
+                };
+            default:
+                return null;
+        }
+    })();
     useEffect(() => {
         if (typeof window !== "undefined") {
             const storedData = window.localStorage.getItem("newWelcomeData");
@@ -321,6 +363,10 @@ export default function NewWelcomePage() {
                 if (parsed.firstName) setValue("firstName", parsed.firstName);
                 if (parsed.lastName) setValue("lastName", parsed.lastName);
                 if (parsed.nickname) setValue("nickname", parsed.nickname);
+                if (parsed.username) {
+                    setValue("username", parsed.username);
+                    setHasSuggestedUsername(true);
+                }
                 if (parsed.country) setValue("country", parsed.country);
                 if (parsed.phone) setValue("phone", parsed.phone);
             }
@@ -334,10 +380,137 @@ export default function NewWelcomePage() {
     }, [userData, router])
 
     useEffect(() => {
+        if (!originalUsername || usernameValue) {
+            return;
+        }
+        setValue("username", originalUsername.toLowerCase());
+        setHasSuggestedUsername(true);
+    }, [originalUsername, usernameValue, setValue]);
+
+    useEffect(() => {
+        if (userData?.cubidData?.phone) {
+            setIsPhoneVerified(true);
+        }
+    }, [userData?.cubidData?.phone]);
+
+    useEffect(() => {
         if (typeof window !== "undefined") {
             window.localStorage.setItem("newWelcomeData", JSON.stringify(formData));
         }
     }, [formData]);
+
+    useEffect(() => {
+        if (hasSuggestedUsername) {
+            return;
+        }
+        if (usernameValue) {
+            setHasSuggestedUsername(true);
+            return;
+        }
+        const email = authData?.user?.email?.trim();
+        if (!email) {
+            return;
+        }
+        const candidate = email.split("@")[0]?.toLowerCase().replace(/[^a-z0-9._-]/g, "");
+        if (!candidate) {
+            setHasSuggestedUsername(true);
+            return;
+        }
+        let isActive = true;
+        const checkAvailability = async () => {
+            try {
+                const supabase = createClient();
+                const { count, error } = await supabase
+                    .from("users")
+                    .select("id", { count: "exact", head: true })
+                    .ilike("username", candidate);
+                if (!isActive) {
+                    return;
+                }
+                if (!error && (count ?? 0) === 0) {
+                    setValue("username", candidate);
+                }
+            } catch (err) {
+                console.error("Failed to suggest username", err);
+            } finally {
+                if (isActive) {
+                    setHasSuggestedUsername(true);
+                }
+            }
+        };
+        void checkAvailability();
+        return () => {
+            isActive = false;
+        };
+    }, [authData?.user?.email, hasSuggestedUsername, setValue, usernameValue]);
+
+    useEffect(() => {
+        if (!usernameValue) {
+            setUsernameStatus("idle");
+            clearErrors("username");
+            return;
+        }
+        const sanitised = usernameValue.toLowerCase().replace(/[^a-z0-9._-]/g, "");
+        if (sanitised !== usernameValue) {
+            setValue("username", sanitised, { shouldValidate: true, shouldDirty: true });
+            return;
+        }
+        if (currentUsername && sanitised === currentUsername) {
+            setUsernameStatus("current");
+            clearErrors("username");
+            return;
+        }
+        if (sanitised.length < 3) {
+            setUsernameStatus("invalid");
+            setError("username", {
+                type: "manual",
+                message: "Usernames must be at least 3 characters.",
+            });
+            return;
+        }
+        setUsernameStatus("checking");
+        clearErrors("username");
+        let isActive = true;
+        const timeout = setTimeout(async () => {
+            try {
+                const supabase = createClient();
+                const { count, error } = await supabase
+                    .from("users")
+                    .select("id", { count: "exact", head: true })
+                    .ilike("username", sanitised);
+                if (!isActive) {
+                    return;
+                }
+                if (error) {
+                    throw error;
+                }
+                if ((count ?? 0) === 0) {
+                    setUsernameStatus("available");
+                    clearErrors("username");
+                } else {
+                    setUsernameStatus("taken");
+                    setError("username", {
+                        type: "manual",
+                        message: "That username is already in use.",
+                    });
+                }
+            } catch (err) {
+                if (!isActive) {
+                    return;
+                }
+                console.error("Failed to check username availability", err);
+                setUsernameStatus("error");
+                setError("username", {
+                    type: "manual",
+                    message: "Unable to confirm username availability. Please try again.",
+                });
+            }
+        }, 400);
+        return () => {
+            isActive = false;
+            clearTimeout(timeout);
+        };
+    }, [clearErrors, currentUsername, setError, setValue, usernameValue]);
 
     const insertOrUpdateDataInWallet = async (userId, data) => {
         const supabase = createClient();
@@ -362,30 +535,38 @@ export default function NewWelcomePage() {
     // Step 1: Submit the form and update the user’s data.
     const onSubmit = useCallback(
         async (data) => {
+            if (!(usernameStatus === "available" || usernameStatus === "current")) {
+                toast.error("Please choose an available username before continuing.");
+                return;
+            }
             try {
                 if (!userData?.user?.cubid_id) {
                     console.error("No cubid_id found. Ensure user is authenticated properly.");
+                    toast.error("We could not confirm your account. Please try signing in again.");
                     return;
                 }
 
                 const updatedData = {
                     full_name: `${data.firstName} ${data.lastName}`,
                     nickname: data.nickname,
-                    country: data.country.label, // storing the ISO code (e.g., "CA")
+                    username: data.username?.toLowerCase(),
+                    country: data.country?.label || data.country || "",
                     phone: data.phone
                 };
 
                 const { error } = await updateCubidDataInSupabase(userData.user.cubid_id, updatedData);
                 if (error) {
                     console.error("Error updating Supabase:", error.message);
+                    toast.error("We couldn't save your details. Please try again.");
                     return;
                 }
                 setStep(2);
             } catch (err) {
                 console.error("Error submitting form:", err);
+                toast.error("We couldn't save your details. Please try again.");
             }
         },
-        [userData]
+        [userData, usernameStatus]
     );
 
     const mainClass = cn("flex-grow flex flex-col items-center justify-center p-4");
@@ -453,6 +634,41 @@ export default function NewWelcomePage() {
                                 />
                             </div>
 
+                            {/* Username */}
+                            <div className="mb-4">
+                                <label htmlFor="username" className="block font-medium text-sm mb-1">
+                                    Username
+                                </label>
+                                <p className="text-xs text-gray-500 mb-2">
+                                    This will be your public handle so friends can find you.
+                                </p>
+                                <input
+                                    id="username"
+                                    type="text"
+                                    autoComplete="off"
+                                    {...register("username", {
+                                        required: "Username is required",
+                                        maxLength: {
+                                            value: 32,
+                                            message: "Usernames must be 32 characters or fewer.",
+                                        },
+                                        pattern: {
+                                            value: /^[a-z0-9._-]+$/,
+                                            message:
+                                                "Use only lowercase letters, numbers, dots, underscores or hyphens.",
+                                        },
+                                    })}
+                                    className={`w-full border border-gray-300 !bg-white p-2 rounded !text-black`}
+                                />
+                                {errors.username ? (
+                                    <p className="text-red-500 text-xs mt-1">{errors.username.message}</p>
+                                ) : (
+                                    <p className={`text-xs mt-1 ${usernameFeedback.className}`}>
+                                        {usernameFeedback.message}
+                                    </p>
+                                )}
+                            </div>
+
                             {/* Country Selector */}
                             <div className="mb-4">
                                 <label htmlFor="country" className="block font-medium text-sm mb-1">
@@ -485,21 +701,38 @@ export default function NewWelcomePage() {
                                 <label htmlFor="phone" className="block font-medium text-sm mb-1">
                                     Phone
                                 </label>
-                                <CubidWidget
-                                    stampToRender="phone"
-                                    uuid={userData?.user?.cubid_id}
-                                    page_id='37'
-                                    api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-                                />
+                                <div className="rounded border border-gray-200 bg-white/80 p-3">
+                                    <CubidWidget
+                                        stampToRender="phone"
+                                        uuid={userData?.user?.cubid_id}
+                                        page_id='37'
+                                        api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+                                        onStampChange={() => {
+                                            setIsPhoneVerified(true);
+                                        }}
+                                    />
+                                    <p className={`text-xs mt-2 ${isPhoneVerified ? "text-green-600" : "text-gray-500"}`}>
+                                        {isPhoneVerified
+                                            ? "Phone number verified! You're good to go."
+                                            : "Enter your phone number and verify it with the code we send."}
+                                    </p>
+                                </div>
                                 {errors.phone && (
                                     <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
                                 )}
                             </div>
 
                             <CardFooter className="flex justify-end">
-                                <Button type="submit" className="ml-2" disabled={!isValid || isSubmitting}>
-                                    Continue
-                                </Button>
+                                <div className="flex flex-col items-end gap-2">
+                                    {continueHelper && (
+                                        <p className={`text-xs ${continueHelper.className}`}>
+                                            {continueHelper.message}
+                                        </p>
+                                    )}
+                                    <Button type="submit" className="ml-2" disabled={disableContinue}>
+                                        {isSubmitting ? "Saving..." : "Continue"}
+                                    </Button>
+                                </div>
                             </CardFooter>
                         </form>
                     </CardContent>
@@ -564,9 +797,16 @@ export default function NewWelcomePage() {
                         </div>
                     </CardContent>
                     <CardFooter className="flex justify-end">
-                        <Button onClick={() => setStep(3)} disabled={wallets.length === 0} className="ml-2">
-                            Continue
-                        </Button>
+                        <div className="flex flex-col items-end gap-2">
+                            {wallets.length === 0 && (
+                                <p className="text-xs text-gray-500">
+                                    Connect a wallet above to enable this step.
+                                </p>
+                            )}
+                            <Button onClick={() => setStep(3)} disabled={wallets.length === 0} className="ml-2">
+                                Continue
+                            </Button>
+                        </div>
                     </CardFooter>
                 </Card>
             </div>

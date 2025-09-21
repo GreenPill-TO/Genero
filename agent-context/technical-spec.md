@@ -76,11 +76,14 @@
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
 - Global footer removed from layout; the dashboard renders its own fixed footer navigation.
 - Wallet dashboard is composed from modular cards (Contributions, Receive, Send, Account and Other) within `WalletHome`.
+- `/admin` route renders an admin-only dashboard that fetches on-ramp/off-ramp requests from Supabase, lets admins adjust status, fees and notes, and is linked from the More tab when `is_admin` is true.
 - Deep-link scans on the wallet dashboard run only when the URL includes a `pay` query, and success toasts fire after user lookup and connection insertion.
 - Footer navigation icons are evenly spaced and centred, with a prominent Send action.
 - Send tab uses a shared QR scanning modal instead of an embedded scanner, but still offers buttons to select a contact or paste a pay link and always displays the send form with amount inputs and a send button.
 - In Manual mode the Send tab shows a borderless oversized amount input with a CAD/TCOIN toggle, displays the converted value rounded to two decimals alongside the available balance and a "Use Max" shortcut, and only reveals scan or contact options once a positive amount is entered.
 - Receive tab renders its QR code with a white background for visibility in dark mode.
+- Requests-to-pay modal styles Pay with the primary pink button and Ignore with a white button for clearer affordances.
+- Receive tab lists outgoing requests under a "Payment requests I have sent" heading and delete buttons call Supabase to set `is_active` to false.
 - Dark mode preference persists across tab switches via localStorage.
 - Header camera button immediately opens the scan modal from any tab.
 - On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
@@ -96,3 +99,4 @@
 - Public page wrappers now use `bg-background` so panels take their colour from the theme variable instead of hard-coded white.
 - Internal links use root-relative URLs and rewrites map them to the wallet app, eliminating `/tcoin/wallet` from page paths.
 - Sign-in modals replace the single passcode field with six auto-advancing inputs that accept pasted codes.
+- New-user sign-in routes to `/welcome`, which proposes a sanitized username, debounces Supabase availability checks, surfaces phone verification status, and clarifies why the Continue action may be disabled.

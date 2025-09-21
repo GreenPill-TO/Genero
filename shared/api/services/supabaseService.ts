@@ -7,7 +7,7 @@ export const fetchUserByContact = async (authMethod: "phone" | "email" | string,
   const supabase = createClient();
   const { data: user, error } = await supabase
     .from("users")
-    .select("id, cubid_id, has_completed_intro")
+    .select("id, cubid_id, has_completed_intro, is_admin")
     .eq(authMethod === "phone" ? "phone" : "email", fullContact)
     .single();
 

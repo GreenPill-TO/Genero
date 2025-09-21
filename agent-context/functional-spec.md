@@ -50,6 +50,10 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Theme background colours are pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels enforce black backgrounds in dark mode.
 - Main panels derive their background from the theme variable instead of fixed white so they correctly switch to black in dark mode.
 - Wallet routes are available from the domain root so links use paths like `/dashboard` rather than `/tcoin/wallet/dashboard`.
+- Admins access a dedicated `/admin` dashboard via the More tab button, and non-admin visitors are redirected to `/dashboard`.
+- Incoming payment request modals use the pink primary button for Pay and a white button for Ignore.
+- Receive tab surfaces "Payment requests I have sent" with delete buttons that deactivate the underlying requests.
+- Newly created users land on `/welcome`, which suggests a unique username, indicates when Continue is blocked, and confirms phone verification inline.
 
 ### 2. SpareChange
 

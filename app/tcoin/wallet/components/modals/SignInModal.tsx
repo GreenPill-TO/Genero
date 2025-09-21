@@ -107,7 +107,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
 
       setTimeout(() => {
         closeModal();
-        router.push("/dashboard");
+        router.push("/welcome");
       }, 2000);
     } else {
       setTimeout(() => {

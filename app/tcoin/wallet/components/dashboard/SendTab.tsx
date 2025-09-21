@@ -822,16 +822,18 @@ function RequestsList({
             <div className="mt-3 flex flex-wrap justify-end gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="default"
                 size="sm"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => onSelect(request)}
               >
                 Pay
               </Button>
               <Button
                 type="button"
-                variant="destructive"
+                variant="outline"
                 size="sm"
+                className="bg-white text-foreground hover:bg-white/90"
                 onClick={() => {
                   void handleIgnore();
                 }}
