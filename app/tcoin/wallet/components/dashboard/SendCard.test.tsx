@@ -1,8 +1,17 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SendCard, calculateResponsiveFontSize } from "./SendCard";
+
+const toastMock = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
+vi.mock("react-toastify", () => ({ toast: toastMock }));
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => ({ userData: { cubidData: { id: 1 } } }),
@@ -22,7 +31,10 @@ vi.mock("@shared/lib/supabase/client", () => ({
     }),
   }),
 }));
-vi.mock("@shared/utils/insertNotification", () => ({ insertSuccessNotification: vi.fn() }));
+const insertSuccessNotificationMock = vi.hoisted(() => vi.fn());
+vi.mock("@shared/utils/insertNotification", () => ({
+  insertSuccessNotification: insertSuccessNotificationMock,
+}));
 
 const createProps = () => ({
   toSendData: null as any,
@@ -53,6 +65,8 @@ describe("SendCard", () => {
 
   afterEach(() => {
     cleanup();
+    insertSuccessNotificationMock.mockReset();
+    Object.values(toastMock).forEach((fn) => fn.mockReset());
     vi.useRealTimers();
   });
 
@@ -295,6 +309,68 @@ describe("SendCard", () => {
     expect(
       screen.getByRole("button", { name: /Pay this request/i })
     ).toBeTruthy();
+  });
+
+  it("records notifications and surfaces a single success toast after confirming", async () => {
+    const sendMoney = vi.fn().mockResolvedValue("0xhash");
+    const setExplorerLink = vi.fn();
+    const onPaymentComplete = vi.fn();
+
+    renderSendCard({
+      sendMoney,
+      setExplorerLink,
+      onPaymentComplete,
+      toSendData: { id: 7, full_name: "Jordan" } as any,
+      tcoinAmount: "5.00",
+      cadAmount: "15.00",
+      userBalance: 25,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Send..." }));
+
+    const modalContent = openModalMock.mock.calls[0][0].content as React.ReactElement;
+    render(modalContent);
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => expect(sendMoney).toHaveBeenCalledWith("5.00"));
+    await waitFor(() => expect(insertSuccessNotificationMock).toHaveBeenCalledTimes(2));
+    insertSuccessNotificationMock.mock.calls.forEach(([payload]) => {
+      expect(payload).toMatchObject({ showToast: false });
+    });
+    await waitFor(() => expect(onPaymentComplete).toHaveBeenCalled());
+    expect(setExplorerLink).toHaveBeenCalledWith("https://evm-testnet.flowscan.io/tx/0xhash");
+    expect(toastMock.error).not.toHaveBeenCalled();
+    expect(toastMock.success).toHaveBeenCalledTimes(1);
+    expect(toastMock.success.mock.calls[0][0]).toContain("Sent 5.00 TCOIN");
+  });
+
+  it("shows the underlying error when sending fails", async () => {
+    const sendMoney = vi.fn().mockRejectedValue(new Error("Recipient wallet address not found."));
+    const setExplorerLink = vi.fn();
+
+    renderSendCard({
+      sendMoney,
+      setExplorerLink,
+      toSendData: { id: 11, full_name: "Morgan" } as any,
+      tcoinAmount: "3.00",
+      cadAmount: "9.00",
+      userBalance: 25,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Send..." }));
+    const modalContent = openModalMock.mock.calls[0][0].content as React.ReactElement;
+    render(modalContent);
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => expect(sendMoney).toHaveBeenCalledWith("3.00"));
+    await waitFor(() =>
+      expect(toastMock.error).toHaveBeenCalledWith("Recipient wallet address not found.")
+    );
+    expect(setExplorerLink).toHaveBeenCalledWith(null);
+    expect(insertSuccessNotificationMock).not.toHaveBeenCalled();
+    expect(toastMock.success).not.toHaveBeenCalled();
   });
 });
 

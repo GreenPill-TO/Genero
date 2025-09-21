@@ -2,17 +2,31 @@ import { createClient } from "@shared/lib/supabase/client";
 import { toast } from "react-toastify";
 import axios from "axios";
 
-export const insertSuccessNotification = async ({ user_id, notification, additionalData = {} }: { user_id: string; notification: string; additionalData: any }) => {
+type SuccessNotificationPayload = {
+    user_id: string | number;
+    notification: string;
+    additionalData?: Record<string, unknown>;
+    showToast?: boolean;
+};
+
+export const insertSuccessNotification = async ({
+    user_id,
+    notification,
+    additionalData = {},
+    showToast = true,
+}: SuccessNotificationPayload) => {
     const supabase = createClient();
     await supabase.from("notifications").insert({ user_id, notification, ...additionalData });
-    const { data } = await supabase.from("users").select("*").match({ user_id: user_id });
+    const { data } = await supabase.from("users").select("*").match({ user_id });
     if (data?.[0]?.phone) {
         await axios.post("/api/sendsms", {
             message: notification,
             to: data?.[0]?.phone,
         });
     }
-    toast.success(notification);
+    if (showToast) {
+        toast.success(notification);
+    }
 };
 
 export const adminInsertNotification = async ({ user_id, notification }: { user_id: string; notification: string }) => {

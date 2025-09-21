@@ -651,35 +651,57 @@ function ConfirmTransactionModal({
             setIsLoading(true);
             try {
               const hash = await sendMoney(tcoinAmount);
-              insertSuccessNotification({
-                user_id: userData?.cubidData?.id,
-                notification: `You sent ${tcoinAmount}`,
-              });
-              insertSuccessNotification({
-                user_id: toSendData.id,
-                notification: `You received ${tcoinAmount}`,
-              });
-              const isValidHash = typeof hash === "string" && hash.trim() !== "";
-              if (isValidHash) {
-                const trimmedHash = hash.trim();
+              const trimmedHash = typeof hash === "string" ? hash.trim() : "";
+              if (trimmedHash) {
                 setExplorerLink(`https://evm-testnet.flowscan.io/tx/${trimmedHash}`);
-                const snapshot = getLastTransferRecord?.() ?? null;
-                const completionDetails: PaymentCompletionDetails = {
-                  transactionHash: trimmedHash,
-                };
-                if (snapshot) {
-                  if (snapshot.transactionId != null) {
-                    completionDetails.transactionId = snapshot.transactionId;
-                  }
-                  completionDetails.transferRecord = snapshot.raw;
-                }
-                await onPaymentComplete?.(completionDetails);
               } else {
                 setExplorerLink(null);
               }
-              toast.success("Payment Sent Successfully!");
+
+              const snapshot = getLastTransferRecord?.() ?? null;
+              const completionDetails: PaymentCompletionDetails = {
+                transactionHash: trimmedHash || hash,
+              };
+              if (snapshot) {
+                if (snapshot.transactionId != null) {
+                  completionDetails.transactionId = snapshot.transactionId;
+                }
+                completionDetails.transferRecord = snapshot.raw;
+              }
+
+              const notifications: Promise<unknown>[] = [];
+              if (userData?.cubidData?.id != null) {
+                notifications.push(
+                  insertSuccessNotification({
+                    user_id: userData.cubidData.id,
+                    notification: `You sent ${formattedTcoin}`,
+                    showToast: false,
+                  })
+                );
+              }
+              notifications.push(
+                insertSuccessNotification({
+                  user_id: toSendData.id,
+                  notification: `You received ${formattedTcoin}`,
+                  showToast: false,
+                })
+              );
+
+              await Promise.all(notifications);
+              await onPaymentComplete?.(completionDetails);
+
+              const recipientName =
+                toSendData?.full_name?.trim() ||
+                toSendData?.username?.trim() ||
+                "the recipient";
+              toast.success(`Sent ${formattedTcoin} to ${recipientName}.`);
             } catch (error) {
-              toast.error("Error sending payment!");
+              setExplorerLink(null);
+              const fallback = "We couldn't send your payment. Please try again.";
+              const message =
+                error instanceof Error && error.message ? error.message : fallback;
+              console.error("Payment failed:", error);
+              toast.error(message);
             } finally {
               setIsLoading(false);
               closeModal();
