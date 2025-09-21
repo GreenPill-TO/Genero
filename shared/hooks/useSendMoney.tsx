@@ -39,7 +39,19 @@ const combineShares = (shares: string[]): string => {
 	}
 };
 
-const webAuthn = new WebAuthnCrypto();
+let webAuthnInstance: WebAuthnCrypto | null = null;
+
+const getWebAuthn = () => {
+        if (typeof window === 'undefined') {
+                throw new Error('WebAuthnCrypto is only available in the browser');
+        }
+
+        if (!webAuthnInstance) {
+                webAuthnInstance = new WebAuthnCrypto();
+        }
+
+        return webAuthnInstance;
+};
 
 // Helper: Convert base64 string to ArrayBuffer.
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
@@ -162,7 +174,7 @@ export const useSendMoney = ({
 			};
 
 			// Decrypt to get the user share.
-			const user_share = await webAuthn.decryptString(jsonData);
+                        const user_share = await getWebAuthn().decryptString(jsonData);
 			console.log('Decrypted user share:', user_share);
 
 			// Reconstruct the private key.
@@ -306,7 +318,7 @@ export const useSendMoney = ({
                                 credentialId: base64ToArrayBuffer(user_share_encrypted.credentialId),
                         };
 
-                        const user_share = await webAuthn.decryptString(jsonData);
+                                const user_share = await getWebAuthn().decryptString(jsonData);
                         console.log('Decrypted user share:', user_share);
 
                         const privateKeyHex = combineShares([app_share, user_share]);
