@@ -1,0 +1,461 @@
+-- Supabase schema snapshot generated on 2025-09-21T18:19:31.870Z
+-- Source: https://kyxsjnwkvddgjqigdpsv.supabase.co
+SET search_path TO public;
+
+DO $$
+BEGIN
+  CREATE TYPE public."connection_state" AS ENUM ('new', 'added', 'removed', 'declined');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TYPE public."invite_status" AS ENUM ('unused', 'used');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TYPE public."invite_type" AS ENUM ('ephemeral', 'email');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TYPE public."namespace" AS ENUM ('EVM', 'Solana', 'Near', 'Cardano');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TYPE public."trx_status" AS ENUM ('initiated', 'completed', 'failed', 'aborted', 'burned');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  CREATE TYPE public."trx_type" AS ENUM ('credit', 'debit');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public."act_balances" (
+  "wallet_account" text NOT NULL,
+  "currency" text DEFAULT 'CAD'::text NOT NULL,
+  "balance" numeric NOT NULL,
+  "previous_balance" numeric NOT NULL,
+  "last_trx_id" bigint NOT NULL,
+  "as_of_date" timestamp with time zone DEFAULT now() NOT NULL,
+  "sequential_id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "bookkeeping_account" text DEFAULT 'user-wallet' NOT NULL,
+  PRIMARY KEY ("wallet_account", "currency", "bookkeeping_account"),
+  FOREIGN KEY ("wallet_account") REFERENCES public."wallet_list"("public_key"),
+  FOREIGN KEY ("currency") REFERENCES public."ref_currencies"("symbol"),
+  FOREIGN KEY ("last_trx_id") REFERENCES public."act_transactions"("id"),
+  FOREIGN KEY ("bookkeeping_account") REFERENCES public."ref_bookkeeping_accounts"("account")
+);
+
+CREATE TABLE IF NOT EXISTS public."act_transaction_entries" (
+  "id" bigint NOT NULL,
+  "transaction_id" bigint NOT NULL,
+  "wallet_account_to" text,
+  "amount" numeric NOT NULL,
+  "trx_type" public.trx_type NOT NULL,
+  "currency" text DEFAULT '' NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "bookkeeping_account" text,
+  "memo" text,
+  "wallet_account_from" text,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("transaction_id") REFERENCES public."act_transactions"("id"),
+  FOREIGN KEY ("wallet_account_to") REFERENCES public."wallet_list"("public_key"),
+  FOREIGN KEY ("currency") REFERENCES public."ref_currencies"("symbol"),
+  FOREIGN KEY ("bookkeeping_account") REFERENCES public."ref_bookkeeping_accounts"("account"),
+  FOREIGN KEY ("wallet_account_from") REFERENCES public."wallet_list"("public_key")
+);
+
+CREATE TABLE IF NOT EXISTS public."act_transactions" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "created_by" bigint,
+  "transaction_category" text DEFAULT 'transfer' NOT NULL,
+  "onramp_request_id" bigint,
+  "offramp_request_id" bigint,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("created_by") REFERENCES public."users"("id"),
+  FOREIGN KEY ("transaction_category") REFERENCES public."ref_trx_categories"("category"),
+  FOREIGN KEY ("onramp_request_id") REFERENCES public."interac_transfer"("id"),
+  FOREIGN KEY ("offramp_request_id") REFERENCES public."off_ramp_req"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."addresses_deprecated" (
+  "public_key" text NOT NULL,
+  "user_id" bigint NOT NULL,
+  "sequential_id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "namespace" public.namespace DEFAULT 'EVM' NOT NULL,
+  "store_parent" bigint,
+  PRIMARY KEY ("public_key"),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
+  FOREIGN KEY ("store_parent") REFERENCES public."stores"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."app_admin_notifications" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "notification_name" text,
+  "user_id" bigint,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."charities" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "name" text,
+  "sc_identifier" text,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."connections" (
+  "id" bigint NOT NULL,
+  "owner_user_id" bigint NOT NULL,
+  "connected_user_id" bigint NOT NULL,
+  "state" public.connection_state DEFAULT 'new' NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "modified_at" timestamp with time zone DEFAULT now() NOT NULL,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("owner_user_id") REFERENCES public."users"("id"),
+  FOREIGN KEY ("connected_user_id") REFERENCES public."users"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."control_variables" (
+  "variable" text NOT NULL,
+  "value" text NOT NULL,
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  PRIMARY KEY ("variable")
+);
+
+CREATE TABLE IF NOT EXISTS public."cron_logs" (
+  "id" uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+  "timestamp" timestamp with time zone DEFAULT now(),
+  "status" text,
+  "note" text,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."interac_transfer" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "user_id" bigint NOT NULL,
+  "interac_code" text,
+  "is_sent" boolean,
+  "amount" numeric,
+  "admin_notes" text,
+  "bank_reference" text,
+  "approved_by_user" bigint,
+  "approved_timestamp" timestamp with time zone,
+  "status" text DEFAULT 'requested',
+  "amount_override" numeric,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
+  FOREIGN KEY ("approved_by_user") REFERENCES public."users"("id"),
+  FOREIGN KEY ("status") REFERENCES public."ref_request_statuses"("status")
+);
+
+CREATE TABLE IF NOT EXISTS public."invites" (
+  "id" bigint NOT NULL,
+  "token" text DEFAULT public.nanoid(8) NOT NULL,
+  "type" public.invite_type DEFAULT 'ephemeral' NOT NULL,
+  "from_user_id" bigint NOT NULL,
+  "used_by_user_id" bigint,
+  "status" public.invite_status DEFAULT 'unused' NOT NULL,
+  "expires_at" timestamp with time zone DEFAULT (now() + '00:01:00'::interval) NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("from_user_id") REFERENCES public."users"("id"),
+  FOREIGN KEY ("used_by_user_id") REFERENCES public."users"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."invoice_pay_request" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "request_from" bigint,
+  "request_by" bigint,
+  "amount_requested" real,
+  "paid_at" timestamp with time zone,
+  "transaction_id" bigint,
+  "is_active" boolean DEFAULT true,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("request_from") REFERENCES public."users"("id"),
+  FOREIGN KEY ("request_by") REFERENCES public."users"("id"),
+  FOREIGN KEY ("transaction_id") REFERENCES public."act_transactions"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."notifications" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "notification" text,
+  "user_id" bigint,
+  "trx_entry_id" bigint,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
+  FOREIGN KEY ("trx_entry_id") REFERENCES public."act_transactions"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."off_ramp_req" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "cad_to_user" numeric NOT NULL,
+  "user_id" bigint NOT NULL,
+  "interac_transfer_target" text,
+  "tokens_burned" numeric NOT NULL,
+  "exchange_rate" numeric NOT NULL,
+  "cad_off_ramp_fee" numeric,
+  "admin_notes" text,
+  "bank_reference_number" text,
+  "status" public.trx_status DEFAULT 'initiated' NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now(),
+  "token_balance_before_burn" numeric,
+  "is_store" boolean DEFAULT false NOT NULL,
+  "wallet_account" text,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."ref_bookkeeping_accounts" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "account" text NOT NULL,
+  "currency" text,
+  "classification" text,
+  "note" text,
+  "is_system" boolean DEFAULT true NOT NULL,
+  PRIMARY KEY ("account"),
+  FOREIGN KEY ("currency") REFERENCES public."ref_currencies"("symbol")
+);
+
+CREATE TABLE IF NOT EXISTS public."ref_countries" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "country_name" text,
+  "country_code" smallint,
+  "combined" text,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."ref_currencies" (
+  "sequential_id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "symbol" text NOT NULL,
+  "name" text,
+  PRIMARY KEY ("symbol")
+);
+
+CREATE TABLE IF NOT EXISTS public."ref_personas" (
+  "persona" text NOT NULL,
+  "descr_short" text,
+  "descr_long" text,
+  "sequential_id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  PRIMARY KEY ("persona")
+);
+
+CREATE TABLE IF NOT EXISTS public."ref_request_statuses" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "status" text NOT NULL,
+  "description" text,
+  PRIMARY KEY ("status")
+);
+
+CREATE TABLE IF NOT EXISTS public."ref_roles" (
+  "sequential_id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "role" text NOT NULL,
+  "is_store" boolean DEFAULT false NOT NULL,
+  PRIMARY KEY ("role")
+);
+
+CREATE TABLE IF NOT EXISTS public."ref_trx_categories" (
+  "category" text NOT NULL,
+  "descr_short" text,
+  "descr_long" text,
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  PRIMARY KEY ("category")
+);
+
+CREATE TABLE IF NOT EXISTS public."roles" (
+  "sequential_id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "user_id" bigint NOT NULL,
+  "role" text NOT NULL,
+  "assigned_by" bigint NOT NULL,
+  PRIMARY KEY ("user_id", "role"),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
+  FOREIGN KEY ("role") REFERENCES public."ref_roles"("role"),
+  FOREIGN KEY ("assigned_by") REFERENCES public."users"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."store_employees" (
+  "id" bigint NOT NULL,
+  "store_id" bigint NOT NULL,
+  "user_id" bigint NOT NULL,
+  "role" text NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "store_account" text,
+  PRIMARY KEY ("store_id", "user_id"),
+  FOREIGN KEY ("store_id") REFERENCES public."stores"("id"),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
+  FOREIGN KEY ("role") REFERENCES public."ref_roles"("role"),
+  FOREIGN KEY ("store_account") REFERENCES public."addresses_deprecated"("public_key")
+);
+
+CREATE TABLE IF NOT EXISTS public."stores" (
+  "id" bigint NOT NULL,
+  "name" text NOT NULL,
+  "descr_short" text,
+  "descr_long" text,
+  "primary_public_key" text NOT NULL,
+  "lat" double precision NOT NULL,
+  "long" double precision NOT NULL,
+  "uuid" uuid DEFAULT gen_random_uuid() NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("primary_public_key") REFERENCES public."addresses_deprecated"("public_key")
+);
+
+CREATE TABLE IF NOT EXISTS public."user_encrypted_share" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "user_id" bigint,
+  "user_share_encrypted" jsonb,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."user_requests" (
+  "id" bigint NOT NULL,
+  "name" text,
+  "email" text,
+  "message" text,
+  "ip_addresses" text[],
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."users" (
+  "id" bigint NOT NULL,
+  "cubid_id" uuid,
+  "username" text,
+  "email" text,
+  "phone" text,
+  "persona" text,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "has_completed_intro" boolean DEFAULT false NOT NULL,
+  "auth_user_id" uuid DEFAULT auth.uid(),
+  "is_new_user" boolean,
+  "cubid_score" jsonb,
+  "cubid_identity" jsonb,
+  "cubid_score_details" jsonb,
+  "updated_at" timestamp with time zone DEFAULT now(),
+  "current_step" smallint,
+  "full_name" text,
+  "bio" text,
+  "profile_image_url" text DEFAULT 'https://github.com/shadcn.png',
+  "preferred_donation_amount" numeric,
+  "selected_cause" text,
+  "good_tip" smallint,
+  "default_tip" smallint,
+  "address" text,
+  "category" text,
+  "user_identifier" text DEFAULT public.nanoid(6) NOT NULL,
+  "charity" text,
+  "given_names" text,
+  "family_name" text,
+  "nickname" text,
+  "country" text,
+  "style" smallint,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("persona") REFERENCES public."ref_personas"("persona"),
+  FOREIGN KEY ("country") REFERENCES public."ref_countries"("combined")
+);
+
+CREATE TABLE IF NOT EXISTS public."wallet_list" (
+  "id" bigint NOT NULL,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "public_key" text,
+  "user_id" bigint,
+  "is_generated" boolean,
+  "store_parent" bigint,
+  "app_share" text,
+  "namespace" public.namespace DEFAULT 'EVM' NOT NULL,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
+  FOREIGN KEY ("store_parent") REFERENCES public."stores"("id")
+);
+
+-- Functions exposed via PostgREST (signatures only)
+-- Function: public.accounting_after_offramp_burn
+--   p_offramp_req_id: bigint NOT NULL
+--   Returns: not exposed via anon key
+--   Body: not accessible via anon key
+
+-- Function: public.create_off_ramp_request
+--   p_current_token_balance: numeric NOT NULL
+--   p_etransfer_target: text NOT NULL
+--   p_exchange_rate: numeric NOT NULL
+--   p_is_store: boolean NOT NULL
+--   p_tokens_burned: numeric NOT NULL
+--   p_user_id: bigint NOT NULL
+--   p_wallet_account: text NOT NULL
+--   Returns: not exposed via anon key
+--   Body: not accessible via anon key
+
+-- Function: public.mint_with_gasfees
+--   admin_note_input: text NOT NULL
+--   amount_changes: boolean
+--   approver_user_id: bigint NOT NULL
+--   bank_reference_input: text NOT NULL
+--   fee_amount: numeric
+--   gas_fee_allocation: numeric
+--   gas_token_price: numeric
+--   on_ramp_request_id: bigint NOT NULL
+--   token_allocation: numeric
+--   token_price: numeric
+--   Returns: not exposed via anon key
+--   Body: not accessible via anon key
+
+-- Function: public.mint_without_gasfees
+--   admin_note_input: text NOT NULL
+--   amount_changes: boolean
+--   approver_user_id: bigint NOT NULL
+--   bank_reference_input: text NOT NULL
+--   on_ramp_request_id: bigint NOT NULL
+--   token_allocation: numeric
+--   token_price: numeric
+--   Returns: not exposed via anon key
+--   Body: not accessible via anon key
+
+-- Function: public.nanoid
+--   alphabet: text
+--   size: integer
+--   Returns: not exposed via anon key
+--   Body: not accessible via anon key
+
+-- Function: public.simple_transfer
+--   recipient_wallet: text NOT NULL
+--   sender_wallet: text NOT NULL
+--   token_price: numeric NOT NULL
+--   transfer_amount: numeric NOT NULL
+--   transfer_user_id: bigint NOT NULL
+--   Returns: not exposed via anon key
+--   Body: not accessible via anon key
