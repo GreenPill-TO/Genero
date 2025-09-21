@@ -363,6 +363,7 @@ CREATE TABLE IF NOT EXISTS public."users" (
   "has_completed_intro" boolean DEFAULT false NOT NULL,
   "auth_user_id" uuid DEFAULT auth.uid(),
   "is_new_user" boolean,
+  "is_admin" boolean,
   "cubid_score" jsonb,
   "cubid_identity" jsonb,
   "cubid_score_details" jsonb,
