@@ -2,10 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Radio } from "@shared/components/ui/Radio";
-import { createClient } from "@shared/lib/supabase/client";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { fetchContactsForOwner, type ContactRecord } from "@shared/api/services/supabaseService";
-import { insertSuccessNotification } from "@shared/utils/insertNotification";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
 import { Hypodata, contactRecordToHypodata } from "@tcoin/wallet/components/dashboard";
 
@@ -18,15 +16,6 @@ interface ContactSelectModalProps {
   prefetchedContacts?: ContactRecord[];
   onSelectContact?: (contact: Hypodata) => void;
 }
-const parseAmountFromString = (raw: string): number | null => {
-  const match = raw.match(/-?\d+(?:\.\d+)?/);
-  if (!match) {
-    return null;
-  }
-  const parsed = Number.parseFloat(match[0]);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
 const formatContactLabel = (contact: ContactRecord) => {
   const name = contact.full_name?.trim();
   const username = contact.username?.trim();
@@ -175,30 +164,9 @@ const ContactSelectModal = ({
       return;
     }
 
-    const requestBy = userData?.cubidData?.id;
-    const parsedAmount = parseAmountFromString(amount);
-    if (!requestBy || parsedAmount === null) {
-      console.error("Invalid request payload", { requestBy, amount });
-      return;
-    }
-
-    try {
-      const supabase = createClient();
-      await supabase.from("invoice_pay_request").insert({
-        request_from: selectedContact.id,
-        request_by: requestBy,
-        amount_requested: parsedAmount,
-      });
-      insertSuccessNotification({
-        user_id: selectedContact.id,
-        notification: `${amount} request by ${userData?.cubidData?.full_name}`,
-      });
-    } catch (error) {
-      console.error("Failed to create request:", error);
-    } finally {
-      onSelectContact?.(normalisedContact);
-      closeModal();
-    }
+    onSelectContact?.(normalisedContact);
+    closeModal();
+    return;
   };
 
   return (

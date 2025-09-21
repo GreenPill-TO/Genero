@@ -175,7 +175,8 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       p_is_store: true,
       p_tokens_burned: (estimatedCAD / exchangeRate).toFixed(2),
       p_user_id: userData?.cubidData?.id,
-      p_wallet_account: senderWallet,
+      p_wallet_account_from: senderWallet,
+      p_wallet_account_to: null,
       p_exchange_rate: exchangeRate,
     });
 

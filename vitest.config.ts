@@ -6,6 +6,7 @@ export default defineConfig(async () => {
     plugins: [tsconfigPaths()],
     test: {
       environment: "jsdom",
+      setupFiles: ["./vitest.setup.ts"],
     },
   };
 });

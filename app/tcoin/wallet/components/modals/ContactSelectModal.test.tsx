@@ -22,31 +22,16 @@ const mockContacts = vi.hoisted(() => [
   },
 ]);
 
-const insertMock = vi.hoisted(() => vi.fn());
-
-vi.mock("@shared/lib/supabase/client", () => ({
-  createClient: () => ({
-    from: () => ({
-      insert: insertMock,
-    }),
-  }),
-}));
-
 const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@shared/api/services/supabaseService", () => ({
   fetchContactsForOwner: fetchContactsForOwnerMock,
 }));
 
-vi.mock("@shared/utils/insertNotification", () => ({
-  insertSuccessNotification: vi.fn(),
-}));
-
 describe("ContactSelectModal", () => {
   beforeEach(() => {
     fetchContactsForOwnerMock.mockReset();
     fetchContactsForOwnerMock.mockResolvedValue(mockContacts);
-    insertMock.mockReset();
   });
 
   it("calls closeModal on Escape key press", () => {
@@ -164,13 +149,12 @@ describe("ContactSelectModal", () => {
     document.body.removeChild(container);
   });
 
-  it("creates an invoice request when the method is Request", async () => {
+  it("defers request creation and simply selects the contact", async () => {
     const closeModal = vi.fn();
+    const onSelectContact = vi.fn();
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
-
-    insertMock.mockResolvedValue({ data: null });
 
     const queryClient = new QueryClient();
     await act(async () => {
@@ -180,7 +164,7 @@ describe("ContactSelectModal", () => {
             closeModal={closeModal}
             amount="$5"
             method="Request"
-            setToSendData={vi.fn()}
+            onSelectContact={onSelectContact}
           />
         </QueryClientProvider>
       );
@@ -202,11 +186,9 @@ describe("ContactSelectModal", () => {
       await Promise.resolve();
     });
 
-    expect(insertMock).toHaveBeenCalledWith({
-      request_from: 2,
-      request_by: 1,
-      amount_requested: 5,
-    });
+    expect(onSelectContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 2, full_name: "Alice" })
+    );
     expect(closeModal).toHaveBeenCalled();
 
     act(() => {

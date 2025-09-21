@@ -3,16 +3,20 @@ import { LuRefreshCcw, LuSend, LuUserPlus, LuX } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
+import { Input } from "@shared/components/ui/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { useModal } from "@shared/contexts/ModalContext";
 import { createClient } from "@shared/lib/supabase/client";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
 import { ContactSelectModal } from "@tcoin/wallet/components/modals";
-import { Hypodata } from "./types";
+import { Hypodata, contactRecordToHypodata } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
+import type { TransferRecordSnapshot } from "@shared/utils/transferRecord";
 
 const FONT_SIZE_MAX_REM = 4.5;
-const FONT_SIZE_MIN_REM = 2.75;
+const FONT_SIZE_MIN_REM = 1.1;
+const FONT_SIZE_CHAR_THRESHOLD = 6;
+const FONT_SIZE_REDUCTION_STEP = 0.4;
 
 export function calculateResponsiveFontSize(displayValue: string) {
   const trimmed = displayValue.replace(/\s+/g, "");
@@ -21,10 +25,10 @@ export function calculateResponsiveFontSize(displayValue: string) {
     return `min(${FONT_SIZE_MAX_REM.toFixed(2)}rem, 12vw)`;
   }
 
-  const overflow = Math.max(0, visibleChars - 10);
+  const overflow = Math.max(0, visibleChars - FONT_SIZE_CHAR_THRESHOLD);
   const adjusted = Math.max(
     FONT_SIZE_MIN_REM,
-    FONT_SIZE_MAX_REM - overflow * 0.5
+    FONT_SIZE_MAX_REM - overflow * FONT_SIZE_REDUCTION_STEP
   );
 
   return `min(${adjusted.toFixed(2)}rem, 12vw)`;
@@ -68,6 +72,12 @@ const getContactInitials = (contact: Hypodata) => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
+export interface PaymentCompletionDetails {
+  transactionHash: string;
+  transactionId?: number | null;
+  transferRecord?: unknown;
+}
+
 interface SendCardProps {
   sendMoney: (amount: string) => Promise<string>;
   toSendData: Hypodata | null;
@@ -84,6 +94,13 @@ interface SendCardProps {
   onUseMax: () => void;
   locked?: boolean;
   contacts?: ContactRecord[];
+  amountHeaderActions?: React.ReactNode;
+  actionLabel?: string;
+  getLastTransferRecord?: () => TransferRecordSnapshot | null;
+  onPaymentComplete?: (details: PaymentCompletionDetails) => void;
+  lockRecipient?: boolean;
+  lockAmount?: boolean;
+  recipientHeading?: string;
 }
 
 export function SendCard({
@@ -102,6 +119,13 @@ export function SendCard({
   onUseMax,
   locked = false,
   contacts,
+  amountHeaderActions,
+  actionLabel = "Send...",
+  getLastTransferRecord,
+  onPaymentComplete,
+  lockRecipient,
+  lockAmount,
+  recipientHeading = "Send To",
 }: SendCardProps) {
   const [connections, setConnections] = useState<any>(null);
   const { userData } = useAuth();
@@ -110,6 +134,21 @@ export function SendCard({
   const [isTcoinFocused, setIsTcoinFocused] = useState(false);
   const [isCadFocused, setIsCadFocused] = useState(false);
   const amountInputRef = useRef<HTMLInputElement | null>(null);
+  const recipientInputRef = useRef<HTMLInputElement | null>(null);
+  const sendButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [recipientQuery, setRecipientQuery] = useState("");
+  const previousRecipientIdRef = useRef<number | null>(null);
+  const hasAmountForAdvance = useMemo(() => {
+    const parsedTcoin = Number.parseFloat(tcoinAmount);
+    const parsedCad = Number.parseFloat(cadAmount);
+    return (
+      (Number.isFinite(parsedTcoin) && parsedTcoin > 0) ||
+      (Number.isFinite(parsedCad) && parsedCad > 0)
+    );
+  }, [cadAmount, tcoinAmount]);
+
+  const recipientLocked = lockRecipient ?? locked;
+  const amountLock = lockAmount ?? locked;
 
   useEffect(() => {
     if (!toSendData?.id || !userData?.cubidData?.id) return;
@@ -134,10 +173,32 @@ export function SendCard({
   }, [toSendData?.id, userData?.cubidData?.id]);
 
   useEffect(() => {
-    if (!toSendData) return;
     const timer = setTimeout(() => amountInputRef.current?.focus(), 0);
     return () => clearTimeout(timer);
-  }, [toSendData]);
+  }, []);
+
+  useEffect(() => {
+    if (!toSendData) {
+      previousRecipientIdRef.current = null;
+      return;
+    }
+
+    if (previousRecipientIdRef.current === toSendData.id) {
+      return;
+    }
+
+    previousRecipientIdRef.current = toSendData.id;
+
+    const timer = setTimeout(() => {
+      if (hasAmountForAdvance) {
+        sendButtonRef.current?.focus();
+      } else {
+        amountInputRef.current?.focus();
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [hasAmountForAdvance, toSendData]);
 
   const tcoinValue = Number.parseFloat(tcoinAmount);
   const cadValue = Number.parseFloat(cadAmount);
@@ -145,10 +206,12 @@ export function SendCard({
   const amountExceedsBalance = Number.isFinite(tcoinValue) && tcoinValue > userBalance;
   const canSend = Boolean(toSendData) && hasTcoinAmount;
 
+  const activeAmountString = isCadInput ? cadAmount : tcoinAmount;
+  const parsedActiveAmount = Number.parseFloat(activeAmountString);
   const amountLocked =
-    locked &&
-    ((isCadInput ? cadAmount : tcoinAmount) !== "0" &&
-      (isCadInput ? cadAmount : tcoinAmount) !== "");
+    amountLock &&
+    Number.isFinite(parsedActiveAmount) &&
+    Math.abs(parsedActiveAmount) > 0;
 
   const displayValue = useMemo(() => {
     if (isCadInput) {
@@ -175,11 +238,15 @@ export function SendCard({
 
   const handleContactSelection = (contact: Hypodata) => {
     setToSendData(contact);
-    setTimeout(() => amountInputRef.current?.focus(), 0);
+    setRecipientQuery("");
+  };
+
+  const handleContactRecordSelection = (contact: ContactRecord) => {
+    handleContactSelection(contactRecordToHypodata(contact));
   };
 
   const openContactSelector = () => {
-    if (locked) return;
+    if (recipientLocked) return;
     openModal({
       content: (
         <ContactSelectModal
@@ -202,10 +269,57 @@ export function SendCard({
     setTimeout(() => amountInputRef.current?.focus(), 0);
   };
 
+  const trimmedRecipientQuery = recipientQuery.trim().toLowerCase();
+  const matchingContacts = useMemo(() => {
+    if (!contacts || trimmedRecipientQuery === "") {
+      return [];
+    }
+
+    return contacts.filter((contact) => {
+      const fullName = contact.full_name?.toLowerCase() ?? "";
+      const username = contact.username?.toLowerCase() ?? "";
+      return (
+        fullName.includes(trimmedRecipientQuery) ||
+        username.includes(trimmedRecipientQuery)
+      );
+    });
+  }, [contacts, trimmedRecipientQuery]);
+
+  const focusRecipientField = () => {
+    recipientInputRef.current?.focus();
+  };
+
+  const focusSendButton = () => {
+    sendButtonRef.current?.focus();
+  };
+
+  const handleAmountAdvance = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" || (event.key === "Tab" && !event.shiftKey)) {
+      if (toSendData) {
+        event.preventDefault();
+        focusSendButton();
+        return;
+      }
+
+      if (hasAmountForAdvance) {
+        event.preventDefault();
+        focusRecipientField();
+      }
+    }
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col space-y-4">
-      <div className="mx-auto w-full max-w-sm">
-        <div className="relative mx-auto flex w-full flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
+      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Amount</h2>
+          {amountHeaderActions && (
+            <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+              {amountHeaderActions}
+            </div>
+          )}
+        </div>
+        <div className="relative mx-auto mt-4 flex w-full flex-col items-center gap-4 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
           <div className="w-full text-center">
             {isCadInput ? (
               <input
@@ -219,6 +333,7 @@ export function SendCard({
                   setIsCadFocused(false);
                   handleCadBlur();
                 }}
+                onKeyDown={handleAmountAdvance}
                 readOnly={amountLocked}
                 placeholder="$0.00"
                 style={{ fontSize }}
@@ -236,6 +351,7 @@ export function SendCard({
                   setIsTcoinFocused(false);
                   handleTcoinBlur();
                 }}
+                onKeyDown={handleAmountAdvance}
                 readOnly={amountLocked}
                 placeholder="0.00"
                 style={{ fontSize }}
@@ -243,13 +359,13 @@ export function SendCard({
               />
             )}
           </div>
-          <div className="flex w-full justify-end">
+          <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <Button
               type="button"
               variant="ghost"
               size="icon"
               aria-label="Toggle between TCOIN and CAD"
-              className="h-12 w-12 rounded-full border border-border/60 [&_svg]:h-6 [&_svg]:w-6"
+              className="h-10 w-10 flex-shrink-0 rounded-full border border-border/60 [&_svg]:h-5 [&_svg]:w-5"
               onClick={() => {
                 if (isCadInput) {
                   handleCadBlur();
@@ -263,38 +379,39 @@ export function SendCard({
             >
               <LuRefreshCcw className="h-6 w-6" />
             </Button>
-          </div>
-          <p className="text-sm text-muted-foreground text-center">
-            {isCadInput
-              ? `≈ ${formatTcoinDisplay(tcoinAmount) || "0.00 TCOIN"}`
-              : `≈ ${formatCadDisplay(cadAmount) || "$0.00"} CAD`}
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-            <span>Available: {userBalance.toFixed(4)}</span>
-            <Button
-              variant="link"
-              className="h-auto p-0 text-xs"
-              onClick={onUseMax}
-            >
-              Use Max
-            </Button>
+            <p className="flex-1 text-center text-sm text-muted-foreground">
+              {isCadInput
+                ? `≈ ${formatTcoinDisplay(tcoinAmount) || "0.00 TCOIN"}`
+                : `≈ ${formatCadDisplay(cadAmount) || "$0.00"} CAD`}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+              <span>Available: {userBalance.toFixed(4)}</span>
+              <Button
+                variant="link"
+                className="h-auto p-0 text-xs"
+                onClick={onUseMax}
+                disabled={amountLock}
+              >
+                Use Max
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Send To</h2>
+          <h2 className="text-lg font-semibold">{recipientHeading}</h2>
           <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="secondary"
               onClick={openContactSelector}
-              disabled={locked}
+              disabled={recipientLocked}
             >
               <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
             </Button>
-            {toSendData && (
+            {toSendData && !recipientLocked && (
               <Button
                 type="button"
                 variant="ghost"
@@ -331,15 +448,47 @@ export function SendCard({
             </div>
           </div>
         ) : (
-          <div className="mt-4 rounded-2xl border border-dashed border-border/60 bg-background/70 p-5 text-center text-sm text-muted-foreground">
-            Select a contact to populate the recipient field.
+          <div className="mt-4 rounded-2xl border border-dashed border-border/60 bg-background/70 p-5">
+            <label htmlFor="recipient-search" className="mb-2 block text-sm font-medium text-muted-foreground">
+              Recipient
+            </label>
+            <Input
+              id="recipient-search"
+              ref={recipientInputRef}
+              placeholder="Start typing a name"
+              value={recipientQuery}
+              onChange={(event) => setRecipientQuery(event.target.value)}
+              aria-label="Recipient search"
+            />
+            {trimmedRecipientQuery !== "" && matchingContacts.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {matchingContacts.map((contact) => {
+                  const name = contact.full_name?.trim() || contact.username?.trim() || "Unknown";
+                  return (
+                    <li key={contact.id}>
+                      <button
+                        type="button"
+                        className="flex w-full flex-col rounded-xl border border-border/60 bg-background/80 px-4 py-3 text-left transition hover:border-primary"
+                        onClick={() => handleContactRecordSelection(contact)}
+                      >
+                        <span className="text-sm font-medium">{name}</span>
+                        {contact.username && (
+                          <span className="text-xs text-muted-foreground">@{contact.username}</span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         )}
       </section>
 
       <Button
-        className="w-full"
-        disabled={!canSend}
+        ref={sendButtonRef}
+        className={`w-full ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
+        aria-disabled={!canSend}
         onClick={() => {
           if (!toSendData) {
             toast.error("Select a recipient first.");
@@ -366,13 +515,15 @@ export function SendCard({
                 closeModal={closeModal}
                 sendMoney={sendMoney}
                 setExplorerLink={setExplorerLink}
+                getLastTransferRecord={getLastTransferRecord}
+                onPaymentComplete={onPaymentComplete}
               />
             ),
             title: "Confirm Payment",
           });
         }}
       >
-        <LuSend className="mr-2 h-4 w-4" /> Send...
+        <LuSend className="mr-2 h-4 w-4" /> {actionLabel}
       </Button>
 
       {explorerLink && (
@@ -465,6 +616,8 @@ function ConfirmTransactionModal({
   closeModal,
   sendMoney,
   setExplorerLink,
+  getLastTransferRecord,
+  onPaymentComplete,
 }: {
   tcoinAmount: string;
   cadAmount: string;
@@ -472,6 +625,8 @@ function ConfirmTransactionModal({
   closeModal: () => void;
   sendMoney: (amount: string) => Promise<string>;
   setExplorerLink: (link: string | null) => void;
+  getLastTransferRecord?: () => TransferRecordSnapshot | null;
+  onPaymentComplete?: (details: PaymentCompletionDetails) => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const { userData } = useAuth();
@@ -496,18 +651,57 @@ function ConfirmTransactionModal({
             setIsLoading(true);
             try {
               const hash = await sendMoney(tcoinAmount);
-              insertSuccessNotification({
-                user_id: userData?.cubidData?.id,
-                notification: `You sent ${tcoinAmount}`,
-              });
-              insertSuccessNotification({
-                user_id: toSendData.id,
-                notification: `You received ${tcoinAmount}`,
-              });
-              setExplorerLink(`https://evm-testnet.flowscan.io/tx/${hash}`);
-              toast.success("Payment Sent Successfully!");
+              const trimmedHash = typeof hash === "string" ? hash.trim() : "";
+              if (trimmedHash) {
+                setExplorerLink(`https://evm-testnet.flowscan.io/tx/${trimmedHash}`);
+              } else {
+                setExplorerLink(null);
+              }
+
+              const snapshot = getLastTransferRecord?.() ?? null;
+              const completionDetails: PaymentCompletionDetails = {
+                transactionHash: trimmedHash || hash,
+              };
+              if (snapshot) {
+                if (snapshot.transactionId != null) {
+                  completionDetails.transactionId = snapshot.transactionId;
+                }
+                completionDetails.transferRecord = snapshot.raw;
+              }
+
+              const notifications: Promise<unknown>[] = [];
+              if (userData?.cubidData?.id != null) {
+                notifications.push(
+                  insertSuccessNotification({
+                    user_id: userData.cubidData.id,
+                    notification: `You sent ${formattedTcoin}`,
+                    showToast: false,
+                  })
+                );
+              }
+              notifications.push(
+                insertSuccessNotification({
+                  user_id: toSendData.id,
+                  notification: `You received ${formattedTcoin}`,
+                  showToast: false,
+                })
+              );
+
+              await Promise.all(notifications);
+              await onPaymentComplete?.(completionDetails);
+
+              const recipientName =
+                toSendData?.full_name?.trim() ||
+                toSendData?.username?.trim() ||
+                "the recipient";
+              toast.success(`Sent ${formattedTcoin} to ${recipientName}.`);
             } catch (error) {
-              toast.error("Error sending payment!");
+              setExplorerLink(null);
+              const fallback = "We couldn't send your payment. Please try again.";
+              const message =
+                error instanceof Error && error.message ? error.message : fallback;
+              console.error("Payment failed:", error);
+              toast.error(message);
             } finally {
               setIsLoading(false);
               closeModal();
