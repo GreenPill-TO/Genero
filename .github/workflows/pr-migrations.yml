@@ -1,0 +1,48 @@
+name: Supabase PR Migrations (Preview DB)
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+    paths:
+      - "supabase/migrations/**"
+
+jobs:
+  preview-migrations:
+    if: github.event.action != 'closed'
+    name: Apply migration (up)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 1.155.4
+
+      - name: Push migration (up)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_PREVIEW_URL }}
+        run: |
+          supabase db push
+
+  rollback-migrations:
+    if: github.event.action == 'closed' && github.event.pull_request.merged == false
+    name: Rollback migration (down)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 1.155.4
+
+      - name: Reset preview database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_PREVIEW_URL }}
+        run: |
+          supabase db reset --force
