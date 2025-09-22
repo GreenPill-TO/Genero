@@ -10,12 +10,36 @@ vi.mock("@shared/contexts/ModalContext", () => ({
   useModal: () => ({ openModal, closeModal }),
 }));
 
+const createProfile = (overrides: Partial<any> = {}) => ({
+  appInstanceId: 1,
+  slug: "wallet-tcoin-development",
+  persona: null,
+  tippingPreferences: {
+    preferredDonationAmount: 0,
+    goodTip: null,
+    defaultTip: null,
+  },
+  charityPreferences: {
+    charity: "Food Bank",
+    selectedCause: "Food Bank",
+  },
+  onboardingState: {
+    currentStep: 1,
+    category: "Restaurant",
+    style: null,
+  },
+  metadata: null,
+  createdAt: null,
+  updatedAt: null,
+  ...overrides,
+});
+
 const useAuthMock = vi.hoisted(() =>
   vi.fn(() => ({
     userData: {
       cubidData: {
-        charity: "Food Bank",
         is_admin: false,
+        activeProfile: createProfile(),
       },
     },
   }))
@@ -69,8 +93,8 @@ describe("MoreTab", () => {
     useAuthMock.mockReturnValue({
       userData: {
         cubidData: {
-          charity: "Food Bank",
           is_admin: false,
+          activeProfile: createProfile(),
         },
       },
     });
@@ -142,8 +166,8 @@ describe("MoreTab", () => {
     useAuthMock.mockReturnValue({
       userData: {
         cubidData: {
-          charity: "Food Bank",
           is_admin: true,
+          activeProfile: createProfile(),
         },
       },
     });

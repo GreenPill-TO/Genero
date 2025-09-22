@@ -27,9 +27,9 @@
   shared/ # Shared UI + logic
 - **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
-- **App Registry**: `apps`, `citycoins`, and `app_instances` tables track each deployment pairing with unique slugs; runtime hel
-  pers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
-  queries.
+  - **App Registry**: `ref_apps`, `ref_citycoins`, and `ref_app_instances` tables track each deployment pairing with unique slugs;
+    runtime helpers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
+    queries.
 
 ## Extensibility
 

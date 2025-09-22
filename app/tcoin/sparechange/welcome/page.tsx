@@ -47,7 +47,27 @@ const stepHeadings = [
   "Add Cubid Wallet",
   "You're All Set!",
 ];
-const initialFormData = {
+
+type WelcomeFormState = {
+  full_name: string;
+  username: string;
+  email: string;
+  phone: string;
+  address: string;
+  category: string;
+  bio: string;
+  profile_image_url: File | string | null;
+  preferred_donation_amount: number | null;
+  selected_cause: string;
+  good_tip: number | null;
+  default_tip: number | null;
+  persona: string | null;
+  current_step: number;
+  charity: string;
+  updated_at: string;
+};
+
+const createDefaultFormState = (): WelcomeFormState => ({
   full_name: "",
   username: "",
   email: "",
@@ -58,22 +78,65 @@ const initialFormData = {
   profile_image_url: null,
   preferred_donation_amount: 0,
   selected_cause: "",
-  good_tip: 0,
-  default_tip: 0,
+  good_tip: null,
+  default_tip: null,
   persona: null,
   current_step: 1,
-  updated_at: new Date().toUTCString(),
+  charity: "",
+  updated_at: new Date().toISOString(),
+});
+
+const deriveFormStateFromCubid = (cubidData?: TCubidData | null): WelcomeFormState => {
+  const base = createDefaultFormState();
+  if (!cubidData) {
+    return base;
+  }
+
+  const profile = cubidData.activeProfile;
+
+  return {
+    ...base,
+    full_name: cubidData.full_name ?? base.full_name,
+    username: cubidData.username ?? base.username,
+    email: cubidData.email ?? base.email,
+    phone: cubidData.phone ?? base.phone,
+    address: cubidData.address ?? base.address,
+    bio: cubidData.bio ?? base.bio,
+    profile_image_url: cubidData.profile_image_url ?? base.profile_image_url,
+    persona: profile?.persona ?? base.persona,
+    preferred_donation_amount:
+      profile?.tippingPreferences.preferredDonationAmount ?? base.preferred_donation_amount,
+    good_tip: profile?.tippingPreferences.goodTip ?? base.good_tip,
+    default_tip: profile?.tippingPreferences.defaultTip ?? base.default_tip,
+    selected_cause: profile?.charityPreferences.selectedCause ?? base.selected_cause,
+    charity: profile?.charityPreferences.charity ?? base.charity,
+    current_step: profile?.onboardingState.currentStep ?? base.current_step,
+    category: profile?.onboardingState.category ?? base.category,
+    updated_at: cubidData.updated_at ?? base.updated_at,
+  };
+};
+
+const normaliseNullableNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 };
 
 const WelcomeFlow: React.FC = () => {
   const router = useRouter();
   const { userData } = useAuth();
-  const { isDarkMode } = useDarkMode()
+  const { isDarkMode } = useDarkMode();
 
-  const [userFormData, setUserFormData] = useState<TCubidData>(
-    userData?.cubidData?.current_step && userData?.cubidData?.current_step > 1
-      ? { ...initialFormData, ...userData?.cubidData }
-      : initialFormData
+  const initialState = deriveFormStateFromCubid(userData?.cubidData);
+  const [userFormData, setUserFormData] = useState<WelcomeFormState>(
+    initialState.current_step && initialState.current_step > 1
+      ? initialState
+      : { ...createDefaultFormState(), ...initialState }
   );
 
   const [isNextEnabled, setIsNextEnabled] = useState<boolean>(true);
@@ -86,20 +149,57 @@ const WelcomeFlow: React.FC = () => {
 
   const syncToSupabase = async (isCompleted?: boolean) => {
     const cubidId = userData?.user?.cubid_id;
+    if (!cubidId) {
+      return;
+    }
 
-    const userDataUpdate: { [key: string]: any } = {
-      ...userFormData,
-      preferred_donation_amount: userFormData.preferred_donation_amount,
-      // profile_image_url: userFormData.profile_image_url ? URL.createObjectURL(userFormData.profile_image_url) : null,
-      has_completed_intro: isCompleted ? true : undefined,
+    const updatedAtIso = new Date().toISOString();
+    const userUpdates: Record<string, unknown> = {
+      full_name: userFormData.full_name,
+      username: userFormData.username,
+      email: userFormData.email,
+      phone: userFormData.phone,
+      address: userFormData.address,
+      bio: userFormData.bio,
+      updated_at: updatedAtIso,
     };
 
-    if (Object.keys(userDataUpdate).length > 0) {
-      const { error } = await updateCubidDataInSupabase(cubidId, userDataUpdate);
+    if (typeof userFormData.profile_image_url === "string" || userFormData.profile_image_url === null) {
+      userUpdates.profile_image_url = userFormData.profile_image_url;
+    }
 
-      if (error) {
-        console.error("Error syncing user data to Supabase:", error.message);
-      }
+    if (isCompleted) {
+      userUpdates.has_completed_intro = true;
+    }
+
+    const profileUpdates = {
+      persona: userFormData.persona,
+      tippingPreferences: {
+        preferredDonationAmount: normaliseNullableNumber(userFormData.preferred_donation_amount),
+        goodTip: normaliseNullableNumber(userFormData.good_tip),
+        defaultTip: normaliseNullableNumber(userFormData.default_tip),
+      },
+      charityPreferences: {
+        selectedCause: userFormData.selected_cause,
+        charity:
+          userFormData.charity ||
+          userData?.cubidData?.activeProfile?.charityPreferences?.charity ||
+          userData?.cubidData?.activeProfile?.charityPreferences?.selectedCause ||
+          null,
+      },
+      onboardingState: {
+        currentStep: userFormData.current_step,
+        category: userFormData.category,
+      },
+    };
+
+    const { error } = await updateCubidDataInSupabase(cubidId, {
+      user: userUpdates,
+      profile: profileUpdates,
+    });
+
+    if (error) {
+      console.error("Error syncing user data to Supabase:", error.message ?? error);
     }
   };
 
@@ -133,6 +233,16 @@ const WelcomeFlow: React.FC = () => {
       setIsNextEnabled(true); // Always enable Next button on the first step
     }
   }, [userFormData.current_step]);
+
+  useEffect(() => {
+    if (!userData?.cubidData) {
+      return;
+    }
+    const derivedState = deriveFormStateFromCubid(userData.cubidData);
+    if (derivedState.current_step > userFormData.current_step) {
+      setUserFormData(derivedState);
+    }
+  }, [userData?.cubidData, userFormData.current_step]);
 
   const insertOrUpdateDataInWallet = async (userId, add) => {
     const { data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })

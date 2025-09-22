@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { updateCubidDataInSupabase } from "@shared/api/services/supabaseService";
 import { Button } from "@shared/components/ui/Button";
 import { Radio } from "@shared/components/ui/Radio";
 import { createClient } from "@shared/lib/supabase/client";
@@ -25,7 +26,7 @@ const CharitySelectModal = ({
 }: CharitySelectModalProps) => {
   const [charity, setCharity] = useState(selectedCharity);
   const [charities, setCharities] = useState<Charity[]>([]);
-  const { userData } = useAuth()
+  const { userData } = useAuth();
   useEscapeKey(closeModal);
 
   useEffect(() => {
@@ -45,21 +46,23 @@ const CharitySelectModal = ({
   }, []);
 
   const handleSelect = async () => {
-    // Update the parent component state
     setSelectedCharity(charity);
 
-    // Get the current user
+    const cubidId = userData?.user?.cubid_id;
+    if (cubidId) {
+      const { error } = await updateCubidDataInSupabase(cubidId, {
+        profile: {
+          charityPreferences: {
+            charity,
+            selectedCause: charity,
+          },
+        },
+      });
 
-    // Update the charity column in the users table
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("users")
-      .update({ charity })
-      .eq("id", userData?.cubidData?.id);
-    if (error) {
-      console.error("Error updating user's charity:", error);
+      if (error) {
+        console.error("Error updating user's charity:", error);
+      }
     }
-
 
     closeModal();
   };

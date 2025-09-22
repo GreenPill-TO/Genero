@@ -52,7 +52,7 @@ export const useAuth = () => {
         const cubidData = await fetchCubidDataFromSupabase(user?.cubid_id);
 
         const now = new Date();
-        const lastUpdated = new Date(cubidData.updated_at);
+        const lastUpdated = cubidData.updated_at ? new Date(cubidData.updated_at) : new Date(0);
         const timeDifference = (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60);
 
         if (timeDifference > 24 && !cubidDataFetched.current) {
@@ -60,10 +60,12 @@ export const useAuth = () => {
           const apiData = await fetchCubidData(user?.cubid_id);
           // Update Supabase with new Cubid data
           await updateCubidDataInSupabase(user?.cubid_id, {
-            cubid_score: apiData.score,
-            cubid_identity: apiData.identity,
-            cubid_score_details: apiData.scoreDetails,
-            updated_at: new Date(),
+            user: {
+              cubid_score: apiData.score,
+              cubid_identity: apiData.identity,
+              cubid_score_details: apiData.scoreDetails,
+              updated_at: new Date().toISOString(),
+            },
           });
 
           cubidDataFetched.current = true;

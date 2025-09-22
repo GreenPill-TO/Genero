@@ -77,10 +77,10 @@ const resolveActiveInstance = async (): Promise<AppInstanceRecord | null> => {
     );
 
     let query = supabase
-      .from("app_instances")
-      .select("id, slug, environment, apps!inner(slug), citycoins!inner(slug)");
+      .from("ref_app_instances")
+      .select("id, slug, environment, ref_apps!inner(slug), ref_citycoins!inner(slug)");
 
-    query = query.eq("apps.slug", appSlug).eq("citycoins.slug", citySlug);
+    query = query.eq("ref_apps.slug", appSlug).eq("ref_citycoins.slug", citySlug);
 
     if (environment) {
       query = query.eq("environment", environment);
