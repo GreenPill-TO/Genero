@@ -1,4 +1,4 @@
--- Supabase schema snapshot generated on 2025-09-21T18:19:31.870Z
+-- Supabase schema snapshot generated on 2025-09-22T03:57:22.884Z
 -- Source: https://kyxsjnwkvddgjqigdpsv.supabase.co
 SET search_path TO public;
 
@@ -113,6 +113,26 @@ CREATE TABLE IF NOT EXISTS public."app_admin_notifications" (
   "user_id" bigint,
   PRIMARY KEY ("id"),
   FOREIGN KEY ("user_id") REFERENCES public."users"("id")
+);
+
+CREATE TABLE IF NOT EXISTS public."app_user_profiles" (
+  "user_id" bigint NOT NULL,
+  "app_instance_id" bigint NOT NULL,
+  "persona" text,
+  "tipping_preferences" jsonb,
+  "charity_preferences" jsonb,
+  "onboarding_state" jsonb,
+  "metadata" jsonb,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+  PRIMARY KEY ("user_id", "app_instance_id"),
+  CONSTRAINT app_user_profiles_tipping_json_check CHECK (("tipping_preferences" IS NULL) OR (jsonb_typeof("tipping_preferences") = 'object')),
+  CONSTRAINT app_user_profiles_charity_json_check CHECK (("charity_preferences" IS NULL) OR (jsonb_typeof("charity_preferences") = 'object')),
+  CONSTRAINT app_user_profiles_onboarding_json_check CHECK (("onboarding_state" IS NULL) OR (jsonb_typeof("onboarding_state") = 'object')),
+  CONSTRAINT app_user_profiles_metadata_json_check CHECK (("metadata" IS NULL) OR (jsonb_typeof("metadata") = 'object')),
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id") ON DELETE CASCADE,
+  FOREIGN KEY ("app_instance_id") REFERENCES public."ref_app_instances"("id") ON DELETE CASCADE,
+  FOREIGN KEY ("persona") REFERENCES public."ref_personas"("persona")
 );
 
 CREATE TABLE IF NOT EXISTS public."ref_apps" (
@@ -397,35 +417,25 @@ CREATE TABLE IF NOT EXISTS public."users" (
   "username" text,
   "email" text,
   "phone" text,
-  "persona" text,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "has_completed_intro" boolean DEFAULT false NOT NULL,
   "auth_user_id" uuid DEFAULT auth.uid(),
   "is_new_user" boolean,
-  "is_admin" boolean,
+  "is_admin" boolean DEFAULT false,
   "cubid_score" jsonb,
   "cubid_identity" jsonb,
   "cubid_score_details" jsonb,
   "updated_at" timestamp with time zone DEFAULT now(),
-  "current_step" smallint,
   "full_name" text,
   "bio" text,
   "profile_image_url" text DEFAULT 'https://github.com/shadcn.png',
-  "preferred_donation_amount" numeric,
-  "selected_cause" text,
-  "good_tip" smallint,
-  "default_tip" smallint,
   "address" text,
-  "category" text,
   "user_identifier" text DEFAULT public.nanoid(6) NOT NULL,
-  "charity" text,
   "given_names" text,
   "family_name" text,
   "nickname" text,
   "country" text,
-  "style" smallint,
   PRIMARY KEY ("id"),
-  FOREIGN KEY ("persona") REFERENCES public."ref_personas"("persona"),
   FOREIGN KEY ("country") REFERENCES public."ref_countries"("combined")
 );
 
