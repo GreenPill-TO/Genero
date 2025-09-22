@@ -3,6 +3,13 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
 import { useModal } from "@shared/contexts/ModalContext";
 import { cn } from "@shared/utils/classnames";
 
@@ -16,7 +23,7 @@ import { ThemeToggleButton } from "./ThemeToggleButton";
 
 export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
-  const { isAuthenticated, userData } = useAuth();
+  const { isAuthenticated, userData, signOut } = useAuth();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
@@ -59,29 +66,69 @@ export default function Navbar({ title }: { title?: string }) {
     );
   }, [isAuthenticated]);
 
+  const handleEditProfile = () => {
+    openModal({
+      content: <UserProfileModal closeModal={closeModal} />,
+      isResponsive: true,
+      title: "Edit Profile",
+      description: "Update your personal information and preferences.",
+    });
+  };
+
+  const handleLogout = () => {
+    signOut();
+  };
+
   const Account = () => {
     if (isAuthenticated) {
       const profileImage = userData?.cubidData?.profile_image_url as unknown;
+      const username = userData?.cubidData?.username;
+      const email = userData?.cubidData?.email ?? userData?.user?.email;
       return (
-        <Avatar
-          onClick={() => {
-            openModal({
-              content: <UserProfileModal closeModal={closeModal} />,
-              isResponsive: true,
-              title: "User Profile",
-              description: "Manage your account settings and preferences.",
-            });
-          }}
-          className="mx-2"
-        >
-          {typeof profileImage === "string" ? (
-            <AvatarImage src={profileImage} alt="User avatar" />
-          ) : (
-            <AvatarFallback>
-              <LuUser />
-            </AvatarFallback>
-          )}
-        </Avatar>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Avatar className="mx-2 cursor-pointer" aria-label="Account menu">
+              {typeof profileImage === "string" ? (
+                <AvatarImage src={profileImage} alt="User avatar" />
+              ) : (
+                <AvatarFallback>
+                  <LuUser />
+                </AvatarFallback>
+              )}
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={12} className="w-64 space-y-3 p-4">
+            <div className="space-y-1">
+              {username && <p className="truncate text-sm font-semibold">@{username}</p>}
+              {email && <p className="truncate text-sm text-muted-foreground">{email}</p>}
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <button
+                type="button"
+                className={cn(
+                  "w-full cursor-pointer rounded-sm px-2 py-1.5 text-left text-sm",
+                  "transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none"
+                )}
+                onClick={handleEditProfile}
+              >
+                Edit Profile
+              </button>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <button
+                type="button"
+                className={cn(
+                  "w-full cursor-pointer rounded-sm px-2 py-1.5 text-left text-sm",
+                  "transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none"
+                )}
+                onClick={handleLogout}
+              >
+                Log Out
+              </button>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       );
     }
     return <Button onClick={onAuth}>Authenticate</Button>;

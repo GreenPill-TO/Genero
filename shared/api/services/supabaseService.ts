@@ -235,3 +235,5 @@ export const getPersonas = async (): Promise<TPersona[] | null> => {
     throw error;
   }
 };
+
+export { getActiveAppInstance, getActiveAppInstanceId } from "@shared/lib/supabase/appInstance";

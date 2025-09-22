@@ -37,6 +37,8 @@ app/
   [citycoins]/     # Starting with Toronto's TCOIN, this monorepo allows for multiple cities, each with their own local currency
     [citycoin apps]/  # Each citycoin will have one or more dedicated apps, aka wallets.
 shared/            # Reusable hooks, components and utilities
+supabase/
+  migrations/      # Versioned SQL migrations synced with Supabase
 ```
 
 API routes for Twilio OTP verification are located under `app/api`.
