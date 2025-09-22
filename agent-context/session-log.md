@@ -1,3 +1,6 @@
+## v0.68
+- Updated Supabase app registry migrations, profile backfill, shared Supabase helpers, and specs to use `ref_apps`, `ref_citycoins`, and `ref_app_instances` table names.
+
 ## v0.67
 - Normalised Cubid data around per-app profiles by adding a reversible Supabase migration, updating shared typings/service helpers, and wiring wallet and SpareChange flows to read and write the scoped profile payloads.
 

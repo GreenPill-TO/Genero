@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.app_user_profiles (
   updated_at timestamp with time zone DEFAULT now() NOT NULL,
   PRIMARY KEY (user_id, app_instance_id),
   CONSTRAINT app_user_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
-  CONSTRAINT app_user_profiles_app_instance_id_fkey FOREIGN KEY (app_instance_id) REFERENCES public.app_instances(id) ON DELETE CASCADE,
+  CONSTRAINT app_user_profiles_app_instance_id_fkey FOREIGN KEY (app_instance_id) REFERENCES public.ref_app_instances(id) ON DELETE CASCADE,
   CONSTRAINT app_user_profiles_persona_fkey FOREIGN KEY (persona) REFERENCES public.ref_personas(persona),
   CONSTRAINT app_user_profiles_tipping_json_check CHECK (tipping_preferences IS NULL OR jsonb_typeof(tipping_preferences) = 'object'),
   CONSTRAINT app_user_profiles_charity_json_check CHECK (charity_preferences IS NULL OR jsonb_typeof(charity_preferences) = 'object'),
@@ -26,8 +26,8 @@ CREATE INDEX IF NOT EXISTS app_user_profiles_app_instance_id_idx
 
 WITH target_instances AS (
   SELECT ai.id AS app_instance_id
-  FROM public.app_instances ai
-  JOIN public.apps a ON a.id = ai.app_id
+  FROM public.ref_app_instances ai
+  JOIN public.ref_apps a ON a.id = ai.app_id
   WHERE a.slug IN ('sparechange', 'wallet')
 ),
 profile_seed AS (
@@ -152,8 +152,8 @@ WITH ranked_profiles AS (
         ap.app_instance_id
     ) AS env_rank
   FROM public.app_user_profiles ap
-  JOIN public.app_instances ai ON ai.id = ap.app_instance_id
-  JOIN public.apps a ON a.id = ai.app_id
+  JOIN public.ref_app_instances ai ON ai.id = ap.app_instance_id
+  JOIN public.ref_apps a ON a.id = ai.app_id
   WHERE a.slug = 'sparechange'
 )
 UPDATE public.users u

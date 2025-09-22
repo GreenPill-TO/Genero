@@ -151,7 +151,7 @@ const mapProfileRow = (row: any): TAppUserProfile => {
     throw new Error("Invalid app instance identifier returned from Supabase");
   }
 
-  const slug = normaliseNullableString(row?.app_instances?.slug ?? row?.slug);
+  const slug = normaliseNullableString(row?.ref_app_instances?.slug ?? row?.slug);
 
   return {
     appInstanceId,
@@ -388,7 +388,7 @@ export const fetchCubidDataFromSupabase = async (cubidId: string): Promise<TCubi
   const { data: profileRows, error: profileError } = await supabase
     .from("app_user_profiles")
     .select(
-      "app_instance_id, persona, tipping_preferences, charity_preferences, onboarding_state, metadata, created_at, updated_at, app_instances!inner(slug)"
+      "app_instance_id, persona, tipping_preferences, charity_preferences, onboarding_state, metadata, created_at, updated_at, ref_app_instances!inner(slug)"
     )
     .eq("user_id", baseUser.id);
 

@@ -1,7 +1,7 @@
 -- v0.67
 CREATE TABLE public.app_user_profiles (
     user_id bigint NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    app_instance_id bigint NOT NULL REFERENCES public.app_instances(id) ON DELETE CASCADE,
+    app_instance_id bigint NOT NULL REFERENCES public.ref_app_instances(id) ON DELETE CASCADE,
     persona text REFERENCES public.ref_personas(persona),
     tipping_preferences jsonb,
     charity_preferences jsonb,
