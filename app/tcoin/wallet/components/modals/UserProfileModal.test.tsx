@@ -21,6 +21,28 @@ const baseUserData = {
     email: "test@example.com",
     id: 123,
     cubid_id: "cubid-123",
+    activeProfile: {
+      appInstanceId: 1,
+      slug: "wallet-tcoin-development",
+      persona: null,
+      tippingPreferences: {
+        preferredDonationAmount: 0,
+        goodTip: null,
+        defaultTip: null,
+      },
+      charityPreferences: {
+        charity: "Food Bank",
+        selectedCause: "Food Bank",
+      },
+      onboardingState: {
+        currentStep: 1,
+        category: "Restaurant",
+        style: null,
+      },
+      metadata: null,
+      createdAt: null,
+      updatedAt: null,
+    },
   },
   user: {
     cubid_id: "cubid-123",
@@ -88,11 +110,13 @@ describe("UserProfileModal", () => {
     await waitFor(() => expect(updateCubidDataInSupabase).toHaveBeenCalled());
 
     expect(updateCubidDataInSupabase).toHaveBeenCalledWith("cubid-123", {
-      full_name: "Jane Doe",
-      nickname: "JD",
-      country: "Canada (+1)",
-      phone: "+1 555 999 0000",
-      profile_image_url: null,
+      user: {
+        full_name: "Jane Doe",
+        nickname: "JD",
+        country: "Canada (+1)",
+        phone: "+1 555 999 0000",
+        profile_image_url: null,
+      },
     });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["user-data"] });
     expect(toastSuccess).toHaveBeenCalled();

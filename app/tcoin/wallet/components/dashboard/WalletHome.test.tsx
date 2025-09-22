@@ -11,7 +11,34 @@ vi.mock("react-toastify", () => ({
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => ({
-    userData: { cubidData: { id: 42, user_identifier: "abc" } },
+    userData: {
+      cubidData: {
+        id: 42,
+        user_identifier: "abc",
+        activeProfile: {
+          appInstanceId: 1,
+          slug: "wallet-tcoin-development",
+          persona: null,
+          tippingPreferences: {
+            preferredDonationAmount: 0,
+            goodTip: null,
+            defaultTip: null,
+          },
+          charityPreferences: {
+            charity: "Food Bank",
+            selectedCause: "Food Bank",
+          },
+          onboardingState: {
+            currentStep: 1,
+            category: "Restaurant",
+            style: null,
+          },
+          metadata: null,
+          createdAt: null,
+          updatedAt: null,
+        },
+      },
+    },
   }),
 }));
 

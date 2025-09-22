@@ -64,22 +64,79 @@ const createTestSession = (): Session =>
     },
   } as unknown as Session);
 
+const nowIso = new Date().toISOString();
+
 const baseCubidData = {
-  full_name: "Test User",
+  id: 1,
+  cubid_id: "cubid-id",
   username: "testuser",
   email: "user@example.com",
   phone: "",
+  full_name: "Test User",
   address: "",
   bio: "",
   profile_image_url: null,
-  preferred_donation_amount: 0,
-  selected_cause: "",
-  good_tip: null,
-  default_tip: null,
-  persona: null,
-  current_step: 0,
-  category: "",
-  updated_at: new Date().toISOString(),
+  has_completed_intro: true,
+  is_new_user: false,
+  is_admin: false,
+  auth_user_id: null,
+  cubid_score: null,
+  cubid_identity: null,
+  cubid_score_details: null,
+  updated_at: nowIso,
+  created_at: nowIso,
+  user_identifier: "abc123",
+  given_names: null,
+  family_name: null,
+  nickname: null,
+  country: null,
+  profiles: {
+    "sparechange-tcoin-development": {
+      appInstanceId: 1,
+      slug: "sparechange-tcoin-development",
+      persona: null,
+      tippingPreferences: {
+        preferredDonationAmount: 0,
+        goodTip: null,
+        defaultTip: null,
+      },
+      charityPreferences: {
+        selectedCause: "",
+        charity: "",
+      },
+      onboardingState: {
+        currentStep: 0,
+        category: "",
+        style: null,
+      },
+      metadata: null,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    },
+  },
+  activeProfileKey: "sparechange-tcoin-development",
+  activeProfile: {
+    appInstanceId: 1,
+    slug: "sparechange-tcoin-development",
+    persona: null,
+    tippingPreferences: {
+      preferredDonationAmount: 0,
+      goodTip: null,
+      defaultTip: null,
+    },
+    charityPreferences: {
+      selectedCause: "",
+      charity: "",
+    },
+    onboardingState: {
+      currentStep: 0,
+      category: "",
+      style: null,
+    },
+    metadata: null,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  },
 };
 
 describe("useAuth", () => {

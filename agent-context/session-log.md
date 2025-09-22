@@ -1,3 +1,6 @@
+## v0.67
+- Normalised Cubid data around per-app profiles by adding a reversible Supabase migration, updating shared typings/service helpers, and wiring wallet and SpareChange flows to read and write the scoped profile payloads.
+
 ## v0.66
 - Added Supabase migrations for `apps`, `citycoins`, and `app_instances`, seeded wallet/sparechange pairings, refreshed the SQL schema snapshot, and exposed a cached helper to resolve the active app instance by environment variables.
 

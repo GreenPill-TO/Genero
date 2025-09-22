@@ -11,7 +11,7 @@ export default function Dashboard() {
   const screenContent = useMemo(() => {
     if (isLoadingUser || error) return null;
 
-    switch (userData?.cubidData?.persona) {
+    switch (userData?.cubidData?.activeProfile?.persona) {
       // case "ph":
       //   return <PanhandlerScreen />;
       // case "dr":

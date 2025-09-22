@@ -197,11 +197,13 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       const phone = values.phone.trim();
 
       const { error } = await updateCubidDataInSupabase(cubidId, {
-        full_name: fullName,
-        nickname: nickname || null,
-        country: countryValue,
-        phone: phone || null,
-        profile_image_url: profileImageUrl,
+        user: {
+          full_name: fullName,
+          nickname: nickname || null,
+          country: countryValue || null,
+          phone: phone || null,
+          profile_image_url: profileImageUrl,
+        },
       });
 
       if (error) {
