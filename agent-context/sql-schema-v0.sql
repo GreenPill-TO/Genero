@@ -318,6 +318,8 @@ CREATE TABLE IF NOT EXISTS public."ref_roles" (
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "role" text NOT NULL,
   "is_store" boolean DEFAULT false NOT NULL,
+  "can_mint" boolean DEFAULT false NOT NULL,
+  "can_burn" boolean DEFAULT false NOT NULL,
   PRIMARY KEY ("role")
 );
 
