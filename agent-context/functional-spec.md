@@ -58,6 +58,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 ### 2. SpareChange
 
 - Micro-donation interface for tipping or charitable giving.
+- Onboarding persists persona selection, tipping defaults, and charity preferences to the scoped app profile so wallet and SpareChange share base user data while keeping independent settings.
 - Panhandlers, artists, and nonprofits use static QR codes to receive donations.
 - Donors scan and pay instantly via the wallet.
 - Sign-in modal mirrors the wallet with six auto-advancing verification inputs.

@@ -15,6 +15,7 @@
 - **Storage**: Supabase (Postgres + Auth)
   - Browser storage (e.g. `localStorage`) is accessed inside `useEffect` hooks with window guards to avoid Node build-time warnings
   - `agent-context/sql-schema-v0.sql` snapshots the current public schema (tables, enums, RPC signatures) pulled via the Supabase OpenAPI using the anon key; function bodies remain server-side
+  - `public.app_user_profiles` enforces row-level security so authenticated users can only read and mutate profile rows tied to their own `auth_user_id`.
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
 
@@ -27,9 +28,9 @@
   shared/ # Shared UI + logic
 - **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
-- **App Registry**: `apps`, `citycoins`, and `app_instances` tables track each deployment pairing with unique slugs; runtime hel
-  pers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
-  queries.
+  - **App Registry**: `ref_apps`, `ref_citycoins`, and `ref_app_instances` tables track each deployment pairing with unique slugs;
+    runtime helpers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
+    queries.
 
 ## Extensibility
 

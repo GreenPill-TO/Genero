@@ -304,15 +304,18 @@ export default function NewWelcomePage() {
                     return;
                 }
 
+                const countryValue = (data.country?.label || data.country || "") as string;
                 const updatedData = {
-                    full_name: `${data.firstName} ${data.lastName}`,
-                    nickname: data.nickname,
-                    username: data.username?.toLowerCase(),
-                    country: data.country?.label || data.country || "",
-                    phone: data.phone
+                    full_name: `${data.firstName} ${data.lastName}`.trim(),
+                    nickname: data.nickname || null,
+                    username: data.username?.toLowerCase() || null,
+                    country: countryValue || null,
+                    phone: data.phone || null,
                 };
 
-                const { error } = await updateCubidDataInSupabase(userData.user.cubid_id, updatedData);
+                const { error } = await updateCubidDataInSupabase(userData.user.cubid_id, {
+                    user: updatedData,
+                });
                 if (error) {
                     console.error("Error updating Supabase:", error.message);
                     toast.error("We couldn't save your details. Please try again.");

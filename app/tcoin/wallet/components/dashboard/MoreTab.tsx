@@ -24,16 +24,17 @@ const DEFAULT_CHARITY_DATA = {
 export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
+  const activeProfile = userData?.cubidData?.activeProfile;
   const router = useRouter();
   const [selectedCharity, setSelectedCharity] = useState("None");
   const charityData = useMemo(() => DEFAULT_CHARITY_DATA, []);
 
   useEffect(() => {
-    const charityName = userData?.cubidData?.charity;
+    const charityName = activeProfile?.charityPreferences?.charity;
     if (typeof charityName === "string" && charityName.trim() !== "") {
       setSelectedCharity(charityName);
     }
-  }, [userData?.cubidData?.charity]);
+  }, [activeProfile?.charityPreferences?.charity]);
 
   const openTopUpModal = () => {
     openModal({

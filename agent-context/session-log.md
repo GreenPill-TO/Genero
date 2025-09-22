@@ -1,3 +1,12 @@
+## v0.69
+- Added a dedicated Supabase migration enabling row-level security on `app_user_profiles` with self-service select/insert/update policies tied to the owning auth user.
+
+## v0.68
+- Updated Supabase app registry migrations, profile backfill, shared Supabase helpers, and specs to use `ref_apps`, `ref_citycoins`, and `ref_app_instances` table names.
+
+## v0.67
+- Normalised Cubid data around per-app profiles by adding a reversible Supabase migration, updating shared typings/service helpers, and wiring wallet and SpareChange flows to read and write the scoped profile payloads.
+
 ## v0.66
 - Added Supabase migrations for `apps`, `citycoins`, and `app_instances`, seeded wallet/sparechange pairings, refreshed the SQL schema snapshot, and exposed a cached helper to resolve the active app instance by environment variables.
 

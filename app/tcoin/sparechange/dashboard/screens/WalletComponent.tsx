@@ -1035,6 +1035,7 @@ export function MobileWalletDashboardComponent({
 
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
+  const activeProfile = userData?.cubidData?.activeProfile;
   const [balance, setBalance] = useState(1000);
 
   // States for QR and send amounts.
@@ -1046,10 +1047,11 @@ export function MobileWalletDashboardComponent({
   const [selectedCharity, setSelectedCharity] = useState("");
 
   useEffect(() => {
-    if (userData?.cubidData?.charity) {
-      setSelectedCharity(userData?.cubidData?.charity);
+    const defaultCharity = activeProfile?.charityPreferences?.charity;
+    if (defaultCharity) {
+      setSelectedCharity(defaultCharity);
     }
-  }, [userData]);
+  }, [activeProfile]);
 
   const { exchangeRate } = useControlVariables()
 

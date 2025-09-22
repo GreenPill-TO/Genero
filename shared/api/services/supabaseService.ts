@@ -1,5 +1,13 @@
 import { createClient } from "@shared/lib/supabase/client";
-import { TCubidData } from "@shared/types/cubid";
+import { getActiveAppInstance } from "@shared/lib/supabase/appInstance";
+import {
+  TAppUserProfile,
+  TBaseCubidUser,
+  TProfileCharityPreferences,
+  TProfileOnboardingState,
+  TProfileTippingPreferences,
+  TCubidData,
+} from "@shared/types/cubid";
 import { TPersona } from "@shared/types/persona";
 import { Session } from "@supabase/supabase-js";
 
@@ -25,6 +33,191 @@ const normaliseNumericId = (value: unknown) => {
     }
   }
   return null;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+};
+
+const normaliseNullableNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const normaliseNullableSmallInt = (value: unknown): number | null => {
+  const parsed = normaliseNullableNumber(value);
+  if (parsed === null) {
+    return null;
+  }
+  return Number.isInteger(parsed) ? parsed : Math.trunc(parsed);
+};
+
+const normaliseNullableString = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  return null;
+};
+
+const mapUserRowToBase = (row: any): TBaseCubidUser => {
+  const id = normaliseNumericId(row?.id);
+  if (id === null) {
+    throw new Error("Invalid user identifier returned from Supabase");
+  }
+
+  return {
+    id,
+    cubid_id: typeof row?.cubid_id === "string" ? row.cubid_id : "",
+    username: normaliseNullableString(row?.username),
+    email: normaliseNullableString(row?.email),
+    phone: normaliseNullableString(row?.phone),
+    full_name: normaliseNullableString(row?.full_name),
+    address: normaliseNullableString(row?.address),
+    bio: normaliseNullableString(row?.bio),
+    profile_image_url: normaliseNullableString(row?.profile_image_url),
+    has_completed_intro: Boolean(row?.has_completed_intro),
+    is_new_user: typeof row?.is_new_user === "boolean" ? row.is_new_user : null,
+    is_admin: typeof row?.is_admin === "boolean" ? row.is_admin : null,
+    auth_user_id: normaliseNullableString(row?.auth_user_id),
+    cubid_score: row?.cubid_score ?? null,
+    cubid_identity: row?.cubid_identity ?? null,
+    cubid_score_details: row?.cubid_score_details ?? null,
+    updated_at: normaliseNullableString(row?.updated_at),
+    created_at: normaliseNullableString(row?.created_at),
+    user_identifier: normaliseNullableString(row?.user_identifier),
+    given_names: normaliseNullableString(row?.given_names),
+    family_name: normaliseNullableString(row?.family_name),
+    nickname: normaliseNullableString(row?.nickname),
+    country: normaliseNullableString(row?.country),
+  };
+};
+
+const mapTippingPreferences = (value: unknown): TProfileTippingPreferences => {
+  if (!isRecord(value)) {
+    return {
+      preferredDonationAmount: null,
+      goodTip: null,
+      defaultTip: null,
+    };
+  }
+
+  return {
+    preferredDonationAmount: normaliseNullableNumber(value.preferred_donation_amount),
+    goodTip: normaliseNullableSmallInt(value.good_tip),
+    defaultTip: normaliseNullableSmallInt(value.default_tip),
+  };
+};
+
+const mapCharityPreferences = (value: unknown): TProfileCharityPreferences => {
+  if (!isRecord(value)) {
+    return {
+      selectedCause: null,
+      charity: null,
+    };
+  }
+
+  return {
+    selectedCause: normaliseNullableString(value.selected_cause),
+    charity: normaliseNullableString(value.charity),
+  };
+};
+
+const mapOnboardingState = (value: unknown): TProfileOnboardingState => {
+  if (!isRecord(value)) {
+    return {
+      currentStep: null,
+      category: null,
+      style: null,
+    };
+  }
+
+  return {
+    currentStep: normaliseNullableSmallInt(value.current_step),
+    category: normaliseNullableString(value.category),
+    style: normaliseNullableSmallInt(value.style),
+  };
+};
+
+const mapProfileRow = (row: any): TAppUserProfile => {
+  const appInstanceId = normaliseNumericId(row?.app_instance_id);
+  if (appInstanceId === null) {
+    throw new Error("Invalid app instance identifier returned from Supabase");
+  }
+
+  const slug = normaliseNullableString(row?.ref_app_instances?.slug ?? row?.slug);
+
+  return {
+    appInstanceId,
+    slug,
+    persona: normaliseNullableString(row?.persona),
+    tippingPreferences: mapTippingPreferences(row?.tipping_preferences),
+    charityPreferences: mapCharityPreferences(row?.charity_preferences),
+    onboardingState: mapOnboardingState(row?.onboarding_state),
+    metadata: isRecord(row?.metadata) ? (row.metadata as Record<string, unknown>) : null,
+    createdAt: normaliseNullableString(row?.created_at),
+    updatedAt: normaliseNullableString(row?.updated_at),
+  };
+};
+
+const buildTippingPreferencesPayload = (
+  prefs: Partial<TProfileTippingPreferences> | null | undefined
+): Record<string, unknown> | null | undefined => {
+  if (prefs == null) {
+    return null;
+  }
+  const payload: Record<string, unknown> = {};
+  if ("preferredDonationAmount" in prefs) {
+    payload.preferred_donation_amount = prefs.preferredDonationAmount ?? null;
+  }
+  if ("goodTip" in prefs) {
+    payload.good_tip = prefs.goodTip ?? null;
+  }
+  if ("defaultTip" in prefs) {
+    payload.default_tip = prefs.defaultTip ?? null;
+  }
+  return Object.keys(payload).length > 0 ? payload : undefined;
+};
+
+const buildCharityPreferencesPayload = (
+  prefs: Partial<TProfileCharityPreferences> | null | undefined
+): Record<string, unknown> | null | undefined => {
+  if (prefs == null) {
+    return null;
+  }
+  const payload: Record<string, unknown> = {};
+  if ("selectedCause" in prefs) {
+    payload.selected_cause = prefs.selectedCause ?? null;
+  }
+  if ("charity" in prefs) {
+    payload.charity = prefs.charity ?? null;
+  }
+  return Object.keys(payload).length > 0 ? payload : undefined;
+};
+
+const buildOnboardingStatePayload = (
+  state: Partial<TProfileOnboardingState> | null | undefined
+): Record<string, unknown> | null | undefined => {
+  if (state == null) {
+    return null;
+  }
+  const payload: Record<string, unknown> = {};
+  if ("currentStep" in state) {
+    payload.current_step = state.currentStep ?? null;
+  }
+  if ("category" in state) {
+    payload.category = state.category ?? null;
+  }
+  if ("style" in state) {
+    payload.style = state.style ?? null;
+  }
+  return Object.keys(payload).length > 0 ? payload : undefined;
 };
 
 export interface ContactRecord {
@@ -152,21 +345,221 @@ export const createNewUser = async (authMethod: "phone" | "email", fullContact: 
   return { newUser, error };
 };
 
-export const fetchCubidDataFromSupabase = async (cubid_id: string) => {
+export const fetchCubidDataFromSupabase = async (cubidId: string): Promise<TCubidData> => {
   const supabase = createClient();
-  const { data: supabaseData, error: supabaseError } = await supabase.from("users").select("*").eq("cubid_id", cubid_id).single();
+  const { data: userRow, error: userError } = await supabase
+    .from("users")
+    .select(
+      [
+        "id",
+        "cubid_id",
+        "username",
+        "email",
+        "phone",
+        "full_name",
+        "address",
+        "bio",
+        "profile_image_url",
+        "has_completed_intro",
+        "is_new_user",
+        "is_admin",
+        "auth_user_id",
+        "cubid_score",
+        "cubid_identity",
+        "cubid_score_details",
+        "updated_at",
+        "created_at",
+        "user_identifier",
+        "given_names",
+        "family_name",
+        "nickname",
+        "country",
+      ].join(", ")
+    )
+    .eq("cubid_id", cubidId)
+    .single();
 
-  if (supabaseError || !supabaseData) {
-    throw new Error(`Error fetching Supabase data: ${supabaseError?.message}`);
+  if (userError || !userRow) {
+    throw new Error(`Error fetching Supabase data: ${userError?.message ?? "User not found"}`);
   }
 
-  return supabaseData as TCubidData;
+  const baseUser = mapUserRowToBase(userRow);
+
+  const { data: profileRows, error: profileError } = await supabase
+    .from("app_user_profiles")
+    .select(
+      "app_instance_id, persona, tipping_preferences, charity_preferences, onboarding_state, metadata, created_at, updated_at, ref_app_instances!inner(slug)"
+    )
+    .eq("user_id", baseUser.id);
+
+  if (profileError) {
+    throw new Error(`Error fetching profile data: ${profileError.message}`);
+  }
+
+  const profiles: Record<string, TAppUserProfile> = {};
+  for (const row of profileRows ?? []) {
+    try {
+      const profile = mapProfileRow(row);
+      const key = profile.slug ?? String(profile.appInstanceId);
+      profiles[key] = profile;
+    } catch (error) {
+      console.error("Failed to map profile row", error);
+    }
+  }
+
+  const activeInstance = await getActiveAppInstance();
+  let activeProfile: TAppUserProfile | null = null;
+  let activeProfileKey: string | null = null;
+
+  if (activeInstance) {
+    const preferredKey = activeInstance.slug ?? String(activeInstance.id);
+    activeProfile = profiles[preferredKey] ?? null;
+    if (!activeProfile) {
+      activeProfile = Object.values(profiles).find((profile) => profile.appInstanceId === activeInstance.id) ?? null;
+      if (activeProfile) {
+        activeProfileKey = activeProfile.slug ?? String(activeProfile.appInstanceId);
+      }
+    } else {
+      activeProfileKey = preferredKey;
+    }
+  }
+
+  if (!activeProfile && activeInstance?.slug) {
+    activeProfileKey = activeInstance.slug;
+  }
+
+  return {
+    ...baseUser,
+    profiles,
+    activeProfileKey: activeProfileKey ?? null,
+    activeProfile: activeProfile ?? null,
+  };
 };
 
-export const updateCubidDataInSupabase = async (cubidId: string, updatedFields: Record<string, any>) => {
+export interface CubidProfileUpdate {
+  persona?: string | null;
+  tippingPreferences?: Partial<TProfileTippingPreferences> | null;
+  charityPreferences?: Partial<TProfileCharityPreferences> | null;
+  onboardingState?: Partial<TProfileOnboardingState> | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface CubidUpdatePayload {
+  user?: Record<string, unknown>;
+  profile?: CubidProfileUpdate;
+}
+
+export const updateCubidDataInSupabase = async (cubidId: string, payload: CubidUpdatePayload) => {
   const supabase = createClient();
-  const { error } = await supabase.from("users").update(updatedFields).eq("cubid_id", cubidId);
-  return { error };
+  const { data: userRow, error: lookupError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("cubid_id", cubidId)
+    .maybeSingle();
+
+  if (lookupError) {
+    return { error: lookupError };
+  }
+
+  const userId = normaliseNumericId(userRow?.id);
+  if (userId === null) {
+    return { error: new Error("Unable to resolve user identifier for Cubid ID") };
+  }
+
+  if (payload.user && Object.keys(payload.user).length > 0) {
+    const { error } = await supabase.from("users").update(payload.user).eq("id", userId);
+    if (error) {
+      return { error };
+    }
+  }
+
+  if (payload.profile) {
+    const activeInstance = await getActiveAppInstance();
+    if (!activeInstance) {
+      return { error: new Error("Active app instance could not be resolved") };
+    }
+
+    const nowIso = new Date().toISOString();
+    const profileChanges: Record<string, unknown> = {};
+    let hasChanges = false;
+
+    if ("persona" in payload.profile) {
+      profileChanges.persona = payload.profile.persona ?? null;
+      hasChanges = true;
+    }
+
+    if ("tippingPreferences" in payload.profile) {
+      const tippingPayload = buildTippingPreferencesPayload(payload.profile.tippingPreferences);
+      if (tippingPayload !== undefined) {
+        profileChanges.tipping_preferences = tippingPayload;
+        hasChanges = true;
+      }
+    }
+
+    if ("charityPreferences" in payload.profile) {
+      const charityPayload = buildCharityPreferencesPayload(payload.profile.charityPreferences);
+      if (charityPayload !== undefined) {
+        profileChanges.charity_preferences = charityPayload;
+        hasChanges = true;
+      }
+    }
+
+    if ("onboardingState" in payload.profile) {
+      const onboardingPayload = buildOnboardingStatePayload(payload.profile.onboardingState);
+      if (onboardingPayload !== undefined) {
+        profileChanges.onboarding_state = onboardingPayload;
+        hasChanges = true;
+      }
+    }
+
+    if ("metadata" in payload.profile) {
+      profileChanges.metadata = payload.profile.metadata ?? null;
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
+      profileChanges.updated_at = nowIso;
+    }
+
+    const { data: existingProfile, error: fetchProfileError } = await supabase
+      .from("app_user_profiles")
+      .select("user_id")
+      .eq("user_id", userId)
+      .eq("app_instance_id", activeInstance.id)
+      .maybeSingle();
+
+    if (fetchProfileError) {
+      return { error: fetchProfileError };
+    }
+
+    if (!hasChanges && !existingProfile) {
+      // Nothing to do.
+    } else if (!hasChanges && existingProfile) {
+      // No field-level changes requested for an existing profile.
+    } else if (existingProfile) {
+      const { error } = await supabase
+        .from("app_user_profiles")
+        .update(profileChanges)
+        .eq("user_id", userId)
+        .eq("app_instance_id", activeInstance.id);
+      if (error) {
+        return { error };
+      }
+    } else {
+      const insertPayload = {
+        user_id: userId,
+        app_instance_id: activeInstance.id,
+        created_at: nowIso,
+        ...profileChanges,
+      };
+      const { error } = await supabase.from("app_user_profiles").insert(insertPayload);
+      if (error) {
+        return { error };
+      }
+    }
+  }
+
+  return { error: null };
 };
 
 export const getSession = async (): Promise<Session | null> => {

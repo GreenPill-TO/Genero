@@ -108,9 +108,9 @@ describe("getActiveAppInstance", () => {
     expect(instance).toEqual({ id: 42, slug: "wallet-tcoin-staging", environment: "staging" });
 
     expect(supabaseStub.createClientMock).toHaveBeenCalledTimes(1);
-    expect(supabaseStub.fromMock).toHaveBeenCalledWith("app_instances");
+    expect(supabaseStub.fromMock).toHaveBeenCalledWith("ref_app_instances");
     expect(supabaseStub.selectMock).toHaveBeenCalledWith(
-      "id, slug, environment, apps!inner(slug), citycoins!inner(slug)"
+      "id, slug, environment, ref_apps!inner(slug), ref_citycoins!inner(slug)"
     );
     expect(supabaseStub.eqMock).toHaveBeenCalledWith("environment", "staging");
     expect(supabaseStub.orderMock).not.toHaveBeenCalled();
@@ -125,8 +125,8 @@ describe("getActiveAppInstance", () => {
     expect(firstCall).toBeNull();
     expect(secondCall).toBeNull();
 
-    expect(supabaseStub.eqMock).toHaveBeenNthCalledWith(1, "apps.slug", "wallet");
-    expect(supabaseStub.eqMock).toHaveBeenNthCalledWith(2, "citycoins.slug", "tcoin");
+    expect(supabaseStub.eqMock).toHaveBeenNthCalledWith(1, "ref_apps.slug", "wallet");
+    expect(supabaseStub.eqMock).toHaveBeenNthCalledWith(2, "ref_citycoins.slug", "tcoin");
     expect(supabaseStub.orderMock).toHaveBeenCalledWith("environment", { ascending: true });
     expect(supabaseStub.maybeSingleMock).toHaveBeenCalledTimes(1);
   });

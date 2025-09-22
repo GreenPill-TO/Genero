@@ -15,16 +15,18 @@ import { Hypodata } from "./types";
 export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
+  const activeProfile = userData?.cubidData?.activeProfile;
 
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [selectedCharity, setSelectedCharity] = useState("");
 
   useEffect(() => {
-    if (userData?.cubidData?.charity) {
-      setSelectedCharity(userData.cubidData.charity);
+    const defaultCharity = activeProfile?.charityPreferences?.charity;
+    if (defaultCharity) {
+      setSelectedCharity(defaultCharity);
     }
-  }, [userData]);
+  }, [activeProfile]);
 
   const { exchangeRate } = useControlVariables();
   const [charityData] = useState({
