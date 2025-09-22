@@ -15,6 +15,7 @@
 - **Storage**: Supabase (Postgres + Auth)
   - Browser storage (e.g. `localStorage`) is accessed inside `useEffect` hooks with window guards to avoid Node build-time warnings
   - `agent-context/sql-schema-v0.sql` snapshots the current public schema (tables, enums, RPC signatures) pulled via the Supabase OpenAPI using the anon key; function bodies remain server-side
+  - `public.app_user_profiles` enforces row-level security so authenticated users can only read and mutate profile rows tied to their own `auth_user_id`.
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
 
