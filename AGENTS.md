@@ -28,7 +28,6 @@ agent-context/           # designs, logs and other context files for developers 
 ├─ technical-spec.md     # Latest technical spec
 ├─ functional-spec.md    # Latest functional spec
 ├─ app-context.md        # Problem, approach, value prop
-├─ sql-diff-v{N}.sql     # Auto-generated incremental SQL patches - append-only per session (new entries at top of file)
 ├─ style-guide.md        # Style for the wallet app
 └─ workflow.md           # Repetitive per-session checklist
 app/                     # app router
@@ -41,7 +40,9 @@ lib/
 public/                  # static assets to be served
 scripts/                 # helper scripts for env:sync, lint, etc
 styles/                  # global styles
-supabase/                # latest sql schema (github action runs db pull on PR)
+supabase/
+├─ sql-schema.sql        # latest sql schema (github action runs db pull on PR)
+└─ migrations/           # Agent-generated incremental SQL patches (file name starts with session version referencing session-log.md)
 test/
 README.md                # intro to the project and this repo
 AGENTS.md                # this file
