@@ -1,0 +1,24 @@
+name: Supabase Deploy (PROD)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch: {}
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    environment:
+      name: production   # set up GitHub Environment "production" for approvals if desired
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+      - name: Apply migrations to PROD
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase db push --project-ref ${{ secrets.SUPABASE_PROJECT_REF_PROD }}
