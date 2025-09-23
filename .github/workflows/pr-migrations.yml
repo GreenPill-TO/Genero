@@ -8,46 +8,51 @@ on:
 
 jobs:
   preview-migrations:
-    # Run for opened/updated PRs; you said no fork PRs, so no fork guard needed
     if: github.event.action != 'closed'
-    name: Reset & apply migrations to preview
+    name: Reset & apply to PREVIEW
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
 
-      - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v1
-        # pin if you want: with: { version: 1.155.4 }
+      - name: Build PREVIEW DB URL
+        id: makeurl
+        env:
+          PREVIEW_REF:  ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
+          PREVIEW_PASS: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
+        run: |
+          set -e
+          HOST="db.${PREVIEW_REF}.supabase.co"
+          ENC_PASS=$(node -e "process.stdout.write(encodeURIComponent(process.env.PREVIEW_PASS || ''))")
+          echo "DB_URL=postgresql://postgres:${ENC_PASS}@${HOST}:5432/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
+          echo "Using host ${HOST} (password hidden)."
 
-      # Always start clean so the preview frontend sees a known state
       - name: Reset preview DB to clean baseline
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_PREVIEW_URL }}
-        run: supabase db reset --force
+        run: supabase db reset --db-url "${{ steps.makeurl.outputs.DB_URL }}" --force
 
-      # Now apply the PR's migrations
       - name: Apply PR migrations (up)
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_PREVIEW_URL }}
-        run: supabase db push
+        run: supabase db push --db-url "${{ steps.makeurl.outputs.DB_URL }}"
 
   rollback-migrations:
-    # If PR closes without merge, restore the preview DB to main's baseline
     if: github.event.action == 'closed' && github.event.pull_request.merged == false
-    name: Reset preview DB after PR closed (no merge)
+    name: Reset PREVIEW to main baseline on close (no merge)
     runs-on: ubuntu-latest
     steps:
-      # Checkout main so reset uses main's migrations as the baseline
-      - name: Checkout main
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: main
+      - uses: supabase/setup-cli@v1
 
-      - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v1
-
-      - name: Reset preview database to main baseline
+      - name: Build PREVIEW DB URL
+        id: makeurl
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_PREVIEW_URL }}
-        run: supabase db reset --force
+          PREVIEW_REF:  ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
+          PREVIEW_PASS: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
+        run: |
+          set -e
+          HOST="db.${PREVIEW_REF}.supabase.co"
+          ENC_PASS=$(node -e "process.stdout.write(encodeURIComponent(process.env.PREVIEW_PASS || ''))")
+          echo "DB_URL=postgresql://postgres:${ENC_PASS}@${HOST}:5432/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
+
+      - name: Reset preview DB to main baseline
+        run: supabase db reset --db-url "${{ steps.makeurl.outputs.DB_URL }}" --force
