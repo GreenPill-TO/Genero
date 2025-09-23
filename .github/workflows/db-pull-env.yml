@@ -49,26 +49,57 @@ jobs:
 
       - name: Generate drift migration
         id: diff
+        env:
+          DB_URL: ${{ steps.makeurl.outputs.DB_URL }}
         run: |
           set -e
           ts=$(date -u +"%Y%m%d%H%M%S")
           out="supabase/migrations/${ts}_remote_drift.sql"
+      
+          echo "Diffing LIVE (migra) → $out"
           supabase db diff \
-            --db-url "${{ steps.makeurl.outputs.DB_URL }}" \
+            --db-url "$DB_URL" \
             --schema public \
             --schema storage \
             --schema auth \
             -f "$out" || true
+      
+          if [ ! -s "$out" ]; then
+            echo "migra produced empty diff; retrying with pg-schema-diff…"
+            supabase db diff \
+              --db-url "$DB_URL" \
+              --schema public \
+              --schema storage \
+              --schema auth \
+              --use-pg-schema \
+              -f "$out" || true
+          fi
+      
+          echo "----- migrations after diff -----"
           ls -la supabase/migrations || true
+      
+          if [ -f "$out" ]; then
+            echo "size=$(wc -c < "$out") bytes"
+            head -n 50 "$out" || true
+          fi
+      
           if [ -s "$out" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
             echo "file=$out" >> "$GITHUB_OUTPUT"
-            head -n 50 "$out" || true
           else
             rm -f "$out"
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No drift detected (or empty diff)."
           fi
 
+      - name: Upload candidate migration (debug)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-pull-output
+          path: supabase/migrations/*_remote_drift.sql
+          if-no-files-found: ignore
+    
       - name: Open/Update PR with drift migration
         if: steps.diff.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
