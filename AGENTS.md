@@ -27,6 +27,7 @@ agent-context/           # designs, logs and other context files for developers 
 ├─ session-log.md        # Mandator - Append-only per session, new entries at top of file, v ↑ per edit
 ├─ technical-spec.md     # Latest technical spec
 ├─ functional-spec.md    # Latest functional spec
+├─ db-workflow.md        # CI/CD overview for database changes
 ├─ app-context.md        # Problem, approach, value prop
 ├─ style-guide.md        # Style for the wallet app
 └─ workflow.md           # Repetitive per-session checklist
