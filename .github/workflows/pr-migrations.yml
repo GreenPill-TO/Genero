@@ -12,11 +12,11 @@ jobs:
     name: Reset & apply to PREVIEW
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4          # checkout PR code
       - uses: supabase/setup-cli@v1
 
       - name: Build PREVIEW DB URL
-        id: makeurl
+        id: preview_url
         env:
           PREVIEW_REF:  ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
           PREVIEW_PASS: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
@@ -25,26 +25,27 @@ jobs:
           HOST="db.${PREVIEW_REF}.supabase.co"
           ENC_PASS=$(node -e "process.stdout.write(encodeURIComponent(process.env.PREVIEW_PASS || ''))")
           echo "DB_URL=postgresql://postgres:${ENC_PASS}@${HOST}:5432/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
-          echo "Using host ${HOST} (password hidden)."
+          echo "Using PREVIEW host ${HOST} (password hidden)."
 
-      - name: Reset preview DB to clean baseline
-        run: supabase db reset --db-url "${{ steps.makeurl.outputs.DB_URL }}" --force
+      - name: Reset PREVIEW DB to clean slate
+        run: supabase db reset --db-url "${{ steps.preview_url.outputs.DB_URL }}" --force
 
-      - name: Apply PR migrations (up)
-        run: supabase db push --db-url "${{ steps.makeurl.outputs.DB_URL }}"
+      - name: Apply PR migrations (up) to PREVIEW
+        run: supabase db push --db-url "${{ steps.preview_url.outputs.DB_URL }}"
 
   rollback-migrations:
     if: github.event.action == 'closed' && github.event.pull_request.merged == false
-    name: Reset PREVIEW to main baseline on close (no merge)
+    name: Reset PREVIEW to DEV baseline (PR closed unmerged)
     runs-on: ubuntu-latest
     steps:
+      # Checkout DEV to use DEV's migrations as the baseline
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: dev
       - uses: supabase/setup-cli@v1
 
       - name: Build PREVIEW DB URL
-        id: makeurl
+        id: preview_url
         env:
           PREVIEW_REF:  ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
           PREVIEW_PASS: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
@@ -54,5 +55,5 @@ jobs:
           ENC_PASS=$(node -e "process.stdout.write(encodeURIComponent(process.env.PREVIEW_PASS || ''))")
           echo "DB_URL=postgresql://postgres:${ENC_PASS}@${HOST}:5432/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
 
-      - name: Reset preview DB to main baseline
-        run: supabase db reset --db-url "${{ steps.makeurl.outputs.DB_URL }}" --force
+      - name: Reset PREVIEW DB to DEV baseline
+        run: supabase db reset --db-url "${{ steps.preview_url.outputs.DB_URL }}" --force
