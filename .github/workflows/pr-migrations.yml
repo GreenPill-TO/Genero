@@ -8,41 +8,46 @@ on:
 
 jobs:
   preview-migrations:
+    # Run for opened/updated PRs; you said no fork PRs, so no fork guard needed
     if: github.event.action != 'closed'
-    name: Apply migration (up)
+    name: Reset & apply migrations to preview
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout PR code
         uses: actions/checkout@v4
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
-        with:
-          version: 1.155.4
+        # pin if you want: with: { version: 1.155.4 }
 
-      - name: Push migration (up)
+      # Always start clean so the preview frontend sees a known state
+      - name: Reset preview DB to clean baseline
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_PREVIEW_URL }}
-        run: |
-          supabase db push
+        run: supabase db reset --force
+
+      # Now apply the PR's migrations
+      - name: Apply PR migrations (up)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_PREVIEW_URL }}
+        run: supabase db push
 
   rollback-migrations:
+    # If PR closes without merge, restore the preview DB to main's baseline
     if: github.event.action == 'closed' && github.event.pull_request.merged == false
-    name: Rollback migration (down)
+    name: Reset preview DB after PR closed (no merge)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      # Checkout main so reset uses main's migrations as the baseline
+      - name: Checkout main
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
-        with:
-          version: 1.155.4
 
-      - name: Reset preview database
+      - name: Reset preview database to main baseline
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_PREVIEW_URL }}
-        run: |
-          supabase db reset --force
+        run: supabase db reset --force
