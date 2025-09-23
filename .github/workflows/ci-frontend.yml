@@ -1,0 +1,65 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    paths-ignore:
+      - "supabase/**"
+      - "**/*.md"
+  push:
+    branches: [ main, dev ]
+    paths-ignore:
+      - "supabase/**"
+      - "**/*.md"
+
+concurrency:
+  group: ci-frontend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+  CI: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck (Next.js includes TS checks during build)
+        run: |
+          if [ -f tsconfig.json ]; then
+            # If you later add a dedicated script, swap to: pnpm typecheck
+            pnpm exec tsc --noEmit
+          else
+            echo "No tsconfig.json found; skipping typecheck."
+          fi
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test (Vitest)
+        run: |
+          # Your script is "vitest run"
+          pnpm test -- --reporter=default --run || pnpm test
