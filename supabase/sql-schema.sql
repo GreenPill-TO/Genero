@@ -244,9 +244,11 @@ CREATE TABLE IF NOT EXISTS public."connections" (
   "state" public.connection_state DEFAULT 'new' NOT NULL,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "modified_at" timestamp with time zone DEFAULT now() NOT NULL,
+  "app_instance_id" bigint NOT NULL,
   PRIMARY KEY ("id"),
-  FOREIGN KEY ("owner_user_id") REFERENCES public."users"("id"),
-  FOREIGN KEY ("connected_user_id") REFERENCES public."users"("id")
+  CONSTRAINT connections_app_instance_id_fkey FOREIGN KEY ("app_instance_id") REFERENCES public."ref_app_instances"("id"),
+  CONSTRAINT connections_owner_profile_fkey FOREIGN KEY ("owner_user_id", "app_instance_id") REFERENCES public."app_user_profiles"("user_id", "app_instance_id") ON DELETE CASCADE,
+  CONSTRAINT connections_connected_profile_fkey FOREIGN KEY ("connected_user_id", "app_instance_id") REFERENCES public."app_user_profiles"("user_id", "app_instance_id") ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS public."control_variables" (
