@@ -16,15 +16,34 @@ export function LandingHeader() {
   const { isAuthenticated } = useAuth();
   const { openModal, closeModal } = useModal();
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const updateHeaderHeight = () => {
       const measuredHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
-      setHeaderHeight(Math.ceil(measuredHeight));
+      setHeaderHeight((currentHeight) => {
+        const nextHeight = Math.max(Math.ceil(measuredHeight) - 1, 0);
+        return currentHeight === nextHeight ? currentHeight : nextHeight;
+      });
     };
 
     updateHeaderHeight();
+
+    const animationFrame = window.requestAnimationFrame(updateHeaderHeight);
+    const observedElement = headerRef.current;
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(updateHeaderHeight);
+    if (observedElement && resizeObserver) resizeObserver.observe(observedElement);
+
     window.addEventListener("resize", updateHeaderHeight);
-    return () => window.removeEventListener("resize", updateHeaderHeight);
+    window.addEventListener("load", updateHeaderHeight);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", updateHeaderHeight);
+      window.removeEventListener("load", updateHeaderHeight);
+    };
   }, []);
 
   const handleOpenWallet = (e: MouseEvent<HTMLAnchorElement>) => {
