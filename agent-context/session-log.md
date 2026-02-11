@@ -1,3 +1,12 @@
+## v0.74
+- Reverted the `public.interac_transfer` app-profile foreign-key experiment so transfer records continue referencing `public.users(id)` and follow the user across app profiles.
+
+## v0.73
+- Added a Supabase migration to move `public.interac_transfer` user relationships from `public.users(id)` to app-scoped composite foreign keys on `public.app_user_profiles(user_id, app_instance_id)`, with a reversible rollback path.
+
+## v0.72
+- Added a new Supabase migration that reaffirms `public.connections` composite foreign keys to `public.app_user_profiles` and includes a reversible down migration back to `public.users(id)`.
+
 ## v0.71
 - Added `docs/webauthn-passkey-storage.md` documenting how WebAuthn passkeys are created and stored, including that `rp.id` is sourced from `window.location.hostname`.
 
