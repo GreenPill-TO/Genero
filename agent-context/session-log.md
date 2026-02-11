@@ -1,3 +1,6 @@
+## v0.78
+- Updated tablet portrait wallet header layout to center-align the tagline and place the wallet CTA in a third row below it, while keeping side-column CTA behaviour for larger desktop layouts.
+
 ## v0.77
 - Increased wallet landing midsize banner prominence by widening the header middle column (`15/70/15`) and setting banner width to `md:w-[75%]`, keeping it narrower than the body text column but above half-width.
 

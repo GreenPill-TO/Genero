@@ -82,11 +82,18 @@ export function LandingHeader() {
               className="hidden w-full h-auto max-h-[15vh] object-contain dark:block md:w-[75%] md:mx-auto lg:w-full"
               priority
             />
-            <p className="hidden md:block text-right mb-2 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:hidden">
+            <p className="hidden md:block text-right mb-2 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:portrait)]:text-center">
               Local Currency. Value = $3.35. Proceeds to charity.
             </p>
+            <Link
+              href="/dashboard"
+              onClick={handleOpenWallet}
+              className="hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:portrait)]:inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline mx-auto"
+            >
+              &lt;open my wallet&gt;
+            </Link>
           </div>
-          <nav className="hidden md:flex items-center justify-start px-6 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:hidden">
+          <nav className="hidden md:flex items-center justify-start px-6 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:portrait)]:hidden">
             <Link
               href="/dashboard"
               onClick={handleOpenWallet}

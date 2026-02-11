@@ -49,7 +49,7 @@ describe("LandingHeader", () => {
   it("renders the header wallet CTA link and no hamburger menu button", () => {
     render(<LandingHeader />);
 
-    expect(screen.getByRole("link", { name: "<open my wallet>" })).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "<open my wallet>" }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: /open menu/i })).toBeNull();
   });
 
@@ -64,6 +64,13 @@ describe("LandingHeader", () => {
     });
   });
 
+
+  it("applies tablet portrait header stack classes", () => {
+    const { container } = render(<LandingHeader />);
+    const portraitButton = container.querySelector('[class*="orientation:portrait"]');
+    expect(portraitButton).toBeTruthy();
+  });
+
   it("renders a gradient fade strip below the fixed header", () => {
     const { container } = render(<LandingHeader />);
     expect(container.querySelector('.bg-gradient-to-b')).toBeTruthy();
@@ -72,7 +79,7 @@ describe("LandingHeader", () => {
   it("opens sign-in modal from the header wallet button when unauthenticated", () => {
     render(<LandingHeader />);
 
-    fireEvent.click(screen.getByRole("link", { name: "<open my wallet>" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "<open my wallet>" })[0]);
 
     expect(openModal).toHaveBeenCalledTimes(1);
     expect(pushMock).not.toHaveBeenCalled();
