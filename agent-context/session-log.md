@@ -1,3 +1,6 @@
+## v0.75
+- Kept the wallet landing header and fade overlay stationary during scroll by splitting them into separate `fixed` layers and positioning the gradient strip using measured header height.
+
 ## v0.74
 - Fixed the wallet landing header fade effect by moving the gradient strip to an absolute overlay below the fixed header (`top-full`) with stronger height/opacity ramp so body content visibly fades while scrolling upward.
 
