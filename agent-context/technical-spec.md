@@ -95,6 +95,7 @@
 - On phone portrait viewports, the landing footer collapses into one column with right-aligned stacked links above left-aligned TCOIN branding and copyright text.
 - Wallet landing heading rhythm uses asymmetrical spacing (`mt-9`/`mb-6`) so the space before each section title is roughly 50% larger than the space after it.
 - Wallet landing header and fade strip are rendered as separate fixed layers; the gradient strip top offset is continuously synced from measured header height (ResizeObserver + load/resize + RAF) with a 1px overlap to avoid any visible fully-opaque gap between header and fade on initial large-screen render.
+- Wallet landing midsize layout uses a `15/70/15` header grid with banner images at `md:w-[75%]`, ensuring banner width stays below body-column width but never drops under half that column.
 - Landing footer links now use base body text sizing for consistency with page copy.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.

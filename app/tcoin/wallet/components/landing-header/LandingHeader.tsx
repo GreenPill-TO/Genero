@@ -64,14 +64,14 @@ export function LandingHeader() {
         ref={headerRef}
         className="fixed top-0 left-0 w-full bg-background text-foreground z-50 shadow-none border-none"
       >
-        <div className="flex items-center justify-between md:grid md:grid-cols-3 lg:[grid-template-columns:30%_40%_30%] pb-1">
+        <div className="flex items-center justify-between md:grid md:[grid-template-columns:15%_70%_15%] lg:[grid-template-columns:30%_40%_30%] pb-1">
           <div className="flex-1 px-4 md:px-6 md:col-start-2">
             <Image
               src="https://osgpkjqbdbybbmhrfxnw.supabase.co/storage/v1/object/public/website-images/tcoin-banner-light-mode.png"
               alt="Toronto Coin banner"
               width={1920}
               height={600}
-              className="w-full h-auto max-h-[15vh] object-contain dark:hidden md:w-[70%] md:mx-auto lg:w-full"
+              className="w-full h-auto max-h-[15vh] object-contain dark:hidden md:w-[75%] md:mx-auto lg:w-full"
               priority
             />
             <Image
@@ -79,7 +79,7 @@ export function LandingHeader() {
               alt="Toronto Coin banner"
               width={1920}
               height={600}
-              className="hidden w-full h-auto max-h-[15vh] object-contain dark:block md:w-[70%] md:mx-auto lg:w-full"
+              className="hidden w-full h-auto max-h-[15vh] object-contain dark:block md:w-[75%] md:mx-auto lg:w-full"
               priority
             />
             <p className="hidden md:block text-right mb-2 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:hidden">

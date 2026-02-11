@@ -54,6 +54,16 @@ describe("LandingHeader", () => {
   });
 
 
+
+  it("keeps midsize banner width between half and full body-column width", () => {
+    const { container } = render(<LandingHeader />);
+    const bannerImages = container.querySelectorAll('img[alt="Toronto Coin banner"]');
+    expect(bannerImages.length).toBeGreaterThan(0);
+    bannerImages.forEach((img) => {
+      expect(img.className).toContain("md:w-[75%]");
+    });
+  });
+
   it("renders a gradient fade strip below the fixed header", () => {
     const { container } = render(<LandingHeader />);
     expect(container.querySelector('.bg-gradient-to-b')).toBeTruthy();
