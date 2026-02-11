@@ -1,23 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import React, { type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X } from "lucide-react";
 
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useModal } from "@shared/contexts/ModalContext";
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 
-export function LandingHeader() {
-  const [open, setOpen] = useState(false);
+type LandingHeaderProps = {
+  showMobileSummary?: boolean;
+};
+
+export function LandingHeader({ showMobileSummary = false }: LandingHeaderProps) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { openModal, closeModal } = useModal();
 
   const handleOpenWallet = (
-    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
+    e: MouseEvent<HTMLAnchorElement>
   ) => {
     e.preventDefault();
     if (isAuthenticated) router.push("/dashboard");
@@ -39,7 +41,7 @@ export function LandingHeader() {
             alt="Toronto Coin banner"
             width={1920}
             height={600}
-            className="w-full dark:hidden"
+            className="w-full h-[15vh] max-h-[15vh] object-cover dark:hidden md:h-auto md:max-h-none md:object-contain md:w-[70%] md:mx-auto lg:w-full"
             priority
           />
           <Image
@@ -47,12 +49,27 @@ export function LandingHeader() {
             alt="Toronto Coin banner"
             width={1920}
             height={600}
-            className="hidden w-full dark:block"
+            className="hidden w-full h-[15vh] max-h-[15vh] object-cover dark:block md:h-auto md:max-h-none md:object-contain md:w-[70%] md:mx-auto lg:w-full"
             priority
           />
           <p className="hidden md:block text-right mb-2">
             Local Currency. Value = $3.35. Proceeds to charity.
           </p>
+
+          {showMobileSummary && !isAuthenticated && (
+            <div className="md:hidden mt-3 space-y-2 text-center">
+              <p>Local Currency.</p>
+              <p>Value = $3.35.</p>
+              <p>Proceeds to charity.</p>
+              <Link
+                href="/dashboard"
+                onClick={handleOpenWallet}
+                className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline mt-2"
+              >
+                &lt;open my wallet&gt;
+              </Link>
+            </div>
+          )}
         </div>
         <nav className="hidden md:flex items-center justify-start px-6">
           <Link
@@ -63,49 +80,7 @@ export function LandingHeader() {
             &lt;open my wallet&gt;
           </Link>
         </nav>
-        <div className="flex md:hidden items-center justify-end px-4">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu className="h-6 w-6 text-[#05656F] dark:text-primary" />
-          </button>
-        </div>
       </div>
-
-      <div
-        className={`fixed top-0 right-0 h-full w-2/3 bg-background text-foreground z-50 transform transition-transform duration-300 p-6 flex flex-col space-y-4 ${open ? "translate-x-0" : "translate-x-full"}`}
-      >
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label="Close menu"
-          className="self-end mb-4"
-        >
-          <X className="h-6 w-6 text-[#05656F] dark:text-primary" />
-        </button>
-        <p>Local Currency.</p>
-        <p>Value = $3.35.</p>
-        <p>Proceeds to charity.</p>
-        <Link
-          href="/dashboard"
-          onClick={(e) => {
-            handleOpenWallet(e);
-            setOpen(false);
-          }}
-          className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline mt-4"
-        >
-          &lt;open my wallet&gt;
-        </Link>
-      </div>
-
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50"
-          onClick={() => setOpen(false)}
-        />
-      )}
     </header>
   );
 }

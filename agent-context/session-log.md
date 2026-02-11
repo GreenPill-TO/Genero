@@ -1,3 +1,6 @@
+## v0.71
+- Updated the wallet landing header for small screens by removing the hamburger drawer, surfacing its copy and CTA inline under the banner for unauthenticated users, and tightening mobile banner height and section widths for portrait and landscape readability.
+
 ## v0.70
 - Refreshed the Supabase SQL snapshot to include the app instance foreign key on `interac_transfer` and the new `app_user_profiles` security policies.
 

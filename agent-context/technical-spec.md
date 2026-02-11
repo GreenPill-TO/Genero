@@ -90,7 +90,8 @@
 - Receive tab lists outgoing requests under a "Payment requests I have sent" heading and delete buttons call Supabase to set `is_active` to false.
 - Dark mode preference persists across tab switches via localStorage.
 - Header camera button immediately opens the scan modal from any tab.
-- On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
+- On the wallet landing page, small screens no longer use a hamburger drawer; unauthenticated users instead see the tagline lines and an inline "<open my wallet>" call-to-action directly below the banner image.
+- Wallet landing banner images cap at 15vh on small screens, while landing-page content and banner width tighten to about 70% in tablet portrait and phone landscape layouts to preserve side margins.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.
 - The top-right call-to-action aligns vertically with the banner image and a duplicate "<open my wallet>" link is centred beneath the closing copy.
