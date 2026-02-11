@@ -1,3 +1,6 @@
+## v0.75
+- Hardened `v0.72` migration idempotency by dropping existing `connections_*_profile_fkey` constraints before re-adding them, preventing duplicate-constraint failures on already-migrated databases.
+
 ## v0.74
 - Reverted the `public.interac_transfer` app-profile foreign-key experiment so transfer records continue referencing `public.users(id)` and follow the user across app profiles.
 

@@ -3,7 +3,9 @@ BEGIN;
 
 ALTER TABLE public.connections
   DROP CONSTRAINT IF EXISTS connections_owner_user_id_fkey,
-  DROP CONSTRAINT IF EXISTS connections_connected_user_id_fkey;
+  DROP CONSTRAINT IF EXISTS connections_connected_user_id_fkey,
+  DROP CONSTRAINT IF EXISTS connections_owner_profile_fkey,
+  DROP CONSTRAINT IF EXISTS connections_connected_profile_fkey;
 
 ALTER TABLE public.connections
   ADD CONSTRAINT connections_owner_profile_fkey
