@@ -1,3 +1,18 @@
+## v0.76
+- Hardened `20260211180453_v0.72_connections_profile_fks.sql` to follow idempotency guard-rails (`ALTER TABLE IF EXISTS` plus constraint existence checks before adds) and renamed legacy Supabase migration files to timestamp-prefixed names for Supabase ordering compatibility.
+
+## v0.75
+- Hardened `v0.72` migration idempotency by dropping existing `connections_*_profile_fkey` constraints before re-adding them, preventing duplicate-constraint failures on already-migrated databases.
+
+## v0.74
+- Reverted the `public.interac_transfer` app-profile foreign-key experiment so transfer records continue referencing `public.users(id)` and follow the user across app profiles.
+
+## v0.73
+- Added a Supabase migration to move `public.interac_transfer` user relationships from `public.users(id)` to app-scoped composite foreign keys on `public.app_user_profiles(user_id, app_instance_id)`, with a reversible rollback path.
+
+## v0.72
+- Added a new Supabase migration that reaffirms `public.connections` composite foreign keys to `public.app_user_profiles` and includes a reversible down migration back to `public.users(id)`.
+
 ## v0.71
 - Added `docs/webauthn-passkey-storage.md` documenting how WebAuthn passkeys are created and stored, including that `rp.id` is sourced from `window.location.hostname`.
 
