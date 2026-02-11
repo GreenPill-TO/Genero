@@ -27,7 +27,7 @@ export function LandingHeader() {
   };
 
   return (
-    <header className="fixed top-0 left-0 w-full bg-background text-foreground z-50 shadow-none border-none">
+    <header className="fixed top-0 left-0 w-full bg-background text-foreground z-50 shadow-none border-none relative">
       <div className="flex items-center justify-between md:grid md:grid-cols-3 lg:[grid-template-columns:30%_40%_30%] pb-1">
         <div className="flex-1 px-4 md:px-6 md:col-start-2">
           <Image
@@ -60,7 +60,10 @@ export function LandingHeader() {
           </Link>
         </nav>
       </div>
-      <div className="h-8 bg-gradient-to-b from-background to-transparent pointer-events-none" />
+      <div
+        className="pointer-events-none absolute left-0 top-full h-16 w-full bg-gradient-to-b from-background via-background/80 to-transparent"
+        aria-hidden="true"
+      />
     </header>
   );
 }
