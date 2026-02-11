@@ -55,6 +55,22 @@ describe("LandingHeader", () => {
 
 
 
+
+  it("locks small-screen banner growth between 535px and 767px", () => {
+    const { container } = render(<LandingHeader />);
+    const bannerImages = container.querySelectorAll('img[alt="Toronto Coin banner"]');
+    bannerImages.forEach((img) => {
+      expect(img.className).toContain("max-w-[535px]");
+    });
+  });
+
+  it("shrinks and prevents tagline wrapping between 1023px and 1163px", () => {
+    const { container } = render(<LandingHeader />);
+    const tagline = container.querySelector("p");
+    expect(tagline?.className).toContain("text-sm");
+    expect(tagline?.className).toContain("whitespace-nowrap");
+  });
+
   it("keeps midsize banner width between half and full body-column width", () => {
     const { container } = render(<LandingHeader />);
     const bannerImages = container.querySelectorAll('img[alt="Toronto Coin banner"]');

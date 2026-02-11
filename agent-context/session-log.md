@@ -1,3 +1,6 @@
+## v0.80
+- Tuned wallet landing header breakpoints by capping banner growth between 535-767px (`max-w-[535px]`) and reducing tagline size with nowrap between 1023-1163px to prevent multi-line overflow.
+
 ## v0.79
 - Centred the tablet-portrait header CTA by switching it to a portrait-only block element with fit-content width and auto margins, preventing left alignment drift.
 

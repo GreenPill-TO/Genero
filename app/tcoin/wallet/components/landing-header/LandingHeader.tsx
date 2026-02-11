@@ -71,7 +71,7 @@ export function LandingHeader() {
               alt="Toronto Coin banner"
               width={1920}
               height={600}
-              className="w-full h-auto max-h-[15vh] object-contain dark:hidden md:w-[75%] md:mx-auto lg:w-full"
+              className="w-full h-auto max-h-[15vh] object-contain dark:hidden [@media(min-width:535px)_and_(max-width:767px)]:max-w-[535px] [@media(min-width:535px)_and_(max-width:767px)]:mx-auto md:w-[75%] md:mx-auto lg:w-full"
               priority
             />
             <Image
@@ -79,10 +79,10 @@ export function LandingHeader() {
               alt="Toronto Coin banner"
               width={1920}
               height={600}
-              className="hidden w-full h-auto max-h-[15vh] object-contain dark:block md:w-[75%] md:mx-auto lg:w-full"
+              className="hidden w-full h-auto max-h-[15vh] object-contain dark:block [@media(min-width:535px)_and_(max-width:767px)]:max-w-[535px] [@media(min-width:535px)_and_(max-width:767px)]:mx-auto md:w-[75%] md:mx-auto lg:w-full"
               priority
             />
-            <p className="hidden md:block text-right mb-2 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:portrait)]:text-center">
+            <p className="hidden md:block text-right mb-2 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:portrait)]:text-center [@media(min-width:1023px)_and_(max-width:1163px)]:text-sm [@media(min-width:1023px)_and_(max-width:1163px)]:whitespace-nowrap">
               Local Currency. Value = $3.35. Proceeds to charity.
             </p>
             <Link
