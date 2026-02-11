@@ -71,6 +71,18 @@ describe("LandingHeader", () => {
     expect(portraitButton).toBeTruthy();
   });
 
+
+  it("centres the tablet portrait CTA button", () => {
+    const { container } = render(<LandingHeader />);
+    const portraitCta = container.querySelector(
+      'a[class*="orientation:portrait"]'
+    ) as HTMLAnchorElement | null;
+    expect(portraitCta).toBeTruthy();
+    expect(portraitCta?.className).toContain(":block");
+    expect(portraitCta?.className).toContain(":w-fit");
+    expect(portraitCta?.className).toContain("mx-auto");
+  });
+
   it("renders a gradient fade strip below the fixed header", () => {
     const { container } = render(<LandingHeader />);
     expect(container.querySelector('.bg-gradient-to-b')).toBeTruthy();

@@ -88,7 +88,7 @@ export function LandingHeader() {
             <Link
               href="/dashboard"
               onClick={handleOpenWallet}
-              className="hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:portrait)]:inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline mx-auto"
+              className="hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:portrait)]:block [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:portrait)]:w-fit px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline mx-auto"
             >
               &lt;open my wallet&gt;
             </Link>

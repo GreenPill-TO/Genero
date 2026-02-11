@@ -96,7 +96,7 @@
 - Wallet landing heading rhythm uses asymmetrical spacing (`mt-9`/`mb-6`) so the space before each section title is roughly 50% larger than the space after it.
 - Wallet landing header and fade strip are rendered as separate fixed layers; the gradient strip top offset is continuously synced from measured header height (ResizeObserver + load/resize + RAF) with a 1px overlap to avoid any visible fully-opaque gap between header and fade on initial large-screen render.
 - Wallet landing midsize layout uses a `15/70/15` header grid with banner images at `md:w-[75%]`, ensuring banner width stays below body-column width but never drops under half that column.
-- On tablet portrait (768-1023, portrait), wallet header content is centre-aligned and the "<open my wallet>" CTA appears in a third row below the tagline; side-column CTA remains for desktop widths.
+- On tablet portrait (768-1023, portrait), wallet header content is centre-aligned and the "<open my wallet>" CTA appears in a third row below the tagline as a centred block (`w-fit` + `mx-auto`); side-column CTA remains for desktop widths.
 - Landing footer links now use base body text sizing for consistency with page copy.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.
