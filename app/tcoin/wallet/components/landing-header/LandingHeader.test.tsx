@@ -53,6 +53,12 @@ describe("LandingHeader", () => {
     expect(screen.queryByRole("button", { name: /open menu/i })).toBeNull();
   });
 
+
+  it("renders a gradient fade strip below the fixed header", () => {
+    const { container } = render(<LandingHeader />);
+    expect(container.querySelector('.bg-gradient-to-b')).toBeTruthy();
+  });
+
   it("opens sign-in modal from the header wallet button when unauthenticated", () => {
     render(<LandingHeader />);
 

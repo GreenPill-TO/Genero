@@ -60,6 +60,7 @@ export function LandingHeader() {
           </Link>
         </nav>
       </div>
+      <div className="h-8 bg-gradient-to-b from-background to-transparent pointer-events-none" />
     </header>
   );
 }

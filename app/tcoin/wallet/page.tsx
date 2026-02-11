@@ -54,7 +54,7 @@ export default function HomePage() {
           id="future"
           className="pt-40 px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5 bg-background [@media(max-width:767px)]:pt-12 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:pt-12"
         >
-          <h2 className="font-extrabold text-center my-5">The future of money is local</h2>
+          <h2 className="font-extrabold text-center mt-9 mb-6">The future of money is local</h2>
           <p className="mb-2">
             <span className="bg-gray-200 dark:bg-gray-700 px-1">
               Toronto Coin (TCOIN) is a new kind of currency - one rooted in the
@@ -68,7 +68,7 @@ export default function HomePage() {
         </section>
 
         <section id="why" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">Why TCOIN?</h2>
+          <h2 className="font-extrabold text-center mt-9 mb-6">Why TCOIN?</h2>
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Built for Toronto.</span> TCOIN is pegged to the price of a TTC fare, so it holds its value in the way that matters most: getting around the city.
@@ -86,7 +86,7 @@ export default function HomePage() {
         </section>
 
         <section id="how" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">How It Works</h2>
+          <h2 className="font-extrabold text-center mt-9 mb-6">How It Works</h2>
           <p className="mb-2">
             TCOIN combines the best of digital and physical payment systems:
           </p>
@@ -107,7 +107,7 @@ export default function HomePage() {
         </section>
 
         <section id="real-life" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">A Currency Designed for Real Life</h2>
+          <h2 className="font-extrabold text-center mt-9 mb-6">A Currency Designed for Real Life</h2>
           <p className="mb-2">TCOIN is engineered for Toronto’s unique needs:</p>
           <div className="space-y-4">
             <p>
@@ -123,7 +123,7 @@ export default function HomePage() {
         </section>
 
         <section id="infrastructure" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">Not Just Money - Infrastructure</h2>
+          <h2 className="font-extrabold text-center mt-9 mb-6">Not Just Money - Infrastructure</h2>
           <p className="mb-2">
             Money is a public good. With TCOIN, we’re building infrastructure for a fairer economy:
           </p>
@@ -141,7 +141,7 @@ export default function HomePage() {
         </section>
 
         <section id="who" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">Who’s Behind This?</h2>
+          <h2 className="font-extrabold text-center mt-9 mb-6">Who’s Behind This?</h2>
           <p className="mb-2">
             Toronto Coin is a joint project by <Link href="https://www.tdao.to/">Toronto DAO</Link> and <Link href="https://greenpill.to/">GreenPill Toronto</Link>. Inspired by the Wörgl Experiment, Silvio Gesell, and the Chiemgauer model, we’re creating a real-world currency backed by open-source code, local values, and practical economics.
           </p>
@@ -149,7 +149,7 @@ export default function HomePage() {
         </section>
 
         <section id="involved" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">How to Get Involved</h2>
+          <h2 className="font-extrabold text-center mt-9 mb-6">How to Get Involved</h2>
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Sign up.</span> <Link href="/contact">Join the mailing list</Link> and get early access to buy TCOINs.
@@ -171,7 +171,7 @@ export default function HomePage() {
         </section>
 
         <section className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">What Are You Waiting For?</h2>
+          <h2 className="font-extrabold text-center mt-9 mb-6">What Are You Waiting For?</h2>
           <p className="mb-2">
             <span className="bg-gray-200 dark:bg-gray-700 px-1">TCOIN is a statement, a system, and a tool.</span>
           </p>

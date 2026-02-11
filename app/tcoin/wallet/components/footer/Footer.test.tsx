@@ -16,6 +16,13 @@ describe("Footer", () => {
     expect(link.getAttribute("href")).toBe("/ecosystem");
   });
 
+
+  it("uses base font size for footer links", () => {
+    const { getByText } = render(<Footer />);
+    const linksContainer = getByText("Resources").parentElement;
+    expect(linksContainer?.className).toContain("text-base");
+  });
+
   it("renders the requested 2026 copyright label", () => {
     render(<Footer />);
     expect(screen.getByText("© 2026 Toronto Coin. All rights reserved.")).toBeTruthy();
