@@ -1,4 +1,5 @@
 "use client";
+import React, { type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LandingHeader } from "@tcoin/wallet/components/landing-header";
@@ -14,7 +15,7 @@ export default function HomePage() {
   const { openModal, closeModal } = useModal();
 
   const handleOpenWallet = (
-    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
+    e: MouseEvent<HTMLAnchorElement>
   ) => {
     e.preventDefault();
     if (isAuthenticated) router.push("/dashboard");
@@ -29,12 +30,29 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground text-base">
-      <LandingHeader showMobileSummary />
+      <LandingHeader />
       <main className="flex-grow bg-background">
+
+        {!isAuthenticated && (
+          <section className="pt-32 px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5 md:hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:block">
+            <div className="space-y-2 text-center">
+              <p>Local Currency.</p>
+              <p>Value = $3.35.</p>
+              <p>Proceeds to charity.</p>
+              <Link
+                href="/dashboard"
+                onClick={handleOpenWallet}
+                className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline mt-2"
+              >
+                &lt;open my wallet&gt;
+              </Link>
+            </div>
+          </section>
+        )}
 
         <section
           id="future"
-          className="pt-40 px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5 bg-background"
+          className="pt-40 px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5 bg-background [@media(max-width:767px)]:pt-12 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:pt-12"
         >
           <h2 className="font-extrabold text-center my-5">The future of money is local</h2>
           <p className="mb-2">

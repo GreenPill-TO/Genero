@@ -90,8 +90,9 @@
 - Receive tab lists outgoing requests under a "Payment requests I have sent" heading and delete buttons call Supabase to set `is_active` to false.
 - Dark mode preference persists across tab switches via localStorage.
 - Header camera button immediately opens the scan modal from any tab.
-- On the wallet landing page, small screens no longer use a hamburger drawer; unauthenticated users instead see the tagline lines and an inline "<open my wallet>" call-to-action directly below the banner image.
-- Wallet landing banner images cap at 15vh on small screens, while landing-page content and banner width tighten to about 70% in tablet portrait and phone landscape layouts to preserve side margins.
+- On the wallet landing page, small screens and tablet landscape move the unauthenticated tagline lines plus the "<open my wallet>" call-to-action into a scrollable body section at the top, while medium portrait and larger screens keep these controls in the fixed header.
+- Wallet landing banner images on small screens now use full-image containment (no cropping) with a capped visual height, and landing-page content maintains about 70% width in tablet portrait and phone landscape layouts to preserve side margins.
+- On phone portrait viewports, the landing footer collapses into one column with right-aligned stacked links above left-aligned TCOIN branding and copyright text.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.
 - The top-right call-to-action aligns vertically with the banner image and a duplicate "<open my wallet>" link is centred beneath the closing copy.

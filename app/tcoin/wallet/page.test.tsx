@@ -25,10 +25,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-vi.mock("next/image", () => ({
-  default: ({ alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img alt={alt} {...props} />
+vi.mock("next/link", () => ({
+  default: ({ href, onClick, children, ...props }: any) => (
+    <a href={href} onClick={onClick} {...props}>
+      {children}
+    </a>
   ),
 }));
 
@@ -36,9 +37,17 @@ vi.mock("@tcoin/wallet/components/modals/SignInModal", () => ({
   default: () => <div data-testid="sign-in-modal" />,
 }));
 
-import { LandingHeader } from "./LandingHeader";
+vi.mock("@tcoin/wallet/components/landing-header", () => ({
+  LandingHeader: () => <div data-testid="landing-header" />,
+}));
 
-describe("LandingHeader", () => {
+vi.mock("@tcoin/wallet/components/footer", () => ({
+  Footer: () => <div data-testid="landing-footer" />,
+}));
+
+import HomePage from "./page";
+
+describe("HomePage", () => {
   afterEach(() => {
     cleanup();
     openModal.mockReset();
@@ -46,17 +55,19 @@ describe("LandingHeader", () => {
     pushMock.mockReset();
   });
 
-  it("renders the header wallet CTA link and no hamburger menu button", () => {
-    render(<LandingHeader />);
+  it("renders the mobile summary stack in the body for unauthenticated users", () => {
+    render(<HomePage />);
 
-    expect(screen.getByRole("link", { name: "<open my wallet>" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /open menu/i })).toBeNull();
+    expect(screen.getByText("Local Currency.")).toBeTruthy();
+    expect(screen.getByText("Value = $3.35.")).toBeTruthy();
+    expect(screen.getByText("Proceeds to charity.")).toBeTruthy();
   });
 
-  it("opens sign-in modal from the header wallet button when unauthenticated", () => {
-    render(<LandingHeader />);
+  it("opens sign-in modal from the body summary CTA when unauthenticated", () => {
+    render(<HomePage />);
 
-    fireEvent.click(screen.getByRole("link", { name: "<open my wallet>" }));
+    const walletLinks = screen.getAllByRole("link", { name: "<open my wallet>" });
+    fireEvent.click(walletLinks[0]);
 
     expect(openModal).toHaveBeenCalledTimes(1);
     expect(pushMock).not.toHaveBeenCalled();

@@ -9,18 +9,12 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { useModal } from "@shared/contexts/ModalContext";
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 
-type LandingHeaderProps = {
-  showMobileSummary?: boolean;
-};
-
-export function LandingHeader({ showMobileSummary = false }: LandingHeaderProps) {
+export function LandingHeader() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { openModal, closeModal } = useModal();
 
-  const handleOpenWallet = (
-    e: MouseEvent<HTMLAnchorElement>
-  ) => {
+  const handleOpenWallet = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     if (isAuthenticated) router.push("/dashboard");
     else
@@ -41,7 +35,7 @@ export function LandingHeader({ showMobileSummary = false }: LandingHeaderProps)
             alt="Toronto Coin banner"
             width={1920}
             height={600}
-            className="w-full h-[15vh] max-h-[15vh] object-cover dark:hidden md:h-auto md:max-h-none md:object-contain md:w-[70%] md:mx-auto lg:w-full"
+            className="w-full h-auto max-h-[15vh] object-contain dark:hidden md:w-[70%] md:mx-auto lg:w-full"
             priority
           />
           <Image
@@ -49,29 +43,14 @@ export function LandingHeader({ showMobileSummary = false }: LandingHeaderProps)
             alt="Toronto Coin banner"
             width={1920}
             height={600}
-            className="hidden w-full h-[15vh] max-h-[15vh] object-cover dark:block md:h-auto md:max-h-none md:object-contain md:w-[70%] md:mx-auto lg:w-full"
+            className="hidden w-full h-auto max-h-[15vh] object-contain dark:block md:w-[70%] md:mx-auto lg:w-full"
             priority
           />
-          <p className="hidden md:block text-right mb-2">
+          <p className="hidden md:block text-right mb-2 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:hidden">
             Local Currency. Value = $3.35. Proceeds to charity.
           </p>
-
-          {showMobileSummary && !isAuthenticated && (
-            <div className="md:hidden mt-3 space-y-2 text-center">
-              <p>Local Currency.</p>
-              <p>Value = $3.35.</p>
-              <p>Proceeds to charity.</p>
-              <Link
-                href="/dashboard"
-                onClick={handleOpenWallet}
-                className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline mt-2"
-              >
-                &lt;open my wallet&gt;
-              </Link>
-            </div>
-          )}
         </div>
-        <nav className="hidden md:flex items-center justify-start px-6">
+        <nav className="hidden md:flex items-center justify-start px-6 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:hidden">
           <Link
             href="/dashboard"
             onClick={handleOpenWallet}
