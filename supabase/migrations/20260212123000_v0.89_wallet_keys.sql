@@ -89,8 +89,20 @@ BEGIN
 END
 $$;
 
-ALTER TABLE IF EXISTS public.wallet_list
-  ALTER COLUMN wallet_key_id SET NOT NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'wallet_list_wallet_key_id_for_user_chk'
+      AND conrelid = 'public.wallet_list'::regclass
+  ) THEN
+    ALTER TABLE public.wallet_list
+      ADD CONSTRAINT wallet_list_wallet_key_id_for_user_chk
+      CHECK (user_id IS NULL OR wallet_key_id IS NOT NULL);
+  END IF;
+END
+$$;
 
 DO $$
 BEGIN
@@ -171,7 +183,7 @@ ALTER TABLE IF EXISTS public.wallet_list
   DROP CONSTRAINT IF EXISTS wallet_list_wallet_key_id_fkey;
 
 ALTER TABLE IF EXISTS public.wallet_list
-  ALTER COLUMN wallet_key_id DROP NOT NULL;
+  DROP CONSTRAINT IF EXISTS wallet_list_wallet_key_id_for_user_chk;
 
 ALTER TABLE IF EXISTS public.wallet_list
   DROP COLUMN IF EXISTS wallet_key_id;
