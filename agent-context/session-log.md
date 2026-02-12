@@ -1,3 +1,7 @@
+## v0.90
+- Reworked passcode API routes to call Supabase Auth REST endpoints directly with explicit auth headers (instead of the SSR client) and added route tests for upstream outage handling and header/payload forwarding.
+- Removed the email `pattern` regex from OTP forms to avoid browser `Invalid regular expression ... /v` errors while retaining native `type="email"` validation.
+
 ## v0.89
 - Routed sign-in passcode send/verify through internal Next.js API endpoints backed by server-side Supabase auth calls to avoid browser CORS/preflight failures on preview domains, and added friendlier offline error messaging when the auth service is unreachable.
 
