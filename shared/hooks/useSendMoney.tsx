@@ -167,7 +167,7 @@ export const useSendMoney = ({
                 const { data: walletRow, error: walletRowError } = await supabase
                         .from('wallet_list')
                         .select('wallet_key_id')
-                        .match({ user_id: userId })
+                        .match({ user_id: userId, namespace: 'EVM' })
                         .order('id', { ascending: true })
                         .limit(1)
                         .maybeSingle();
