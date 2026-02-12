@@ -36,6 +36,7 @@ app/                     # app router
   ├─ sparechange         # One of the two TCOIN apps in this repo: For tipping to panhandlers
   └─ wallet              # One of the two TCOIN apps in this repo: For general transfers
 components/              # shared components
+docs/                    # technical notes and architecture documentation
 hooks/                   # custom React hooks
 lib/
 public/                  # static assets to be served
