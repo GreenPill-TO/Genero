@@ -31,19 +31,33 @@ ALTER TABLE IF EXISTS public.wallet_list
 ALTER TABLE IF EXISTS public.user_encrypted_share
   ADD COLUMN IF NOT EXISTS wallet_key_id bigint;
 
+ALTER TABLE IF EXISTS public.user_encrypted_share
+  ADD COLUMN IF NOT EXISTS namespace public.namespace NOT NULL DEFAULT 'EVM'::public.namespace;
+
 INSERT INTO public.wallet_keys (user_id, namespace, app_share)
 SELECT
-  u.id,
-  COALESCE(seed.namespace, 'EVM'::public.namespace) AS namespace,
-  seed.app_share
-FROM public.users AS u
-LEFT JOIN LATERAL (
-  SELECT wl.namespace, wl.app_share
+  s.user_id,
+  s.namespace,
+  s.app_share
+FROM (
+  -- One wallet_keys row per distinct (user_id, namespace) in wallet_list,
+  -- using a deterministic app_share per group
+  SELECT
+    wl.user_id,
+    wl.namespace,
+    MIN(wl.app_share) FILTER (WHERE wl.app_share IS NOT NULL) AS app_share
   FROM public.wallet_list AS wl
-  WHERE wl.user_id = u.id
-  ORDER BY wl.id ASC
-  LIMIT 1
-) AS seed ON TRUE
+  GROUP BY wl.user_id, wl.namespace
+
+  UNION
+
+  -- Also ensure keys exist for any (user_id, namespace) pairs implied by user_encrypted_share
+  SELECT DISTINCT
+    ues.user_id,
+    ues.namespace,
+    NULL::text AS app_share
+  FROM public.user_encrypted_share AS ues
+) AS s
 ON CONFLICT (user_id, namespace)
 DO UPDATE SET
   app_share = COALESCE(public.wallet_keys.app_share, EXCLUDED.app_share),
@@ -61,7 +75,7 @@ UPDATE public.user_encrypted_share AS ues
 SET wallet_key_id = wk.id
 FROM public.wallet_keys AS wk
 WHERE ues.user_id = wk.user_id
-  AND wk.namespace = 'EVM'::public.namespace
+  AND ues.namespace = wk.namespace
   AND ues.wallet_key_id IS DISTINCT FROM wk.id;
 
 DO $$
@@ -71,8 +85,7 @@ DECLARE
 BEGIN
   SELECT COUNT(*) INTO remaining_wallet_list
   FROM public.wallet_list
-  WHERE user_id IS NOT NULL
-    AND wallet_key_id IS NULL;
+  WHERE wallet_key_id IS NULL;
 
   IF remaining_wallet_list > 0 THEN
     RAISE EXCEPTION 'wallet_list backfill incomplete: % rows still missing wallet_key_id', remaining_wallet_list;
@@ -80,8 +93,7 @@ BEGIN
 
   SELECT COUNT(*) INTO remaining_user_share
   FROM public.user_encrypted_share
-  WHERE user_id IS NOT NULL
-    AND wallet_key_id IS NULL;
+  WHERE wallet_key_id IS NULL;
 
   IF remaining_user_share > 0 THEN
     RAISE EXCEPTION 'user_encrypted_share backfill incomplete: % rows still missing wallet_key_id', remaining_user_share;
@@ -175,6 +187,9 @@ ALTER TABLE IF EXISTS public.user_encrypted_share
 
 ALTER TABLE IF EXISTS public.user_encrypted_share
   ALTER COLUMN wallet_key_id DROP NOT NULL;
+
+ALTER TABLE IF EXISTS public.user_encrypted_share
+  DROP COLUMN IF EXISTS namespace;
 
 ALTER TABLE IF EXISTS public.user_encrypted_share
   DROP COLUMN IF EXISTS wallet_key_id;

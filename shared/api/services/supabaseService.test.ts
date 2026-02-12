@@ -56,13 +56,21 @@ vi.mock("@shared/lib/supabase/client", () => ({
       if (table === "wallet_list") {
         return {
           select: () => ({
-            in: () => {
-              supabaseState.walletListCalls += 1;
-              return Promise.resolve({
-                data: supabaseState.walletList,
-                error: supabaseState.walletListError,
-              });
-            },
+            in: () => ({
+              order: (field: string, options: { ascending: boolean }) => {
+                supabaseState.walletListCalls += 1;
+                let data = supabaseState.walletList;
+                // Sort by field (assume numeric id)
+                if (field === "id" && !options.ascending) {
+                  // Descending order - reverse the array
+                  data = [...data].reverse();
+                }
+                return Promise.resolve({
+                  data,
+                  error: supabaseState.walletListError,
+                });
+              },
+            }),
           }),
         };
       }

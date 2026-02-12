@@ -289,7 +289,8 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
   const { data: walletRows, error: walletError } = await supabase
     .from("wallet_list")
     .select("user_id, public_key")
-    .in("user_id", contactIds);
+    .in("user_id", contactIds)
+    .order("id", { ascending: false });
 
   if (walletError) {
     throw walletError;
@@ -307,7 +308,10 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
   for (const wallet of walletRows ?? []) {
     const userId = normaliseNumericId(wallet.user_id);
     if (userId !== null && typeof wallet.public_key === "string" && wallet.public_key.trim() !== "") {
-      walletsById.set(userId, wallet.public_key);
+      // Only set if not already present (first occurrence wins due to ORDER BY id DESC)
+      if (!walletsById.has(userId)) {
+        walletsById.set(userId, wallet.public_key);
+      }
     }
   }
 

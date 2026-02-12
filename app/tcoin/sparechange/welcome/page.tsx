@@ -285,6 +285,7 @@ const WelcomeFlow: React.FC = () => {
       .from("wallet_list")
       .select("id")
       .match({ user_id: userId, namespace: (walletPayload.namespace as string) || "EVM" })
+      .order("id", { ascending: false })
       .limit(1);
 
     if (data?.[0]) {

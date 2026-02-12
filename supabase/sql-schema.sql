@@ -463,18 +463,19 @@ CREATE TABLE IF NOT EXISTS public."wallet_keys" (
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
   PRIMARY KEY ("id"),
   UNIQUE ("user_id", "namespace"),
-  FOREIGN KEY ("user_id") REFERENCES public."users"("id")
+  FOREIGN KEY ("user_id") REFERENCES public."users"("id") ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS public."user_encrypted_share" (
   "id" bigint NOT NULL,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "user_id" bigint,
-  "wallet_key_id" bigint,
+  "wallet_key_id" bigint NOT NULL,
+  "namespace" public.namespace DEFAULT 'EVM' NOT NULL,
   "user_share_encrypted" jsonb,
   PRIMARY KEY ("id"),
   FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
-  FOREIGN KEY ("wallet_key_id") REFERENCES public."wallet_keys"("id")
+  FOREIGN KEY ("wallet_key_id") REFERENCES public."wallet_keys"("id") ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS public."user_requests" (
@@ -527,7 +528,7 @@ CREATE TABLE IF NOT EXISTS public."wallet_list" (
   PRIMARY KEY ("id"),
   FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
   FOREIGN KEY ("store_parent") REFERENCES public."stores"("id"),
-  FOREIGN KEY ("wallet_key_id") REFERENCES public."wallet_keys"("id")
+  FOREIGN KEY ("wallet_key_id") REFERENCES public."wallet_keys"("id") ON DELETE RESTRICT
 );
 
 -- Functions exposed via PostgREST (signatures only)

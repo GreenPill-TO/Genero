@@ -313,6 +313,7 @@ export default function NewWelcomePage() {
             .from("wallet_list")
             .select("id")
             .match({ user_id: userId, namespace: walletPayload.namespace || "EVM" })
+            .order("created_at", { ascending: false })
             .limit(1);
 
         if (walletData?.[0]) {
