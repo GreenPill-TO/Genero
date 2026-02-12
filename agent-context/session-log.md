@@ -1,3 +1,7 @@
+## v0.90
+- Fixed `v0.89` migration to support legacy `wallet_list` rows with `user_id IS NULL` by replacing a full-table `wallet_key_id NOT NULL` constraint with a conditional check (`user_id IS NULL OR wallet_key_id IS NOT NULL`), while preserving foreign-key integrity.
+- Updated the SQL schema snapshot to keep `wallet_list.wallet_key_id` nullable for non-user rows.
+
 ## v0.89
 - Added a reversible Supabase migration introducing `wallet_keys`, migrating `wallet_list.app_share` into per-user wallet keys, linking both `wallet_list` and `user_encrypted_share` via `wallet_key_id`, and refreshing the SQL schema snapshot.
 - Updated wallet and SpareChange welcome wallet-connect flows to upsert/reuse `wallet_keys` before writing `wallet_list` and `user_encrypted_share` rows.

@@ -523,7 +523,7 @@ CREATE TABLE IF NOT EXISTS public."wallet_list" (
   "user_id" bigint,
   "is_generated" boolean,
   "store_parent" bigint,
-  "wallet_key_id" bigint NOT NULL,
+  "wallet_key_id" bigint,
   "namespace" public.namespace DEFAULT 'EVM' NOT NULL,
   PRIMARY KEY ("id"),
   FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
