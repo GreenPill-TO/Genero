@@ -244,17 +244,64 @@ const WelcomeFlow: React.FC = () => {
     }
   }, [userData?.cubidData, userFormData.current_step]);
 
-  const insertOrUpdateDataInWallet = async (userId, add) => {
-    const { data } = await supabase.from("wallet_list").select("*").match({ user_id: userId })
-    if (data?.[0]) {
-      await supabase.from("wallet_list").update({
-        ...data
-      }).match({
-        user_id: userId
-      })
-    } else {
-      await supabase.from("wallet_list").insert({ user_id: userId, ...add })
+  const upsertWalletKey = async (userId: number, payload: Record<string, unknown> = {}) => {
+    const namespace = (payload.namespace as string) || "EVM";
+    const { data: keyData, error } = await supabase
+      .from("wallet_keys")
+      .upsert(
+        {
+          user_id: userId,
+          namespace,
+          ...payload,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,namespace" }
+      )
+      .select("id")
+      .single();
+
+    if (error) {
+      throw error;
     }
+
+    return keyData.id as number;
+  }
+
+  const insertOrUpdateDataInWallet = async (userId: number, add: Record<string, unknown>) => {
+    const walletKeyId =
+      (add.wallet_key_id as number | undefined) ??
+      (await upsertWalletKey(userId, {
+        namespace: (add.namespace as string) || "EVM",
+        ...(typeof add.app_share === "string" ? { app_share: add.app_share } : {}),
+      }));
+
+    const walletPayload: Record<string, unknown> = {
+      ...add,
+      wallet_key_id: walletKeyId,
+    };
+    delete walletPayload.app_share;
+
+    const { data } = await supabase
+      .from("wallet_list")
+      .select("id")
+      .match({ user_id: userId, namespace: (walletPayload.namespace as string) || "EVM" })
+      .order("id", { ascending: false })
+      .limit(1);
+
+    if (data?.[0]) {
+      await supabase
+        .from("wallet_list")
+        .update(walletPayload)
+        .match({ id: data[0].id })
+    } else {
+      await supabase.from("wallet_list").insert({
+        user_id: userId,
+        namespace: (walletPayload.namespace as string) || "EVM",
+        ...walletPayload,
+      })
+    }
+
+    return walletKeyId;
   }
 
 
@@ -381,7 +428,11 @@ const WelcomeFlow: React.FC = () => {
                 onEVMWallet={async (wallet: any) => {
                   const [walletDetails] = wallet;
                   if (wallet.length) {
-                    await insertOrUpdateDataInWallet(userData?.cubidData?.id, { public_key: walletDetails.address, is_generated: walletDetails?.is_generated_via_lib })
+                    await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
+                      public_key: walletDetails.address,
+                      is_generated: walletDetails?.is_generated_via_lib,
+                      namespace: "EVM",
+                    })
                     nextStep()
                   }
                 }}
@@ -400,18 +451,21 @@ const WelcomeFlow: React.FC = () => {
                     salt: usershare.salt,
                     credentialId: bufferToBase64(usershare.credentialId)
                   };
+                  const walletKeyId = await upsertWalletKey(userData?.cubidData?.id, {
+                    namespace: "EVM",
+                  });
                   await supabase.from("user_encrypted_share").insert({
                     user_share_encrypted: jsonData,
                     user_id: userData?.cubidData?.id,
+                    wallet_key_id: walletKeyId,
                   })
                 }}
                 onAppShare={async (share: any) => {
                   if (share) {
-                    await supabase.from("wallet_list").insert({
+                    await insertOrUpdateDataInWallet((userData?.cubidData as any)?.id, {
                       app_share: share,
-                      user_id: (userData?.cubidData as any)?.id
+                      namespace: "EVM",
                     })
-                    await insertOrUpdateDataInWallet((userData?.cubidData as any)?.id, { app_share: share, })
                   }
                 }}
               />

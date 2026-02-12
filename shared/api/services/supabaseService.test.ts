@@ -15,7 +15,7 @@ const supabaseState = vi.hoisted(() => ({
     profile_image_url: string | null;
   }>,
   usersError: null as { message: string } | null,
-  walletList: [] as Array<{ user_id: unknown; public_key: string | null }>,
+  walletList: [] as Array<{ user_id: unknown; public_key: string | null; wallet_key_id: number | null }>,
   walletListError: null as { message: string } | null,
   connectionsCalls: 0,
   usersCalls: 0,
@@ -56,13 +56,21 @@ vi.mock("@shared/lib/supabase/client", () => ({
       if (table === "wallet_list") {
         return {
           select: () => ({
-            in: () => {
-              supabaseState.walletListCalls += 1;
-              return Promise.resolve({
-                data: supabaseState.walletList,
-                error: supabaseState.walletListError,
-              });
-            },
+            in: () => ({
+              order: (field: string, options: { ascending: boolean }) => {
+                supabaseState.walletListCalls += 1;
+                let data = supabaseState.walletList;
+                // Sort by field (assume numeric id)
+                if (field === "id" && !options.ascending) {
+                  // Descending order - reverse the array
+                  data = [...data].reverse();
+                }
+                return Promise.resolve({
+                  data,
+                  error: supabaseState.walletListError,
+                });
+              },
+            }),
           }),
         };
       }
@@ -114,6 +122,7 @@ describe("fetchContactsForOwner", () => {
       {
         user_id: 7,
         public_key: "0xabc",
+        wallet_key_id: 70,
       },
     ];
 
@@ -155,6 +164,7 @@ describe("fetchContactsForOwner", () => {
       {
         user_id: 8,
         public_key: null,
+        wallet_key_id: 80,
       },
     ];
 
@@ -165,6 +175,41 @@ describe("fetchContactsForOwner", () => {
       state: "accepted",
       last_interaction: "2024-01-03T00:00:00.000Z",
     });
+  });
+
+
+  it("handles multiple wallet rows referencing the same wallet key", async () => {
+    supabaseState.connections = [
+      { connected_user_id: 14, state: "accepted", modified_at: "2024-01-05T00:00:00.000Z" },
+    ];
+    supabaseState.users = [
+      {
+        id: 14,
+        full_name: "Shared Key",
+        username: "shared",
+        profile_image_url: null,
+      },
+    ];
+    supabaseState.walletList = [
+      {
+        user_id: 14,
+        public_key: "0xshared-primary",
+        wallet_key_id: 999,
+      },
+      {
+        user_id: 14,
+        public_key: "0xshared-secondary",
+        wallet_key_id: 999,
+      },
+    ];
+
+    const result = await fetchContactsForOwner(1);
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 14,
+        wallet_address: "0xshared-secondary",
+      }),
+    ]);
   });
 
   it("filters out connections without a corresponding user row", async () => {
@@ -195,6 +240,7 @@ describe("fetchContactsForOwner", () => {
       {
         user_id: 12,
         public_key: null,
+        wallet_key_id: 120,
       },
     ];
 

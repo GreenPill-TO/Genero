@@ -270,24 +270,66 @@ export default function NewWelcomePage() {
         };
     }, [clearErrors, currentUsername, setError, setValue, usernameValue]);
 
+    const upsertWalletKey = async (userId, payload = {}) => {
+        const supabase = createClient();
+        const namespace = payload.namespace || "EVM";
+        const { data: keyData, error } = await supabase
+            .from("wallet_keys")
+            .upsert(
+                {
+                    user_id: userId,
+                    namespace,
+                    ...payload,
+                    updated_at: new Date().toISOString(),
+                },
+                { onConflict: "user_id,namespace" }
+            )
+            .select("id")
+            .single();
+
+        if (error) {
+            throw error;
+        }
+
+        return keyData.id;
+    };
+
     const insertOrUpdateDataInWallet = async (userId, data) => {
         const supabase = createClient();
-        const { data: wallet_data } = await supabase
+        const walletKeyId =
+            data.wallet_key_id ??
+            (await upsertWalletKey(userId, {
+                namespace: data.namespace || "EVM",
+                ...(typeof data.app_share === "string" ? { app_share: data.app_share } : {}),
+            }));
+
+        const walletPayload = {
+            ...data,
+            wallet_key_id: walletKeyId,
+        };
+        delete walletPayload.app_share;
+
+        const { data: walletData } = await supabase
             .from("wallet_list")
-            .select("*")
-            .match({ user_id: userId });
-        if (wallet_data?.[0]) {
+            .select("id")
+            .match({ user_id: userId, namespace: walletPayload.namespace || "EVM" })
+            .order("created_at", { ascending: false })
+            .limit(1);
+
+        if (walletData?.[0]) {
             await supabase
                 .from("wallet_list")
-                .update({
-                    ...data,
-                })
-                .match({
-                    user_id: userId,
-                });
+                .update(walletPayload)
+                .match({ id: walletData[0].id });
         } else {
-            await supabase.from("wallet_list").insert({ user_id: userId, ...data });
+            await supabase.from("wallet_list").insert({
+                user_id: userId,
+                namespace: walletPayload.namespace || "EVM",
+                ...walletPayload,
+            });
         }
+
+        return walletKeyId;
     };
 
     // Step 1: Submit the form and update the user’s data.
@@ -521,7 +563,8 @@ export default function NewWelcomePage() {
                                     if (walletDetails) {
                                         await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
                                             public_key: walletDetails.address,
-                                            is_generated: walletDetails?.is_generated_via_lib
+                                            is_generated: walletDetails?.is_generated_via_lib,
+                                            namespace: "EVM",
                                         })
                                     }
                                 }}
@@ -540,9 +583,13 @@ export default function NewWelcomePage() {
                                         credentialId: bufferToBase64(usershare.credentialId)
                                     };
                                     const supabase = createClient();
+                                    const walletKeyId = await upsertWalletKey(userData?.cubidData?.id, {
+                                        namespace: "EVM",
+                                    });
                                     await supabase.from("user_encrypted_share").insert({
                                         user_share_encrypted: jsonData,
                                         user_id: userData?.cubidData?.id,
+                                        wallet_key_id: walletKeyId,
                                     });
                                 }}
                                 onAppShare={async (share) => {
@@ -550,6 +597,7 @@ export default function NewWelcomePage() {
                                         setTimeout(async () => {
                                             await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
                                                 app_share: share,
+                                                namespace: "EVM",
                                             })
                                         }, 1500)
                                     }
