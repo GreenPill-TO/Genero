@@ -1,3 +1,8 @@
+## v0.89
+- Added a reversible Supabase migration introducing `wallet_keys`, migrating `wallet_list.app_share` into per-user wallet keys, linking both `wallet_list` and `user_encrypted_share` via `wallet_key_id`, and refreshing the SQL schema snapshot.
+- Updated wallet and SpareChange welcome wallet-connect flows to upsert/reuse `wallet_keys` before writing `wallet_list` and `user_encrypted_share` rows.
+- Updated send-money share retrieval to resolve `app_share` from `wallet_keys` plus encrypted shares by `wallet_key_id`, and refreshed/extended Supabase service tests with a shared-key regression fixture.
+
 ## v0.88
 - Made wallet landing dark mode changes significantly more visible by deepening the page gradient, making main/intro sections transparent in dark mode so the gradient actually shows through, and strengthening CTA button contrast with a brighter light-grey gradient plus border.
 

@@ -117,4 +117,6 @@
 - Public page wrappers now use `bg-background` so panels take their colour from the theme variable instead of hard-coded white.
 - Internal links use root-relative URLs and rewrites map them to the wallet app, eliminating `/tcoin/wallet` from page paths.
 - Sign-in modals replace the single passcode field with six auto-advancing inputs that accept pasted codes.
+- Wallet custody shares are normalised into `wallet_keys` (`user_id` + `namespace`) so multiple wallet addresses can reference one key via `wallet_key_id`; `wallet_list` no longer stores raw `app_share` directly.
+- `user_encrypted_share` rows are linked to the same `wallet_keys` record through `wallet_key_id`, enabling deterministic key reconstruction for wallets that share custody material.
 - New-user sign-in routes to `/welcome`, which proposes a sanitized username, debounces Supabase availability checks, surfaces phone verification status, and clarifies why the Continue action may be disabled.

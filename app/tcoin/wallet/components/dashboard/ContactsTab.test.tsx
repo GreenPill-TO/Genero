@@ -8,10 +8,10 @@ const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn());
 const openModalMock = vi.hoisted(() => vi.fn());
 const closeModalMock = vi.hoisted(() => vi.fn());
 
-const ownerWalletRows = [{ public_key: "0xabc" }];
-const contactWalletMap = new Map<number, Array<{ public_key: string }>>([
-  [11, [{ public_key: "0x1111" }]],
-  [12, [{ public_key: "0x2222" }]],
+const ownerWalletRows = [{ public_key: "0xabc", wallet_key_id: 1 }];
+const contactWalletMap = new Map<number, Array<{ public_key: string; wallet_key_id: number }>>([
+  [11, [{ public_key: "0x1111", wallet_key_id: 11 }]],
+  [12, [{ public_key: "0x2222", wallet_key_id: 12 }]],
 ]);
 const actEntryRows = [
   {

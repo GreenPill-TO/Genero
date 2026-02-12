@@ -160,6 +160,63 @@ export const useSendMoney = ({
                 }
         };
 
+	
+
+        const fetchWalletShares = async (userId: number) => {
+                const supabase = createClient();
+                const { data: walletRow, error: walletRowError } = await supabase
+                        .from('wallet_list')
+                        .select('wallet_key_id')
+                        .match({ user_id: userId })
+                        .order('id', { ascending: true })
+                        .limit(1)
+                        .maybeSingle();
+
+                if (walletRowError) {
+                        throw new Error(walletRowError.message);
+                }
+
+                const walletKeyId = walletRow?.wallet_key_id;
+                if (!walletKeyId) {
+                        throw new Error('No wallet_key_id found for this user');
+                }
+
+                const { data: walletKey, error: walletKeyError } = await supabase
+                        .from('wallet_keys')
+                        .select('app_share')
+                        .eq('id', walletKeyId)
+                        .single();
+
+                if (walletKeyError) {
+                        throw new Error(walletKeyError.message);
+                }
+
+                if (!walletKey?.app_share) {
+                        throw new Error('No app_share found for this wallet key');
+                }
+
+                const { data: userShare, error: userShareError } = await supabase
+                        .from('user_encrypted_share')
+                        .select('user_share_encrypted')
+                        .match({ wallet_key_id: walletKeyId })
+                        .order('id', { ascending: true })
+                        .limit(1)
+                        .maybeSingle();
+
+                if (userShareError) {
+                        throw new Error(userShareError.message);
+                }
+
+                if (!userShare?.user_share_encrypted) {
+                        throw new Error('No user_share_encrypted found for this wallet key');
+                }
+
+                return {
+                        app_share: walletKey.app_share,
+                        user_share_encrypted: userShare.user_share_encrypted,
+                };
+        };
+
 	useEffect(() => {
 		console.log({ receiverId })
 		if (senderId) fetchWalletAddress(senderId, setSenderWallet);
@@ -184,31 +241,7 @@ export const useSendMoney = ({
 		setError(null);
 
 		try {
-			// Fetch shares from Supabase.
-			const { data: shareData, error: shareError } = await supabase
-				.from('wallet_list')
-				.select('app_share')
-				.match({ user_id: cubidUserId })
-				.single();
-
-			if (shareError) throw new Error(shareError.message);
-			if (!shareData?.app_share) {
-				throw new Error('No app_share found for this user');
-			}
-
-			const { data: userShare, error: userShareError } = await supabase
-				.from('user_encrypted_share')
-				.select('user_share_encrypted')
-				.match({ user_id: cubidUserId })
-				.single();
-
-			if (userShareError) throw new Error(userShareError.message);
-			if (!userShare?.user_share_encrypted) {
-				throw new Error('No user_share_encrypted found for this user');
-			}
-
-			const { app_share } = shareData;
-			const { user_share_encrypted } = userShare;
+			const { app_share, user_share_encrypted } = await fetchWalletShares(cubidUserId);
 
 			// Prepare the data for decryption.
 			const jsonData = {
@@ -331,30 +364,7 @@ export const useSendMoney = ({
                 setError(null);
 
                 try {
-                        const { data: shareData, error: shareError } = await supabase
-                                .from('wallet_list')
-                                .select('app_share')
-                                .match({ user_id: cubidUserId })
-                                .single();
-
-                        if (shareError) throw new Error(shareError.message);
-                        if (!shareData?.app_share) {
-                                throw new Error('No app_share found for this user');
-                        }
-
-                        const { data: userShare, error: userShareError } = await supabase
-                                .from('user_encrypted_share')
-                                .select('user_share_encrypted')
-                                .match({ user_id: cubidUserId })
-                                .single();
-
-                        if (userShareError) throw new Error(userShareError.message);
-                        if (!userShare?.user_share_encrypted) {
-                                throw new Error('No user_share_encrypted found for this user');
-                        }
-
-                        const { app_share } = shareData;
-                        const { user_share_encrypted } = userShare;
+                        const { app_share, user_share_encrypted } = await fetchWalletShares(cubidUserId);
 
                         const jsonData = {
                                 encryptedAesKey: base64ToArrayBuffer(user_share_encrypted.encryptedAesKey),
