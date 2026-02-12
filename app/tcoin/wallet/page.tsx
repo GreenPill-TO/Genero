@@ -29,9 +29,9 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground text-base dark:bg-gradient-to-b dark:from-[#0b0b0b] dark:to-[#1f1f1f] dark:text-gray-300">
+    <div className="min-h-screen flex flex-col bg-background text-foreground text-base dark:bg-gradient-to-b dark:from-[#030303] dark:via-[#111111] dark:to-[#2a2a2a] dark:text-gray-200">
       <LandingHeader />
-      <main className="flex-grow bg-background">
+      <main className="flex-grow bg-background dark:bg-transparent">
 
         {!isAuthenticated && (
           <section className="pt-32 px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5 md:hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:block">
@@ -42,7 +42,7 @@ export default function HomePage() {
               <Link
                 href="/dashboard"
                 onClick={handleOpenWallet}
-                className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-gradient-to-r dark:from-gray-300 dark:to-gray-100 dark:text-black no-underline mt-2"
+                className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-gradient-to-r dark:from-[#f8f8f8] dark:via-[#e9e9e9] dark:to-[#cfcfcf] dark:text-black dark:border dark:border-gray-400 no-underline mt-2"
               >
                 &lt;open my wallet&gt;
               </Link>
@@ -52,7 +52,7 @@ export default function HomePage() {
 
         <section
           id="future"
-          className="pt-40 px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5 bg-background [@media(max-width:767px)]:pt-12 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:pt-12"
+          className="pt-40 px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5 bg-background dark:bg-transparent [@media(max-width:767px)]:pt-12 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:pt-12"
         >
           <h2 className="font-extrabold text-center mt-9 mb-6 text-foreground dark:text-white">The future of money is local</h2>
           <p className="mb-2">
@@ -185,7 +185,7 @@ export default function HomePage() {
             <Link
               href="/dashboard"
               onClick={handleOpenWallet}
-              className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-gradient-to-r dark:from-gray-300 dark:to-gray-100 dark:text-black no-underline"
+              className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-gradient-to-r dark:from-[#f8f8f8] dark:via-[#e9e9e9] dark:to-[#cfcfcf] dark:text-black dark:border dark:border-gray-400 no-underline"
             >
               &lt;open my wallet&gt;
             </Link>

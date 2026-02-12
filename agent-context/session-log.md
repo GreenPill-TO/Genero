@@ -1,3 +1,6 @@
+## v0.82
+- Made wallet landing dark mode changes significantly more visible by deepening the page gradient, making main/intro sections transparent in dark mode so the gradient actually shows through, and strengthening CTA button contrast with a brighter light-grey gradient plus border.
+
 ## v0.81
 - Softened wallet landing dark mode by applying a near-black to charcoal background gradient, differentiating headings to white against light-grey body copy, and switching wallet CTA buttons to a light-grey gradient fill in dark mode.
 

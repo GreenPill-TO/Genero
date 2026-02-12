@@ -101,6 +101,8 @@
 - Wallet landing tagline uses a 1023-1163px-only `text-sm` + `whitespace-nowrap` rule to prevent two-line overflow near desktop breakpoint transitions.
 - Wallet landing dark mode now uses a near-black to charcoal vertical gradient for less stark contrast, with white section headings over light-grey body text.
 - Wallet landing "<open my wallet>" CTAs use a light-grey gradient background in dark mode to maintain contrast without pure white blocks.
+- Wallet landing dark shell now uses a stronger near-black to charcoal gradient (`#030303 -> #111111 -> #2a2a2a`) and dark-mode content containers avoid opaque overlays so the gradient remains visible.
+- Dark-mode landing CTAs now use a brighter three-stop light-grey gradient with a subtle grey border for clearer affordance.
 - Landing footer links now use base body text sizing for consistency with page copy.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.

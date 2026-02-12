@@ -70,7 +70,7 @@ describe("HomePage", () => {
     const heading = screen.getByRole("heading", { name: "The future of money is local" });
 
     expect(shell?.className).toContain("dark:bg-gradient-to-b");
-    expect(shell?.className).toContain("dark:text-gray-300");
+    expect(shell?.className).toContain("dark:text-gray-200");
     expect(heading.className).toContain("dark:text-white");
   });
 
