@@ -168,7 +168,7 @@ export const useSendMoney = ({
                         .from('wallet_list')
                         .select('wallet_key_id')
                         .match({ user_id: userId, namespace: 'EVM' })
-                        .order('id', { ascending: true })
+                        .order('id', { ascending: false })
                         .limit(1)
                         .maybeSingle();
 
