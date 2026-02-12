@@ -1,3 +1,6 @@
+## v0.81
+- Softened wallet landing dark mode by applying a near-black to charcoal background gradient, differentiating headings to white against light-grey body copy, and switching wallet CTA buttons to a light-grey gradient fill in dark mode.
+
 ## v0.80
 - Tuned wallet landing header breakpoints by capping banner growth between 535-767px (`max-w-[535px]`) and reducing tagline size with nowrap between 1023-1163px to prevent multi-line overflow.
 

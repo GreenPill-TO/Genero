@@ -63,6 +63,17 @@ describe("HomePage", () => {
     expect(screen.getByText("Proceeds to charity.")).toBeTruthy();
   });
 
+
+  it("applies dark-mode gradient shell and heading contrast classes", () => {
+    const { container } = render(<HomePage />);
+    const shell = container.firstElementChild as HTMLElement | null;
+    const heading = screen.getByRole("heading", { name: "The future of money is local" });
+
+    expect(shell?.className).toContain("dark:bg-gradient-to-b");
+    expect(shell?.className).toContain("dark:text-gray-300");
+    expect(heading.className).toContain("dark:text-white");
+  });
+
   it("opens sign-in modal from the body summary CTA when unauthenticated", () => {
     render(<HomePage />);
 
