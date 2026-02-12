@@ -1,3 +1,39 @@
+## v0.88
+- Made wallet landing dark mode changes significantly more visible by deepening the page gradient, making main/intro sections transparent in dark mode so the gradient actually shows through, and strengthening CTA button contrast with a brighter light-grey gradient plus border.
+
+## v0.87
+- Softened wallet landing dark mode by applying a near-black to charcoal background gradient, differentiating headings to white against light-grey body copy, and switching wallet CTA buttons to a light-grey gradient fill in dark mode.
+
+## v0.86
+- Tuned wallet landing header breakpoints by capping banner growth between 535-767px (`max-w-[535px]`) and reducing tagline size with nowrap between 1023-1163px to prevent multi-line overflow.
+
+## v0.85
+- Centred the tablet-portrait header CTA by switching it to a portrait-only block element with fit-content width and auto margins, preventing left alignment drift.
+
+## v0.84
+- Updated tablet portrait wallet header layout to center-align the tagline and place the wallet CTA in a third row below it, while keeping side-column CTA behaviour for larger desktop layouts.
+
+## v0.83
+- Increased wallet landing midsize banner prominence by widening the header middle column (`15/70/15`) and setting banner width to `md:w-[75%]`, keeping it narrower than the body text column but above half-width.
+
+## v0.82
+- Eliminated initial large-screen fade-gap drift by recalculating wallet header height with `ResizeObserver`, `requestAnimationFrame`, and load/resize hooks, then offsetting the fade strip by 1px so no fully visible band appears between the fixed header and gradient.
+
+## v0.81
+- Kept the wallet landing header and fade overlay stationary during scroll by splitting them into separate `fixed` layers and positioning the gradient strip using measured header height.
+
+## v0.80
+- Fixed the wallet landing header fade effect by moving the gradient strip to an absolute overlay below the fixed header (`top-full`) with stronger height/opacity ramp so body content visibly fades while scrolling upward.
+
+## v0.79
+- Refined wallet landing presentation by setting footer links to body-sized text, adding a header fade gradient for scroll transitions, and increasing heading spacing so pre-heading whitespace is about 50% larger than post-heading whitespace.
+
+## v0.78
+- Updated the wallet landing responsiveness: banner images now always render fully on small screens, unauthenticated tagline + CTA stack moves into the scrollable body on small screens and tablet landscape, and the footer switches to a one-column portrait-mobile layout with right-aligned links above left-aligned branding.
+
+## v0.77
+- Updated the wallet landing header for small screens by removing the hamburger drawer, surfacing its copy and CTA inline under the banner for unauthenticated users, and tightening mobile banner height and section widths for portrait and landscape readability.
+
 ## v0.76
 - Hardened `20260211180453_v0.72_connections_profile_fks.sql` to follow idempotency guard-rails (`ALTER TABLE IF EXISTS` plus constraint existence checks before adds) and renamed legacy Supabase migration files to timestamp-prefixed names for Supabase ordering compatibility.
 

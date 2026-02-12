@@ -1,4 +1,5 @@
 "use client";
+import React, { type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LandingHeader } from "@tcoin/wallet/components/landing-header";
@@ -14,7 +15,7 @@ export default function HomePage() {
   const { openModal, closeModal } = useModal();
 
   const handleOpenWallet = (
-    e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
+    e: MouseEvent<HTMLAnchorElement>
   ) => {
     e.preventDefault();
     if (isAuthenticated) router.push("/dashboard");
@@ -28,15 +29,32 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground text-base">
+    <div className="min-h-screen flex flex-col bg-background text-foreground text-base dark:bg-gradient-to-b dark:from-[#030303] dark:via-[#111111] dark:to-[#2a2a2a] dark:text-gray-200">
       <LandingHeader />
-      <main className="flex-grow bg-background">
+      <main className="flex-grow bg-background dark:bg-transparent">
+
+        {!isAuthenticated && (
+          <section className="pt-32 px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5 md:hidden [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:block">
+            <div className="space-y-2 text-center">
+              <p>Local Currency.</p>
+              <p>Value = $3.35.</p>
+              <p>Proceeds to charity.</p>
+              <Link
+                href="/dashboard"
+                onClick={handleOpenWallet}
+                className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-gradient-to-r dark:from-[#f8f8f8] dark:via-[#e9e9e9] dark:to-[#cfcfcf] dark:text-black dark:border dark:border-gray-400 no-underline mt-2"
+              >
+                &lt;open my wallet&gt;
+              </Link>
+            </div>
+          </section>
+        )}
 
         <section
           id="future"
-          className="pt-40 px-6 max-w-screen-xl mx-auto lg:w-3/5 bg-background"
+          className="pt-40 px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5 bg-background dark:bg-transparent [@media(max-width:767px)]:pt-12 [@media(min-width:768px)_and_(max-width:1023px)_and_(orientation:landscape)]:pt-12"
         >
-          <h2 className="font-extrabold text-center my-5">The future of money is local</h2>
+          <h2 className="font-extrabold text-center mt-9 mb-6 text-foreground dark:text-white">The future of money is local</h2>
           <p className="mb-2">
             <span className="bg-gray-200 dark:bg-gray-700 px-1">
               Toronto Coin (TCOIN) is a new kind of currency - one rooted in the
@@ -49,8 +67,8 @@ export default function HomePage() {
           <p>It’s not just money. It’s a movement.</p>
         </section>
 
-        <section id="why" className="px-6 max-w-screen-xl mx-auto lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">Why TCOIN?</h2>
+        <section id="why" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
+          <h2 className="font-extrabold text-center mt-9 mb-6 text-foreground dark:text-white">Why TCOIN?</h2>
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Built for Toronto.</span> TCOIN is pegged to the price of a TTC fare, so it holds its value in the way that matters most: getting around the city.
@@ -67,8 +85,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="how" className="px-6 max-w-screen-xl mx-auto lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">How It Works</h2>
+        <section id="how" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
+          <h2 className="font-extrabold text-center mt-9 mb-6 text-foreground dark:text-white">How It Works</h2>
           <p className="mb-2">
             TCOIN combines the best of digital and physical payment systems:
           </p>
@@ -88,8 +106,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="real-life" className="px-6 max-w-screen-xl mx-auto lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">A Currency Designed for Real Life</h2>
+        <section id="real-life" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
+          <h2 className="font-extrabold text-center mt-9 mb-6 text-foreground dark:text-white">A Currency Designed for Real Life</h2>
           <p className="mb-2">TCOIN is engineered for Toronto’s unique needs:</p>
           <div className="space-y-4">
             <p>
@@ -104,8 +122,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="infrastructure" className="px-6 max-w-screen-xl mx-auto lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">Not Just Money - Infrastructure</h2>
+        <section id="infrastructure" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
+          <h2 className="font-extrabold text-center mt-9 mb-6 text-foreground dark:text-white">Not Just Money - Infrastructure</h2>
           <p className="mb-2">
             Money is a public good. With TCOIN, we’re building infrastructure for a fairer economy:
           </p>
@@ -122,16 +140,16 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="who" className="px-6 max-w-screen-xl mx-auto lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">Who’s Behind This?</h2>
+        <section id="who" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
+          <h2 className="font-extrabold text-center mt-9 mb-6 text-foreground dark:text-white">Who’s Behind This?</h2>
           <p className="mb-2">
             Toronto Coin is a joint project by <Link href="https://www.tdao.to/">Toronto DAO</Link> and <Link href="https://greenpill.to/">GreenPill Toronto</Link>. Inspired by the Wörgl Experiment, Silvio Gesell, and the Chiemgauer model, we’re creating a real-world currency backed by open-source code, local values, and practical economics.
           </p>
           <p>We believe money should work for people - not the other way around.</p>
         </section>
 
-        <section id="involved" className="px-6 max-w-screen-xl mx-auto lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">How to Get Involved</h2>
+        <section id="involved" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
+          <h2 className="font-extrabold text-center mt-9 mb-6 text-foreground dark:text-white">How to Get Involved</h2>
           <div className="space-y-4">
             <p>
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Sign up.</span> <Link href="/contact">Join the mailing list</Link> and get early access to buy TCOINs.
@@ -152,8 +170,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="px-6 max-w-screen-xl mx-auto lg:w-3/5">
-          <h2 className="font-extrabold text-center my-5">What Are You Waiting For?</h2>
+        <section className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">
+          <h2 className="font-extrabold text-center mt-9 mb-6 text-foreground dark:text-white">What Are You Waiting For?</h2>
           <p className="mb-2">
             <span className="bg-gray-200 dark:bg-gray-700 px-1">TCOIN is a statement, a system, and a tool.</span>
           </p>
@@ -167,7 +185,7 @@ export default function HomePage() {
             <Link
               href="/dashboard"
               onClick={handleOpenWallet}
-              className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-white dark:text-black no-underline"
+              className="inline-block px-4 py-2 bg-[#05656F] text-white dark:bg-gradient-to-r dark:from-[#f8f8f8] dark:via-[#e9e9e9] dark:to-[#cfcfcf] dark:text-black dark:border dark:border-gray-400 no-underline"
             >
               &lt;open my wallet&gt;
             </Link>

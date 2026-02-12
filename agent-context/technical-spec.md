@@ -91,7 +91,20 @@
 - Receive tab lists outgoing requests under a "Payment requests I have sent" heading and delete buttons call Supabase to set `is_active` to false.
 - Dark mode preference persists across tab switches via localStorage.
 - Header camera button immediately opens the scan modal from any tab.
-- On small screens the landing header hides the tagline and shows a hamburger icon that slides out a panel from the right with the tagline and "<open my wallet>" link.
+- On the wallet landing page, small screens and tablet landscape move the unauthenticated tagline lines plus the "<open my wallet>" call-to-action into a scrollable body section at the top, while medium portrait and larger screens keep these controls in the fixed header.
+- Wallet landing banner images on small screens now use full-image containment (no cropping) with a capped visual height, and landing-page content maintains about 70% width in tablet portrait and phone landscape layouts to preserve side margins.
+- On phone portrait viewports, the landing footer collapses into one column with right-aligned stacked links above left-aligned TCOIN branding and copyright text.
+- Wallet landing heading rhythm uses asymmetrical spacing (`mt-9`/`mb-6`) so the space before each section title is roughly 50% larger than the space after it.
+- Wallet landing header and fade strip are rendered as separate fixed layers; the gradient strip top offset is continuously synced from measured header height (ResizeObserver + load/resize + RAF) with a 1px overlap to avoid any visible fully-opaque gap between header and fade on initial large-screen render.
+- Wallet landing midsize layout uses a `15/70/15` header grid with banner images at `md:w-[75%]`, ensuring banner width stays below body-column width but never drops under half that column.
+- On tablet portrait (768-1023, portrait), wallet header content is centre-aligned and the "<open my wallet>" CTA appears in a third row below the tagline as a centred block (`w-fit` + `mx-auto`); side-column CTA remains for desktop widths.
+- Wallet landing banner growth is capped between 535-767px via `max-w-[535px]` to keep the fade strip from covering the top summary line in that band.
+- Wallet landing tagline uses a 1023-1163px-only `text-sm` + `whitespace-nowrap` rule to prevent two-line overflow near desktop breakpoint transitions.
+- Wallet landing dark mode now uses a near-black to charcoal vertical gradient for less stark contrast, with white section headings over light-grey body text.
+- Wallet landing "<open my wallet>" CTAs use a light-grey gradient background in dark mode to maintain contrast without pure white blocks.
+- Wallet landing dark shell now uses a stronger near-black to charcoal gradient (`#030303 -> #111111 -> #2a2a2a`) and dark-mode content containers avoid opaque overlays so the gradient remains visible.
+- Dark-mode landing CTAs now use a brighter three-stop light-grey gradient with a subtle grey border for clearer affordance.
+- Landing footer links now use base body text sizing for consistency with page copy.
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.
 - The top-right call-to-action aligns vertically with the banner image and a duplicate "<open my wallet>" link is centred beneath the closing copy.
