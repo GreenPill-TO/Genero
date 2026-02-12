@@ -472,10 +472,17 @@ CREATE TABLE IF NOT EXISTS public."user_encrypted_share" (
   "user_id" bigint,
   "wallet_key_id" bigint NOT NULL,
   "namespace" public.namespace DEFAULT 'EVM' NOT NULL,
+  "credential_id" text,
+  "app_instance_id" bigint NOT NULL,
+  "device_info" jsonb,
+  "last_used_at" timestamp with time zone,
+  "revoked_at" timestamp with time zone,
   "user_share_encrypted" jsonb,
   PRIMARY KEY ("id"),
   FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
-  FOREIGN KEY ("wallet_key_id") REFERENCES public."wallet_keys"("id") ON DELETE RESTRICT
+  FOREIGN KEY ("wallet_key_id") REFERENCES public."wallet_keys"("id") ON DELETE RESTRICT,
+  FOREIGN KEY ("app_instance_id") REFERENCES public."ref_app_instances"("id") ON DELETE RESTRICT,
+  CONSTRAINT user_encrypted_share_wallet_key_app_credential_key UNIQUE ("wallet_key_id", "app_instance_id", "credential_id")
 );
 
 CREATE TABLE IF NOT EXISTS public."user_requests" (

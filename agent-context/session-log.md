@@ -1,3 +1,9 @@
+## v0.91
+- Added a reversible Supabase migration expanding `user_encrypted_share` with app/credential/device/audit metadata (`credential_id`, `app_instance_id`, `device_info`, `last_used_at`, `revoked_at`), plus backfills for credential IDs and the default Wallet app instance.
+- Updated Wallet and SpareChange onboarding wallet callbacks to persist decoded credential IDs, resolved app instance IDs, and device metadata alongside encrypted user shares.
+- Updated send-money key reconstruction to resolve encrypted shares by `wallet_key_id` + active credential/app context, falling back to most recent usage while exposing available credential candidates when no active match exists.
+- Extended shared Supabase service helper tests for credential and device metadata serialisation utilities.
+
 ## v0.90
 - Fixed `v0.89` migration to support legacy `wallet_list` rows with `user_id IS NULL` by replacing a full-table `wallet_key_id NOT NULL` constraint with a conditional check (`user_id IS NULL OR wallet_key_id IS NOT NULL`), while preserving foreign-key integrity.
 - Updated the SQL schema snapshot to keep `wallet_list.wallet_key_id` nullable for non-user rows.

@@ -7,7 +7,12 @@ import { createClient } from "@shared/lib/supabase/client";
 
 // Import all the step components
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { updateCubidDataInSupabase } from "@shared/api/services/supabaseService";
+import {
+  getActiveAppInstance,
+  normaliseDeviceInfo,
+  serialiseUserShare,
+  updateCubidDataInSupabase,
+} from "@shared/api/services/supabaseService";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
 import { TCubidData } from "@shared/types/cubid";
@@ -125,6 +130,18 @@ const normaliseNullableNumber = (value: unknown): number | null => {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+};
+
+const getDeviceMetadata = () => {
+  if (typeof navigator === "undefined") {
+    return null;
+  }
+
+  return normaliseDeviceInfo({
+    userAgent: navigator.userAgent,
+    platform: navigator.userAgentData?.platform ?? navigator.platform,
+    label: navigator.userAgentData?.platform ?? navigator.platform,
+  });
 };
 
 const WelcomeFlow: React.FC = () => {
@@ -437,27 +454,26 @@ const WelcomeFlow: React.FC = () => {
                   }
                 }}
                 onUserShare={async (usershare: any) => {
-                  function bufferToBase64(buf) {
-                    return Buffer.from(buf).toString('base64');
-                  }
-                  const jsonData = {
-                    encryptedAesKey
-                      : bufferToBase64(usershare.encryptedAesKey),
-                    encryptedData: bufferToBase64(usershare.encryptedData),
-                    encryptionMethod: usershare.encryptionMethod,
-                    id: usershare.id,
-                    iv: bufferToBase64(usershare.iv),
-                    ivForKeyEncryption: usershare.ivForKeyEncryption,
-                    salt: usershare.salt,
-                    credentialId: bufferToBase64(usershare.credentialId)
-                  };
+                  const serialisedShare = serialiseUserShare(usershare);
                   const walletKeyId = await upsertWalletKey(userData?.cubidData?.id, {
                     namespace: "EVM",
                   });
+                  const activeAppInstance = await getActiveAppInstance();
+                  if (!activeAppInstance?.id) {
+                    throw new Error("Unable to resolve active app instance for encrypted share storage");
+                  }
+                  const deviceInfo = getDeviceMetadata();
+                  if (serialisedShare.credentialId) {
+                    window.localStorage.setItem("activeWalletCredentialId", serialisedShare.credentialId);
+                  }
                   await supabase.from("user_encrypted_share").insert({
-                    user_share_encrypted: jsonData,
+                    user_share_encrypted: serialisedShare.userShareEncrypted,
                     user_id: userData?.cubidData?.id,
                     wallet_key_id: walletKeyId,
+                    credential_id: serialisedShare.credentialId,
+                    app_instance_id: activeAppInstance.id,
+                    device_info: deviceInfo,
+                    last_used_at: new Date().toISOString(),
                   })
                 }}
                 onAppShare={async (share: any) => {

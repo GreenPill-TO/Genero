@@ -11,6 +11,98 @@ import {
 import { TPersona } from "@shared/types/persona";
 import { Session } from "@supabase/supabase-js";
 
+export interface StoredUserSharePayload {
+  encryptedAesKey: string;
+  encryptedData: string;
+  encryptionMethod: string;
+  id: string;
+  iv: string;
+  ivForKeyEncryption: string;
+  salt: string;
+  credentialId: string;
+}
+
+export interface SerialisedUserShare {
+  userShareEncrypted: StoredUserSharePayload;
+  credentialId: string;
+}
+
+export interface DeviceInfoPayload {
+  userAgent?: string | null;
+  platform?: string | null;
+  label?: string | null;
+}
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+};
+
+const arrayBufferToHex = (buffer: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buffer);
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+};
+
+export const normaliseCredentialId = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+export const serialiseUserShare = (userShare: {
+  encryptedAesKey: ArrayBuffer;
+  encryptedData: ArrayBuffer;
+  encryptionMethod: string;
+  id: string;
+  iv: ArrayBuffer;
+  ivForKeyEncryption: string;
+  salt: string;
+  credentialId: ArrayBuffer;
+}): SerialisedUserShare => {
+  const encodedCredentialId = arrayBufferToBase64(userShare.credentialId);
+
+  return {
+    userShareEncrypted: {
+      encryptedAesKey: arrayBufferToBase64(userShare.encryptedAesKey),
+      encryptedData: arrayBufferToBase64(userShare.encryptedData),
+      encryptionMethod: userShare.encryptionMethod,
+      id: userShare.id,
+      iv: arrayBufferToBase64(userShare.iv),
+      ivForKeyEncryption: userShare.ivForKeyEncryption,
+      salt: userShare.salt,
+      credentialId: encodedCredentialId,
+    },
+    credentialId: arrayBufferToHex(userShare.credentialId),
+  };
+};
+
+export const normaliseDeviceInfo = (value: DeviceInfoPayload | null | undefined): Record<string, string> | null => {
+  if (!value) {
+    return null;
+  }
+
+  const normalised: Record<string, string> = {};
+  if (typeof value.userAgent === "string" && value.userAgent.trim().length > 0) {
+    normalised.userAgent = value.userAgent.trim();
+  }
+  if (typeof value.platform === "string" && value.platform.trim().length > 0) {
+    normalised.platform = value.platform.trim();
+  }
+  if (typeof value.label === "string" && value.label.trim().length > 0) {
+    normalised.label = value.label.trim();
+  }
+
+  return Object.keys(normalised).length > 0 ? normalised : null;
+};
+
 export const fetchUserByContact = async (authMethod: "phone" | "email" | string, fullContact: string) => {
   const supabase = createClient();
   const { data: user, error } = await supabase
