@@ -27,7 +27,7 @@
   [citycoin]/wallet/
   [citycoin]/sparechange/
   shared/ # Shared UI + logic
-- **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
+- **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, onboarding, plus `/api/auth/passcode/send` and `/api/auth/passcode/verify` as same-origin Supabase OTP proxies to avoid browser CORS issues on preview deployments.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
   - **App Registry**: `ref_apps`, `ref_citycoins`, and `ref_app_instances` tables track each deployment pairing with unique slugs;
     runtime helpers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
@@ -48,6 +48,7 @@
 - Send tab converts string token balances to numbers before performing arithmetic.
 - Token balances from Web3 are returned as strings; dashboard components parse them to numbers before applying arithmetic or `toFixed`.
 - Sign-in modal shows a spam-folder notice with an inline "Resend Code" link instead of a button.
+- Sign-in passcode requests now flow through internal API routes so browser clients avoid direct cross-origin Supabase auth preflight failures.
 - Entering the sixth digit in the sign-in modal automatically submits the verification form.
 - Send tab binds `useSendMoney` with the authenticated user's ID and selected recipient to avoid undefined sender errors.
 - Contact selection modal returns full contact objects so downstream send logic can derive receiver IDs and display metadata.

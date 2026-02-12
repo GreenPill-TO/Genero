@@ -1,3 +1,6 @@
+## v0.89
+- Routed sign-in passcode send/verify through internal Next.js API endpoints backed by server-side Supabase auth calls to avoid browser CORS/preflight failures on preview domains, and added friendlier offline error messaging when the auth service is unreachable.
+
 ## v0.88
 - Made wallet landing dark mode changes significantly more visible by deepening the page gradient, making main/intro sections transparent in dark mode so the gradient actually shows through, and strengthening CTA button contrast with a brighter light-grey gradient plus border.
 

@@ -584,34 +584,44 @@ export const signOut = async () => {
   }
 };
 
-export const sendPasscode = async ({ contact, method }: { contact: string; method: "phone" | "email" }) => {
+const performPasscodeRequest = async (path: string, body: Record<string, string>) => {
+  let response: Response;
+
   try {
-    const supabase = createClient();
-    const payload = method === "phone" ? { phone: contact } : { email: contact };
-    const { error } = await supabase.auth.signInWithOtp(payload);
-    if (error) throw error;
-  } catch (error) {
-    throw error; // Let the calling function handle the error
+    response = await fetch(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(
+      "Unable to reach the authentication service. Please check your connection and try again."
+    );
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | {
+        message?: string;
+      }
+    | null;
+
+  if (!response.ok) {
+    throw new Error(payload?.message ?? "Unable to process authentication request.");
   }
 };
 
-export const verifyPasscode = async ({ contact, method, passcode }: { contact: string; method: "phone" | "email"; passcode: string }) => {
-  try {
-    const supabase = createClient();
-    let verificationPayload: { phone: string; token: string; type: "sms" } | { email: string; token: string; type: "email" };
+export const sendPasscode = async ({ contact, method }: { contact: string; method: "phone" | "email" }) => {
+  await performPasscodeRequest("/api/auth/passcode/send", { contact, method });
+};
 
-    if (method === "phone") {
-      verificationPayload = { phone: contact, token: passcode, type: "sms" };
-    } else {
-      verificationPayload = { email: contact, token: passcode, type: "email" };
-    }
-    const { error } = await supabase.auth.verifyOtp(verificationPayload);
-    if (error) {
-      throw error;
-    }
-  } catch (err) {
-    throw err; // Let the calling function handle the error
-  }
+export const verifyPasscode = async ({ contact, method, passcode }: { contact: string; method: "phone" | "email"; passcode: string }) => {
+  await performPasscodeRequest("/api/auth/passcode/verify", {
+    contact,
+    method,
+    passcode,
+  });
 };
 
 export const getPersonas = async (): Promise<TPersona[] | null> => {
