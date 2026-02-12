@@ -235,7 +235,7 @@ Refer to `agent-context/db-workflow.md` for detailed CI/CD process.
 ### Frontend CI (`ci-frontend.yml`)
 Runs on all PRs and pushes to `main` or `dev` (except changes to `supabase/**` or `*.md` files):
 
-1. **Setup:** Node 20 + pnpm 8
+1. **Setup:** Node 20 + pnpm 8 (CI uses pnpm 8, though package.json specifies 10.2.1+)
 2. **Install:** `pnpm install --no-frozen-lockfile`
 3. **Lint:** `pnpm lint`
 4. **Type Check:** `pnpm exec tsc --noEmit`
@@ -332,7 +332,7 @@ Before making changes, ensure these files exist in `agent-context/`:
 - `functional-spec.md` - Feature specifications
 - `workflow.md` - Session checklist
 
-If missing, follow [agent-setup.md](https://raw.githubusercontent.com/KazanderDad/agent-context-seed-files/refs/heads/main/agent-setup.md).
+If missing, follow the agent setup guide in the KazanderDad/agent-context-seed-files repository.
 
 ## Additional Resources
 
