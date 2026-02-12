@@ -80,7 +80,12 @@ vi.mock("@shared/lib/supabase/client", () => ({
   }),
 }));
 
-import { fetchContactsForOwner } from "./supabaseService";
+import {
+  fetchContactsForOwner,
+  normaliseCredentialId,
+  normaliseDeviceInfo,
+  serialiseUserShare,
+} from "./supabaseService";
 
 describe("fetchContactsForOwner", () => {
   beforeEach(() => {
@@ -283,5 +288,38 @@ describe("fetchContactsForOwner", () => {
     supabaseState.walletListError = { message: "wallets down" };
 
     await expect(fetchContactsForOwner(1)).rejects.toEqual({ message: "wallets down" });
+  });
+});
+
+describe("wallet credential helpers", () => {
+  it("serialises Cubid user shares and exposes a decoded credential id", () => {
+    const textEncoder = new TextEncoder();
+    const share = serialiseUserShare({
+      encryptedAesKey: textEncoder.encode("aes").buffer,
+      encryptedData: textEncoder.encode("data").buffer,
+      encryptionMethod: "aes-gcm",
+      id: "share-1",
+      iv: textEncoder.encode("iv").buffer,
+      ivForKeyEncryption: "key-iv",
+      salt: "salt",
+      credentialId: textEncoder.encode("cred-1").buffer,
+    });
+
+    expect(share.userShareEncrypted.credentialId).toBe("Y3JlZC0x");
+    expect(share.credentialId).toBe("637265642d31");
+  });
+
+  it("normalises credential ids and device info payloads", () => {
+    expect(normaliseCredentialId("  ABCD  ")).toBe("abcd");
+    expect(normaliseCredentialId("   ")).toBeNull();
+
+    expect(
+      normaliseDeviceInfo({
+        userAgent: " Test UA ",
+        platform: " web ",
+        label: " Pixel 9 ",
+      })
+    ).toEqual({ userAgent: "Test UA", platform: "web", label: "Pixel 9" });
+    expect(normaliseDeviceInfo({ userAgent: "", platform: null, label: "  " })).toBeNull();
   });
 });

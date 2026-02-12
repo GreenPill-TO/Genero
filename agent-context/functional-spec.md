@@ -66,6 +66,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 ## Key User Flows
 
 - **Wallet onboarding**: SMS verification → wallet creation via Cubid → funding wallet.
+- **Wallet onboarding** now persists passkey credential identifiers and app/device context with encrypted custody shares so returning users can recover keys against the correct credential.
 - **Payments**: Scan QR → specify amount or tip % → confirm and sign.
 - **SpareChange**: Scan public QR → donate → automatic charity attribution.
 
