@@ -31,6 +31,9 @@ ALTER TABLE IF EXISTS public.wallet_list
 ALTER TABLE IF EXISTS public.user_encrypted_share
   ADD COLUMN IF NOT EXISTS wallet_key_id bigint;
 
+ALTER TABLE IF EXISTS public.user_encrypted_share
+  ADD COLUMN IF NOT EXISTS namespace public.namespace NOT NULL DEFAULT 'EVM'::public.namespace;
+
 INSERT INTO public.wallet_keys (user_id, namespace, app_share)
 SELECT
   s.user_id,
@@ -172,6 +175,9 @@ ALTER TABLE IF EXISTS public.user_encrypted_share
 
 ALTER TABLE IF EXISTS public.user_encrypted_share
   ALTER COLUMN wallet_key_id DROP NOT NULL;
+
+ALTER TABLE IF EXISTS public.user_encrypted_share
+  DROP COLUMN IF EXISTS namespace;
 
 ALTER TABLE IF EXISTS public.user_encrypted_share
   DROP COLUMN IF EXISTS wallet_key_id;

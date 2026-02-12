@@ -471,6 +471,7 @@ CREATE TABLE IF NOT EXISTS public."user_encrypted_share" (
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "user_id" bigint,
   "wallet_key_id" bigint NOT NULL,
+  "namespace" public.namespace DEFAULT 'EVM' NOT NULL,
   "user_share_encrypted" jsonb,
   PRIMARY KEY ("id"),
   FOREIGN KEY ("user_id") REFERENCES public."users"("id"),
