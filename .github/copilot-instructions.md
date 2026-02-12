@@ -22,7 +22,10 @@ Genero is a Next.js 14 monorepo implementing local "citycoins" on new monetary p
 - Twilio (SMS verification)
 - Vitest (testing)
 
-**Package Manager:** pnpm 10.2.1+ (REQUIRED - do not use npm or yarn)
+**Package Manager:** pnpm (REQUIRED - do not use npm or yarn)
+- Development: pnpm 10.2.1+ (as specified in package.json)
+- CI Pipeline: pnpm 8 (configured in .github/workflows/ci-frontend.yml)
+- Note: Both versions are compatible with this project's dependencies
 
 ## Project Structure
 
@@ -235,7 +238,7 @@ Refer to `agent-context/db-workflow.md` for detailed CI/CD process.
 ### Frontend CI (`ci-frontend.yml`)
 Runs on all PRs and pushes to `main` or `dev` (except changes to `supabase/**` or `*.md` files):
 
-1. **Setup:** Node 20 + pnpm 8 (CI uses pnpm 8, though package.json specifies 10.2.1+)
+1. **Setup:** Node 20 + pnpm 8
 2. **Install:** `pnpm install --no-frozen-lockfile`
 3. **Lint:** `pnpm lint`
 4. **Type Check:** `pnpm exec tsc --noEmit`
@@ -243,6 +246,8 @@ Runs on all PRs and pushes to `main` or `dev` (except changes to `supabase/**` o
 6. **Test:** `pnpm test`
 
 **Pipeline time:** ~3-5 minutes
+
+**Note:** CI uses pnpm 8 for stability, while local development can use pnpm 10.2.1+ (both versions work with current dependencies).
 
 ### Database Workflows
 - `db-pull-env.yml` - Sync schema from Supabase
@@ -332,7 +337,7 @@ Before making changes, ensure these files exist in `agent-context/`:
 - `functional-spec.md` - Feature specifications
 - `workflow.md` - Session checklist
 
-If missing, follow the agent setup guide in the KazanderDad/agent-context-seed-files repository.
+If these files are missing, agents should create them following standard patterns for session logs, technical specs, and workflow checklists. Reference the existing `AGENTS.md` file for structural guidance.
 
 ## Additional Resources
 
