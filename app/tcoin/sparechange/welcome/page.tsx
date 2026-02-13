@@ -467,7 +467,7 @@ const WelcomeFlow: React.FC = () => {
               <>
                 <div className="mb-4 w-full max-w-md">
                   <label htmlFor="deviceLabel" className="block text-sm font-medium text-gray-700 mb-2">
-                    Device Name (Optional)
+                    Device name (optional)
                   </label>
                   <input
                     id="deviceLabel"
@@ -508,7 +508,7 @@ const WelcomeFlow: React.FC = () => {
                       "Verify that NEXT_PUBLIC_CITYCOIN and NEXT_PUBLIC_APP_NAME are set correctly and that a matching app instance exists."
                     );
                   }
-                  const deviceInfo = getDeviceMetadata(deviceLabel || undefined);
+                  const deviceInfo = getDeviceMetadata(deviceLabel.trim() || undefined);
                   if (serialisedShare.credentialId) {
                     window.localStorage.setItem("tcoin_wallet_activeWalletCredentialId", serialisedShare.credentialId);
                   }

@@ -594,7 +594,7 @@ export default function NewWelcomePage() {
                     <CardContent>
                         <div className="mb-4">
                             <label htmlFor="deviceLabel" className="block text-sm font-medium text-gray-700 mb-2">
-                                Device Name (Optional)
+                                Device name (optional)
                             </label>
                             <input
                                 id="deviceLabel"
@@ -639,7 +639,7 @@ export default function NewWelcomePage() {
                                         );
                                     }
                                     const serialisedShare = serialiseUserShare(usershare);
-                                    const deviceInfo = getDeviceMetadata(deviceLabel || undefined);
+                                    const deviceInfo = getDeviceMetadata(deviceLabel.trim() || undefined);
                                     if (serialisedShare.credentialId) {
                                         window.localStorage.setItem("tcoin_wallet_activeWalletCredentialId", serialisedShare.credentialId);
                                     }

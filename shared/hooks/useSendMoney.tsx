@@ -320,7 +320,7 @@ export const useSendMoney = ({
 		};
 
 		loadCredentialCandidates();
-	}, [userData?.cubidData?.id]);
+	}, [userData?.cubidData?.id]); // Only depend on the user ID to avoid unnecessary re-fetches
 
 	const burnMoney = async (amount: string) => {
                 const supabase = createClient();
