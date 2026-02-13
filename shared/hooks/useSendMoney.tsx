@@ -139,7 +139,10 @@ export const useSendMoney = ({
                 if (typeof window === 'undefined') {
                         return null;
                 }
-                const fromStorage = window.localStorage.getItem('activeWalletCredentialId');
+                const fromStorage = window.localStorage.getItem('tcoin_wallet_activeWalletCredentialId');
+                if (fromStorage === null) {
+                        return null;
+                }
                 return normaliseCredentialId(fromStorage);
         };
 
@@ -212,7 +215,7 @@ export const useSendMoney = ({
                         .select('id, user_share_encrypted, credential_id, app_instance_id, last_used_at, created_at, revoked_at')
                         .match({ wallet_key_id: walletKeyId })
                         .is('revoked_at', null)
-                        .order('last_used_at', { ascending: false, nullsFirst: false })
+                        .order('last_used_at', { ascending: false })
                         .order('created_at', { ascending: false })
                         .limit(20);
 
@@ -274,6 +277,50 @@ export const useSendMoney = ({
 		if (receiverId) fetchWalletAddress(receiverId, setReceiverWallet);
 	}, [senderId, receiverId]);
 
+	// Populate credentialCandidates early so they're available to consumers
+	useEffect(() => {
+		const loadCredentialCandidates = async () => {
+			if (!userData?.cubidData?.id) return;
+			
+			try {
+				const supabase = createClient();
+				const activeAppInstance = await getActiveAppInstance();
+				
+				const { data: walletRow } = await supabase
+					.from('wallet_list')
+					.select('wallet_key_id')
+					.match({ user_id: userData.cubidData.id, namespace: 'EVM' })
+					.order('id', { ascending: false })
+					.limit(1)
+					.maybeSingle();
+
+				if (!walletRow?.wallet_key_id) return;
+
+				let query = supabase
+					.from('user_encrypted_share')
+					.select('credential_id')
+					.match({ wallet_key_id: walletRow.wallet_key_id })
+					.is('revoked_at', null);
+
+				if (activeAppInstance?.id) {
+					query = query.eq('app_instance_id', activeAppInstance.id);
+				}
+
+				const { data: userShares } = await query;
+
+				if (userShares && userShares.length > 0) {
+					const options = userShares
+						.map((row) => normaliseCredentialId(row.credential_id))
+						.filter((value): value is string => Boolean(value));
+					setCredentialCandidates(options);
+				}
+			} catch (err) {
+				console.warn('Could not preload credential candidates:', err);
+			}
+		};
+
+		loadCredentialCandidates();
+	}, [userData?.cubidData?.id]); // Only depend on the user ID to avoid unnecessary re-fetches
 
 	const burnMoney = async (amount: string) => {
                 const supabase = createClient();

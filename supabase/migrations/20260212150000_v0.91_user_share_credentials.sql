@@ -35,6 +35,7 @@ backfill_source AS (
     CASE
       WHEN jsonb_typeof(ues.user_share_encrypted) = 'object'
         AND (ues.user_share_encrypted->>'credentialId') ~ '^[A-Za-z0-9+/]+={0,2}$'
+      -- For legacy records with malformed or non-base64 credentialId values, we intentionally set credential_id to NULL.
       THEN lower(encode(decode(ues.user_share_encrypted->>'credentialId', 'base64'), 'hex'))
       ELSE NULL
     END AS credential_id_hex
@@ -50,8 +51,42 @@ FROM backfill_source
 LEFT JOIN default_instance ON TRUE
 WHERE ues.id = backfill_source.id;
 
-ALTER TABLE IF EXISTS public.user_encrypted_share
-  ALTER COLUMN app_instance_id SET NOT NULL;
+-- Validate that the default instance exists before setting NOT NULL constraint
+DO $$
+DECLARE
+  v_has_default_instance boolean;
+  v_has_null_app_instance_id boolean;
+BEGIN
+  -- Check if the default wallet/tcoin app instance exists
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.ref_app_instances AS rai
+    INNER JOIN public.ref_apps AS ra ON ra.id = rai.app_id
+    INNER JOIN public.ref_citycoins AS rc ON rc.id = rai.citycoin_id
+    WHERE ra.slug = 'wallet'
+      AND rc.slug = 'tcoin'
+  ) INTO v_has_default_instance;
+
+  IF NOT v_has_default_instance THEN
+    RAISE NOTICE 'Skipping NOT NULL constraint on user_encrypted_share.app_instance_id: default wallet/tcoin app instance not found.';
+    RETURN;
+  END IF;
+
+  -- Ensure there are no remaining NULL app_instance_id values before adding NOT NULL constraint
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_encrypted_share
+    WHERE app_instance_id IS NULL
+  ) INTO v_has_null_app_instance_id;
+
+  IF v_has_null_app_instance_id THEN
+    RAISE EXCEPTION 'Cannot set NOT NULL on user_encrypted_share.app_instance_id: some rows still have NULL app_instance_id after backfill.';
+  END IF;
+
+  ALTER TABLE IF EXISTS public.user_encrypted_share
+    ALTER COLUMN app_instance_id SET NOT NULL;
+END
+$$;
 
 CREATE INDEX IF NOT EXISTS user_encrypted_share_wallet_key_id_idx
   ON public.user_encrypted_share (wallet_key_id);
