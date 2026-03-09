@@ -10,6 +10,7 @@ import { transfer } from '@shared/utils/insertNotification';
 import { normaliseTransferResult, TransferRecordSnapshot } from '@shared/utils/transferRecord';
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
 import { getActiveAppInstance, normaliseCredentialId } from '@shared/api/services/supabaseService';
+import { getActiveCityContracts, getRpcUrlForChainId } from '@shared/lib/contracts/cityContracts';
 
 
 // Helper: Convert hex string to Uint8Array.
@@ -96,8 +97,18 @@ const decodeUserShare = async (jsonData: any): Promise<string> => {
         }
 };
 
+async function resolveTokenRuntimeConfig() {
+        const activeContracts = await getActiveCityContracts();
+        return {
+                tokenAddress: activeContracts.contracts.TCOIN,
+                rpcUrl: getRpcUrlForChainId(activeContracts.chainId),
+                chainId: activeContracts.chainId,
+        };
+}
+
 export const __internal = {
         runWithWebAuthnLock,
+        resolveTokenRuntimeConfig,
         resetWebAuthnLock: () => {
                 webAuthnLocked = false;
         },
@@ -413,17 +424,14 @@ export const useSendMoney = ({
 			const privateKey = privateKeyHex.startsWith('0x') ? privateKeyHex : `0x${privateKeyHex}`;
 			console.log('Reconstructed private key:', privateKey);
 
-			// Initialize ethers with a custom RPC provider.
-			// Verify that this RPC URL is correct for your testnet.
-			const provider = new ethers.providers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+			const runtimeConfig = await resolveTokenRuntimeConfig();
+			const provider = new ethers.providers.JsonRpcProvider(runtimeConfig.rpcUrl);
 
 			// Create a wallet instance from the private key and connect it to the provider.
 			const walletInstance = new ethers.Wallet(privateKey, provider);
 			const fromAddress = walletInstance.address;
 
-			// Define the token contract address.
-			const tokenAddress = '0x6E534F15c921915fC2e6aD87b7e395d448Bc9ECE';
-			if (!tokenAddress) throw new Error('Token address not provided');
+			const tokenAddress = runtimeConfig.tokenAddress;
 			console.log({ walletInstance })
 			// Create a contract instance.
 			const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, walletInstance);
@@ -532,11 +540,11 @@ export const useSendMoney = ({
                         const privateKey = privateKeyHex.startsWith('0x') ? privateKeyHex : `0x${privateKeyHex}`;
                         console.log('Reconstructed private key:', privateKey);
 
-                        const provider = new ethers.providers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+                        const runtimeConfig = await resolveTokenRuntimeConfig();
+                        const provider = new ethers.providers.JsonRpcProvider(runtimeConfig.rpcUrl);
 
                         const walletInstance = new ethers.Wallet(privateKey, provider);
-                        const tokenAddress = '0x6E534F15c921915fC2e6aD87b7e395d448Bc9ECE';
-                        if (!tokenAddress) throw new Error('Token address not provided');
+                        const tokenAddress = runtimeConfig.tokenAddress;
                         console.log({ walletInstance })
                         const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, walletInstance);
 

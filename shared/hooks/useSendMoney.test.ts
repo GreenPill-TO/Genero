@@ -1,22 +1,28 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("cubid-wallet", () => {
-  class MockWebAuthnCrypto {
-    async decryptString() {
-      return "mocked";
-    }
-  }
+const { getActiveCityContractsMock, getRpcUrlForChainIdMock } = vi.hoisted(() => ({
+  getActiveCityContractsMock: vi.fn(),
+  getRpcUrlForChainIdMock: vi.fn(),
+}));
 
-  return {
-    WebAuthnCrypto: MockWebAuthnCrypto,
-  };
-});
+vi.mock("@shared/lib/contracts/cityContracts", () => ({
+  getActiveCityContracts: getActiveCityContractsMock,
+  getRpcUrlForChainId: getRpcUrlForChainIdMock,
+}));
+
+vi.mock("cubid-wallet", () => ({
+  WebAuthnCrypto: class MockWebAuthnCrypto {
+    decryptString = vi.fn(async () => "stubbed-share");
+  },
+}));
 
 import { __internal, WebAuthnRequestInProgressError } from "./useSendMoney";
 
 describe("runWithWebAuthnLock", () => {
   afterEach(() => {
     __internal.resetWebAuthnLock();
+    getActiveCityContractsMock.mockReset();
+    getRpcUrlForChainIdMock.mockReset();
   });
 
   it("prevents concurrent WebAuthn requests", async () => {
@@ -25,9 +31,9 @@ describe("runWithWebAuthnLock", () => {
       return "done";
     });
 
-    await expect(
-      __internal.runWithWebAuthnLock(async () => "second")
-    ).rejects.toBeInstanceOf(WebAuthnRequestInProgressError);
+    await expect(__internal.runWithWebAuthnLock(async () => "second")).rejects.toBeInstanceOf(
+      WebAuthnRequestInProgressError
+    );
 
     await slowPromise;
   });
@@ -35,9 +41,21 @@ describe("runWithWebAuthnLock", () => {
   it("releases the lock after completion", async () => {
     await __internal.runWithWebAuthnLock(async () => "first");
 
-    await expect(
-      __internal.runWithWebAuthnLock(async () => "second")
-    ).resolves.toBe("second");
+    await expect(__internal.runWithWebAuthnLock(async () => "second")).resolves.toBe("second");
+  });
+
+  it("resolves token runtime config from city contracts registry data", async () => {
+    getActiveCityContractsMock.mockResolvedValue({
+      chainId: 545,
+      contracts: { TCOIN: "0x0000000000000000000000000000000000000001" },
+    });
+    getRpcUrlForChainIdMock.mockReturnValue("https://testnet.evm.nodes.onflow.org");
+
+    await expect(__internal.resolveTokenRuntimeConfig()).resolves.toEqual({
+      tokenAddress: "0x0000000000000000000000000000000000000001",
+      rpcUrl: "https://testnet.evm.nodes.onflow.org",
+      chainId: 545,
+    });
   });
 });
 

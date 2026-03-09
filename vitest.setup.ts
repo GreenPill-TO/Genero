@@ -13,3 +13,37 @@ if (typeof window !== "undefined") {
 } else {
   (globalThis as any).window = globalThis;
 }
+
+function createStorageStub() {
+  const data = new Map<string, string>();
+
+  return {
+    get length() {
+      return data.size;
+    },
+    clear() {
+      data.clear();
+    },
+    getItem(key: string) {
+      return data.has(key) ? data.get(key)! : null;
+    },
+    key(index: number) {
+      return Array.from(data.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      data.delete(key);
+    },
+    setItem(key: string, value: string) {
+      data.set(key, String(value));
+    },
+  } as Storage;
+}
+
+const currentStorage = (globalThis as any).localStorage;
+if (!currentStorage || typeof currentStorage.getItem !== "function") {
+  const storageStub = createStorageStub();
+  (globalThis as any).localStorage = storageStub;
+  if (typeof window !== "undefined") {
+    (window as any).localStorage = storageStub;
+  }
+}

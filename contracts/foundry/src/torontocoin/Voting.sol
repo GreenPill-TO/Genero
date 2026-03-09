@@ -42,7 +42,7 @@ contract Voting is Initializable, OwnableUpgradeable {
     }
 
     function initialize(address _orchestrator) public initializer {
-        __Ownable_init(msg.sender);
+        __Ownable_init();
         orchestrator = Orchestrator(_orchestrator);
         pegValue = orchestrator.getPegValue();
         stewardCount = orchestrator.getStewardCount();

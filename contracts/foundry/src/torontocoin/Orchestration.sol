@@ -73,7 +73,7 @@ contract Orchestrator is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         address _reserveTokensAddress,
         address _votingAddress
     ) public initializer {
-        __Ownable_init(msg.sender);
+        __Ownable_init();
         __UUPSUpgradeable_init();
         tcoin = TCOIN(_tcoinAddress);
         ttc = TTC(_ttcAddress);

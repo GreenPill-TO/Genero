@@ -31,11 +31,11 @@ contract MyToken is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reentran
         _unpause();
     }
 
-    function _update(address from, address to, uint256 amount)
+    function _beforeTokenTransfer(address from, address to, uint256 amount)
         internal
         override(ERC20, ERC20Pausable)
         whenNotPaused
     {
-        super._update(from, to, amount);
+        super._beforeTokenTransfer(from, to, amount);
     }
 }

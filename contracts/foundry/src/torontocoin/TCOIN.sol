@@ -46,7 +46,7 @@ contract TCOIN is Initializable, ERC20Upgradeable, OwnableUpgradeable, UUPSUpgra
      // Initializer
     function initialize() public initializer {
         __ERC20_init("TorontoCoin", "TCOIN");
-        __Ownable_init(msg.sender);
+        __Ownable_init();
         __UUPSUpgradeable_init();
         
         tokenName = "TorontoCoin";

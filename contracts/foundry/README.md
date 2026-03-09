@@ -39,3 +39,12 @@ forge fmt
 forge snapshot
 ```
 
+## Registry Scripts
+
+```bash
+# Deploy registry (requires PRIVATE_KEY and INITIAL_OWNER)
+forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --rpc-url "$FLOW_EVM_TESTNET_RPC_URL" --broadcast
+
+# Promote city version from deployment JSON (requires PRIVATE_KEY, REGISTRY_ADDRESS, DEPLOYMENT_FILE)
+forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --rpc-url "$FLOW_EVM_TESTNET_RPC_URL" --broadcast
+```
