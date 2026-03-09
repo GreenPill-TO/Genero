@@ -97,12 +97,11 @@ contract TCOIN is Initializable, ERC20Upgradeable, OwnableUpgradeable, UUPSUpgra
     }
 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
-        _mint(address(this), amount); // Mint new tokens to the smart contract address
-        _transfer(address(this), recipient, amount); // Transfer tokens from the smart contract to the recipient
+        bool success = super.transfer(recipient, amount);
         _updateTokenHolderList(msg.sender); // Update token holder list
         _updateTokenHolderList(recipient);
 
-        return true;
+        return success;
     }
 
     function mint(address to, uint256 amount) public onlyWhitelistedStore {
@@ -165,7 +164,7 @@ contract TCOIN is Initializable, ERC20Upgradeable, OwnableUpgradeable, UUPSUpgra
     }
 
     function balanceOf(address account) public view override returns (uint256) {
-        return balanceOf(account);
+        return super.balanceOf(account);
     }
 
     // Get totalRawSupply

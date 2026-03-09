@@ -36,6 +36,14 @@ contract CAD is ERC20, AccessControl, Pausable {
         emit Burned(msg.sender, amount);
     }
 
+    function pause() external onlyRole(OWNER_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(OWNER_ROLE) {
+        _unpause();
+    }
+
     // View total minted tokens (calculated dynamically)
     function getTotalMinted() external view returns (uint256) {
         return totalSupply() + _totalBurned.current();
