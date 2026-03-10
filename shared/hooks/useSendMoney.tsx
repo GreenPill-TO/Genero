@@ -9,6 +9,7 @@ import { WebAuthnCrypto } from 'cubid-wallet';
 import { transfer } from '@shared/utils/insertNotification';
 import { normaliseTransferResult, TransferRecordSnapshot } from '@shared/utils/transferRecord';
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
+import { getActiveAppInstance, normaliseCredentialId } from '@shared/api/services/supabaseService';
 
 
 // Helper: Convert hex string to Uint8Array.
@@ -100,6 +101,7 @@ export const __internal = {
         resetWebAuthnLock: () => {
                 webAuthnLocked = false;
         },
+        resolveShareSelection,
 };
 
 // Helper: Convert base64 string to ArrayBuffer.
@@ -119,6 +121,41 @@ function extractDecimalFromString(str: string): number {
 	return match ? Number(match[0]) : NaN;
 }
 
+type UserShareRow = {
+        id: number;
+        credential_id: string | null;
+        user_share_encrypted: any;
+};
+
+function resolveShareSelection({
+        userShares,
+        activeCredentialId,
+        activeAppSlug,
+}: {
+        userShares: UserShareRow[] | null | undefined;
+        activeCredentialId: string | null;
+        activeAppSlug?: string | null;
+}) {
+        if (!userShares || userShares.length === 0) {
+                const scope = activeAppSlug ? ` for app instance "${activeAppSlug}"` : '';
+                throw new Error(`No user shares were found${scope}. Reconnect your wallet to refresh passkey credentials.`);
+        }
+
+        const matchingCredential = activeCredentialId
+                ? userShares.find((row) => normaliseCredentialId(row.credential_id) === activeCredentialId)
+                : null;
+        const selectedShare = matchingCredential ?? userShares[0];
+        const credentialCandidates = userShares
+                .map((row) => normaliseCredentialId(row.credential_id))
+                .filter((value): value is string => Boolean(value));
+
+        return {
+                selectedShare,
+                credentialCandidates,
+                usedCredentialFallback: Boolean(activeCredentialId && !matchingCredential),
+        };
+}
+
 export const useSendMoney = ({
 	senderId,
 	receiverId,
@@ -132,6 +169,18 @@ export const useSendMoney = ({
         const [error, setError] = useState<string | null>(null);
         const lastTransferRecordRef = useRef<TransferRecordSnapshot | null>(null);
         const { userData } = useAuth();
+        const [credentialCandidates, setCredentialCandidates] = useState<string[]>([]);
+
+        const getActiveCredentialId = (): string | null => {
+                if (typeof window === 'undefined') {
+                        return null;
+                }
+                const fromStorage = window.localStorage.getItem('tcoin_wallet_activeWalletCredentialId');
+                if (fromStorage === null) {
+                        return null;
+                }
+                return normaliseCredentialId(fromStorage);
+        };
 
 	// Fetch wallet address from Supabase using Cubid.
         const fetchWalletAddress = async (
@@ -164,6 +213,8 @@ export const useSendMoney = ({
 
         const fetchWalletShares = async (userId: number) => {
                 const supabase = createClient();
+                const activeAppInstance = await getActiveAppInstance();
+                const activeCredentialId = getActiveCredentialId();
                 const { data: walletRow, error: walletRowError } = await supabase
                         .from('wallet_list')
                         .select('wallet_key_id')
@@ -195,25 +246,75 @@ export const useSendMoney = ({
                         throw new Error('No app_share found for this wallet key');
                 }
 
-                const { data: userShare, error: userShareError } = await supabase
-                        .from('user_encrypted_share')
-                        .select('user_share_encrypted')
-                        .match({ wallet_key_id: walletKeyId })
-                        .order('id', { ascending: true })
-                        .limit(1)
-                        .maybeSingle();
+                const fetchShares = async (appInstanceId: number | null) => {
+                        let userShareQuery = supabase
+                                .from('user_encrypted_share')
+                                .select('id, user_share_encrypted, credential_id, app_instance_id, last_used_at, created_at, revoked_at')
+                                .match({ wallet_key_id: walletKeyId })
+                                .is('revoked_at', null)
+                                .order('last_used_at', { ascending: false })
+                                .order('created_at', { ascending: false })
+                                .limit(20);
 
-                if (userShareError) {
-                        throw new Error(userShareError.message);
+                        if (appInstanceId) {
+                                userShareQuery = userShareQuery.eq('app_instance_id', appInstanceId);
+                        }
+
+                        return userShareQuery;
+                };
+
+                const { data: scopedShares, error: scopedShareError } = await fetchShares(activeAppInstance?.id ?? null);
+                if (scopedShareError) {
+                        throw new Error(scopedShareError.message);
                 }
 
-                if (!userShare?.user_share_encrypted) {
+                let userShares = scopedShares;
+                let usedLegacyAppFallback = false;
+
+                if ((!userShares || userShares.length === 0) && activeAppInstance?.id) {
+                        const { data: fallbackShares, error: fallbackShareError } = await fetchShares(null);
+                        if (fallbackShareError) {
+                                throw new Error(fallbackShareError.message);
+                        }
+                        userShares = fallbackShares;
+                        usedLegacyAppFallback = Boolean(userShares && userShares.length > 0);
+                }
+
+                const selection = resolveShareSelection({
+                        userShares: userShares as UserShareRow[] | null | undefined,
+                        activeCredentialId,
+                        activeAppSlug: activeAppInstance?.slug,
+                });
+                setCredentialCandidates(selection.credentialCandidates);
+
+                if (usedLegacyAppFallback && activeAppInstance?.slug) {
+                        console.warn(
+                                `No user shares matched app instance "${activeAppInstance.slug}". Falling back to legacy user shares across app instances.`
+                        );
+                }
+
+                if (selection.usedCredentialFallback && activeCredentialId) {
+                        console.warn(
+                                `Active credential "${activeCredentialId}" did not match a stored user share. Falling back to the most recently used credential.`
+                        );
+                }
+
+                if (!selection.selectedShare?.user_share_encrypted) {
                         throw new Error('No user_share_encrypted found for this wallet key');
+                }
+
+                const { error: touchError } = await supabase
+                        .from('user_encrypted_share')
+                        .update({ last_used_at: new Date().toISOString() })
+                        .eq('id', selection.selectedShare.id);
+
+                if (touchError) {
+                        console.warn('Could not update last_used_at for selected credential', touchError);
                 }
 
                 return {
                         app_share: walletKey.app_share,
-                        user_share_encrypted: userShare.user_share_encrypted,
+                        user_share_encrypted: selection.selectedShare.user_share_encrypted,
                 };
         };
 
@@ -223,6 +324,50 @@ export const useSendMoney = ({
 		if (receiverId) fetchWalletAddress(receiverId, setReceiverWallet);
 	}, [senderId, receiverId]);
 
+	// Populate credentialCandidates early so they're available to consumers
+	useEffect(() => {
+		const loadCredentialCandidates = async () => {
+			if (!userData?.cubidData?.id) return;
+			
+			try {
+				const supabase = createClient();
+				const activeAppInstance = await getActiveAppInstance();
+				
+				const { data: walletRow } = await supabase
+					.from('wallet_list')
+					.select('wallet_key_id')
+					.match({ user_id: userData.cubidData.id, namespace: 'EVM' })
+					.order('id', { ascending: false })
+					.limit(1)
+					.maybeSingle();
+
+				if (!walletRow?.wallet_key_id) return;
+
+				let query = supabase
+					.from('user_encrypted_share')
+					.select('credential_id')
+					.match({ wallet_key_id: walletRow.wallet_key_id })
+					.is('revoked_at', null);
+
+				if (activeAppInstance?.id) {
+					query = query.eq('app_instance_id', activeAppInstance.id);
+				}
+
+				const { data: userShares } = await query;
+
+				if (userShares && userShares.length > 0) {
+					const options = userShares
+						.map((row) => normaliseCredentialId(row.credential_id))
+						.filter((value): value is string => Boolean(value));
+					setCredentialCandidates(options);
+				}
+			} catch (err) {
+				console.warn('Could not preload credential candidates:', err);
+			}
+		};
+
+		loadCredentialCandidates();
+	}, [userData?.cubidData?.id]); // Only depend on the user ID to avoid unnecessary re-fetches
 
 	const burnMoney = async (amount: string) => {
                 const supabase = createClient();
@@ -457,5 +602,14 @@ export const useSendMoney = ({
                 }
         };
 
-        return { senderWallet, receiverWallet, sendMoney, loading, error, burnMoney, getLastTransferRecord };
+        return {
+                senderWallet,
+                receiverWallet,
+                sendMoney,
+                loading,
+                error,
+                burnMoney,
+                getLastTransferRecord,
+                credentialCandidates,
+        };
 };

@@ -119,5 +119,8 @@
 - Sign-in modals replace the single passcode field with six auto-advancing inputs that accept pasted codes.
 - Wallet custody shares are normalised into `wallet_keys` (`user_id` + `namespace`) so multiple wallet addresses can reference one key via `wallet_key_id`; `wallet_list` no longer stores raw `app_share` directly.
 - `user_encrypted_share` rows are linked to the same `wallet_keys` record through `wallet_key_id`, enabling deterministic key reconstruction for wallets that share custody material.
+- `user_encrypted_share` now stores decoded `credential_id`, scoped `app_instance_id`, optional `device_info`, and lifecycle audit timestamps (`last_used_at`, `revoked_at`) so passkey lookups are app-aware and traceable.
+- Legacy `user_encrypted_share` backfills infer `app_instance_id` from the user's latest `app_user_profiles` row before falling back to the default wallet/tcoin app instance.
+- Legacy/malformed passkey credential identifiers are backfilled to deterministic `legacy-{row_id}` values so `credential_id` can be enforced as non-null and uniquely constrained per `(wallet_key_id, app_instance_id, credential_id)`.
 - `wallet_list.wallet_key_id` remains nullable for legacy/system rows where `user_id` is null, but user-owned rows are constrained to include a key reference.
 - New-user sign-in routes to `/welcome`, which proposes a sanitized username, debounces Supabase availability checks, surfaces phone verification status, and clarifies why the Continue action may be disabled.

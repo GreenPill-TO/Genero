@@ -7,7 +7,12 @@ import { createClient } from "@shared/lib/supabase/client";
 
 // Import all the step components
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { updateCubidDataInSupabase } from "@shared/api/services/supabaseService";
+import {
+  getActiveAppInstance,
+  normaliseDeviceInfo,
+  serialiseUserShare,
+  updateCubidDataInSupabase,
+} from "@shared/api/services/supabaseService";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
 import { TCubidData } from "@shared/types/cubid";
@@ -140,6 +145,42 @@ const WelcomeFlow: React.FC = () => {
   );
 
   const [isNextEnabled, setIsNextEnabled] = useState<boolean>(true);
+  const [deviceLabel, setDeviceLabel] = useState<string>("");
+
+  // Helper to generate a smart device label
+  const getDeviceMetadata = (customLabel?: string) => {
+    if (typeof navigator === "undefined") {
+      return null;
+    }
+
+    const platform = navigator.userAgentData?.platform ?? navigator.platform ?? "Unknown platform";
+
+    // Generate a friendly default label if not provided
+    let autoLabel = platform;
+    if (navigator.userAgentData?.brands) {
+      const brandLabel = navigator.userAgentData.brands
+        .map((b) => b.brand)
+        .filter(Boolean)
+        .join(", ");
+      if (brandLabel) {
+        autoLabel = `${brandLabel} on ${platform}`;
+      }
+    } else {
+      // Fallback to a truncated user agent for better readability
+      const ua = navigator.userAgent;
+      if (ua.length > 50) {
+        autoLabel = `${platform} - ${ua.substring(0, 47)}...`;
+      } else {
+        autoLabel = `${platform} - ${ua}`;
+      }
+    }
+
+    return normaliseDeviceInfo({
+      userAgent: navigator.userAgent,
+      platform,
+      label: customLabel || autoLabel,
+    });
+  };
 
   const mainClass = cn("flex-grow flex flex-col items-center justify-center overflow-auto");
 
@@ -423,6 +464,23 @@ const WelcomeFlow: React.FC = () => {
               </>
             )}
             {userFormData.current_step === 7 && (
+              <>
+                <div className="mb-4 w-full max-w-md">
+                  <label htmlFor="deviceLabel" className="block text-sm font-medium text-gray-700 mb-2">
+                    Device name (optional)
+                  </label>
+                  <input
+                    id="deviceLabel"
+                    type="text"
+                    value={deviceLabel}
+                    onChange={(e) => setDeviceLabel(e.target.value)}
+                    placeholder="e.g., My Laptop, Work Phone"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Give this device a friendly name to identify it later
+                  </p>
+                </div>
               <WalletComponent type="evm" user_id={userData?.user?.cubid_id} dapp_id="59"
                 api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                 onEVMWallet={async (wallet: any) => {
@@ -437,28 +495,37 @@ const WelcomeFlow: React.FC = () => {
                   }
                 }}
                 onUserShare={async (usershare: any) => {
-                  function bufferToBase64(buf) {
-                    return Buffer.from(buf).toString('base64');
-                  }
-                  const jsonData = {
-                    encryptedAesKey
-                      : bufferToBase64(usershare.encryptedAesKey),
-                    encryptedData: bufferToBase64(usershare.encryptedData),
-                    encryptionMethod: usershare.encryptionMethod,
-                    id: usershare.id,
-                    iv: bufferToBase64(usershare.iv),
-                    ivForKeyEncryption: usershare.ivForKeyEncryption,
-                    salt: usershare.salt,
-                    credentialId: bufferToBase64(usershare.credentialId)
-                  };
+                  const serialisedShare = serialiseUserShare(usershare);
                   const walletKeyId = await upsertWalletKey(userData?.cubidData?.id, {
                     namespace: "EVM",
                   });
-                  await supabase.from("user_encrypted_share").insert({
-                    user_share_encrypted: jsonData,
+                  const activeAppInstance = await getActiveAppInstance();
+                  if (!activeAppInstance?.id) {
+                    const citycoinSlug = process.env.NEXT_PUBLIC_CITYCOIN ?? "unknown";
+                    const appSlug = process.env.NEXT_PUBLIC_APP_NAME ?? "unknown";
+                    throw new Error(
+                      `Unable to resolve active app instance for encrypted share storage (citycoin="${citycoinSlug}", app="${appSlug}"). ` +
+                      "Verify that NEXT_PUBLIC_CITYCOIN and NEXT_PUBLIC_APP_NAME are set correctly and that a matching app instance exists."
+                    );
+                  }
+                  const deviceInfo = getDeviceMetadata(deviceLabel.trim() || undefined);
+                  if (serialisedShare.credentialId) {
+                    window.localStorage.setItem("tcoin_wallet_activeWalletCredentialId", serialisedShare.credentialId);
+                  }
+                  const { error: insertError } = await supabase.from("user_encrypted_share").insert({
+                    user_share_encrypted: serialisedShare.userShareEncrypted,
                     user_id: userData?.cubidData?.id,
                     wallet_key_id: walletKeyId,
-                  })
+                    credential_id: serialisedShare.credentialId,
+                    app_instance_id: activeAppInstance.id,
+                    device_info: deviceInfo,
+                    last_used_at: new Date().toISOString(),
+                  });
+                  
+                  if (insertError) {
+                    console.error('Failed to store encrypted share:', insertError);
+                    throw new Error(`Failed to store encrypted wallet share: ${insertError.message}`);
+                  }
                 }}
                 onAppShare={async (share: any) => {
                   if (share) {
@@ -469,6 +536,7 @@ const WelcomeFlow: React.FC = () => {
                   }
                 }}
               />
+              </>
             )}
             {userFormData.current_step === 8 && (
               <FinalWelcomeStep
