@@ -220,15 +220,19 @@ CREATE TABLE IF NOT EXISTS chain_data.pools (
 GRANT USAGE ON SCHEMA indexer TO authenticated;
 GRANT USAGE ON SCHEMA chain_data TO authenticated;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA indexer TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA chain_data TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA indexer TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA chain_data TO authenticated;
+REVOKE INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA indexer FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA chain_data FROM authenticated;
 
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA indexer TO authenticated;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA chain_data TO authenticated;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA indexer GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA indexer GRANT SELECT ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA indexer REVOKE INSERT, UPDATE, DELETE ON TABLES FROM authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA indexer GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data GRANT SELECT ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data REVOKE INSERT, UPDATE, DELETE ON TABLES FROM authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
 
 ALTER TABLE IF EXISTS indexer.run_control ENABLE ROW LEVEL SECURITY;
@@ -258,10 +262,9 @@ BEGIN
   ) THEN
     CREATE POLICY indexer_run_control_rw_authenticated
       ON indexer.run_control
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -272,10 +275,9 @@ BEGIN
   ) THEN
     CREATE POLICY indexer_checkpoints_rw_authenticated
       ON indexer.checkpoints
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -286,10 +288,9 @@ BEGIN
   ) THEN
     CREATE POLICY indexer_pool_links_rw_authenticated
       ON indexer.pool_links
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -300,10 +301,9 @@ BEGIN
   ) THEN
     CREATE POLICY indexer_pool_tokens_rw_authenticated
       ON indexer.pool_tokens
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -314,10 +314,9 @@ BEGIN
   ) THEN
     CREATE POLICY indexer_raw_events_rw_authenticated
       ON indexer.raw_events
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -328,10 +327,9 @@ BEGIN
   ) THEN
     CREATE POLICY indexer_city_contract_overrides_rw_authenticated
       ON indexer.city_contract_overrides
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -342,10 +340,9 @@ BEGIN
   ) THEN
     CREATE POLICY chain_data_tx_rw_authenticated
       ON chain_data.tx
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -356,10 +353,9 @@ BEGIN
   ) THEN
     CREATE POLICY chain_data_token_transfer_rw_authenticated
       ON chain_data.token_transfer
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -370,10 +366,9 @@ BEGIN
   ) THEN
     CREATE POLICY chain_data_token_mint_rw_authenticated
       ON chain_data.token_mint
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -384,10 +379,9 @@ BEGIN
   ) THEN
     CREATE POLICY chain_data_token_burn_rw_authenticated
       ON chain_data.token_burn
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -398,10 +392,9 @@ BEGIN
   ) THEN
     CREATE POLICY chain_data_pool_swap_rw_authenticated
       ON chain_data.pool_swap
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -412,10 +405,9 @@ BEGIN
   ) THEN
     CREATE POLICY chain_data_pool_deposit_rw_authenticated
       ON chain_data.pool_deposit
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -426,10 +418,9 @@ BEGIN
   ) THEN
     CREATE POLICY chain_data_ownership_change_rw_authenticated
       ON chain_data.ownership_change
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -440,10 +431,9 @@ BEGIN
   ) THEN
     CREATE POLICY chain_data_tokens_rw_authenticated
       ON chain_data.tokens
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 
   IF NOT EXISTS (
@@ -454,10 +444,9 @@ BEGIN
   ) THEN
     CREATE POLICY chain_data_pools_rw_authenticated
       ON chain_data.pools
-      FOR ALL
+      FOR SELECT
       TO authenticated
-      USING (true)
-      WITH CHECK (true);
+      USING (true);
   END IF;
 END $$;
 
@@ -613,8 +602,10 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.indexer_try_start_run(text, text, bigint, timestamptz, integer) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.indexer_complete_run(text, text, text, timestamptz, integer) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.indexer_try_start_run(text, text, bigint, timestamptz, integer) FROM PUBLIC, authenticated;
+REVOKE EXECUTE ON FUNCTION public.indexer_complete_run(text, text, text, timestamptz, integer) FROM PUBLIC, authenticated;
+GRANT EXECUTE ON FUNCTION public.indexer_try_start_run(text, text, bigint, timestamptz, integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.indexer_complete_run(text, text, text, timestamptz, integer) TO service_role;
 
 -- ---------------------------------------------------------------------------
 -- Seed first known city override (Celo tcoin)

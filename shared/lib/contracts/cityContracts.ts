@@ -44,7 +44,26 @@ const LOCAL_CACHE_PREFIX = "city-contracts:v1:";
 const memoryCache = new Map<string, CacheRecord>();
 
 const CHAIN_RPC_URLS: Record<number, string> = {
+  42220: "https://forno.celo.org",
   545: "https://testnet.evm.nodes.onflow.org",
+};
+
+const FALLBACK_CITY_CONTRACTS: Record<string, ActiveCityContracts> = {
+  tcoin: {
+    citySlug: "tcoin",
+    cityId: citySlugToCityId("tcoin"),
+    version: 1,
+    chainId: 42220,
+    contracts: {
+      TCOIN: "0x298a698031e2fd7d8f0c830f3fd887601b40058c",
+      TTC: "0x0000000000000000000000000000000000000000",
+      CAD: "0x0000000000000000000000000000000000000000",
+      ORCHESTRATOR: "0x0000000000000000000000000000000000000000",
+      VOTING: "0x0000000000000000000000000000000000000000",
+    },
+    metadataURI: "https://sarafu.network/pools/0xA6f024Ad53766d332057d5e40215b695522ee3dE",
+    promotedAt: 0,
+  },
 };
 
 export function getRpcUrlForChainId(chainId: number): string {
@@ -144,6 +163,10 @@ function toActiveCityContracts(
   };
 }
 
+function tryGetFallbackCityContracts(citySlug: string): ActiveCityContracts | null {
+  return FALLBACK_CITY_CONTRACTS[citySlug] ?? null;
+}
+
 export async function getActiveCityContracts(options?: {
   citySlug?: string;
   forceRefresh?: boolean;
@@ -164,16 +187,26 @@ export async function getActiveCityContracts(options?: {
     }
   }
 
-  const cityId = citySlugToCityId(citySlug);
-  const registryClient = getCityRegistryPublicClient();
-  const record = (await registryClient.readContract({
-    address: CITY_REGISTRY_BOOTSTRAP.address,
-    abi: cityRegistryAbi,
-    functionName: "getActiveContracts",
-    args: [cityId],
-  })) as RegistryActiveRecord;
+  let data: ActiveCityContracts;
+  try {
+    const cityId = citySlugToCityId(citySlug);
+    const registryClient = getCityRegistryPublicClient();
+    const record = (await registryClient.readContract({
+      address: CITY_REGISTRY_BOOTSTRAP.address,
+      abi: cityRegistryAbi,
+      functionName: "getActiveContracts",
+      args: [cityId],
+    })) as RegistryActiveRecord;
 
-  const data = toActiveCityContracts(citySlug, cityId, record);
+    data = toActiveCityContracts(citySlug, cityId, record);
+  } catch (error) {
+    const fallback = tryGetFallbackCityContracts(citySlug);
+    if (!fallback) {
+      throw error;
+    }
+    data = fallback;
+  }
+
   const cacheRecord = { data, expiresAt: now + ACTIVE_CACHE_TTL_MS };
   memoryCache.set(citySlug, cacheRecord);
   writeLocalCache(citySlug, cacheRecord);

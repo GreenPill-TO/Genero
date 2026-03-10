@@ -25,7 +25,7 @@ node certora/run.js [[CONTRACT_NAME:]SPEC_NAME] [OPTIONS...]
 
 Where:
 
-- `CONTRACT_NAME` matches the `contract` key in the `./spec.json` file and may be empty. It will run all matching contracts if not provided.
+- `CONTRACT_NAME` matches the `contract` key in the `./specs.json` file and may be empty. It will run all matching contracts if not provided.
 - `SPEC_NAME` refers to a `spec` key from the `./specs.json` file. It will run every spec if not provided.
 - `OPTIONS` extend the [Certora Prover CLI options](https://docs.certora.com/en/latest/docs/prover/cli/options.html#certora-prover-cli-options) and will respect the preconfigured options in the `specs.json` file.
 
@@ -40,7 +40,7 @@ node certora/run.js AccessControl # Run the AccessControl spec against every con
 
 ## Adapting to changes in the contracts
 
-Some of our rules require the code to be simplified in various ways. Our primary tool for performing these simplifications is to run verification on a contract that extends the original contracts and overrides some of the methods. These "harness" contracts can be found in the `certora/harness` directory.
+Some of our rules require the code to be simplified in various ways. Our primary tool for performing these simplifications is to run verification on a contract that extends the original contracts and overrides some of the methods. These "harness" contracts can be found in the `certora/harnesses` directory.
 
 This pattern does require some modifications to the original code: some methods need to be made virtual or public, for example. These changes are handled by applying a patch
 to the code before verification by running:

@@ -23,7 +23,7 @@ export function Footer() {
             <Link href="/resources">Resources</Link>
             <Link href="/ecosystem">Ecosystem</Link>
             <Link href="https://github.com/GreenPill-TO/TorontoCoin" target="_blank" rel="noopener noreferrer">
-              Github
+              GitHub
             </Link>
             <Link href="/contact">Contact</Link>
           </div>

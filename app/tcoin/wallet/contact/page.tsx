@@ -74,7 +74,11 @@ export default function ContactPage() {
               <label className="mr-2" htmlFor="message">Message</label>
               <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} required />
             </div>
-            {submitError && <p className="text-red-600 dark:text-red-400">{submitError}</p>}
+            {submitError && (
+              <p className="text-red-600 dark:text-red-400" role="alert">
+                {submitError}
+              </p>
+            )}
             <div className="mt-8 flex items-center justify-between">
               <Link href="/">Return Home</Link>
               <Button

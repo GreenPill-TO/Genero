@@ -65,6 +65,16 @@ describe("cityContracts", () => {
     expect(readContractMock).toHaveBeenCalledTimes(1);
   });
 
+  it("falls back to default tcoin contracts when registry resolution fails", async () => {
+    readContractMock.mockRejectedValue(new Error("registry unavailable"));
+
+    const result = await getActiveCityContracts({ citySlug: "tcoin" });
+
+    expect(result.chainId).toBe(42220);
+    expect(result.contracts.TCOIN).toBe("0x298a698031e2fd7d8f0c830f3fd887601b40058c");
+    expect(getRpcUrlForChainId(result.chainId)).toBe("https://forno.celo.org");
+  });
+
   it("throws for unsupported chain IDs", () => {
     expect(() => getRpcUrlForChainId(99999)).toThrow(
       "No configured RPC URL for chainId 99999. Add it to CHAIN_RPC_URLS."

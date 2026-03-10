@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
+import { createServiceRoleClient } from "@shared/lib/supabase/serviceRole";
 import { runIndexerTouch } from "@services/indexer/src";
 
 export async function POST(req: Request) {
@@ -21,8 +22,10 @@ export async function POST(req: Request) {
       body = {};
     }
 
+    const serviceRoleClient = createServiceRoleClient();
+
     const result = await runIndexerTouch({
-      supabase,
+      supabase: serviceRoleClient,
       citySlug: body.citySlug,
     });
 
