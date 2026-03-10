@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import type { ExtractAbiFunctionNames } from "viem";
 import { orchestratorV2Abi } from "@shared/lib/contracts/management/abis";
 import { getCityContext, writeCityContractWithCubid } from "@shared/lib/contracts/management/clients";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 
-type TreasuryWriteFunction = ExtractAbiFunctionNames<typeof orchestratorV2Abi, "nonpayable" | "payable">;
+type TreasuryWriteFunction =
+  | "rebaseTCOIN"
+  | "updateDemurrageRate"
+  | "updateRebasePeriod"
+  | "whitelistStore"
+  | "removeStoreFromWhitelist"
+  | "applyGovernanceValues";
 
 export default function TreasuryPage() {
   const { userId, flags } = useManagementContext();
@@ -27,7 +32,7 @@ export default function TreasuryPage() {
     reserveRatio: "1000000",
   });
 
-  async function run(functionName: TreasuryWriteFunction, args: readonly unknown[], successMessage: string) {
+  async function run(functionName: TreasuryWriteFunction, args: unknown[], successMessage: string) {
     if (!userId) {
       setMessage("Missing Cubid user session.");
       return;

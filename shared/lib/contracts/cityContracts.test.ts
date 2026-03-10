@@ -38,10 +38,10 @@ describe("cityContracts", () => {
 
   it("fetches active city contracts and caches results", async () => {
     readContractMock.mockResolvedValue({
-      version: 2n,
-      createdAt: 1700000000n,
-      promotedAt: 1700000100n,
-      chainId: 545n,
+      version: BigInt(2),
+      createdAt: BigInt(1700000000),
+      promotedAt: BigInt(1700000100),
+      chainId: BigInt(545),
       contracts: {
         tcoin: "0x0000000000000000000000000000000000000001",
         ttc: "0x0000000000000000000000000000000000000002",

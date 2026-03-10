@@ -24,7 +24,7 @@ describe("Footer", () => {
 
   it("opens github link in a new tab", () => {
     render(<Footer />);
-    const link = screen.getByText("Github");
+    const link = screen.getByText("GitHub");
     expect(link.getAttribute("href")).toBe("https://github.com/GreenPill-TO/TorontoCoin");
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");

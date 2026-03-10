@@ -36,7 +36,7 @@ export function createClient(): SupabaseClient<any, any, any> {
         getAll() {
           return cookieStore?.getAll?.() ?? [];
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: StoredCookie[]) {
           if (!cookieStore) {
             return;
           }

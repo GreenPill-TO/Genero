@@ -33,19 +33,19 @@ describe("management proposals client", () => {
 
   it("maps getProposal contract tuple into UI view model", async () => {
     const readContract = vi.fn().mockResolvedValue({
-      proposalId: 7n,
+      proposalId: BigInt(7),
       proposalType: 1,
       cityId: "0x" + "11".repeat(32),
-      charityId: 0n,
+      charityId: BigInt(0),
       name: "",
       wallet: "0x0000000000000000000000000000000000000001",
       code: "0x" + "22".repeat(32),
       token: "0x0000000000000000000000000000000000000002",
       decimals: 6,
       metadataRecordId: "meta-7",
-      yesVotes: 4n,
-      noVotes: 1n,
-      deadline: 1700000000n,
+      yesVotes: BigInt(4),
+      noVotes: BigInt(1),
+      deadline: BigInt(1700000000),
       status: 1,
       proposer: "0x0000000000000000000000000000000000000003",
     });
@@ -61,7 +61,10 @@ describe("management proposals client", () => {
   });
 
   it("paginates proposal ids by status", async () => {
-    const readContract = vi.fn().mockResolvedValue([[1n, 3n, 5n], 5n]);
+    const readContract = vi.fn().mockResolvedValue([
+      [BigInt(1), BigInt(3), BigInt(5)],
+      BigInt(5),
+    ]);
     getCityPublicClientMock.mockReturnValue({ readContract });
 
     const result = await listProposalIdsByStatus({ status: 0, cursor: 0, size: 10 });
