@@ -10,6 +10,335 @@
 - Updated send-money key reconstruction to resolve encrypted shares by `wallet_key_id` + active credential/app context, falling back to most recent usage while exposing available credential candidates when no active match exists.
 - Extended shared Supabase service helper tests for credential and device metadata serialisation utilities.
 
+## v1.10
+### Timestamp
+- 2026-03-10 00:36:07 EDT
+
+### Objective
+- Finalize wallet UX/runtime fixes after local validation: resolve hydration and dark-mode behavior, unify footer behavior across public pages, fix contact form submission UX/backend compatibility, and ensure auth redirects land on `/dashboard`.
+
+### What Changed
+- Reworked wallet layout font loading to avoid SSR/CSR text mismatch and added an early theme bootstrap script so first paint honors saved/system dark mode.
+- Updated dark-mode hook persistence semantics (`theme_user_set`) so system preference is used until the user explicitly toggles theme.
+- Added footer theme toggle text link (`Dark Mode`/`Light Mode`), updated GitHub link to open in a new tab safely, and expanded footer tests.
+- Updated contact page UX: submit loading/error states, deterministic feedback, aligned `Return Home` + `Send` row, and shared footer render.
+- Hardened `/api/user_requests` insertion to attach `app_instance_id` when resolvable and gracefully proceed on older schemas without app-instance tables.
+- Added migration to create/backfill `public.user_requests` for environments missing that table.
+- Unified footer usage across `/contact`, `/resources`, and `/ecosystem`; updated ecosystem tests accordingly.
+- Changed sign-in OTP success flow to immediately route new and existing users to `/dashboard` (removed delayed timeout behavior), with corresponding test updates.
+- Updated home dark-mode background gradient to black top/bottom with darker center gray.
+
+### Files Edited
+- `app/tcoin/wallet/layout.tsx`
+- `shared/hooks/useDarkMode.tsx`
+- `app/tcoin/wallet/components/footer/Footer.tsx`
+- `app/tcoin/wallet/components/footer/Footer.test.tsx`
+- `app/tcoin/wallet/contact/page.tsx`
+- `app/api/user_requests/route.ts`
+- `supabase/migrations/20260309233800_create_user_requests_if_missing.sql`
+- `app/tcoin/wallet/resources/page.tsx`
+- `app/tcoin/wallet/ecosystem/page.tsx`
+- `app/tcoin/wallet/ecosystem/page.test.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `app/tcoin/wallet/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.09
+### Timestamp
+- 2026-03-10 00:31:40 EDT
+
+### Objective
+- Recover from a wrong-project Supabase push by resetting the linked `GeneroDev` remote (`uyopiuwmlhbevoxmfvfx`) and making the migration chain runnable from a true empty database.
+
+### What Changed
+- Stopped a local Docker Postgres container that was occupying port `54322` and interfering with Supabase CLI workflows.
+- Added an idempotent `cron_logs` baseline migration and fixed UUID default resolution for Supabase extension schema usage.
+- Added a legacy bootstrap migration (`v0.66`) to create required pre-existing tables/types/seed records that later ALTER-based migrations assume.
+- Removed embedded `-- migrate:down` sections from SQL migration files so Supabase applies forward-only SQL cleanly during `db reset`.
+- Fixed `auth.uid()` type mismatch in app-user-profile RLS policies by casting to text where `users.auth_user_id` is compared.
+- Successfully ran `supabase db reset --linked --yes` against `uyopiuwmlhbevoxmfvfx` through all migrations.
+- Verified with `supabase db push --linked --yes` returning `Remote database is up to date.`
+
+### Files Edited
+- `supabase/migrations/20250718111419_remote_schema.sql`
+- `supabase/migrations/20260114000000_v0.66_legacy_bootstrap.sql`
+- `supabase/migrations/20260120093000_v0.67_app_user_profiles.sql`
+- `supabase/migrations/20260125094500_v0.68_app_registry.sql`
+- `supabase/migrations/20260130100000_v0.69_app_user_profiles_rls.sql`
+- `supabase/migrations/20260201101500_v0.70_connections_profile_fks.sql`
+- `supabase/migrations/20260211180453_v0.72_connections_profile_fks.sql`
+- `supabase/migrations/20260212123000_v0.89_wallet_keys.sql`
+- `agent-context/session-log.md`
+
+## v1.08
+### Timestamp
+- 2026-03-09 22:47:55 EDT
+
+### Objective
+- Replace remaining hardcoded Supabase runtime parameters with environment variables, remove legacy Supabase local config artifacts, and document the updated env setup.
+
+### What Changed
+- Replaced `NEXT_PUBLIC_SUPABASE_ANON_KEY` usage with `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` across browser, server, and middleware Supabase client initialization.
+- Added shared Supabase asset env helpers and removed hardcoded Supabase storage URLs from wallet landing banners and wallet welcome funding video.
+- Updated Next.js remote image host configuration to derive allowed hostnames from environment-provided Supabase URLs instead of hardcoded project hostnames.
+- Expanded `.env.local.example` with grouped explanatory comments and concrete examples for Supabase, Cubid, wallet assets, app runtime, and indexer variables.
+- Added explicit `.env.local` ignore entry in `.gitignore`.
+- Removed legacy `supabase/config.toml` and `supabase/sql-schema.sql` files per updated repo direction, and updated workflow guidance to rely on migration files only.
+
+### Files Edited
+- `.env.local.example`
+- `.gitignore`
+- `next.config.js`
+- `shared/lib/supabase/client.ts`
+- `shared/lib/supabase/server.ts`
+- `shared/lib/supabase/middleware.ts`
+- `shared/lib/supabase/assets.ts`
+- `app/tcoin/wallet/components/landing-header/LandingHeader.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `agent-context/workflow.md`
+- `supabase/config.toml` (deleted)
+- `supabase/sql-schema.sql` (deleted)
+- `agent-context/session-log.md`
+
+## v1.07
+### Timestamp
+- 2026-03-09 20:04:28 EDT
+
+### Objective
+- Implement a user-triggered Genero contract indexer with 5-minute start/complete cooldowns, Sarafu pool overlap discovery, tracker-first ingestion with RPC fallback, and app/login trigger wiring.
+
+### What Changed
+- Added a new Supabase migration that creates the `indexer` and `chain_data` schemas, run-control/checkpoint tables, pool link/token discovery tables, idempotent raw event storage, normalized chain-data tables, RLS policies, authenticated grants, and RPC helpers `indexer_try_start_run` + `indexer_complete_run`.
+- Added a new TypeScript indexer service under `services/indexer` covering run lifecycle control, city contract resolution (registry-first with DB override fallback), Sarafu pool discovery by token overlap, tracker pull ingestion, RPC log fallback ingestion, event fingerprinting, and normalized/idempotent persistence.
+- Added new API endpoints `POST /api/indexer/touch` and `GET /api/indexer/status` with authenticated access and scope-key execution.
+- Added shared indexer client utilities and a `useIndexerTrigger` hook with local dedupe TTL; wired triggers into login (`SIGNED_IN`) and app-use surfaces for wallet, sparechange, and contracts flows.
+- Added focused tests for cooldown logic, overlap detection, fingerprint stability, and updated auth-hook tests for login-trigger behavior.
+- Added indexer environment variable examples and TypeScript path alias for `@services/*`.
+
+### Files Edited
+- `supabase/migrations/20260309191000_v0.95_user_triggered_indexer.sql`
+- `services/indexer/src/config.ts`
+- `services/indexer/src/types.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/state/cooldown.ts`
+- `services/indexer/src/state/runControl.ts`
+- `services/indexer/src/discovery/abis.ts`
+- `services/indexer/src/discovery/cityContracts.ts`
+- `services/indexer/src/discovery/pools.ts`
+- `services/indexer/src/ingest/trackerClient.ts`
+- `services/indexer/src/ingest/rpcFallback.ts`
+- `services/indexer/src/normalize/fingerprint.ts`
+- `services/indexer/src/normalize/persist.ts`
+- `services/indexer/src/state/cooldown.test.ts`
+- `services/indexer/src/discovery/pools.test.ts`
+- `services/indexer/src/normalize/fingerprint.test.ts`
+- `app/api/indexer/touch/route.ts`
+- `app/api/indexer/status/route.ts`
+- `shared/lib/indexer/types.ts`
+- `shared/lib/indexer/trigger.ts`
+- `shared/lib/indexer/index.ts`
+- `shared/hooks/useIndexerTrigger.ts`
+- `shared/api/hooks/useAuth.ts`
+- `shared/api/hooks/useAuth.test.tsx`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/sparechange/ContentLayout.tsx`
+- `app/tcoin/contracts/hooks/useManagementContext.ts`
+- `.env.local.example`
+- `tsconfig.json`
+- `agent-context/session-log.md`
+
+## v1.06
+### Timestamp
+- 2026-03-09 16:29:49 EDT
+
+### Objective
+- Record the current implementation state in the session log and commit all pending contract-management and supporting changes.
+
+### What Changed
+- Added this `v96` session-log entry with timestamp, objective, and change summary headings.
+- Prepared the repository for a single commit that captures the full pending implementation set plus updated session documentation.
+
+### Files Edited
+- `agent-context/session-log.md`
+
+## v1.05
+### Timestamp
+- 2026-03-09 16:28:46 EDT
+
+### Objective
+- Implement the new `app/tcoin/contracts` contract-management app with role-based interfaces, add required V2 governance/orchestrator Solidity functionality for charity and reserve-currency proposals, wire shared contract-management clients, and add Supabase metadata storage for proposal UX.
+
+### What Changed
+- Added `VotingV2` and `OrchestratorV2` contracts with steward voting, owner-executed proposal lifecycle, reserve-currency management, governance value application, and role/management helper methods.
+- Added V2 Solidity unit tests covering charity proposal lifecycle, reserve proposal lifecycle, quorum behavior, one-vote enforcement, expiry handling, owner-only execute/cancel, peg vote behavior, and status pagination.
+- Patched `TCOIN` correctness issues (`transfer` semantics and `balanceOf` recursion) and added `pause/unpause` controls to `CAD`.
+- Added a new contract-management app at `app/tcoin/contracts` with pages for governance, city-manager proposals, steward nomination, charity-operator minting, treasury controls, token-admin controls, registry operations, and proposal detail actions.
+- Added shared management contract modules (ABIs, city context/client helpers, role resolution, Cubid signer transaction path, proposal and registry operation clients, and shared management types).
+- Added Supabase service methods for creating/listing proposal metadata, linking on-chain proposal IDs, and uploading images for proposal content.
+- Added a new Supabase migration to create contract-management metadata/link tables with RLS policies, seed the `contracts` app registry entry, and provision a public `contract-management` storage bucket.
+- Added a new TypeScript alias for `@tcoin/contracts/*`.
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/v2/OrchestratorV2.sol`
+- `contracts/foundry/src/torontocoin/v2/VotingV2.sol`
+- `contracts/foundry/src/torontocoin/v2/interfaces/IOrchestratorV2.sol`
+- `contracts/foundry/src/torontocoin/v2/interfaces/IVotingV2.sol`
+- `contracts/foundry/test/unit/torontocoin-v2/VotingV2.t.sol`
+- `contracts/foundry/src/torontocoin/TCOIN.sol`
+- `contracts/foundry/src/torontocoin/CADCOIN.sol`
+- `app/tcoin/contracts/layout.tsx`
+- `app/tcoin/contracts/page.tsx`
+- `app/tcoin/contracts/governance/page.tsx`
+- `app/tcoin/contracts/city-manager/page.tsx`
+- `app/tcoin/contracts/stewards/page.tsx`
+- `app/tcoin/contracts/charity-operator/page.tsx`
+- `app/tcoin/contracts/treasury/page.tsx`
+- `app/tcoin/contracts/token-admin/page.tsx`
+- `app/tcoin/contracts/registry/page.tsx`
+- `app/tcoin/contracts/proposals/[id]/page.tsx`
+- `app/tcoin/contracts/hooks/useManagementContext.ts`
+- `app/tcoin/contracts/styles/app.scss`
+- `shared/lib/contracts/management/abis/orchestratorV2Abi.ts`
+- `shared/lib/contracts/management/abis/votingV2Abi.ts`
+- `shared/lib/contracts/management/abis/accessControlTokenAbi.ts`
+- `shared/lib/contracts/management/abis/cityImplementationRegistryAbi.ts`
+- `shared/lib/contracts/management/abis/index.ts`
+- `shared/lib/contracts/management/types.ts`
+- `shared/lib/contracts/management/clients.ts`
+- `shared/lib/contracts/management/cubidSigner.ts`
+- `shared/lib/contracts/management/proposals.ts`
+- `shared/lib/contracts/management/registryOps.ts`
+- `shared/lib/contracts/management/roles.ts`
+- `shared/lib/contracts/management/index.ts`
+- `shared/lib/contracts/management/proposals.test.ts`
+- `shared/api/services/contractManagementService.ts`
+- `supabase/migrations/20260309163000_v0.94_contract_management.sql`
+- `tsconfig.json`
+
+## v1.04
+### Timestamp
+- 2026-03-09 15:28:22 EDT
+
+### Objective
+- Implement the City Contract Version Registry + promotion workflow plan end-to-end, wire app transaction hooks to on-chain registry resolution, document the implementation, and validate with targeted Solidity/TypeScript tests.
+
+### What Changed
+- Implemented `CityImplementationRegistry` with version history, active promotion, owner-only mutation, required-address validation, and registration/promotion events.
+- Added Foundry deploy and promotion scripts to deploy the registry, parse deployment JSON artifacts, derive lowercase `cityId`, call `registerAndPromote`, and persist promotion outputs.
+- Added OpenZeppelin Foundry dependencies and remappings to support reliable local `forge build/test` for current sources and new registry tests.
+- Added app-side shared registry ABI/client/resolver modules and `ActiveCityContracts` lookup flow with 60-second memory/localStorage caching.
+- Rewired `useTokenBalance` and `useSendMoney` to resolve token/RPC at runtime from the on-chain registry instead of hardcoded token address and RPC constants.
+- Added/updated unit tests for registry resolver modules and hooks; fixed Vitest hoisted mock usage and excluded Foundry lib tests from repo Vitest discovery.
+- Added implementation documentation with architecture, runbook, verification, and follow-up notes.
+
+### Files Edited
+- `contracts/foundry/src/registry/CityImplementationRegistry.sol`
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/test/unit/CityImplementationRegistry.t.sol`
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/README.md`
+- `contracts/foundry/lib/openzeppelin-contracts/` (added)
+- `contracts/foundry/lib/openzeppelin-contracts-upgradeable/` (added)
+- `shared/lib/contracts/cityRegistryAbi.ts`
+- `shared/lib/contracts/cityRegistryClient.ts`
+- `shared/lib/contracts/cityContracts.ts`
+- `shared/lib/contracts/cityContracts.test.ts`
+- `shared/hooks/useTokenBalance.ts`
+- `shared/hooks/useTokenBalance.test.tsx`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/hooks/useSendMoney.test.ts`
+- `vitest.config.ts`
+- `vitest.setup.ts`
+- `package.json`
+- `contracts/foundry/src/torontocoin/TCOIN.sol`
+- `contracts/foundry/src/torontocoin/sampleERC20.sol`
+- `contracts/foundry/src/torontocoin/Voting.sol`
+- `contracts/foundry/src/torontocoin/Orchestration.sol`
+- `contracts/foundry/src/torontocoin/PlainERC20.sol`
+- `docs/city-contract-version-registry-implementation.md`
+
+## v1.03
+### Timestamp
+- 2026-03-09 14:18:24 EDT
+
+### Objective
+- Document the current TorontoCoin Solidity system state, provide a corrected interaction diagram, and define a concrete patch list to make deployment possible end-to-end.
+
+### What Changed
+- Added a new architecture and deployability document for the imported TorontoCoin contracts.
+- Documented current non-deployable status and root causes (dependency/import blockers + critical contract logic issues).
+- Added a corrected Mermaid interaction diagram for user/store redemption, governance flow, and charity mint-credit loop.
+- Added a prioritized patch list (`P0`, `P1`, `P2`) covering correctness fixes, bootstrap/roles/deployability fixes, and hardening tasks.
+- Added a suggested deployment sequence after fixes are applied.
+
+### Files Edited
+- `docs/torontocoin-contracts-current-state.md`
+
+## v1.02
+### Timestamp
+- 2026-03-09 13:53:31 EDT
+
+### Objective
+- Import TorontoCoin contract artifacts into the Foundry workspace and place the TorontoCoin README and whitepaper in `app/tcoin/`.
+
+### What Changed
+- Imported TorontoCoin Solidity and ABI artifacts into `contracts/foundry/src/torontocoin/` (copy-only, no git history).
+- Moved the imported TorontoCoin `README.md` from the Foundry source folder to `app/tcoin/README.md`.
+- Moved the TorontoCoin whitepaper PDF from `docs/torontocoin/` to `app/tcoin/T-Coin Whitepaper.pdf`.
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/CADCOIN.sol`
+- `contracts/foundry/src/torontocoin/Orchestration.sol`
+- `contracts/foundry/src/torontocoin/PlainERC20.abi`
+- `contracts/foundry/src/torontocoin/PlainERC20.sol`
+- `contracts/foundry/src/torontocoin/TCOIN.sol`
+- `contracts/foundry/src/torontocoin/TTCCOIN.sol`
+- `contracts/foundry/src/torontocoin/Voting.sol`
+- `contracts/foundry/src/torontocoin/sampleERC20.sol`
+- `app/tcoin/README.md`
+- `app/tcoin/T-Coin Whitepaper.pdf`
+
+## v1.01
+### Timestamp
+- 2026-03-09 13:29:44 EDT
+
+### Objective
+- Scaffold a Foundry workspace in this repository with a clean, production-oriented folder layout and baseline configuration.
+
+### What Changed
+- Initialized a new Forge project at `contracts/foundry`.
+- Removed default sample files (`Counter.sol`, `Counter.t.sol`, `Counter.s.sol`) to avoid placeholder code in mainline.
+- Added Solidity source subfolders for common separation of concerns: `errors`, `interfaces`, `libraries`, `mocks`, and `types`.
+- Added test subfolders for `unit`, `integration`, `invariant`, and shared `helpers`.
+- Added script subfolders (`script/deploy`, `script/helpers`) and a `deployments` directory for deployment artifacts.
+- Updated Foundry config to include explicit `test` and `script` paths, optimizer settings, cache path, remapping detection, and filesystem permission for deployment outputs.
+- Added local workspace helpers: `.gitignore`, `.env.example`, and a workspace README documenting layout and conventions.
+
+### Files Edited
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/README.md`
+- `contracts/foundry/.gitignore`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/src/Counter.sol` (deleted)
+- `contracts/foundry/test/Counter.t.sol` (deleted)
+- `contracts/foundry/script/Counter.s.sol` (deleted)
+- `contracts/foundry/src/errors/.gitkeep`
+- `contracts/foundry/src/interfaces/.gitkeep`
+- `contracts/foundry/src/libraries/.gitkeep`
+- `contracts/foundry/src/mocks/.gitkeep`
+- `contracts/foundry/src/types/.gitkeep`
+- `contracts/foundry/test/unit/.gitkeep`
+- `contracts/foundry/test/integration/.gitkeep`
+- `contracts/foundry/test/invariant/.gitkeep`
+- `contracts/foundry/test/helpers/.gitkeep`
+- `contracts/foundry/script/deploy/.gitkeep`
+- `contracts/foundry/script/helpers/.gitkeep`
+- `contracts/foundry/deployments/.gitkeep`
+
+
 ## v0.90
 - Fixed `v0.89` migration to support legacy `wallet_list` rows with `user_id IS NULL` by replacing a full-table `wallet_key_id NOT NULL` constraint with a conditional check (`user_id IS NULL OR wallet_key_id IS NOT NULL`), while preserving foreign-key integrity.
 - Updated the SQL schema snapshot to keep `wallet_list.wallet_key_id` nullable for non-user rows.
