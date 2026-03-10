@@ -19,6 +19,7 @@
     ],
     "paths": {
       "@shared/*": ["./shared/*"],
+      "@services/*": ["./services/*"],
       "@tcoin/wallet/*": ["./app/tcoin/wallet/*"],
       "@tcoin/sparechange/*": ["./app/tcoin/sparechange/*"],
       "@tcoin/contracts/*": ["./app/tcoin/contracts/*"]

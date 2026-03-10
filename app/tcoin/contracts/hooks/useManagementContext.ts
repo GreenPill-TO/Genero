@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { useIndexerTrigger } from "@shared/hooks/useIndexerTrigger";
 import { createClient } from "@shared/lib/supabase/client";
 import { resolveManagementRoles } from "@shared/lib/contracts/management/roles";
 
@@ -19,6 +20,11 @@ export function useManagementContext(citySlug?: string) {
     const raw = userData?.cubidData?.id;
     return typeof raw === "number" ? raw : null;
   }, [userData?.cubidData?.id]);
+
+  useIndexerTrigger({
+    citySlug,
+    enabled: !isAuthLoading && Boolean(userId),
+  });
 
   useEffect(() => {
     let cancelled = false;

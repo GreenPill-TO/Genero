@@ -3,6 +3,7 @@ import { Session } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { toast } from "react-toastify";
+import { triggerIndexerTouch } from "@shared/lib/indexer/trigger";
 import { fetchCubidData } from "../services/cubidService";
 import { fetchCubidDataFromSupabase, fetchUserByContact, getSession, signOut, updateCubidDataInSupabase } from "../services/supabaseService";
 
@@ -22,11 +23,17 @@ export const useAuth = () => {
     const supabase = createClient();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       queryClient.setQueryData(["auth-data"], session ?? null);
 
       if (session) {
         queryClient.invalidateQueries({ queryKey: ["user-data"] });
+
+        if (event === "SIGNED_IN") {
+          void triggerIndexerTouch().catch(() => {
+            // Indexer trigger is best-effort and should not affect auth flow.
+          });
+        }
       } else {
         cubidDataFetched.current = false;
         queryClient.removeQueries({ queryKey: ["user-data"] });
