@@ -17,19 +17,3 @@ ALTER TABLE IF EXISTS public.connections
 
 COMMIT;
 
--- migrate:down
-BEGIN;
-
-ALTER TABLE IF EXISTS public.connections
-  DROP CONSTRAINT IF EXISTS connections_owner_profile_fkey,
-  DROP CONSTRAINT IF EXISTS connections_connected_profile_fkey;
-
-ALTER TABLE IF EXISTS public.connections
-  ADD CONSTRAINT connections_owner_user_id_fkey
-    FOREIGN KEY (owner_user_id)
-    REFERENCES public.users (id),
-  ADD CONSTRAINT connections_connected_user_id_fkey
-    FOREIGN KEY (connected_user_id)
-    REFERENCES public.users (id);
-
-COMMIT;
