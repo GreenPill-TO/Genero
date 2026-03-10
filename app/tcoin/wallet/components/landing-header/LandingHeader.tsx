@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useModal } from "@shared/contexts/ModalContext";
+import { TCOIN_BANNER_DARK_URL, TCOIN_BANNER_LIGHT_URL } from "@shared/lib/supabase/assets";
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 
 export function LandingHeader() {
@@ -67,7 +68,7 @@ export function LandingHeader() {
         <div className="flex items-center justify-between md:grid md:[grid-template-columns:15%_70%_15%] lg:[grid-template-columns:30%_40%_30%] pb-1">
           <div className="flex-1 px-4 md:px-6 md:col-start-2">
             <Image
-              src="https://osgpkjqbdbybbmhrfxnw.supabase.co/storage/v1/object/public/website-images/tcoin-banner-light-mode.png"
+              src={TCOIN_BANNER_LIGHT_URL}
               alt="Toronto Coin banner"
               width={1920}
               height={600}
@@ -75,7 +76,7 @@ export function LandingHeader() {
               priority
             />
             <Image
-              src="https://osgpkjqbdbybbmhrfxnw.supabase.co/storage/v1/object/public/website-images/tcoin-banner-dark-mode.png?v=1"
+              src={TCOIN_BANNER_DARK_URL}
               alt="Toronto Coin banner"
               width={1920}
               height={600}

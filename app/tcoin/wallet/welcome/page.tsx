@@ -13,6 +13,7 @@ import {
 } from "@shared/api/services/supabaseService";
 import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
 import { Button } from "@shared/components/ui/Button";
+import { TCOIN_WELCOME_VIDEO_URL } from "@shared/lib/supabase/assets";
 import { cn } from "@shared/utils/classnames";
 import { useForm, Controller } from "react-hook-form";
 
@@ -691,11 +692,17 @@ export default function NewWelcomePage() {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-900">
                 <h2 className="text-2xl font-semibold text-white mb-4">How to Fund Your Account</h2>
-                <video
-                    src="https://kyxsjnwkvddgjqigdpsv.supabase.co/storage/v1/object/public/screen_recording/Screen%20Recording%202025-02-24%20at%206.54.17%20PM.mov"
-                    controls
-                    className="w-full max-w-2xl"
-                />
+                {TCOIN_WELCOME_VIDEO_URL ? (
+                    <video
+                        src={TCOIN_WELCOME_VIDEO_URL}
+                        controls
+                        className="w-full max-w-2xl"
+                    />
+                ) : (
+                    <p className="text-sm text-gray-300 max-w-2xl text-center">
+                        Set NEXT_PUBLIC_TCOIN_WELCOME_VIDEO_URL to display the onboarding funding video.
+                    </p>
+                )}
                 <Button onClick={() => router.push("/dashboard")} className="mt-6">
                     Continue to Dashboard
                 </Button>

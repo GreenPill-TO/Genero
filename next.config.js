@@ -6,6 +6,34 @@ const appToServe = process.env.NEXT_PUBLIC_APP_NAME || "wallet"; // Default app 
 
 console.log(`Serving ${appToServe} for ${citycoin}`);
 
+function hostnameFromUrl(value) {
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
+}
+
+const supabaseImageHostnames = Array.from(
+  new Set(
+    [
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL,
+      process.env.NEXT_PUBLIC_TCOIN_BANNER_DARK_URL,
+      ...(process.env.NEXT_PUBLIC_SUPABASE_IMAGE_URLS || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ]
+      .map(hostnameFromUrl)
+      .filter(Boolean)
+  )
+);
+
 const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
@@ -14,13 +42,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "osgpkjqbdbybbmhrfxnw.supabase.co",
-        pathname: "/storage/v1/object/public/website-images/**",
-      },
-    ],
+    remotePatterns: supabaseImageHostnames.map((hostname) => ({
+      protocol: "https",
+      hostname,
+      pathname: "/**",
+    })),
   },
   // No redirect; instead, directly serve from base URL
   async rewrites() {

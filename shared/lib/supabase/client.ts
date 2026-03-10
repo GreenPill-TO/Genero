@@ -10,7 +10,7 @@ type CookieStore = {
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabasePublishableDefaultKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
 
 let browserClient: SupabaseClient<any, any, any> | null = null;
 
@@ -31,7 +31,7 @@ export function createClient(): SupabaseClient<any, any, any> {
       cookieStore = null;
     }
 
-    return createServerClient(supabaseUrl, supabaseAnonKey, {
+    return createServerClient(supabaseUrl, supabasePublishableDefaultKey, {
       cookies: {
         getAll() {
           return cookieStore?.getAll?.() ?? [];
@@ -55,7 +55,7 @@ export function createClient(): SupabaseClient<any, any, any> {
   }
 
   if (!browserClient) {
-    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+    browserClient = createBrowserClient(supabaseUrl, supabasePublishableDefaultKey);
   }
 
   return browserClient;
