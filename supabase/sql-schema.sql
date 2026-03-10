@@ -472,7 +472,7 @@ CREATE TABLE IF NOT EXISTS public."user_encrypted_share" (
   "user_id" bigint,
   "wallet_key_id" bigint NOT NULL,
   "namespace" public.namespace DEFAULT 'EVM' NOT NULL,
-  "credential_id" text,
+  "credential_id" text NOT NULL,
   "app_instance_id" bigint NOT NULL,
   "device_info" jsonb,
   "last_used_at" timestamp with time zone,

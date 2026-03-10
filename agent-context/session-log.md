@@ -1,3 +1,9 @@
+## v0.92
+- Hardened `v0.91` passkey migration by inferring `app_instance_id` from each user’s latest `app_user_profiles` row before falling back to wallet/tcoin, preserving legacy app context where possible.
+- Added deterministic legacy credential backfill tokens plus a `credential_id NOT NULL` enforcement, deduplicated `user_encrypted_share` rows by `(wallet_key_id, app_instance_id, credential_id)`, and kept only the most recent record before the unique constraint is applied.
+- Updated `useSendMoney` credential selection to support legacy cross-app share fallback when app-scoped lookups are empty and to fallback to the most recent share when a stored active credential no longer matches.
+- Added unit tests for share selection logic covering active credential matching, fallback selection, app-scoped no-share errors, and candidate list normalisation.
+
 ## v0.91
 - Added a reversible Supabase migration expanding `user_encrypted_share` with app/credential/device/audit metadata (`credential_id`, `app_instance_id`, `device_info`, `last_used_at`, `revoked_at`), plus backfills for credential IDs and the default Wallet app instance.
 - Updated Wallet and SpareChange onboarding wallet callbacks to persist decoded credential IDs, resolved app instance IDs, and device metadata alongside encrypted user shares.

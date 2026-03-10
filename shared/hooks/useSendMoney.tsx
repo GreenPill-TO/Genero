@@ -101,6 +101,7 @@ export const __internal = {
         resetWebAuthnLock: () => {
                 webAuthnLocked = false;
         },
+        resolveShareSelection,
 };
 
 // Helper: Convert base64 string to ArrayBuffer.
@@ -118,6 +119,41 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
 function extractDecimalFromString(str: string): number {
 	const match = str.match(/-?\d+(\.\d+)?/);
 	return match ? Number(match[0]) : NaN;
+}
+
+type UserShareRow = {
+        id: number;
+        credential_id: string | null;
+        user_share_encrypted: any;
+};
+
+function resolveShareSelection({
+        userShares,
+        activeCredentialId,
+        activeAppSlug,
+}: {
+        userShares: UserShareRow[] | null | undefined;
+        activeCredentialId: string | null;
+        activeAppSlug?: string | null;
+}) {
+        if (!userShares || userShares.length === 0) {
+                const scope = activeAppSlug ? ` for app instance "${activeAppSlug}"` : '';
+                throw new Error(`No user shares were found${scope}. Reconnect your wallet to refresh passkey credentials.`);
+        }
+
+        const matchingCredential = activeCredentialId
+                ? userShares.find((row) => normaliseCredentialId(row.credential_id) === activeCredentialId)
+                : null;
+        const selectedShare = matchingCredential ?? userShares[0];
+        const credentialCandidates = userShares
+                .map((row) => normaliseCredentialId(row.credential_id))
+                .filter((value): value is string => Boolean(value));
+
+        return {
+                selectedShare,
+                credentialCandidates,
+                usedCredentialFallback: Boolean(activeCredentialId && !matchingCredential),
+        };
 }
 
 export const useSendMoney = ({
@@ -210,56 +246,67 @@ export const useSendMoney = ({
                         throw new Error('No app_share found for this wallet key');
                 }
 
-                let userShareQuery = supabase
-                        .from('user_encrypted_share')
-                        .select('id, user_share_encrypted, credential_id, app_instance_id, last_used_at, created_at, revoked_at')
-                        .match({ wallet_key_id: walletKeyId })
-                        .is('revoked_at', null)
-                        .order('last_used_at', { ascending: false })
-                        .order('created_at', { ascending: false })
-                        .limit(20);
+                const fetchShares = async (appInstanceId: number | null) => {
+                        let userShareQuery = supabase
+                                .from('user_encrypted_share')
+                                .select('id, user_share_encrypted, credential_id, app_instance_id, last_used_at, created_at, revoked_at')
+                                .match({ wallet_key_id: walletKeyId })
+                                .is('revoked_at', null)
+                                .order('last_used_at', { ascending: false })
+                                .order('created_at', { ascending: false })
+                                .limit(20);
 
-                if (activeAppInstance?.id) {
-                        userShareQuery = userShareQuery.eq('app_instance_id', activeAppInstance.id);
+                        if (appInstanceId) {
+                                userShareQuery = userShareQuery.eq('app_instance_id', appInstanceId);
+                        }
+
+                        return userShareQuery;
+                };
+
+                const { data: scopedShares, error: scopedShareError } = await fetchShares(activeAppInstance?.id ?? null);
+                if (scopedShareError) {
+                        throw new Error(scopedShareError.message);
                 }
 
-                const { data: userShares, error: userShareError } = await userShareQuery;
+                let userShares = scopedShares;
+                let usedLegacyAppFallback = false;
 
-                if (userShareError) {
-                        throw new Error(userShareError.message);
+                if ((!userShares || userShares.length === 0) && activeAppInstance?.id) {
+                        const { data: fallbackShares, error: fallbackShareError } = await fetchShares(null);
+                        if (fallbackShareError) {
+                                throw new Error(fallbackShareError.message);
+                        }
+                        userShares = fallbackShares;
+                        usedLegacyAppFallback = Boolean(userShares && userShares.length > 0);
                 }
 
-                if (!userShares || userShares.length === 0) {
-                        const scope = activeAppInstance?.slug
-                                ? ` for app instance "${activeAppInstance.slug}"`
-                                : '';
-                        throw new Error(`No user shares were found${scope}. Reconnect your wallet to refresh passkey credentials.`);
-                }
+                const selection = resolveShareSelection({
+                        userShares: userShares as UserShareRow[] | null | undefined,
+                        activeCredentialId,
+                        activeAppSlug: activeAppInstance?.slug,
+                });
+                setCredentialCandidates(selection.credentialCandidates);
 
-                const matchingCredential = activeCredentialId
-                        ? userShares.find((row) => normaliseCredentialId(row.credential_id) === activeCredentialId)
-                        : null;
-
-                const selectedShare = matchingCredential ?? userShares[0];
-                const options = userShares
-                        .map((row) => normaliseCredentialId(row.credential_id))
-                        .filter((value): value is string => Boolean(value));
-                setCredentialCandidates(options);
-
-                if (activeCredentialId && !matchingCredential) {
-                        throw new Error(
-                                `No encrypted share matches your active credential. Available credential IDs: ${options.join(', ') || 'none'}`
+                if (usedLegacyAppFallback && activeAppInstance?.slug) {
+                        console.warn(
+                                `No user shares matched app instance "${activeAppInstance.slug}". Falling back to legacy user shares across app instances.`
                         );
                 }
 
-                if (!selectedShare?.user_share_encrypted) {
+                if (selection.usedCredentialFallback && activeCredentialId) {
+                        console.warn(
+                                `Active credential "${activeCredentialId}" did not match a stored user share. Falling back to the most recently used credential.`
+                        );
+                }
+
+                if (!selection.selectedShare?.user_share_encrypted) {
                         throw new Error('No user_share_encrypted found for this wallet key');
                 }
 
                 const { error: touchError } = await supabase
                         .from('user_encrypted_share')
                         .update({ last_used_at: new Date().toISOString() })
-                        .eq('id', selectedShare.id);
+                        .eq('id', selection.selectedShare.id);
 
                 if (touchError) {
                         console.warn('Could not update last_used_at for selected credential', touchError);
@@ -267,7 +314,7 @@ export const useSendMoney = ({
 
                 return {
                         app_share: walletKey.app_share,
-                        user_share_encrypted: selectedShare.user_share_encrypted,
+                        user_share_encrypted: selection.selectedShare.user_share_encrypted,
                 };
         };
 
