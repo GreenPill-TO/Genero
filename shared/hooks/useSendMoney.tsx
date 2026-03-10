@@ -44,6 +44,19 @@ const combineShares = (shares: string[]): string => {
 let webAuthnInstance: WebAuthnCrypto | null = null;
 let webAuthnLocked = false;
 
+const FALLBACK_TOKEN_RUNTIME_BY_CITY: Record<
+        string,
+        {
+                chainId: number;
+                tokenAddress: string;
+        }
+> = {
+        tcoin: {
+                chainId: 42220,
+                tokenAddress: "0x298a698031e2fd7d8f0c830f3fd887601b40058c",
+        },
+};
+
 export class WebAuthnRequestInProgressError extends Error {
         constructor() {
                 super(
@@ -98,12 +111,27 @@ const decodeUserShare = async (jsonData: any): Promise<string> => {
 };
 
 async function resolveTokenRuntimeConfig() {
-        const activeContracts = await getActiveCityContracts();
-        return {
-                tokenAddress: activeContracts.contracts.TCOIN,
-                rpcUrl: getRpcUrlForChainId(activeContracts.chainId),
-                chainId: activeContracts.chainId,
-        };
+        try {
+                const activeContracts = await getActiveCityContracts();
+                return {
+                        tokenAddress: activeContracts.contracts.TCOIN,
+                        rpcUrl: getRpcUrlForChainId(activeContracts.chainId),
+                        chainId: activeContracts.chainId,
+                };
+        } catch (error) {
+                const citySlug = (process.env.NEXT_PUBLIC_CITYCOIN ?? "tcoin").trim().toLowerCase();
+                const fallback = FALLBACK_TOKEN_RUNTIME_BY_CITY[citySlug];
+
+                if (!fallback) {
+                        throw error;
+                }
+
+                return {
+                        tokenAddress: fallback.tokenAddress,
+                        rpcUrl: getRpcUrlForChainId(fallback.chainId),
+                        chainId: fallback.chainId,
+                };
+        }
 }
 
 export const __internal = {

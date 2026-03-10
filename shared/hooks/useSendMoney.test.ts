@@ -57,6 +57,20 @@ describe("runWithWebAuthnLock", () => {
       chainId: 545,
     });
   });
+
+  it("falls back to tcoin defaults when registry resolution fails", async () => {
+    getActiveCityContractsMock.mockRejectedValue(new Error("registry unavailable"));
+    getRpcUrlForChainIdMock.mockImplementation((chainId: number) => {
+      if (chainId === 42220) return "https://forno.celo.org";
+      throw new Error("unexpected chain");
+    });
+
+    await expect(__internal.resolveTokenRuntimeConfig()).resolves.toEqual({
+      tokenAddress: "0x298a698031e2fd7d8f0c830f3fd887601b40058c",
+      rpcUrl: "https://forno.celo.org",
+      chainId: 42220,
+    });
+  });
 });
 
 describe("resolveShareSelection", () => {
