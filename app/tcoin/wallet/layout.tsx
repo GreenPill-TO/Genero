@@ -31,10 +31,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');`}</style>
-        <style>{`.special-elite-regular { font-family: 'Special Elite', system-ui; font-weight: 400; font-style: normal; }`}</style>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var stored=window.localStorage.getItem('theme');var userSet=window.localStorage.getItem('theme_user_set')==='1';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var shouldUseDark=userSet&&(stored==='dark'||stored==='light')?stored==='dark':prefersDark;if(shouldUseDark){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`,
+          }}
+        />
       </head>
-      <body className="special-elite-regular">
+      <body style={{ fontFamily: "'Special Elite', system-ui" }}>
         <style jsx global>{`
           body {
             line-height: 1.333;

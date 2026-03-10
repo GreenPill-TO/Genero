@@ -21,6 +21,7 @@ export default function useDarkMode() {
     const next = !isDarkMode;
     if (typeof window !== "undefined") {
       window.localStorage.setItem("theme", next ? "dark" : "light");
+      window.localStorage.setItem("theme_user_set", "1");
     }
     applyClass(next);
   };
@@ -28,11 +29,14 @@ export default function useDarkMode() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("theme");
-    if (stored) {
+    const userSetTheme = window.localStorage.getItem("theme_user_set") === "1";
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    if (userSetTheme && (stored === "dark" || stored === "light")) {
       applyClass(stored === "dark");
       return;
     }
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
     applyClass(mediaQuery.matches);
     const listener = (e: MediaQueryListEvent) => applyClass(e.matches);
     mediaQuery.addEventListener("change", listener);
