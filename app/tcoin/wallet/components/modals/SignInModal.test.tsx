@@ -68,8 +68,7 @@ describe("SignInModal", () => {
     document.body.removeChild(container);
   });
 
-  it("redirects new users to the welcome flow", async () => {
-    vi.useFakeTimers();
+  it("redirects new users to the dashboard after sign-up", async () => {
     const closeModal = vi.fn();
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -82,19 +81,17 @@ describe("SignInModal", () => {
     await act(async () => {
       await verifySuccess?.();
     });
-    vi.runAllTimers();
 
-    expect(push).toHaveBeenCalledWith("/welcome");
+    expect(push).toHaveBeenCalledWith("/dashboard");
+    expect(closeModal).toHaveBeenCalled();
 
     act(() => {
       root.unmount();
     });
     document.body.removeChild(container);
-    vi.useRealTimers();
   });
 
   it("returns existing users to the dashboard", async () => {
-    vi.useFakeTimers();
     const closeModal = vi.fn();
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -111,14 +108,13 @@ describe("SignInModal", () => {
     await act(async () => {
       await verifySuccess?.();
     });
-    vi.runAllTimers();
 
     expect(push).toHaveBeenCalledWith("/dashboard");
+    expect(closeModal).toHaveBeenCalled();
 
     act(() => {
       root.unmount();
     });
     document.body.removeChild(container);
-    vi.useRealTimers();
   });
 });

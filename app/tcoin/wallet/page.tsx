@@ -29,7 +29,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground text-base dark:bg-gradient-to-b dark:from-[#030303] dark:via-[#111111] dark:to-[#2a2a2a] dark:text-gray-200">
+    <div className="min-h-screen flex flex-col bg-background text-foreground text-base dark:bg-gradient-to-b dark:from-[#000000] dark:via-[#161616] dark:to-[#000000] dark:text-gray-200">
       <LandingHeader />
       <main className="flex-grow bg-background dark:bg-transparent">
 

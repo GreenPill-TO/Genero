@@ -30,6 +30,12 @@ vi.mock("@shared/lib/supabase/client", () => ({
 const mockGetSession = vi.hoisted(() => vi.fn());
 const mockFetchUserByContact = vi.hoisted(() => vi.fn());
 const mockFetchCubidDataFromSupabase = vi.hoisted(() => vi.fn());
+const mockTriggerIndexerTouch = vi.hoisted(() => vi.fn().mockResolvedValue({ skipped: true }));
+
+vi.mock("@shared/lib/indexer/trigger", () => ({
+  __esModule: true,
+  triggerIndexerTouch: mockTriggerIndexerTouch,
+}));
 
 vi.mock("../services/supabaseService", () => ({
   __esModule: true,
@@ -160,6 +166,8 @@ describe("useAuth", () => {
     mockGetSession.mockReset();
     mockFetchUserByContact.mockReset();
     mockFetchCubidDataFromSupabase.mockReset();
+    mockTriggerIndexerTouch.mockReset();
+    mockTriggerIndexerTouch.mockResolvedValue({ skipped: true });
 
     mockGetSession.mockResolvedValue(null);
     mockFetchUserByContact.mockResolvedValue({
@@ -191,6 +199,10 @@ describe("useAuth", () => {
 
     await waitFor(() => {
       expect(mockFetchUserByContact).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(mockTriggerIndexerTouch).toHaveBeenCalledTimes(1);
     });
 
     unmount();

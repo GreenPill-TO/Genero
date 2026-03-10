@@ -1,12 +1,11 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
+import tsconfigPaths from "vite-tsconfig-paths";
 
-export default defineConfig(async () => {
-  const tsconfigPaths = (await import("vite-tsconfig-paths")).default;
-  return {
-    plugins: [tsconfigPaths()],
-    test: {
-      environment: "jsdom",
-      setupFiles: ["./vitest.setup.ts"],
-    },
-  };
+export default defineConfig({
+  plugins: [tsconfigPaths()],
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    exclude: [...configDefaults.exclude, "contracts/foundry/lib/**"],
+  },
 });

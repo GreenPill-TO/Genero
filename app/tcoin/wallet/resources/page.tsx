@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { LandingHeader } from "@tcoin/wallet/components/landing-header";
+import { Footer } from "@tcoin/wallet/components/footer";
 
 export default function ResourcesPage() {
   return (
@@ -40,6 +41,7 @@ export default function ResourcesPage() {
           <Link href="/">Return home</Link>
         </p>
       </main>
+      <Footer />
     </div>
   );
 }

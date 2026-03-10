@@ -3,10 +3,10 @@ import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
 import "@tcoin/wallet/styles/app.scss";
-import type { Metadata } from "next";
 import ContentLayout from "./ContentLayout";
 import dynamic from "next/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import Script from "next/script";
 
 
 
@@ -31,10 +31,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');`}</style>
-        <style>{`.special-elite-regular { font-family: 'Special Elite', system-ui; font-weight: 400; font-style: normal; }`}</style>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" />
+        <Script id="theme-bootstrap" strategy="beforeInteractive">
+          {`(function(){try{var stored=window.localStorage.getItem('theme');var userSet=window.localStorage.getItem('theme_user_set')==='1';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var shouldUseDark=userSet&&(stored==='dark'||stored==='light')?stored==='dark':prefersDark;if(shouldUseDark){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`}
+        </Script>
       </head>
-      <body className="special-elite-regular">
+      <body style={{ fontFamily: "'Special Elite', system-ui" }}>
         <style jsx global>{`
           body {
             line-height: 1.333;

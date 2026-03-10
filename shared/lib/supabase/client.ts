@@ -10,7 +10,20 @@ type CookieStore = {
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+function resolveSupabasePublishableKey(): string {
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!key) {
+    throw new Error(
+      "Missing Supabase publishable key. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY (preferred) or NEXT_PUBLIC_SUPABASE_ANON_KEY."
+    );
+  }
+
+  return key;
+}
+const supabasePublishableDefaultKey = resolveSupabasePublishableKey();
 
 let browserClient: SupabaseClient<any, any, any> | null = null;
 
@@ -31,12 +44,12 @@ export function createClient(): SupabaseClient<any, any, any> {
       cookieStore = null;
     }
 
-    return createServerClient(supabaseUrl, supabaseAnonKey, {
+    return createServerClient(supabaseUrl, supabasePublishableDefaultKey, {
       cookies: {
         getAll() {
           return cookieStore?.getAll?.() ?? [];
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: StoredCookie[]) {
           if (!cookieStore) {
             return;
           }
@@ -55,7 +68,7 @@ export function createClient(): SupabaseClient<any, any, any> {
   }
 
   if (!browserClient) {
-    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+    browserClient = createBrowserClient(supabaseUrl, supabasePublishableDefaultKey);
   }
 
   return browserClient;

@@ -2,6 +2,7 @@
 "use client";
 
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { useIndexerTrigger } from "@shared/hooks/useIndexerTrigger";
 import { cn } from "@shared/utils/classnames";
 import Navbar from "@tcoin/wallet/components/navbar";
 import { useRouter, usePathname } from "next/navigation";
@@ -13,6 +14,7 @@ export const publicPaths = ["/", "/resources", "/contact", "/ecosystem"];
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
+  useIndexerTrigger({ enabled: !isLoading && isAuthenticated });
   const router = useRouter();
   const pathname = usePathname();
   const isPublic = publicPaths.includes(pathname);

@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "forge:deploy:registry": "cd contracts/foundry && forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --broadcast",
+    "forge:promote:city": "cd contracts/foundry && forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --broadcast"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.2",

@@ -2,6 +2,7 @@
 "use client";
 
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { useIndexerTrigger } from "@shared/hooks/useIndexerTrigger";
 import { cn } from "@shared/utils/classnames";
 import { Footer } from "@tcoin/sparechange/components/footer";
 import Navbar from "@tcoin/sparechange/components/navbar";
@@ -13,6 +14,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
+  useIndexerTrigger({ enabled: !isLoading && isAuthenticated });
   const router = useRouter();
 
   const bodyClass = cn(

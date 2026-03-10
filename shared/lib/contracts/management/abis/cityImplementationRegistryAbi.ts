@@ -1,0 +1,142 @@
+export const cityImplementationRegistryAbi = [
+  {
+    type: "function",
+    name: "owner",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "getCurrentVersion",
+    stateMutability: "view",
+    inputs: [{ name: "cityId", type: "bytes32" }],
+    outputs: [{ name: "", type: "uint64" }],
+  },
+  {
+    type: "function",
+    name: "latestVersionByCity",
+    stateMutability: "view",
+    inputs: [{ name: "cityId", type: "bytes32" }],
+    outputs: [{ name: "", type: "uint64" }],
+  },
+  {
+    type: "function",
+    name: "getVersion",
+    stateMutability: "view",
+    inputs: [
+      { name: "cityId", type: "bytes32" },
+      { name: "version", type: "uint64" },
+    ],
+    outputs: [
+      {
+        name: "record",
+        type: "tuple",
+        components: [
+          { name: "version", type: "uint64" },
+          { name: "createdAt", type: "uint64" },
+          { name: "promotedAt", type: "uint64" },
+          { name: "chainId", type: "uint256" },
+          {
+            name: "contracts",
+            type: "tuple",
+            components: [
+              { name: "tcoin", type: "address" },
+              { name: "ttc", type: "address" },
+              { name: "cad", type: "address" },
+              { name: "orchestrator", type: "address" },
+              { name: "voting", type: "address" },
+            ],
+          },
+          { name: "metadataURI", type: "string" },
+          { name: "exists", type: "bool" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getActiveContracts",
+    stateMutability: "view",
+    inputs: [{ name: "cityId", type: "bytes32" }],
+    outputs: [
+      {
+        name: "record",
+        type: "tuple",
+        components: [
+          { name: "version", type: "uint64" },
+          { name: "createdAt", type: "uint64" },
+          { name: "promotedAt", type: "uint64" },
+          { name: "chainId", type: "uint256" },
+          {
+            name: "contracts",
+            type: "tuple",
+            components: [
+              { name: "tcoin", type: "address" },
+              { name: "ttc", type: "address" },
+              { name: "cad", type: "address" },
+              { name: "orchestrator", type: "address" },
+              { name: "voting", type: "address" },
+            ],
+          },
+          { name: "metadataURI", type: "string" },
+          { name: "exists", type: "bool" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "registerVersion",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "cityId", type: "bytes32" },
+      { name: "chainId", type: "uint256" },
+      {
+        name: "contracts",
+        type: "tuple",
+        components: [
+          { name: "tcoin", type: "address" },
+          { name: "ttc", type: "address" },
+          { name: "cad", type: "address" },
+          { name: "orchestrator", type: "address" },
+          { name: "voting", type: "address" },
+        ],
+      },
+      { name: "metadataURI", type: "string" },
+    ],
+    outputs: [{ name: "version", type: "uint64" }],
+  },
+  {
+    type: "function",
+    name: "promoteVersion",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "cityId", type: "bytes32" },
+      { name: "version", type: "uint64" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "registerAndPromote",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "cityId", type: "bytes32" },
+      { name: "chainId", type: "uint256" },
+      {
+        name: "contracts",
+        type: "tuple",
+        components: [
+          { name: "tcoin", type: "address" },
+          { name: "ttc", type: "address" },
+          { name: "cad", type: "address" },
+          { name: "orchestrator", type: "address" },
+          { name: "voting", type: "address" },
+        ],
+      },
+      { name: "metadataURI", type: "string" },
+    ],
+    outputs: [{ name: "version", type: "uint64" }],
+  },
+] as const;

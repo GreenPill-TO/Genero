@@ -19,8 +19,10 @@
     ],
     "paths": {
       "@shared/*": ["./shared/*"],
+      "@services/*": ["./services/*"],
       "@tcoin/wallet/*": ["./app/tcoin/wallet/*"],
-      "@tcoin/sparechange/*": ["./app/tcoin/sparechange/*"]
+      "@tcoin/sparechange/*": ["./app/tcoin/sparechange/*"],
+      "@tcoin/contracts/*": ["./app/tcoin/contracts/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
