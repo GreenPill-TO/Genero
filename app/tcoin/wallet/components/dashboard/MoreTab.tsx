@@ -11,7 +11,7 @@ import {
   ThemeSelectModal,
 } from "@tcoin/wallet/components/modals";
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
-import { LuCreditCard, LuDollarSign, LuHeart, LuPalette, LuShield, LuUser } from "react-icons/lu";
+import { LuBuilding2, LuCreditCard, LuDollarSign, LuHeart, LuPalette, LuShield, LuUser } from "react-icons/lu";
 import { hasAdminAccess } from "@shared/utils/access";
 import { useRouter } from "next/navigation";
 
@@ -106,6 +106,10 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     router.push("/admin");
   };
 
+  const handleOpenMerchant = () => {
+    router.push("/merchant");
+  };
+
   return (
     <div className="lg:px-[25vw]">
       <Card>
@@ -127,6 +131,9 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           </Button>
           <Button type="button" className="w-full justify-start" onClick={openThemeModal}>
             <LuPalette className="mr-2 h-4 w-4" /> Select Theme
+          </Button>
+          <Button type="button" className="w-full justify-start" onClick={handleOpenMerchant}>
+            <LuBuilding2 className="mr-2 h-4 w-4" /> Open Merchant Dashboard
           </Button>
           {isAdmin && (
             <Button type="button" className="w-full justify-start" onClick={handleOpenAdmin}>

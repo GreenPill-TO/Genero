@@ -70,6 +70,64 @@ type OffRampEditState = {
   cadOffRampFee: string;
 };
 
+type BiaRecord = {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  center_lat: number | null;
+  center_lng: number | null;
+};
+
+type BiaControlRecord = {
+  bia_id: string;
+  max_daily_redemption: number | null;
+  max_tx_amount: number | null;
+  queue_only_mode: boolean;
+  is_frozen: boolean;
+  updated_at: string | null;
+};
+
+type RedemptionRequestRecord = {
+  id: string | number;
+  status: string;
+  token_amount: number | null;
+  settlement_amount: number | null;
+  settlement_asset: string | null;
+  pool_address: string | null;
+  tx_hash: string | null;
+  rejection_reason: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  bia: { id: string; code: string; name: string } | null;
+  storeProfile: { store_id: number; display_name: string | null; wallet_address: string | null } | null;
+  settlements: Array<{
+    id: string | number;
+    status: string;
+    tx_hash: string | null;
+    settlement_amount: number | null;
+    settlement_asset: string | null;
+    created_at: string | null;
+  }>;
+};
+
+type GovernanceActionRecord = {
+  id: string | number;
+  action_type: string;
+  reason: string | null;
+  store_id: number | null;
+  bia_id: string | null;
+  created_at: string | null;
+  payload?: Record<string, unknown> | null;
+};
+
+type SettlementDraft = {
+  settlementAmount: string;
+  settlementAsset: string;
+  txHash: string;
+  notes: string;
+};
+
 const OFF_RAMP_STATUSES: OffRampStatus[] = [
   "initiated",
   "completed",
@@ -177,6 +235,40 @@ const parseAmountInput = (raw: string): number | null => {
   return parsed;
 };
 
+const asApiErrorMessage = (status: number, body: unknown): string => {
+  if (body && typeof body === "object" && "error" in body) {
+    const candidate = (body as { error?: unknown }).error;
+    if (typeof candidate === "string" && candidate.trim() !== "") {
+      return candidate;
+    }
+  }
+  return `Request failed with status ${status}`;
+};
+
+const fetchJson = async <T,>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
+  const response = await fetch(input, {
+    credentials: "include",
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(asApiErrorMessage(response.status, body));
+  }
+
+  return body as T;
+};
+
 export default function AdminDashboardPage() {
   const { userData, isLoading } = useAuth();
   const router = useRouter();
@@ -192,6 +284,43 @@ export default function AdminDashboardPage() {
   const [isFetching, setIsFetching] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<Record<string, boolean>>({});
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [biaRecords, setBiaRecords] = useState<BiaRecord[]>([]);
+  const [biaControls, setBiaControls] = useState<BiaControlRecord[]>([]);
+  const [mappingHealth, setMappingHealth] = useState<{
+    mappedPools: number;
+    discoveredPools: number;
+    unmappedPools: number;
+    staleMappings: number;
+  } | null>(null);
+  const [redemptionRequests, setRedemptionRequests] = useState<RedemptionRequestRecord[]>([]);
+  const [governanceActions, setGovernanceActions] = useState<GovernanceActionRecord[]>([]);
+  const [controlPlaneError, setControlPlaneError] = useState<string | null>(null);
+  const [isControlPlaneLoading, setIsControlPlaneLoading] = useState(false);
+  const [biaCreateForm, setBiaCreateForm] = useState({
+    code: "",
+    name: "",
+    centerLat: "",
+    centerLng: "",
+  });
+  const [mappingForm, setMappingForm] = useState({
+    biaId: "",
+    chainId: "42220",
+    poolAddress: "",
+    tokenRegistry: "",
+    tokenLimiter: "",
+    quoter: "",
+    feeAddress: "",
+    forceTouch: false,
+  });
+  const [controlsForm, setControlsForm] = useState({
+    biaId: "",
+    maxDailyRedemption: "",
+    maxTxAmount: "",
+    queueOnlyMode: false,
+    isFrozen: false,
+    reason: "",
+  });
+  const [settlementDrafts, setSettlementDrafts] = useState<Record<string, SettlementDraft>>({});
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -357,6 +486,309 @@ export default function AdminDashboardPage() {
       void loadRequests();
     }
   }, [isLoading, isAdmin, loadRequests]);
+
+  const loadControlPlaneData = useCallback(async () => {
+    if (!isMountedRef.current) return;
+
+    setIsControlPlaneLoading(true);
+    setControlPlaneError(null);
+
+    try {
+      const [biaList, mappingList, controlsList, redemptionList, governanceList] = await Promise.all([
+        fetchJson<{ bias?: BiaRecord[]; controls?: BiaControlRecord[] }>(
+          "/api/bias/list?citySlug=tcoin&includeMappings=true"
+        ),
+        fetchJson<{
+          health?: {
+            mappedPools: number;
+            discoveredPools: number;
+            unmappedPools: number;
+            staleMappings: number;
+          } | null;
+        }>("/api/bias/mappings?citySlug=tcoin&chainId=42220"),
+        fetchJson<{ controls?: BiaControlRecord[] }>("/api/bias/controls?citySlug=tcoin"),
+        fetchJson<{ requests?: RedemptionRequestRecord[] }>(
+          "/api/redemptions/list?citySlug=tcoin&limit=100"
+        ),
+        fetchJson<{ actions?: GovernanceActionRecord[] }>(
+          "/api/governance/actions?citySlug=tcoin&limit=50"
+        ),
+      ]);
+
+      if (!isMountedRef.current) return;
+
+      const nextBias = biaList.bias ?? [];
+      setBiaRecords(nextBias);
+      setBiaControls(controlsList.controls ?? biaList.controls ?? []);
+      setMappingHealth(mappingList.health ?? null);
+      setRedemptionRequests(redemptionList.requests ?? []);
+      setGovernanceActions(governanceList.actions ?? []);
+      setLastSyncedAt(new Date());
+
+      if (nextBias.length > 0) {
+        const fallbackBiaId = nextBias[0].id;
+        setMappingForm((prev) => (prev.biaId ? prev : { ...prev, biaId: fallbackBiaId }));
+        setControlsForm((prev) => (prev.biaId ? prev : { ...prev, biaId: fallbackBiaId }));
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load BIA/redemption control-plane data.";
+      if (isMountedRef.current) {
+        setControlPlaneError(message);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsControlPlaneLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && isAdmin) {
+      void loadControlPlaneData();
+    }
+  }, [isLoading, isAdmin, loadControlPlaneData]);
+
+  useEffect(() => {
+    if (!controlsForm.biaId) return;
+    const existing = biaControls.find((control) => control.bia_id === controlsForm.biaId);
+    if (!existing) return;
+
+    setControlsForm((prev) => {
+      const next = {
+        ...prev,
+        maxDailyRedemption:
+          existing.max_daily_redemption != null ? String(existing.max_daily_redemption) : "",
+        maxTxAmount: existing.max_tx_amount != null ? String(existing.max_tx_amount) : "",
+        queueOnlyMode: Boolean(existing.queue_only_mode),
+        isFrozen: Boolean(existing.is_frozen),
+      };
+      if (
+        next.maxDailyRedemption === prev.maxDailyRedemption &&
+        next.maxTxAmount === prev.maxTxAmount &&
+        next.queueOnlyMode === prev.queueOnlyMode &&
+        next.isFrozen === prev.isFrozen
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [controlsForm.biaId, biaControls]);
+
+  const updateSettlementDraft = (requestId: string | number, updates: Partial<SettlementDraft>) => {
+    const key = String(requestId);
+    setSettlementDrafts((prev) => {
+      const current: SettlementDraft = prev[key] ?? {
+        settlementAmount: "",
+        settlementAsset: "CAD",
+        txHash: "",
+        notes: "",
+      };
+      return {
+        ...prev,
+        [key]: {
+          ...current,
+          ...updates,
+        },
+      };
+    });
+  };
+
+  const handleCreateBia = async () => {
+    const code = biaCreateForm.code.trim().toUpperCase();
+    const name = biaCreateForm.name.trim();
+    const centerLat = Number.parseFloat(biaCreateForm.centerLat);
+    const centerLng = Number.parseFloat(biaCreateForm.centerLng);
+
+    if (!code || !name || !Number.isFinite(centerLat) || !Number.isFinite(centerLng)) {
+      toast.error("BIA code, name, and numeric center coordinates are required.");
+      return;
+    }
+
+    const key = "create-bia";
+    markSaving(key);
+
+    try {
+      await fetchJson("/api/bias/create", {
+        method: "POST",
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          code,
+          name,
+          centerLat,
+          centerLng,
+        }),
+      });
+      toast.success(`Created BIA ${code}.`);
+      setBiaCreateForm({ code: "", name: "", centerLat: "", centerLng: "" });
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to create BIA", error);
+      toast.error(error instanceof Error ? error.message : "Could not create BIA.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleCreateMapping = async () => {
+    const chainId = Number.parseInt(mappingForm.chainId, 10);
+    if (!mappingForm.biaId || !Number.isFinite(chainId) || chainId <= 0) {
+      toast.error("Select a BIA and provide a valid chain id.");
+      return;
+    }
+    if (mappingForm.poolAddress.trim() === "") {
+      toast.error("Pool address is required.");
+      return;
+    }
+
+    const key = "create-mapping";
+    markSaving(key);
+
+    try {
+      await fetchJson("/api/bias/mappings", {
+        method: "POST",
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          biaId: mappingForm.biaId,
+          chainId,
+          poolAddress: mappingForm.poolAddress.trim(),
+          tokenRegistry: mappingForm.tokenRegistry.trim() || null,
+          tokenLimiter: mappingForm.tokenLimiter.trim() || null,
+          quoter: mappingForm.quoter.trim() || null,
+          feeAddress: mappingForm.feeAddress.trim() || null,
+          mappingStatus: "active",
+          forceTouch: mappingForm.forceTouch,
+        }),
+      });
+      toast.success("Pool mapping saved.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to create mapping", error);
+      toast.error(error instanceof Error ? error.message : "Could not create mapping.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleUpsertControls = async () => {
+    if (!controlsForm.biaId) {
+      toast.error("Select a BIA before saving controls.");
+      return;
+    }
+
+    const key = "upsert-controls";
+    markSaving(key);
+
+    try {
+      const maxDaily =
+        controlsForm.maxDailyRedemption.trim() === ""
+          ? null
+          : Number.parseFloat(controlsForm.maxDailyRedemption);
+      const maxTx =
+        controlsForm.maxTxAmount.trim() === "" ? null : Number.parseFloat(controlsForm.maxTxAmount);
+
+      if (
+        (maxDaily != null && !Number.isFinite(maxDaily)) ||
+        (maxTx != null && !Number.isFinite(maxTx))
+      ) {
+        throw new Error("maxDailyRedemption and maxTxAmount must be numeric when provided.");
+      }
+
+      await fetchJson("/api/bias/controls", {
+        method: "POST",
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          biaId: controlsForm.biaId,
+          maxDailyRedemption: maxDaily,
+          maxTxAmount: maxTx,
+          queueOnlyMode: controlsForm.queueOnlyMode,
+          isFrozen: controlsForm.isFrozen,
+          reason: controlsForm.reason.trim() || "Controls updated from admin UI",
+        }),
+      });
+
+      toast.success("BIA controls updated.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to update controls", error);
+      toast.error(error instanceof Error ? error.message : "Could not update BIA controls.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleApproveRedemption = async (requestId: string | number, approve: boolean) => {
+    const key = `redemption-approve-${requestId}`;
+    markSaving(key);
+
+    try {
+      await fetchJson(`/api/redemptions/${requestId}/approve`, {
+        method: "POST",
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          approve,
+          rejectionReason: approve ? null : "Rejected in admin dashboard",
+          reason: approve
+            ? "Approved from admin dashboard"
+            : "Rejected from admin dashboard",
+        }),
+      });
+      toast.success(approve ? "Redemption approved." : "Redemption rejected.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to update redemption approval", error);
+      toast.error(error instanceof Error ? error.message : "Could not update redemption status.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleSettleRedemption = async (request: RedemptionRequestRecord, failed = false) => {
+    const key = `redemption-settle-${request.id}`;
+    const draft = settlementDrafts[String(request.id)] ?? {
+      settlementAmount: "",
+      settlementAsset: "CAD",
+      txHash: "",
+      notes: "",
+    };
+    markSaving(key);
+
+    try {
+      const fallbackAmount =
+        request.settlement_amount != null && Number.isFinite(request.settlement_amount)
+          ? request.settlement_amount
+          : request.token_amount;
+      const parsedAmount =
+        draft.settlementAmount.trim() === ""
+          ? fallbackAmount
+          : Number.parseFloat(draft.settlementAmount);
+      if (!parsedAmount || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        throw new Error("Settlement amount must be a positive number.");
+      }
+
+      await fetchJson(`/api/redemptions/${request.id}/settle`, {
+        method: "POST",
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          settlementAmount: parsedAmount,
+          settlementAsset: draft.settlementAsset || request.settlement_asset || "CAD",
+          txHash: draft.txHash.trim() || null,
+          notes: draft.notes.trim() || null,
+          failed,
+          reason: failed
+            ? "Marked as settlement failure from admin dashboard"
+            : "Settled from admin dashboard",
+        }),
+      });
+      toast.success(failed ? "Redemption marked as failed." : "Redemption settled.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to settle redemption", error);
+      toast.error(error instanceof Error ? error.message : "Could not settle redemption.");
+    } finally {
+      clearSaving(key);
+    }
+  };
 
   const availableOnRampStatuses = useMemo(() => {
     const derived = onRampRequests
@@ -985,6 +1417,500 @@ export default function AdminDashboardPage() {
                 </div>
               );
             })
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>BIA + Redemption Control Plane</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {controlPlaneError && (
+            <Alert variant="destructive">
+              <AlertTitle>Control plane data issue</AlertTitle>
+              <AlertDescription>{controlPlaneError}</AlertDescription>
+            </Alert>
+          )}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-md border p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">BIAs</p>
+              <p className="text-2xl font-semibold">{biaRecords.length}</p>
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Redemption queue</p>
+              <p className="text-2xl font-semibold">
+                {redemptionRequests.filter((request) => request.status === "pending").length}
+              </p>
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Unmapped pools</p>
+              <p className="text-2xl font-semibold">{mappingHealth?.unmappedPools ?? 0}</p>
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Stale mappings</p>
+              <p className="text-2xl font-semibold">{mappingHealth?.staleMappings ?? 0}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => void loadControlPlaneData()}
+              disabled={isControlPlaneLoading}
+            >
+              {isControlPlaneLoading ? "Refreshing…" : "Refresh control plane"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Create BIA</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Code (e.g. DTN)"
+                value={biaCreateForm.code}
+                onChange={(event) =>
+                  setBiaCreateForm((prev) => ({ ...prev, code: event.target.value }))
+                }
+                aria-label="BIA code"
+              />
+              <Input
+                placeholder="Name"
+                value={biaCreateForm.name}
+                onChange={(event) =>
+                  setBiaCreateForm((prev) => ({ ...prev, name: event.target.value }))
+                }
+                aria-label="BIA name"
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Center latitude"
+                value={biaCreateForm.centerLat}
+                onChange={(event) =>
+                  setBiaCreateForm((prev) => ({ ...prev, centerLat: event.target.value }))
+                }
+                aria-label="BIA center latitude"
+              />
+              <Input
+                placeholder="Center longitude"
+                value={biaCreateForm.centerLng}
+                onChange={(event) =>
+                  setBiaCreateForm((prev) => ({ ...prev, centerLng: event.target.value }))
+                }
+                aria-label="BIA center longitude"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void handleCreateBia()}
+                disabled={pendingUpdates["create-bia"] === true}
+              >
+                {pendingUpdates["create-bia"] ? "Creating…" : "Create BIA"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Map BIA to Pool</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Select
+                value={mappingForm.biaId || undefined}
+                onValueChange={(value) => setMappingForm((prev) => ({ ...prev, biaId: value }))}
+              >
+                <SelectTrigger aria-label="BIA for mapping">
+                  <SelectValue placeholder="Select BIA" />
+                </SelectTrigger>
+                <SelectContent>
+                  {biaRecords.map((bia) => (
+                    <SelectItem key={bia.id} value={bia.id}>
+                      {bia.code} · {bia.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Chain id"
+                value={mappingForm.chainId}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, chainId: event.target.value }))
+                }
+                aria-label="Mapping chain id"
+              />
+            </div>
+            <Input
+              placeholder="Pool address"
+              value={mappingForm.poolAddress}
+              onChange={(event) =>
+                setMappingForm((prev) => ({ ...prev, poolAddress: event.target.value }))
+              }
+              aria-label="Pool address"
+            />
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Token registry address"
+                value={mappingForm.tokenRegistry}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, tokenRegistry: event.target.value }))
+                }
+                aria-label="Token registry address"
+              />
+              <Input
+                placeholder="Token limiter address"
+                value={mappingForm.tokenLimiter}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, tokenLimiter: event.target.value }))
+                }
+                aria-label="Token limiter address"
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Quoter address"
+                value={mappingForm.quoter}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, quoter: event.target.value }))
+                }
+                aria-label="Quoter address"
+              />
+              <Input
+                placeholder="Fee address"
+                value={mappingForm.feeAddress}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, feeAddress: event.target.value }))
+                }
+                aria-label="Fee address"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={mappingForm.forceTouch}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, forceTouch: event.target.checked }))
+                }
+              />
+              Trigger indexer touch after mapping save
+            </label>
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void handleCreateMapping()}
+                disabled={pendingUpdates["create-mapping"] === true}
+              >
+                {pendingUpdates["create-mapping"] ? "Saving…" : "Save Mapping"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>BIA Controls</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Select
+              value={controlsForm.biaId || undefined}
+              onValueChange={(value) => setControlsForm((prev) => ({ ...prev, biaId: value }))}
+            >
+              <SelectTrigger aria-label="BIA for controls">
+                <SelectValue placeholder="Select BIA" />
+              </SelectTrigger>
+              <SelectContent>
+                {biaRecords.map((bia) => (
+                  <SelectItem key={bia.id} value={bia.id}>
+                    {bia.code} · {bia.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Max daily redemption"
+                value={controlsForm.maxDailyRedemption}
+                onChange={(event) =>
+                  setControlsForm((prev) => ({
+                    ...prev,
+                    maxDailyRedemption: event.target.value,
+                  }))
+                }
+                aria-label="Max daily redemption"
+              />
+              <Input
+                placeholder="Max transaction amount"
+                value={controlsForm.maxTxAmount}
+                onChange={(event) =>
+                  setControlsForm((prev) => ({
+                    ...prev,
+                    maxTxAmount: event.target.value,
+                  }))
+                }
+                aria-label="Max transaction amount"
+              />
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={controlsForm.queueOnlyMode}
+                  onChange={(event) =>
+                    setControlsForm((prev) => ({ ...prev, queueOnlyMode: event.target.checked }))
+                  }
+                />
+                Queue-only redemptions
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={controlsForm.isFrozen}
+                  onChange={(event) =>
+                    setControlsForm((prev) => ({ ...prev, isFrozen: event.target.checked }))
+                  }
+                />
+                Freeze this BIA pool
+              </label>
+            </div>
+
+            <Textarea
+              rows={3}
+              placeholder="Reason (logged to governance actions)"
+              value={controlsForm.reason}
+              onChange={(event) =>
+                setControlsForm((prev) => ({ ...prev, reason: event.target.value }))
+              }
+              aria-label="Control change reason"
+            />
+
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void handleUpsertControls()}
+                disabled={pendingUpdates["upsert-controls"] === true}
+              >
+                {pendingUpdates["upsert-controls"] ? "Saving…" : "Save Controls"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Current Controls Snapshot</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {biaControls.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No BIA controls configured yet.</p>
+            ) : (
+              biaControls.map((control) => {
+                const bia = biaRecords.find((candidate) => candidate.id === control.bia_id);
+                return (
+                  <div key={control.bia_id} className="rounded-md border p-3 text-sm">
+                    <p className="font-medium">
+                      {bia?.code ?? "Unknown"} · {bia?.name ?? control.bia_id}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Max daily:{" "}
+                      {control.max_daily_redemption != null
+                        ? tokenFormatter.format(control.max_daily_redemption)
+                        : "none"}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Max tx:{" "}
+                      {control.max_tx_amount != null
+                        ? tokenFormatter.format(control.max_tx_amount)
+                        : "none"}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Queue only: {String(Boolean(control.queue_only_mode))}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Frozen: {String(Boolean(control.is_frozen))}
+                    </p>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Redemption Queue</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {redemptionRequests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No redemption requests found.</p>
+          ) : (
+            redemptionRequests.map((request) => {
+              const requestId = String(request.id);
+              const approvalPending = pendingUpdates[`redemption-approve-${requestId}`] === true;
+              const settlementPending = pendingUpdates[`redemption-settle-${requestId}`] === true;
+              const draft = settlementDrafts[requestId] ?? {
+                settlementAmount:
+                  request.settlement_amount != null ? String(request.settlement_amount) : "",
+                settlementAsset: request.settlement_asset ?? "CAD",
+                txHash: request.tx_hash ?? "",
+                notes: "",
+              };
+              const settlementRows = request.settlements ?? [];
+              const canApprove = request.status === "pending";
+              const canSettle = request.status === "approved";
+              const canFail = ["pending", "approved"].includes(request.status);
+
+              return (
+                <div key={requestId} className="rounded-md border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Redemption #{requestId}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDateTime(request.created_at)} · {request.bia?.code ?? "No BIA"} ·{" "}
+                        {request.storeProfile?.display_name ?? `Store ${request.storeProfile?.store_id ?? "?"}`}
+                      </p>
+                      {request.pool_address && (
+                        <p className="text-xs text-muted-foreground break-all">
+                          Pool {request.pool_address}
+                        </p>
+                      )}
+                      {request.rejection_reason && (
+                        <p className="text-xs text-muted-foreground">
+                          Rejection reason: {request.rejection_reason}
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant={getBadgeVariant(request.status)}>{request.status}</Badge>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    <p className="text-sm">
+                      Token amount: {tokenFormatter.format(request.token_amount ?? 0)}
+                    </p>
+                    <p className="text-sm">
+                      Settlement target:{" "}
+                      {request.settlement_amount != null
+                        ? cadFormatter.format(request.settlement_amount)
+                        : "Not set"}{" "}
+                      {request.settlement_asset ?? ""}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <Input
+                      placeholder="Settlement amount"
+                      value={draft.settlementAmount}
+                      onChange={(event) =>
+                        updateSettlementDraft(requestId, { settlementAmount: event.target.value })
+                      }
+                      aria-label={`Settlement amount for ${requestId}`}
+                    />
+                    <Input
+                      placeholder="Settlement asset"
+                      value={draft.settlementAsset}
+                      onChange={(event) =>
+                        updateSettlementDraft(requestId, { settlementAsset: event.target.value })
+                      }
+                      aria-label={`Settlement asset for ${requestId}`}
+                    />
+                    <Input
+                      placeholder="Settlement tx hash (optional)"
+                      value={draft.txHash}
+                      onChange={(event) =>
+                        updateSettlementDraft(requestId, { txHash: event.target.value })
+                      }
+                      aria-label={`Settlement tx hash for ${requestId}`}
+                    />
+                    <Input
+                      placeholder="Settlement notes"
+                      value={draft.notes}
+                      onChange={(event) =>
+                        updateSettlementDraft(requestId, { notes: event.target.value })
+                      }
+                      aria-label={`Settlement notes for ${requestId}`}
+                    />
+                  </div>
+
+                  {settlementRows.length > 0 && (
+                    <div className="mt-3 rounded-md bg-muted p-3 text-xs">
+                      <p className="font-medium">Settlements</p>
+                      {settlementRows.map((row) => (
+                        <p key={String(row.id)}>
+                          {row.status} · {row.settlement_amount ?? "?"} {row.settlement_asset ?? ""} ·{" "}
+                          {formatDateTime(row.created_at)}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={!canApprove || approvalPending}
+                      onClick={() => void handleApproveRedemption(request.id, true)}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canApprove || approvalPending}
+                      onClick={() => void handleApproveRedemption(request.id, false)}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      disabled={!canSettle || settlementPending}
+                      onClick={() => void handleSettleRedemption(request, false)}
+                    >
+                      Settle
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canFail || settlementPending}
+                      onClick={() => void handleSettleRedemption(request, true)}
+                    >
+                      Mark Failed
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Governance Actions Feed</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {governanceActions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No governance actions logged yet.</p>
+          ) : (
+            governanceActions.map((action) => (
+              <div key={String(action.id)} className="rounded-md border p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{action.action_type}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDateTime(action.created_at)}
+                  </p>
+                </div>
+                {action.reason && <p className="text-muted-foreground">{action.reason}</p>}
+                <p className="text-xs text-muted-foreground">
+                  BIA: {action.bia_id ?? "n/a"} · Store: {action.store_id ?? "n/a"}
+                </p>
+              </div>
+            ))
           )}
         </CardContent>
       </Card>

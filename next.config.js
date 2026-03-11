@@ -56,7 +56,8 @@ const nextConfig = {
         destination: `/${citycoin}/${appToServe}`, // Serve the main app at the root
       },
       {
-        source: "/:path*",
+        // Keep API routes in the app root namespace; rewrite only non-API paths.
+        source: "/:path((?!api(?:/|$)).*)",
         destination: `/${citycoin}/${appToServe}/:path*`, // Rewrite all other requests to the app
       },
     ];

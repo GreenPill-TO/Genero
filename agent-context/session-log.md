@@ -1,3 +1,36 @@
+## v1.12
+### Timestamp
+- 2026-03-10 23:54:38 EDT
+
+### Objective
+- Complete BIA/redeem/governance control-plane integration in wallet admin/merchant UI, fix dynamic API routing in local dev, add route integration tests, and validate local Supabase + API smoke paths.
+
+### What Changed
+- Extended wallet admin UI to call the new BIA/redeem/governance endpoints directly for BIA creation, pool mapping, BIA controls, redemption approve/settle actions, and governance feed visibility.
+- Added a new merchant dashboard at `/merchant` for store profile/BIA assignment and redemption request workflows powered by `/api/stores*`, `/api/redemptions/*`, and `/api/governance/actions`.
+- Added merchant navigation entry from wallet `More` tab.
+- Fixed dynamic API route resolution by narrowing app rewrites to non-API paths, preventing the catch-all rewrite from swallowing `app/api` dynamic routes.
+- Added route integration tests for:
+- `POST /api/pools/buy`
+- `/api/redemptions/*` (request, list validation, approve, settle)
+- `GET /api/indexer/status` including `biaSummary`
+- Hardened the `v0.91` share-credential migration to be backward compatible with legacy schemas by adding missing columns (`user_share_encrypted.created_at`, `wallet_keys.user_share_encrypted`) when absent.
+- Added neighbourhood/BIA architecture and runbook documents under `/docs`.
+- Re-ran local Supabase reset and dynamic API smoke checks; dynamic endpoints now resolve (method/auth responses instead of 404).
+
+### Files Edited
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `next.config.js`
+- `app/api/pools/buy/route.test.ts`
+- `app/api/redemptions/routes.test.ts`
+- `app/api/indexer/status/route.test.ts`
+- `supabase/migrations/20260212150000_v0.91_user_share_credentials.sql`
+- `docs/bia-pools-indexer-architecture.md`
+- `docs/bia-pools-runbook.md`
+- `agent-context/session-log.md`
+
 ## v1.11
 ### Timestamp
 - 2026-03-10 21:39:19 EDT

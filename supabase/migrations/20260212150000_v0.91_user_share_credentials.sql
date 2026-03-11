@@ -17,6 +17,27 @@ ALTER TABLE IF EXISTS public.user_encrypted_share
   ADD COLUMN IF NOT EXISTS revoked_at timestamp with time zone;
 
 ALTER TABLE IF EXISTS public.user_encrypted_share
+  ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT now();
+
+-- Compatibility for legacy schemas where the JSON payload column is absent.
+-- Some environments only have `encrypted_share`; in that case we keep this
+-- nullable and fall back to deterministic legacy credential ids below.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'user_encrypted_share'
+      AND column_name = 'user_share_encrypted'
+  ) THEN
+    ALTER TABLE public.user_encrypted_share
+      ADD COLUMN user_share_encrypted jsonb;
+  END IF;
+END
+$$;
+
+ALTER TABLE IF EXISTS public.user_encrypted_share
   ALTER COLUMN wallet_key_id SET NOT NULL;
 
 WITH default_instance AS (
