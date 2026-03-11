@@ -44,11 +44,17 @@ const charityContributionData = [
 
 export function AccountCard({
   balance,
+  totalEquivalent,
+  voucherEquivalent,
+  voucherCount,
   openModal,
   closeModal,
   senderWallet,
 }: {
   balance: number;
+  totalEquivalent?: number;
+  voucherEquivalent?: number;
+  voucherCount?: number;
   openModal: any;
   closeModal: any;
   senderWallet: string;
@@ -57,7 +63,11 @@ export function AccountCard({
   const { ...rest } = useTokenBalance(senderWallet);
   const { exchangeRate } = useControlVariables();
 
-  const convertToCad = (tcoin: number) => (tcoin * exchangeRate).toFixed(2);
+  const convertToCad = (tcoin: number | string) => {
+    const parsed = typeof tcoin === "number" ? tcoin : Number.parseFloat(tcoin);
+    const safeTcoin = Number.isFinite(parsed) ? parsed : 0;
+    return (safeTcoin * exchangeRate).toFixed(2);
+  };
   const formatNumber = (value: string, isCad: boolean) => {
     const num = parseFloat(value);
     if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
@@ -152,6 +162,19 @@ export function AccountCard({
               <p className="text-xl">
                 {formatNumber(convertToCad(rest.balance), true)} CAD
               </p>
+              {typeof totalEquivalent === "number" && Number.isFinite(totalEquivalent) && (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Total (TCOIN equiv): {formatNumber(totalEquivalent.toString(), false)}
+                </p>
+              )}
+              {typeof voucherEquivalent === "number" &&
+                Number.isFinite(voucherEquivalent) &&
+                voucherEquivalent > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Includes {voucherCount ?? 0} voucher token{(voucherCount ?? 0) === 1 ? "" : "s"} totalling{" "}
+                    {formatNumber(voucherEquivalent.toString(), false)}
+                  </p>
+                )}
             </div>
           )}
           {activeAccountTab === "transactions" && (

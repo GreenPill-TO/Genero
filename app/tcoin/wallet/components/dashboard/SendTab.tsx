@@ -129,8 +129,13 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     return map;
   }, [contacts]);
 
-  const { senderWallet, sendMoney, getLastTransferRecord } = useSendMoney({
-    senderId: userData?.cubidData?.id,
+  const {
+    senderWallet,
+    sendMoney,
+    executeVoucherPayment,
+    getLastTransferRecord,
+  } = useSendMoney({
+    senderId: userData?.cubidData?.id ?? 0,
     receiverId: toSendData?.id ?? null,
   });
   const { balance: rawBalance } = useTokenBalance(senderWallet ?? null);
@@ -173,6 +178,140 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     setTcoinAmount(balance.toFixed(2));
     setCadAmount(cadNumeric.toFixed(2));
   };
+
+  const postPaymentRecord = useCallback(
+    async (payload: Record<string, unknown>) => {
+      try {
+        await fetch("/api/vouchers/payment-record", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            citySlug: "tcoin",
+            chainId: 42220,
+            payerWallet: senderWallet,
+            recipientWallet: toSendData?.wallet_address ?? null,
+            ...payload,
+          }),
+        });
+      } catch {
+        // Best-effort logging only.
+      }
+    },
+    [senderWallet, toSendData?.wallet_address]
+  );
+
+  const sendMoneyWithRouting = useCallback(
+    async (amount: string) => {
+      const recipientWallet =
+        typeof toSendData?.wallet_address === "string" ? toSendData.wallet_address.trim() : "";
+      const amountNumeric = Number.parseFloat(amount);
+      if (!recipientWallet || !Number.isFinite(amountNumeric) || amountNumeric <= 0) {
+        return sendMoney(amount);
+      }
+
+      try {
+        const response = await fetch(
+          `/api/vouchers/route?citySlug=tcoin&amount=${encodeURIComponent(
+            amountNumeric.toString()
+          )}&recipientWallet=${encodeURIComponent(recipientWallet)}`,
+          { credentials: "include" }
+        );
+        const body = await response.json();
+        const quote = body?.quote;
+
+        if (!quote || quote.mode !== "voucher") {
+          const fallbackTxHash = await sendMoney(amount);
+          await postPaymentRecord({
+            mode: "tcoin_fallback",
+            transferTxHash: fallbackTxHash,
+            amountTcoin: amountNumeric,
+            status: "completed",
+            fallbackReason:
+              typeof quote?.reason === "string" ? quote.reason : "No eligible voucher route.",
+            metadata: {
+              guardDecisions: Array.isArray(quote?.guardDecisions) ? quote.guardDecisions : [],
+            },
+          });
+          return fallbackTxHash;
+        }
+
+        const attemptVoucher = async (routeQuote: any) => {
+          const voucherTx = await executeVoucherPayment({
+            amount,
+            poolAddress: routeQuote.poolAddress,
+            voucherTokenAddress: routeQuote.tokenAddress,
+            recipientWalletAddress: recipientWallet,
+            minAmountOut: routeQuote.minVoucherOut ?? amount,
+            tokenDecimals:
+              typeof routeQuote.tokenDecimals === "number" ? routeQuote.tokenDecimals : 18,
+          });
+          await postPaymentRecord({
+            mode: "voucher",
+            poolAddress: routeQuote.poolAddress,
+            tokenAddress: routeQuote.tokenAddress,
+            amountTcoin: amountNumeric,
+            amountVoucher: Number.parseFloat(voucherTx.transferAmount),
+            swapTxHash: voucherTx.swapTxHash,
+            transferTxHash: voucherTx.transferTxHash,
+            status: "completed",
+            metadata: {
+              approvalTxHash: voucherTx.approvalTxHash,
+              guardDecisions: routeQuote.guardDecisions,
+            },
+          });
+          return voucherTx.transferTxHash;
+        };
+
+        try {
+          return await attemptVoucher(quote);
+        } catch (firstError) {
+          // Retry once with refreshed quote before falling back.
+          try {
+            const retryResponse = await fetch(
+              `/api/vouchers/route?citySlug=tcoin&amount=${encodeURIComponent(
+                amountNumeric.toString()
+              )}&recipientWallet=${encodeURIComponent(recipientWallet)}`,
+              { credentials: "include" }
+            );
+            const retryBody = await retryResponse.json();
+            const retryQuote = retryBody?.quote;
+            if (!retryQuote || retryQuote.mode !== "voucher") {
+              throw firstError;
+            }
+            return await attemptVoucher(retryQuote);
+          } catch (retryError) {
+            const fallbackTxHash = await sendMoney(amount);
+            await postPaymentRecord({
+              mode: "tcoin_fallback",
+              transferTxHash: fallbackTxHash,
+              amountTcoin: amountNumeric,
+              status: "completed",
+              fallbackReason:
+                retryError instanceof Error
+                  ? `Voucher route failed: ${retryError.message}`
+                  : "Voucher route failed.",
+            });
+            return fallbackTxHash;
+          }
+        }
+      } catch (routeError) {
+        const fallbackTxHash = await sendMoney(amount);
+        await postPaymentRecord({
+          mode: "tcoin_fallback",
+          transferTxHash: fallbackTxHash,
+          amountTcoin: amountNumeric,
+          status: "completed",
+          fallbackReason:
+            routeError instanceof Error
+              ? `Voucher routing unavailable: ${routeError.message}`
+              : "Voucher routing unavailable.",
+        });
+        return fallbackTxHash;
+      }
+    },
+    [toSendData?.wallet_address, executeVoucherPayment, sendMoney, postPaymentRecord]
+  );
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = sanitizeNumeric(e.target.value);
@@ -697,7 +836,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           handleCadBlur={handleCadBlur}
           explorerLink={explorerLink}
           setExplorerLink={setExplorerLink}
-          sendMoney={sendMoney}
+          sendMoney={sendMoneyWithRouting}
           userBalance={balance}
           onUseMax={handleUseMax}
           contacts={contacts}
@@ -744,7 +883,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
               handleCadBlur={handleCadBlur}
               explorerLink={explorerLink}
               setExplorerLink={setExplorerLink}
-              sendMoney={sendMoney}
+              sendMoney={sendMoneyWithRouting}
               userBalance={balance}
               onUseMax={handleUseMax}
               contacts={contacts}
@@ -847,4 +986,3 @@ function RequestsList({
     </div>
   );
 }
-

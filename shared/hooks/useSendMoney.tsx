@@ -11,6 +11,7 @@ import { normaliseTransferResult, TransferRecordSnapshot } from '@shared/utils/t
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
 import { getActiveAppInstance, normaliseCredentialId } from '@shared/api/services/supabaseService';
 import { getActiveCityContracts, getRpcUrlForChainId } from '@shared/lib/contracts/cityContracts';
+import { executeVoucherSwapAndTransfer } from '@shared/lib/vouchers/onchain';
 
 
 // Helper: Convert hex string to Uint8Array.
@@ -638,10 +639,94 @@ export const useSendMoney = ({
                 }
         };
 
+        const executeVoucherPayment = async ({
+                amount,
+                poolAddress,
+                voucherTokenAddress,
+                recipientWalletAddress,
+                minAmountOut,
+                tokenDecimals = 18,
+        }: {
+                amount: string;
+                poolAddress: string;
+                voucherTokenAddress: string;
+                recipientWalletAddress: string;
+                minAmountOut?: string;
+                tokenDecimals?: number;
+        }) => {
+                if (!senderWallet) {
+                        const message = 'Your wallet address could not be found. Please try again later.';
+                        setError(message);
+                        throw new Error(message);
+                }
+
+                const cubidUserId = userData?.cubidData?.id;
+                if (!cubidUserId) {
+                        const message = 'No valid Cubid user ID found';
+                        setError(message);
+                        throw new Error(message);
+                }
+
+                setLoading(true);
+                setError(null);
+
+                try {
+                        const { app_share, user_share_encrypted } = await fetchWalletShares(cubidUserId);
+
+                        const jsonData = {
+                                encryptedAesKey: base64ToArrayBuffer(user_share_encrypted.encryptedAesKey),
+                                encryptedData: base64ToArrayBuffer(user_share_encrypted.encryptedData),
+                                encryptionMethod: user_share_encrypted.encryptionMethod,
+                                id: user_share_encrypted.id,
+                                iv: base64ToArrayBuffer(user_share_encrypted.iv),
+                                ivForKeyEncryption: user_share_encrypted.ivForKeyEncryption,
+                                salt: user_share_encrypted.salt,
+                                credentialId: base64ToArrayBuffer(user_share_encrypted.credentialId),
+                        };
+
+                        const user_share = await decodeUserShare(jsonData);
+                        const privateKeyHex = combineShares([app_share, user_share]);
+                        if (!privateKeyHex) {
+                                throw new Error('Failed to reconstruct private key from shares');
+                        }
+                        const privateKey = privateKeyHex.startsWith('0x') ? privateKeyHex : `0x${privateKeyHex}`;
+
+                        const runtimeConfig = await resolveTokenRuntimeConfig();
+                        const provider = new ethers.providers.JsonRpcProvider(runtimeConfig.rpcUrl);
+                        const walletInstance = new ethers.Wallet(privateKey, provider);
+
+                        const result = await executeVoucherSwapAndTransfer({
+                                signer: walletInstance,
+                                senderAddress: walletInstance.address as `0x${string}`,
+                                poolAddress: poolAddress as `0x${string}`,
+                                tcoinAddress: runtimeConfig.tokenAddress as `0x${string}`,
+                                voucherTokenAddress: voucherTokenAddress as `0x${string}`,
+                                recipientAddress: recipientWalletAddress as `0x${string}`,
+                                amountInTcoin: amount,
+                                minAmountOut: minAmountOut ?? amount,
+                                tokenDecimals,
+                        });
+
+                        return result;
+                } catch (err: any) {
+                        if (!(err instanceof WebAuthnRequestInProgressError)) {
+                                console.error('Voucher payment error:', err);
+                        }
+                        const message = err instanceof Error && err.message
+                                ? err.message
+                                : 'We could not complete this voucher payment. Please try again.';
+                        setError(message);
+                        throw err instanceof Error ? err : new Error(message);
+                } finally {
+                        setLoading(false);
+                }
+        };
+
         return {
                 senderWallet,
                 receiverWallet,
                 sendMoney,
+                executeVoucherPayment,
                 loading,
                 error,
                 burnMoney,

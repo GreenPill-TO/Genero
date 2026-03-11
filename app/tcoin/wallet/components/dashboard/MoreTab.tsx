@@ -27,6 +27,16 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   const activeProfile = userData?.cubidData?.activeProfile;
   const router = useRouter();
   const [selectedCharity, setSelectedCharity] = useState("None");
+  const [biaOptions, setBiaOptions] = useState<Array<{ id: string; code: string; name: string }>>([]);
+  const [primaryBiaId, setPrimaryBiaId] = useState<string>("");
+  const [secondaryBiaIds, setSecondaryBiaIds] = useState<string[]>([]);
+  const [isSavingBiaSelection, setIsSavingBiaSelection] = useState(false);
+  const [voucherPreferenceForm, setVoucherPreferenceForm] = useState({
+    merchantStoreId: "",
+    tokenAddress: "",
+    trustStatus: "default",
+  });
+  const [isSavingVoucherPreference, setIsSavingVoucherPreference] = useState(false);
   const charityData = useMemo(() => DEFAULT_CHARITY_DATA, []);
 
   useEffect(() => {
@@ -35,6 +45,108 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
       setSelectedCharity(charityName);
     }
   }, [activeProfile?.charityPreferences?.charity]);
+
+  useEffect(() => {
+    const loadBiaSelection = async () => {
+      try {
+        const response = await fetch("/api/bias/list?citySlug=tcoin", {
+          credentials: "include",
+        });
+        const body = await response.json();
+        if (!response.ok) return;
+
+        const options = Array.isArray(body?.bias)
+          ? body.bias
+              .filter((row: any) => typeof row?.id === "string")
+              .map((row: any) => ({
+                id: String(row.id),
+                code: typeof row.code === "string" ? row.code : "BIA",
+                name: typeof row.name === "string" ? row.name : row.id,
+              }))
+          : [];
+        setBiaOptions(options);
+
+        if (body?.activeAffiliation?.biaId) {
+          setPrimaryBiaId(String(body.activeAffiliation.biaId));
+        } else if (options.length > 0) {
+          setPrimaryBiaId(options[0].id);
+        }
+
+        const secondaries = Array.isArray(body?.secondaryAffiliations)
+          ? body.secondaryAffiliations
+              .map((row: any) => (typeof row?.biaId === "string" ? row.biaId : null))
+              .filter((row: string | null): row is string => row != null)
+          : [];
+        setSecondaryBiaIds(secondaries);
+      } catch {
+        setBiaOptions([]);
+      }
+    };
+
+    void loadBiaSelection();
+  }, []);
+
+  const toggleSecondaryBia = (biaId: string) => {
+    setSecondaryBiaIds((prev) => {
+      if (prev.includes(biaId)) {
+        return prev.filter((value) => value !== biaId);
+      }
+      return [...prev, biaId];
+    });
+  };
+
+  const saveBiaSelection = async () => {
+    if (!primaryBiaId) {
+      return;
+    }
+
+    setIsSavingBiaSelection(true);
+    try {
+      const response = await fetch("/api/bias/select", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          biaId: primaryBiaId,
+          secondaryBiaIds: secondaryBiaIds.filter((biaId) => biaId !== primaryBiaId),
+          source: "user_selected",
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(typeof body?.error === "string" ? body.error : "Failed to save BIA selection.");
+      }
+    } catch (error) {
+      console.error("Failed to save BIA selection", error);
+    } finally {
+      setIsSavingBiaSelection(false);
+    }
+  };
+
+  const saveVoucherPreference = async () => {
+    setIsSavingVoucherPreference(true);
+    try {
+      await fetch("/api/vouchers/preferences", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          merchantStoreId:
+            voucherPreferenceForm.merchantStoreId.trim() === ""
+              ? null
+              : Number.parseInt(voucherPreferenceForm.merchantStoreId, 10),
+          tokenAddress: voucherPreferenceForm.tokenAddress.trim() || null,
+          trustStatus: voucherPreferenceForm.trustStatus,
+        }),
+      });
+    } catch (error) {
+      console.error("Failed to save voucher preference", error);
+    } finally {
+      setIsSavingVoucherPreference(false);
+    }
+  };
 
   const openTopUpModal = () => {
     openModal({
@@ -132,6 +244,97 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           <Button type="button" className="w-full justify-start" onClick={openThemeModal}>
             <LuPalette className="mr-2 h-4 w-4" /> Select Theme
           </Button>
+          <div className="rounded-md border border-border p-3 space-y-2">
+            <p className="text-sm font-semibold">BIA Preferences</p>
+            <select
+              value={primaryBiaId}
+              onChange={(event) => setPrimaryBiaId(event.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {biaOptions.map((bia) => (
+                <option key={bia.id} value={bia.id}>
+                  {bia.code} · {bia.name}
+                </option>
+              ))}
+            </select>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Secondary BIAs</p>
+              {biaOptions
+                .filter((bia) => bia.id !== primaryBiaId)
+                .map((bia) => (
+                  <label key={bia.id} className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={secondaryBiaIds.includes(bia.id)}
+                      onChange={() => toggleSecondaryBia(bia.id)}
+                    />
+                    <span>
+                      {bia.code} · {bia.name}
+                    </span>
+                  </label>
+                ))}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={saveBiaSelection}
+              disabled={isSavingBiaSelection || !primaryBiaId}
+            >
+              {isSavingBiaSelection ? "Saving BIA Selection…" : "Save BIA Selection"}
+            </Button>
+          </div>
+          <div className="rounded-md border border-border p-3 space-y-2">
+            <p className="text-sm font-semibold">Voucher Routing Preferences</p>
+            <input
+              type="text"
+              value={voucherPreferenceForm.merchantStoreId}
+              onChange={(event) =>
+                setVoucherPreferenceForm((prev) => ({
+                  ...prev,
+                  merchantStoreId: event.target.value,
+                }))
+              }
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="Merchant store id (optional)"
+            />
+            <input
+              type="text"
+              value={voucherPreferenceForm.tokenAddress}
+              onChange={(event) =>
+                setVoucherPreferenceForm((prev) => ({
+                  ...prev,
+                  tokenAddress: event.target.value,
+                }))
+              }
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="Token address (optional)"
+            />
+            <select
+              value={voucherPreferenceForm.trustStatus}
+              onChange={(event) =>
+                setVoucherPreferenceForm((prev) => ({
+                  ...prev,
+                  trustStatus: event.target.value,
+                }))
+              }
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="default">Default</option>
+              <option value="trusted">Trusted</option>
+              <option value="blocked">Blocked</option>
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={saveVoucherPreference}
+              disabled={isSavingVoucherPreference}
+            >
+              {isSavingVoucherPreference ? "Saving Preference…" : "Save Voucher Preference"}
+            </Button>
+          </div>
           <Button type="button" className="w-full justify-start" onClick={handleOpenMerchant}>
             <LuBuilding2 className="mr-2 h-4 w-4" /> Open Merchant Dashboard
           </Button>

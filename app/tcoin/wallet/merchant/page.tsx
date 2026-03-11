@@ -53,6 +53,22 @@ type GovernanceActionRecord = {
   created_at: string | null;
 };
 
+type MerchantVoucherLiquidity = {
+  merchantStoreId: number;
+  displayName?: string;
+  poolAddress?: string;
+  tokenAddress?: string;
+  tokenSymbol?: string;
+  tokenName?: string;
+  voucherIssueLimit?: string | null;
+  requiredLiquidityAbsolute?: string | null;
+  requiredLiquidityRatio?: string | null;
+  creditIssued?: string;
+  creditRemaining?: string | null;
+  sourceMode?: string;
+  available: boolean;
+};
+
 type MerchantStoreForm = {
   storeId: string;
   displayName: string;
@@ -74,6 +90,13 @@ const tokenFormatter = new Intl.NumberFormat("en-CA", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+
+const formatLiquiditySource = (value: string | undefined): string => {
+  if (value === "contract_field") {
+    return "sarafu_onchain";
+  }
+  return "derived_supply";
+};
 
 const cadFormatter = new Intl.NumberFormat("en-CA", {
   style: "currency",
@@ -150,6 +173,7 @@ export default function MerchantDashboardPage() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<Record<string, boolean>>({});
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [voucherLiquidityRows, setVoucherLiquidityRows] = useState<MerchantVoucherLiquidity[]>([]);
 
   const [storeForm, setStoreForm] = useState<MerchantStoreForm>({
     storeId: "",
@@ -226,7 +250,7 @@ export default function MerchantDashboardPage() {
     setLoadError(null);
 
     try {
-      const [biaResponse, redemptionResponse, governanceResponse] = await Promise.all([
+      const [biaResponse, redemptionResponse, governanceResponse, voucherMerchantsResponse] = await Promise.all([
         fetchJson<{ activeAffiliation?: { biaId?: string }; bias?: BiaRecord[] }>(
           `/api/bias/list?citySlug=${CITY_SLUG}`
         ),
@@ -236,12 +260,16 @@ export default function MerchantDashboardPage() {
         fetchJson<{ actions?: GovernanceActionRecord[] }>(
           `/api/governance/actions?citySlug=${CITY_SLUG}&limit=20`
         ),
+        fetchJson<{ merchants?: MerchantVoucherLiquidity[] }>(
+          `/api/vouchers/merchants?citySlug=${CITY_SLUG}&chainId=42220&scope=city`
+        ),
       ]);
 
       const nextBias = biaResponse.bias ?? [];
       setBias(nextBias);
       setRedemptions(redemptionResponse.requests ?? []);
       setGovernanceActions(governanceResponse.actions ?? []);
+      setVoucherLiquidityRows(voucherMerchantsResponse.merchants ?? []);
       setLastSyncedAt(new Date());
 
       if (!storeForm.biaId) {
@@ -678,6 +706,50 @@ export default function MerchantDashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Voucher Liquidity + Credit</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Voucher issuance and liquidity requirements come from Sarafu pool contracts and are shown read-only here.
+          </p>
+          {voucherLiquidityRows.filter((row) => row.merchantStoreId === Number.parseInt(storeForm.storeId, 10))
+            .length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No voucher liquidity rows are indexed for this store yet.
+            </p>
+          ) : (
+            voucherLiquidityRows
+              .filter((row) => row.merchantStoreId === Number.parseInt(storeForm.storeId, 10))
+              .map((row, index) => (
+                <div
+                  key={`${row.merchantStoreId}:${row.tokenAddress ?? "none"}:${index}`}
+                  className="rounded-md border p-3 text-sm"
+                >
+                  <p className="font-medium">
+                    {row.tokenSymbol ?? "Voucher"} {row.tokenName ? `· ${row.tokenName}` : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground break-all">
+                    Pool: {row.poolAddress ?? "n/a"} · Token: {row.tokenAddress ?? "n/a"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Credit issued: {row.creditIssued ?? "0"} · Remaining: {row.creditRemaining ?? "n/a"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Voucher limit: {row.voucherIssueLimit ?? "null"} · liquidity abs:{" "}
+                    {row.requiredLiquidityAbsolute ?? "null"} · liquidity ratio:{" "}
+                    {row.requiredLiquidityRatio ?? "null"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Source: {formatLiquiditySource(row.sourceMode)}
+                  </p>
+                </div>
+              ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -121,6 +121,35 @@ type GovernanceActionRecord = {
   payload?: Record<string, unknown> | null;
 };
 
+type VoucherCompatibilityRule = {
+  id: string;
+  city_slug: string;
+  chain_id: number;
+  pool_address: string;
+  token_address: string;
+  merchant_store_id: number | null;
+  accepted_by_default: boolean;
+  rule_status: string;
+  updated_at: string | null;
+};
+
+type MerchantVoucherLiquidity = {
+  merchantStoreId: number;
+  displayName?: string;
+  walletAddress?: string;
+  biaCode?: string;
+  poolAddress?: string;
+  tokenAddress?: string;
+  tokenSymbol?: string;
+  voucherIssueLimit?: string | null;
+  requiredLiquidityAbsolute?: string | null;
+  requiredLiquidityRatio?: string | null;
+  creditIssued?: string;
+  creditRemaining?: string | null;
+  sourceMode?: string;
+  available: boolean;
+};
+
 type SettlementDraft = {
   settlementAmount: string;
   settlementAsset: string;
@@ -167,6 +196,13 @@ const normaliseBoolean = (value: unknown): boolean | null => {
     if (value === 0) return false;
   }
   return null;
+};
+
+const formatLiquiditySource = (value: string | undefined): string => {
+  if (value === "contract_field") {
+    return "sarafu_onchain";
+  }
+  return "derived_supply";
 };
 
 const normaliseString = (value: unknown): string | null => {
@@ -294,6 +330,8 @@ export default function AdminDashboardPage() {
   } | null>(null);
   const [redemptionRequests, setRedemptionRequests] = useState<RedemptionRequestRecord[]>([]);
   const [governanceActions, setGovernanceActions] = useState<GovernanceActionRecord[]>([]);
+  const [voucherRules, setVoucherRules] = useState<VoucherCompatibilityRule[]>([]);
+  const [merchantLiquidityRows, setMerchantLiquidityRows] = useState<MerchantVoucherLiquidity[]>([]);
   const [controlPlaneError, setControlPlaneError] = useState<string | null>(null);
   const [isControlPlaneLoading, setIsControlPlaneLoading] = useState(false);
   const [biaCreateForm, setBiaCreateForm] = useState({
@@ -321,6 +359,14 @@ export default function AdminDashboardPage() {
     reason: "",
   });
   const [settlementDrafts, setSettlementDrafts] = useState<Record<string, SettlementDraft>>({});
+  const [voucherRuleForm, setVoucherRuleForm] = useState({
+    poolAddress: "",
+    tokenAddress: "",
+    merchantStoreId: "",
+    acceptedByDefault: true,
+    ruleStatus: "active",
+    reason: "",
+  });
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -494,7 +540,15 @@ export default function AdminDashboardPage() {
     setControlPlaneError(null);
 
     try {
-      const [biaList, mappingList, controlsList, redemptionList, governanceList] = await Promise.all([
+      const [
+        biaList,
+        mappingList,
+        controlsList,
+        redemptionList,
+        governanceList,
+        voucherRuleList,
+        voucherMerchants,
+      ] = await Promise.all([
         fetchJson<{ bias?: BiaRecord[]; controls?: BiaControlRecord[] }>(
           "/api/bias/list?citySlug=tcoin&includeMappings=true"
         ),
@@ -513,6 +567,12 @@ export default function AdminDashboardPage() {
         fetchJson<{ actions?: GovernanceActionRecord[] }>(
           "/api/governance/actions?citySlug=tcoin&limit=50"
         ),
+        fetchJson<{ rules?: VoucherCompatibilityRule[] }>(
+          "/api/vouchers/compatibility?citySlug=tcoin&chainId=42220"
+        ),
+        fetchJson<{ merchants?: MerchantVoucherLiquidity[] }>(
+          "/api/vouchers/merchants?citySlug=tcoin&chainId=42220&scope=city"
+        ),
       ]);
 
       if (!isMountedRef.current) return;
@@ -523,6 +583,8 @@ export default function AdminDashboardPage() {
       setMappingHealth(mappingList.health ?? null);
       setRedemptionRequests(redemptionList.requests ?? []);
       setGovernanceActions(governanceList.actions ?? []);
+      setVoucherRules(voucherRuleList.rules ?? []);
+      setMerchantLiquidityRows(voucherMerchants.merchants ?? []);
       setLastSyncedAt(new Date());
 
       if (nextBias.length > 0) {
@@ -712,6 +774,51 @@ export default function AdminDashboardPage() {
     } catch (error) {
       console.error("Failed to update controls", error);
       toast.error(error instanceof Error ? error.message : "Could not update BIA controls.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleUpsertVoucherRule = async () => {
+    const poolAddress = voucherRuleForm.poolAddress.trim();
+    const tokenAddress = voucherRuleForm.tokenAddress.trim();
+    const merchantStoreId = Number.parseInt(voucherRuleForm.merchantStoreId, 10);
+
+    if (!poolAddress || !tokenAddress) {
+      toast.error("Pool address and token address are required for voucher compatibility.");
+      return;
+    }
+
+    const key = "upsert-voucher-rule";
+    markSaving(key);
+
+    try {
+      await fetchJson("/api/vouchers/compatibility", {
+        method: "POST",
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          chainId: 42220,
+          poolAddress,
+          tokenAddress,
+          merchantStoreId: Number.isFinite(merchantStoreId) && merchantStoreId > 0 ? merchantStoreId : null,
+          acceptedByDefault: voucherRuleForm.acceptedByDefault,
+          ruleStatus: voucherRuleForm.ruleStatus === "inactive" ? "inactive" : "active",
+          reason: voucherRuleForm.reason.trim() || "Voucher compatibility updated from admin dashboard",
+        }),
+      });
+
+      toast.success("Voucher compatibility rule saved.");
+      setVoucherRuleForm((prev) => ({
+        ...prev,
+        poolAddress: "",
+        tokenAddress: "",
+        merchantStoreId: "",
+        reason: "",
+      }));
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to save voucher compatibility rule", error);
+      toast.error(error instanceof Error ? error.message : "Could not save voucher compatibility rule.");
     } finally {
       clearSaving(key);
     }
@@ -1741,6 +1848,147 @@ export default function AdminDashboardPage() {
                   </div>
                 );
               })
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Voucher Compatibility Rules</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Pool address"
+                value={voucherRuleForm.poolAddress}
+                onChange={(event) =>
+                  setVoucherRuleForm((prev) => ({ ...prev, poolAddress: event.target.value }))
+                }
+                aria-label="Voucher pool address"
+              />
+              <Input
+                placeholder="Token address"
+                value={voucherRuleForm.tokenAddress}
+                onChange={(event) =>
+                  setVoucherRuleForm((prev) => ({ ...prev, tokenAddress: event.target.value }))
+                }
+                aria-label="Voucher token address"
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Merchant store id (optional)"
+                value={voucherRuleForm.merchantStoreId}
+                onChange={(event) =>
+                  setVoucherRuleForm((prev) => ({ ...prev, merchantStoreId: event.target.value }))
+                }
+                aria-label="Voucher merchant store id"
+              />
+              <Select
+                value={voucherRuleForm.ruleStatus}
+                onValueChange={(value) =>
+                  setVoucherRuleForm((prev) => ({ ...prev, ruleStatus: value }))
+                }
+              >
+                <SelectTrigger aria-label="Voucher rule status">
+                  <SelectValue placeholder="Rule status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">active</SelectItem>
+                  <SelectItem value="inactive">inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={voucherRuleForm.acceptedByDefault}
+                onChange={(event) =>
+                  setVoucherRuleForm((prev) => ({
+                    ...prev,
+                    acceptedByDefault: event.target.checked,
+                  }))
+                }
+              />
+              Accept by default
+            </label>
+            <Textarea
+              rows={2}
+              placeholder="Reason (logged)"
+              value={voucherRuleForm.reason}
+              onChange={(event) =>
+                setVoucherRuleForm((prev) => ({ ...prev, reason: event.target.value }))
+              }
+              aria-label="Voucher rule reason"
+            />
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void handleUpsertVoucherRule()}
+                disabled={pendingUpdates["upsert-voucher-rule"] === true}
+              >
+                {pendingUpdates["upsert-voucher-rule"] ? "Saving…" : "Save Voucher Rule"}
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {voucherRules.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No voucher rules configured yet.</p>
+              ) : (
+                voucherRules.slice(0, 20).map((rule) => (
+                  <div key={rule.id} className="rounded-md border p-2 text-xs">
+                    <p className="font-medium break-all">
+                      {rule.pool_address} · {rule.token_address}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Status: {rule.rule_status} · accepted: {String(rule.accepted_by_default)}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Merchant: {rule.merchant_store_id ?? "any"} · updated {formatDateTime(rule.updated_at)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Merchant Voucher Liquidity</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Voucher issuance and liquidity requirements are read from Sarafu pool/limiter contracts. These values are
+              read-only in Genero.
+            </p>
+            {merchantLiquidityRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No merchant voucher liquidity rows found.</p>
+            ) : (
+              merchantLiquidityRows.slice(0, 40).map((row, index) => (
+                <div
+                  key={`${row.merchantStoreId}:${row.tokenAddress ?? "none"}:${index}`}
+                  className="rounded-md border p-2 text-xs"
+                >
+                  <p className="font-medium">
+                    {row.displayName ?? `Store ${row.merchantStoreId}`} · {row.tokenSymbol ?? "n/a"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    BIA: {row.biaCode ?? "n/a"} · Pool: {row.poolAddress ?? "n/a"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Credit issued: {row.creditIssued ?? "0"} · remaining: {row.creditRemaining ?? "n/a"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Voucher limit: {row.voucherIssueLimit ?? "null"} · liquidity abs:{" "}
+                    {row.requiredLiquidityAbsolute ?? "null"} · liquidity ratio:{" "}
+                    {row.requiredLiquidityRatio ?? "null"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Source: {formatLiquiditySource(row.sourceMode)}
+                  </p>
+                </div>
+              ))
             )}
           </CardContent>
         </Card>

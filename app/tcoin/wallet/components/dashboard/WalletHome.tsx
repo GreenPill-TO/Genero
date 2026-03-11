@@ -5,6 +5,7 @@ import { useModal } from "@shared/contexts/ModalContext";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
+import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
 import { createClient } from "@shared/lib/supabase/client";
 import { ContributionsCard } from "./ContributionsCard";
 import { SendCard } from "./SendCard";
@@ -174,12 +175,47 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
 
   const { senderWallet, sendMoney } = useSendMoney({
-    senderId: user_id,
+    senderId: user_id ?? 0,
     receiverId: toSendData?.id ?? null,
   });
 
   const { balance: rawBalance } = useTokenBalance(senderWallet);
   const userBalance = parseFloat(rawBalance) || 0;
+  const { portfolio } = useVoucherPortfolio({ enabled: Boolean(senderWallet) });
+  const [myPoolMerchants, setMyPoolMerchants] = useState<
+    Array<{ merchantStoreId: number; displayName?: string; tokenSymbol?: string }>
+  >([]);
+
+  useEffect(() => {
+    if (!senderWallet) return;
+
+    const loadMerchants = async () => {
+      try {
+        const response = await fetch("/api/vouchers/merchants?citySlug=tcoin&scope=my_pool", {
+          credentials: "include",
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          return;
+        }
+        const rows = Array.isArray(body?.merchants) ? body.merchants : [];
+        const normalized = rows
+          .filter((row: any) => row && typeof row === "object" && row.available === true)
+          .map((row: any) => ({
+            merchantStoreId: Number(row.merchantStoreId),
+            displayName: typeof row.displayName === "string" ? row.displayName : undefined,
+            tokenSymbol: typeof row.tokenSymbol === "string" ? row.tokenSymbol : undefined,
+          }))
+          .filter((row: any) => Number.isFinite(row.merchantStoreId))
+          .slice(0, 6);
+        setMyPoolMerchants(normalized);
+      } catch {
+        setMyPoolMerchants([]);
+      }
+    };
+
+    void loadMerchants();
+  }, [senderWallet]);
 
   const handleUseMax = () => {
     const cadNumeric = safeExchangeRate === 0 ? 0 : userBalance * safeExchangeRate;
@@ -216,10 +252,30 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
         />
         <AccountCard
           balance={userBalance}
+          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
+          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
+          voucherCount={portfolio?.voucherBalances?.length ?? 0}
           openModal={openModal}
           closeModal={closeModal}
           senderWallet={senderWallet}
         />
+        <div className="rounded-xl border border-border bg-card/70 p-4">
+          <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
+          {myPoolMerchants.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              No mapped merchants were found in your primary/secondary BIA pools.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1 text-xs">
+              {myPoolMerchants.map((merchant) => (
+                <li key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}>
+                  {merchant.displayName ?? `Store ${merchant.merchantStoreId}`}
+                  {merchant.tokenSymbol ? ` - ${merchant.tokenSymbol}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <OtherCard
           openModal={openModal}
           closeModal={closeModal}
@@ -253,10 +309,30 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
         />
         <AccountCard
           balance={userBalance}
+          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
+          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
+          voucherCount={portfolio?.voucherBalances?.length ?? 0}
           openModal={openModal}
           closeModal={closeModal}
           senderWallet={senderWallet}
         />
+        <div className="rounded-xl border border-border bg-card/70 p-4">
+          <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
+          {myPoolMerchants.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              No mapped merchants were found in your primary/secondary BIA pools.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1 text-xs">
+              {myPoolMerchants.map((merchant) => (
+                <li key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}>
+                  {merchant.displayName ?? `Store ${merchant.merchantStoreId}`}
+                  {merchant.tokenSymbol ? ` - ${merchant.tokenSymbol}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <OtherCard
           openModal={openModal}
           closeModal={closeModal}

@@ -63,6 +63,12 @@ describe("GET /api/indexer/status", () => {
           },
         ],
       },
+      voucherSummary: {
+        trackedVoucherTokens: 3,
+        walletsWithVoucherBalances: 12,
+        merchantCreditRows: 4,
+        lastVoucherBlock: 123,
+      },
     });
 
     const response = await GET(new Request("http://localhost/api/indexer/status?citySlug=tcoin"));
@@ -73,6 +79,7 @@ describe("GET /api/indexer/status", () => {
     expect(body.biaSummary.activeBias).toBe(4);
     expect(body.biaSummary.unmappedPools).toBe(1);
     expect(body.biaSummary.lastActivityByBia).toHaveLength(1);
+    expect(body.voucherSummary.trackedVoucherTokens).toBe(3);
     expect(h.mockGetIndexerScopeStatus).toHaveBeenCalledWith(
       expect.objectContaining({ citySlug: "tcoin" })
     );

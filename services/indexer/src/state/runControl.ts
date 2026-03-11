@@ -195,6 +195,53 @@ export async function getScopeStatus(options: {
     activeTokenCount = tokenSet.size;
   }
 
+  const [
+    { data: voucherTokenRows, error: voucherTokenError },
+    { data: voucherWalletRows, error: voucherWalletError },
+    { data: merchantCreditRows, error: merchantCreditError },
+  ] = await Promise.all([
+    supabase
+      .schema("indexer")
+      .from("voucher_tokens")
+      .select("token_address,pool_address")
+      .eq("chain_id", chainId)
+      .eq("is_active", true)
+      .in("pool_address", poolAddresses.length > 0 ? poolAddresses : ["0x0000000000000000000000000000000000000000"]),
+    supabase
+      .schema("indexer")
+      .from("wallet_voucher_balances")
+      .select("wallet_address,last_block")
+      .eq("scope_key", scopeKey)
+      .eq("chain_id", chainId),
+    supabase
+      .schema("indexer")
+      .from("merchant_credit_state")
+      .select("merchant_wallet")
+      .eq("scope_key", scopeKey)
+      .eq("chain_id", chainId),
+  ]);
+
+  if (voucherTokenError) {
+    throw new Error(`Failed to read voucher token summary: ${voucherTokenError.message}`);
+  }
+  if (voucherWalletError) {
+    throw new Error(`Failed to read wallet voucher summary: ${voucherWalletError.message}`);
+  }
+  if (merchantCreditError) {
+    throw new Error(`Failed to read merchant credit summary: ${merchantCreditError.message}`);
+  }
+
+  const lastVoucherBlock = (voucherWalletRows ?? []).reduce<number | null>((max, row) => {
+    const next = Number(row.last_block ?? 0);
+    if (!Number.isFinite(next) || next <= 0) {
+      return max;
+    }
+    if (max == null || next > max) {
+      return next;
+    }
+    return max;
+  }, null);
+
   const biaSummary = await buildBiaScopeSummary({
     supabase,
     citySlug,
@@ -225,5 +272,13 @@ export async function getScopeStatus(options: {
     activePoolCount: activePools?.length ?? 0,
     activeTokenCount,
     biaSummary,
+    voucherSummary: {
+      trackedVoucherTokens: voucherTokenRows?.length ?? 0,
+      walletsWithVoucherBalances: new Set(
+        (voucherWalletRows ?? []).map((row) => String(row.wallet_address).toLowerCase())
+      ).size,
+      merchantCreditRows: merchantCreditRows?.length ?? 0,
+      lastVoucherBlock,
+    },
   };
 }

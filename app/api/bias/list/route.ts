@@ -23,7 +23,7 @@ export async function GET(req: Request) {
       throw new Error(`Failed to load BIAs: ${biasResult.error.message}`);
     }
 
-    const [activeAffiliation, isAdminOrOperator] = await Promise.all([
+    const [activeAffiliation, secondaryAffiliations, isAdminOrOperator] = await Promise.all([
       serviceRole
         .from("user_bia_affiliations")
         .select("id,bia_id,source,effective_from")
@@ -32,6 +32,13 @@ export async function GET(req: Request) {
         .is("effective_to", null)
         .limit(1)
         .maybeSingle(),
+      serviceRole
+        .from("user_bia_secondary_affiliations")
+        .select("id,bia_id,source,effective_from")
+        .eq("user_id", userRow.id)
+        .eq("app_instance_id", appInstanceId)
+        .is("effective_to", null)
+        .order("effective_from", { ascending: true }),
       userHasAnyRole({
         supabase: serviceRole,
         userId: Number(userRow.id),
@@ -42,6 +49,9 @@ export async function GET(req: Request) {
 
     if (activeAffiliation.error) {
       throw new Error(`Failed to load active affiliation: ${activeAffiliation.error.message}`);
+    }
+    if (secondaryAffiliations.error) {
+      throw new Error(`Failed to load secondary affiliations: ${secondaryAffiliations.error.message}`);
     }
 
     let mappings: unknown[] = [];
@@ -82,6 +92,12 @@ export async function GET(req: Request) {
             effectiveFrom: activeAffiliation.data.effective_from,
           }
         : null,
+      secondaryAffiliations: (secondaryAffiliations.data ?? []).map((row) => ({
+        id: row.id,
+        biaId: row.bia_id,
+        source: row.source,
+        effectiveFrom: row.effective_from,
+      })),
       bias: biasResult.data ?? [],
       mappings,
       controls,

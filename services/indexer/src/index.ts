@@ -6,6 +6,7 @@ import { resolveCityContractSet } from "./discovery/cityContracts";
 import { pullRpcEvents } from "./ingest/rpcFallback";
 import { pullTrackerEvents } from "./ingest/trackerClient";
 import { persistNormalizedEvents } from "./normalize/persist";
+import { deriveVoucherState } from "./vouchers";
 import {
   buildScopeKey,
   completeRun,
@@ -148,6 +149,14 @@ export async function runIndexerTouch(options: {
         toBlock: latestBlock,
         activePools: discovery.activePools,
       });
+      const voucherDerived = await deriveVoucherState({
+        supabase: options.supabase,
+        client,
+        scopeKey,
+        chainId,
+        cityContracts,
+        activePools: discovery.activePools,
+      });
 
       await completeRun({
         supabase: options.supabase,
@@ -180,6 +189,7 @@ export async function runIndexerTouch(options: {
           rollupRows: biaDerived.rollupRows,
           riskSignals: biaDerived.riskSignals,
         },
+        voucher: voucherDerived,
       };
     }
 
@@ -232,6 +242,14 @@ export async function runIndexerTouch(options: {
       toBlock: blockRange.toBlock,
       activePools: discovery.activePools,
     });
+    const voucherDerived = await deriveVoucherState({
+      supabase: options.supabase,
+      client,
+      scopeKey,
+      chainId,
+      cityContracts,
+      activePools: discovery.activePools,
+    });
 
     await upsertCheckpoint({
       supabase: options.supabase,
@@ -272,6 +290,7 @@ export async function runIndexerTouch(options: {
         rollupRows: biaDerived.rollupRows,
         riskSignals: biaDerived.riskSignals,
       },
+      voucher: voucherDerived,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown indexer error";

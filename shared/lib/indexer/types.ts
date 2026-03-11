@@ -14,6 +14,13 @@ export type BiaScopeSummary = {
   }>;
 };
 
+export type VoucherSummary = {
+  trackedVoucherTokens: number;
+  walletsWithVoucherBalances: number;
+  merchantCreditRows: number;
+  lastVoucherBlock: number | null;
+};
+
 export type IndexerTouchResponse = {
   scopeKey: string;
   started: boolean;
@@ -41,6 +48,7 @@ export type IndexerTouchResponse = {
     rollupRows: number;
     riskSignals: number;
   };
+  voucher?: VoucherSummary;
 };
 
 export type IndexerScopeStatus = {
@@ -65,4 +73,5 @@ export type IndexerScopeStatus = {
   activePoolCount: number;
   activeTokenCount: number;
   biaSummary: BiaScopeSummary;
+  voucherSummary: VoucherSummary;
 };

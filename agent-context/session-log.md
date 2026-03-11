@@ -1,3 +1,83 @@
+## v1.14
+### Timestamp
+- 2026-03-11 15:07:04 EDT
+
+### Objective
+- Implement Merchant Liquidity Layer (Doc 7) on top of the existing BIA/indexer architecture: add voucher data model and APIs, extend indexer for voucher/credit state, wire wallet/admin/merchant UX, and reflect that merchant credit limits/liquidity requirements are sourced from Sarafu on-chain contracts (read-only in Genero UI, no new Genero smart-contract logic).
+
+### What Changed
+- Added `v0.97` Supabase migration for voucher-layer entities and views:
+- secondary BIA affiliations for users,
+- voucher token catalog and wallet voucher balance snapshots,
+- merchant credit/liquidity state mirror,
+- voucher compatibility rules and user voucher preferences,
+- voucher payment records,
+- wallet total-value view including voucher 1:1 equivalent rollup.
+- Added voucher API surface:
+- `GET /api/vouchers/portfolio`,
+- `GET /api/vouchers/merchants`,
+- `GET /api/vouchers/route`,
+- `GET|POST /api/vouchers/preferences`,
+- `GET|POST /api/vouchers/compatibility`,
+- `POST /api/vouchers/payment-record`.
+- Extended BIA endpoints for hybrid affiliation model:
+- `GET /api/bias/list` now returns secondary affiliations,
+- `POST /api/bias/select` now supports `secondaryBiaIds[]`.
+- Added shared voucher library (`shared/lib/vouchers`) with typed models, preference precedence, deterministic route resolution, valuation, and on-chain execution wrappers.
+- Extended indexer voucher pipeline:
+- classify voucher tokens from discovered pools excluding city core tokens,
+- compute wallet voucher + TCOIN snapshots,
+- derive merchant credit state and persist voucher summary metrics,
+- extend indexer status summary/types with voucher dimensions.
+- Updated wallet UX:
+- total balance now supports voucher-equivalent portfolio display,
+- merchant send flow can resolve voucher route, execute swap+transfer path, and deterministically fallback to TCOIN transfer,
+- `More` tab includes secondary BIA selection and voucher preference controls,
+- wallet home shows “Merchants in My Pool” data.
+- Updated admin and merchant dashboards:
+- voucher compatibility rule management in admin,
+- merchant voucher liquidity panels in admin/merchant,
+- explicit UI copy and source labels clarifying voucher issue limits and liquidity requirements are read from Sarafu on-chain contracts and shown read-only in Genero.
+- Added/updated test coverage:
+- voucher route API tests,
+- indexer status tests for voucher summary payload,
+- voucher preference precedence unit test.
+
+### Files Edited
+- `supabase/migrations/20260311130000_v0.97_merchant_liquidity_layer.sql`
+- `app/api/vouchers/portfolio/route.ts`
+- `app/api/vouchers/merchants/route.ts`
+- `app/api/vouchers/route/route.ts`
+- `app/api/vouchers/route/route.test.ts`
+- `app/api/vouchers/preferences/route.ts`
+- `app/api/vouchers/compatibility/route.ts`
+- `app/api/vouchers/payment-record/route.ts`
+- `app/api/bias/list/route.ts`
+- `app/api/bias/select/route.ts`
+- `shared/lib/vouchers/index.ts`
+- `shared/lib/vouchers/onchain.ts`
+- `shared/lib/vouchers/preferences.ts`
+- `shared/lib/vouchers/preferences.test.ts`
+- `shared/lib/vouchers/routing.ts`
+- `shared/lib/vouchers/types.ts`
+- `shared/lib/vouchers/valuation.ts`
+- `shared/hooks/useVoucherPortfolio.ts`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/lib/indexer/types.ts`
+- `services/indexer/src/vouchers.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/state/runControl.ts`
+- `services/indexer/src/types.ts`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/api/indexer/status/route.test.ts`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-7-merchant-liquidity-layer.md`
+- `agent-context/session-log.md`
+
 ## v1.13
 ### Timestamp
 - 2026-03-11 01:43:49 EDT
