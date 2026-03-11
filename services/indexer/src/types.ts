@@ -4,6 +4,20 @@ export type IndexerRunStatus = "idle" | "running" | "success" | "error" | "skipp
 export type IndexerSource = "tracker" | "rpc";
 export type ContractKey = "TCOIN" | "TTC" | "CAD" | "ORCHESTRATOR" | "VOTING";
 
+export type BiaScopeSummary = {
+  activeBias: number;
+  mappedPools: number;
+  unmappedPools: number;
+  staleMappings: number;
+  lastActivityByBia: Array<{
+    biaId: string;
+    biaCode: string;
+    biaName: string;
+    lastIndexedBlock: number | null;
+    indexedEventCount: number;
+  }>;
+};
+
 export type CityContracts = Partial<Record<ContractKey, Address>>;
 
 export type CityContractSet = {
@@ -75,6 +89,7 @@ export type IndexerScopeStatus = {
   }>;
   activePoolCount: number;
   activeTokenCount: number;
+  biaSummary: BiaScopeSummary;
 };
 
 export type IndexerTouchResult = {
@@ -96,5 +111,12 @@ export type IndexerTouchResult = {
     scannedPools: number;
     activePools: number;
     trackedAddresses: number;
+  };
+  bia?: {
+    mappedPools: number;
+    unmappedPools: number;
+    staleMappings: number;
+    rollupRows: number;
+    riskSignals: number;
   };
 };

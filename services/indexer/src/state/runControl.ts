@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { INDEXER_COOLDOWN_SECONDS } from "../config";
+import { buildBiaScopeSummary } from "../bia";
 import type { IndexerScopeStatus, IndexerSource } from "../types";
 
 export function normaliseCitySlug(citySlug: string): string {
@@ -194,6 +195,12 @@ export async function getScopeStatus(options: {
     activeTokenCount = tokenSet.size;
   }
 
+  const biaSummary = await buildBiaScopeSummary({
+    supabase,
+    citySlug,
+    chainId,
+  });
+
   return {
     scopeKey,
     citySlug,
@@ -217,5 +224,6 @@ export async function getScopeStatus(options: {
     })),
     activePoolCount: activePools?.length ?? 0,
     activeTokenCount,
+    biaSummary,
   };
 }

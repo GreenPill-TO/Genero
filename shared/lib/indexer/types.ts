@@ -1,5 +1,19 @@
 export type IndexerRunStatus = "idle" | "running" | "success" | "error" | "skipped";
 
+export type BiaScopeSummary = {
+  activeBias: number;
+  mappedPools: number;
+  unmappedPools: number;
+  staleMappings: number;
+  lastActivityByBia: Array<{
+    biaId: string;
+    biaCode: string;
+    biaName: string;
+    lastIndexedBlock: number | null;
+    indexedEventCount: number;
+  }>;
+};
+
 export type IndexerTouchResponse = {
   scopeKey: string;
   started: boolean;
@@ -19,6 +33,13 @@ export type IndexerTouchResponse = {
     scannedPools: number;
     activePools: number;
     trackedAddresses: number;
+  };
+  bia?: {
+    mappedPools: number;
+    unmappedPools: number;
+    staleMappings: number;
+    rollupRows: number;
+    riskSignals: number;
   };
 };
 
@@ -43,4 +64,5 @@ export type IndexerScopeStatus = {
   }>;
   activePoolCount: number;
   activeTokenCount: number;
+  biaSummary: BiaScopeSummary;
 };

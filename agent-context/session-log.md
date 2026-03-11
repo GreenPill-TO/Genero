@@ -1,3 +1,71 @@
+## v1.11
+### Timestamp
+- 2026-03-10 21:39:19 EDT
+
+### Objective
+- Implement the Neighbourhood/BIA Pools + Indexer tandem release foundations across Supabase schema, backend APIs, indexer BIA attribution/health, and wallet buy/redeem integration points.
+
+### What Changed
+- Added the BIA/pool operational migration (`v0.96`) with BIA registry/mappings/affiliations, store profile and affiliation tables, purchase/redemption workflow tables, risk-control and governance audit tables, BIA rollup/risk indexer tables, and analytics views.
+- Added shared BIA + Sarafu server modules for auth context, app/city resolution, role/store guards, pool routing, pool/token validation, and redemption risk checks.
+- Added new API routes for BIA and operations workflows:
+- `POST /api/bias/create`
+- `GET|POST /api/bias/mappings`
+- `GET|POST /api/bias/controls`
+- `POST /api/stores`, `POST /api/stores/[id]/bia`, `POST /api/stores/risk`
+- `POST /api/pools/buy`
+- `POST /api/redemptions/request`, `GET /api/redemptions/list`, `POST /api/redemptions/[id]/approve`, `POST /api/redemptions/[id]/settle`
+- `GET /api/governance/actions`
+- Extended indexer service with BIA tandem logic:
+- mapping validation sync (`valid/stale/mismatch`) against discovery outputs,
+- per-range BIA rollup derivation from indexed raw events,
+- BIA risk signal upserts (`pending_redemption`, `redemption_pressure`, `stress_level`),
+- status summary expansion with `biaSummary` (active BIAs, mapped/unmapped pools, stale mappings, per-BIA activity).
+- Extended shared/client-facing indexer response types to include BIA summary and BIA ingestion payloads.
+- Wired wallet buy/redeem entry points to the new BIA APIs:
+- Top-up confirmation now triggers `/api/pools/buy` to create BIA-attributed purchase requests.
+- Off-ramp flow now creates `/api/redemptions/request` for store owners after burn/accounting operations.
+- Applied app-instance scoping fixes to new store/BIA endpoints so role/store checks and inserts are isolated per app instance.
+- Verified indexer unit tests still pass:
+- `services/indexer/src/state/cooldown.test.ts`
+- `services/indexer/src/discovery/pools.test.ts`
+- `services/indexer/src/normalize/fingerprint.test.ts`
+
+### Files Edited
+- `supabase/migrations/20260311110000_v0.96_bia_pools.sql`
+- `shared/lib/bia/apiAuth.ts`
+- `shared/lib/bia/server.ts`
+- `shared/lib/bia/types.ts`
+- `shared/lib/bia/index.ts`
+- `shared/lib/sarafu/abis.ts`
+- `shared/lib/sarafu/client.ts`
+- `shared/lib/sarafu/routing.ts`
+- `shared/lib/sarafu/guards.ts`
+- `shared/lib/sarafu/index.ts`
+- `app/api/bias/list/route.ts`
+- `app/api/bias/suggest/route.ts`
+- `app/api/bias/select/route.ts`
+- `app/api/bias/create/route.ts`
+- `app/api/bias/mappings/route.ts`
+- `app/api/bias/controls/route.ts`
+- `app/api/stores/route.ts`
+- `app/api/stores/[id]/bia/route.ts`
+- `app/api/stores/risk/route.ts`
+- `app/api/pools/buy/route.ts`
+- `app/api/redemptions/request/route.ts`
+- `app/api/redemptions/list/route.ts`
+- `app/api/redemptions/[id]/approve/route.ts`
+- `app/api/redemptions/[id]/settle/route.ts`
+- `app/api/governance/actions/route.ts`
+- `services/indexer/src/bia.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/state/runControl.ts`
+- `services/indexer/src/types.ts`
+- `shared/lib/indexer/types.ts`
+- `app/tcoin/wallet/components/modals/TopUpModal.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `agent-context/session-log.md`
+
 ## v0.92
 - Hardened `v0.91` passkey migration by inferring `app_instance_id` from each user’s latest `app_user_profiles` row before falling back to wallet/tcoin, preserving legacy app context where possible.
 - Added deterministic legacy credential backfill tokens plus a `credential_id NOT NULL` enforcement, deduplicated `user_encrypted_share` rows by `(wallet_key_id, app_instance_id, credential_id)`, and kept only the most recent record before the unique constraint is applied.

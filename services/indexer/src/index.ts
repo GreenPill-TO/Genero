@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient, getAddress, http, type Address } from "viem";
+import { deriveBiaRollupsAndRisk, syncBiaMappingValidation } from "./bia";
 import { discoverTrackedPools } from "./discovery/pools";
 import { resolveCityContractSet } from "./discovery/cityContracts";
 import { pullRpcEvents } from "./ingest/rpcFallback";
@@ -101,6 +102,13 @@ export async function runIndexerTouch(options: {
       poolLimit: config.discoveryPoolLimit,
     });
 
+    const biaMappingHealth = await syncBiaMappingValidation({
+      supabase: options.supabase,
+      citySlug,
+      chainId,
+      activePools: discovery.activePools,
+    });
+
     const contractAddresses = Object.values(cityContracts.contracts).filter(
       (address): address is Address => Boolean(address)
     );
@@ -131,6 +139,16 @@ export async function runIndexerTouch(options: {
     });
 
     if (!blockRange) {
+      const biaDerived = await deriveBiaRollupsAndRisk({
+        supabase: options.supabase,
+        scopeKey,
+        citySlug,
+        chainId,
+        fromBlock: latestBlock,
+        toBlock: latestBlock,
+        activePools: discovery.activePools,
+      });
+
       await completeRun({
         supabase: options.supabase,
         scopeKey,
@@ -154,6 +172,13 @@ export async function runIndexerTouch(options: {
           toBlock: latestBlock,
           eventsSeen: 0,
           eventsPersisted: 0,
+        },
+        bia: {
+          mappedPools: biaMappingHealth.mappedPools,
+          unmappedPools: biaMappingHealth.unmappedPools,
+          staleMappings: biaMappingHealth.staleMappings,
+          rollupRows: biaDerived.rollupRows,
+          riskSignals: biaDerived.riskSignals,
         },
       };
     }
@@ -198,6 +223,16 @@ export async function runIndexerTouch(options: {
       events,
     });
 
+    const biaDerived = await deriveBiaRollupsAndRisk({
+      supabase: options.supabase,
+      scopeKey,
+      citySlug,
+      chainId,
+      fromBlock: blockRange.fromBlock,
+      toBlock: blockRange.toBlock,
+      activePools: discovery.activePools,
+    });
+
     await upsertCheckpoint({
       supabase: options.supabase,
       scopeKey,
@@ -229,6 +264,13 @@ export async function runIndexerTouch(options: {
         toBlock: blockRange.toBlock,
         eventsSeen: events.length,
         eventsPersisted: persistResult.persistedEvents,
+      },
+      bia: {
+        mappedPools: biaMappingHealth.mappedPools,
+        unmappedPools: biaMappingHealth.unmappedPools,
+        staleMappings: biaMappingHealth.staleMappings,
+        rollupRows: biaDerived.rollupRows,
+        riskSignals: biaDerived.riskSignals,
       },
     };
   } catch (error) {
