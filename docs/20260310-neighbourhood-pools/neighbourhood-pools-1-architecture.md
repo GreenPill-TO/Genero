@@ -46,6 +46,19 @@ However, unlike Sarafu, TCOIN is implemented using **blockchain infrastructure (
 
 ---
 
+## 1.1 Implementation Baseline (v1)
+
+This PRD is locked to the v1 implementation baseline:
+
+* BIA metadata, affiliations, controls, and governance actions are managed off-chain in Supabase and app APIs.
+* Sarafu pool contracts are the on-chain pool system of record.
+* TCOIN orchestrator remains city-token focused and is **not** the BIA pool registry in v1.
+* User spending is cross-pool permissive city-wide.
+* Merchant redemption remains request-based, manually approved, and queue-settled.
+* On-chain BIA-native TCOIN pool logic is **Optional / Future Phase**.
+
+---
+
 # 2. Problem Statement
 
 The largest systemic risk is **merchant default**.
@@ -113,8 +126,10 @@ Users select a **primary Neightbourhood / BIA affiliation**.
 This association determines:
 
 * Which pool receives their fiat when they mint TCOIN
-* Which pool they primarily transact within
+* Which pool their buy/top-up attribution uses
 * Which merchant ecosystem they strengthen
+
+User spending is not restricted to one pool. Users can transact with merchants in any city pool.
 
 ### Neightbourhood / BIA Suggestion
 
@@ -199,6 +214,12 @@ Queen West pool only
 ```
 
 No other Neightbourhood / BIA is affected.
+
+In v1, merchant redemptions are queue-based operations:
+
+1. merchant submits request
+2. operator reviews and manually approves/rejects
+3. approved requests are settled and logged
 
 ---
 
@@ -323,7 +344,7 @@ Supabase
         │
         │
 Celo Smart Contracts
-(TCOIN + pool contracts)
+(TCOIN city token contracts + Sarafu pool contracts)
         │
         │
 Banking Layer / Fiat Vaults
@@ -350,7 +371,8 @@ Supabase:
 
 Celo:
 
-* Neightbourhood / BIA pool tracking
+* Sarafu pool integration and compatibility checks
+* TCOIN city-token policy and redemption primitives (no BIA pool registry in v1)
 
 Wallet:
 
@@ -366,6 +388,7 @@ Possible upgrades later:
 * Neightbourhood / BIA governance voting
 * Neightbourhood / BIA-specific incentives
 * Neightbourhood / BIA reputation scoring
+* On-chain BIA-native TCOIN pool identity and attribution modules (**Optional / Future Phase**)
 
 ---
 
@@ -377,9 +400,9 @@ This structure ensures that:
 
 * merchant defaults are contained
 * local economies remain accountable
+* users can transact city-wide while merchant redemption obligations remain pool-attributed
 * the system scales city-by-city
 
 The result is a **blockchain-based community currency network aligned with real-world local economic clusters**.
 
 ---
-

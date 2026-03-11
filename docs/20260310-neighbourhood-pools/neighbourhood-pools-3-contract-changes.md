@@ -1,10 +1,10 @@
 # TCOIN PRD — Document 3
 
-# On-Chain Capability Requirements for BIA Pools on Celo
+# On-Chain Capability Requirements for BIA Pools on Celo (Realigned Scope)
 
 ## 1. Purpose
 
-This document defines the **required on-chain capabilities** for supporting TCOIN’s BIA-based pool model on Celo.
+This document defines the on-chain capability roadmap for supporting TCOIN’s BIA-based model on Celo, with an explicit split between **Required in v1** and **Optional / Future Phase**.
 
 It is written against the current high-level contract family you described:
 
@@ -15,7 +15,22 @@ It is written against the current high-level contract family you described:
 
 This document does **not** assume a specific refactor path from the current codebase. It does not try to redesign your existing contract suite line by line. Instead, it describes what the contract system must be capable of doing in order to support the BIA-segmented architecture defined in the earlier PRD documents.
 
-This is therefore a **target capability spec** for the on-chain layer, not a patch list.
+This is therefore a capability specification for the on-chain layer, not a patch list.
+
+### 1.1 Scope lock for the current release (v1)
+
+Required in v1:
+
+* Use existing Sarafu contracts as the pool system of record on-chain.
+* Keep TCOIN/Orchestrator contracts focused on city-token and redemption primitives.
+* Keep merchant redemption as app-orchestrated request/approval/settlement workflow.
+* Keep event attribution derived through indexer + app tables where needed.
+
+Optional / Future Phase:
+
+* TCOIN-native on-chain BIA registry/state.
+* Pool-tagged mint and redemption attribution in TCOIN contracts.
+* On-chain pool-specific governance controls in TCOIN contracts.
 
 ---
 
@@ -23,7 +38,7 @@ This is therefore a **target capability spec** for the on-chain layer, not a pat
 
 TCOIN is intended to function as a **localized flatcoin** that tracks the value of TTC Tokens through policy, minting parity, merchant redemption commitments, and partial reserve support.
 
-The new architectural requirement is that economic exposure be **localized by Business Improvement Area (BIA)** rather than pooled globally across all of Toronto.
+The architectural requirement is that economic exposure be **localized by Business Improvement Area (BIA)** rather than pooled globally across all of Toronto.
 
 That means the contract system must be able to represent and enforce:
 
@@ -33,13 +48,13 @@ That means the contract system must be able to represent and enforce:
 * BIA-specific exposure and loss containment
 * optional future BIA-specific governance and incentives
 
-In other words, the chain layer must stop treating TCOIN as a single undifferentiated reserve context.
+In v1, this is achieved operationally via Sarafu pool state plus off-chain attribution/indexing, while TCOIN contracts remain city-token focused.
 
 ---
 
-## 3. Core Design Goal
+## 3. Core Design Goal (Long-Term)
 
-### The contract system must localize economic obligations to BIA pools.
+### The system must localize economic obligations to BIA pools.
 
 The most important outcome is not cosmetic labeling. It is **risk partitioning**.
 
@@ -86,25 +101,31 @@ But the contract system should still make BIA attribution explicit enough that t
 
 ---
 
-## 5. Required On-Chain Capability Areas
+## 5. Capability Areas by Phase
 
-The contract suite must support the following capability areas:
+### 5.1 Required in v1
 
-1. **BIA registry and pool identity**
-2. **BIA-aware mint routing**
-3. **BIA-aware redemption routing**
-4. **BIA-scoped reserve and liability accounting**
-5. **Merchant/store eligibility and affiliation binding**
-6. **Loss containment and pool health constraints**
-7. **Governance and parameter management for pool logic**
-8. **Event emission for indexing and reconciliation**
-9. **Upgrade-safe extensibility for future BIA features**
+1. Sarafu pool compatibility and address/ABI integration.
+2. Merchant eligibility and redemption approvals enforced through Sarafu + app controls.
+3. City-token contract scope remains separate from BIA pool registry concerns.
+4. Indexer-derived attribution and reconciliation for mint/redemption/pool risk analytics.
 
-Each is described below.
+### 5.2 Optional / Future Phase
+
+1. **BIA registry and pool identity** in TCOIN contract suite.
+2. **BIA-aware mint routing** at TCOIN contract state/event level.
+3. **BIA-aware redemption routing** at TCOIN contract state/event level.
+4. **BIA-scoped reserve and liability accounting** on-chain in TCOIN contracts.
+5. **Loss containment and pool health constraints** enforced by TCOIN contracts.
+6. **Governance and parameter management for pool logic** in TCOIN governance contracts.
+7. **Event emission for indexing and reconciliation** beyond Sarafu/app-derived model.
+8. **Upgrade-safe extensibility for future BIA features** in TCOIN suite.
+
+Sections 6 through 17 document this future-phase contract roadmap unless explicitly provided by Sarafu contracts today.
 
 ---
 
-## 6. BIA Registry and Pool Identity
+## 6. Optional / Future Phase — BIA Registry and Pool Identity
 
 The contract system must be able to represent each BIA as a distinct on-chain pool context.
 
@@ -146,7 +167,7 @@ A deactivated pool must not disappear in a way that breaks historical attributio
 
 ---
 
-## 7. Relationship Between Token and Pools
+## 7. Optional / Future Phase — Relationship Between Token and Pools
 
 The system should treat pools as **economic contexts**, not necessarily separate currencies.
 
@@ -186,7 +207,7 @@ But those should not be required in phase one.
 
 ---
 
-## 8. BIA-Aware Mint Routing
+## 8. Optional / Future Phase — BIA-Aware Mint Routing
 
 When new TCOIN is minted through a purchase or issuance flow, the contract system must be able to attribute that mint to a BIA pool.
 
@@ -237,7 +258,7 @@ This is important because not every mint should necessarily increase redeemable 
 
 ---
 
-## 9. BIA-Aware Redemption Routing
+## 9. Optional / Future Phase — BIA-Aware Redemption Routing
 
 Redemption is where BIA localization becomes economically decisive.
 
@@ -287,7 +308,7 @@ But regardless of the asset used, the redemption must still be attributable to a
 
 ---
 
-## 10. Reserve and Liability Accounting by Pool
+## 10. Optional / Future Phase — Reserve and Liability Accounting by Pool
 
 The contract suite must support pool-scoped accounting, whether directly on-chain or via on-chain-verifiable event/state structures.
 
@@ -320,7 +341,7 @@ This does not require perfect actuarial accounting on day one. It does require a
 
 ---
 
-## 11. Merchant and Store Eligibility Binding
+## 11. Optional / Future Phase — Merchant and Store Eligibility Binding
 
 The contract system must support the concept that redemption rights are not open equally to everyone.
 
@@ -369,7 +390,7 @@ This is especially important because bankruptcy, inactivity, or fraud will somet
 
 ---
 
-## 12. Loss Containment and Pool Health Constraints
+## 12. Optional / Future Phase — Loss Containment and Pool Health Constraints
 
 This section matters more than it may look. Without it, BIA pools are mostly labels.
 
@@ -409,7 +430,7 @@ The exact mechanism can vary. The requirement is that the system support **local
 
 ---
 
-## 13. Governance and Parameter Management
+## 13. Optional / Future Phase — Governance and Parameter Management
 
 Your current suite already includes a voting / steward governance layer. The BIA architecture requires that governance be able to manage pool-related policy as well.
 
@@ -457,7 +478,7 @@ Otherwise you will create operational paralysis.
 
 ---
 
-## 14. Event Emission and Indexing Requirements
+## 14. Optional / Future Phase — Event Emission and Indexing Requirements
 
 If you want BIA pools to be auditable, the chain layer must emit the right data.
 
@@ -501,7 +522,7 @@ Each economically relevant pool action should emit enough context to answer:
 
 ---
 
-## 15. Upgradeability and Extensibility
+## 15. Optional / Future Phase — Upgradeability and Extensibility
 
 Your current architecture already leans upgradeable. The BIA model increases the need for careful extension.
 
@@ -530,7 +551,7 @@ The first implementation should not hardcode assumptions that make these impossi
 
 ---
 
-## 16. Recommended Functional Partitioning
+## 16. Optional / Future Phase — Recommended Functional Partitioning
 
 This section is not a mandatory design, but it is the most natural direction given your current contract family.
 
@@ -547,17 +568,19 @@ TCOIN should ideally **not** become the place where complex BIA logic lives, unl
 
 ### 16.2 Orchestrator responsibilities
 
-The orchestrator should become the primary holder of:
+Future-phase direction:
 
 * BIA registry linkage
 * pool state
-* pool-aware mint routing
-* pool-aware redemption routing
+* pool-aware mint/redemption routing
 * store / merchant eligibility checks
 * reserve exposure attribution
 * policy guardrails for pools
 
-This matches the role it already plays conceptually.
+v1 release baseline:
+
+* Orchestrator remains a city-token policy/redemption primitive.
+* It is not the BIA pool manager in this release.
 
 ### 16.3 Voting / governance responsibilities
 
@@ -582,7 +605,7 @@ You do not need to decide that in this PRD, but you should leave room for it.
 
 ---
 
-## 17. Security and Abuse Considerations
+## 17. Optional / Future Phase — Security and Abuse Considerations
 
 A BIA architecture changes attack surfaces.
 
@@ -634,18 +657,24 @@ Those belong in implementation design and engineering specs.
 
 ## 19. Acceptance Criteria
 
-The on-chain architecture should be considered capable of supporting the BIA pool model when it can demonstrably do all of the following:
+### 19.1 Required in v1
 
-1. Represent each BIA as a distinct on-chain pool context.
-2. Register, activate, and deactivate BIA pools without losing historical attribution.
-3. Attribute economically relevant mint events to a specific BIA pool.
-4. Attribute merchant redemption events to a specific BIA pool.
-5. Bind merchant/store redemption rights to pool identity.
-6. Track or expose pool-specific liability / exposure data sufficiently for reconciliation.
-7. Enforce or support pool-specific guardrails, freezes, or throttles.
-8. Emit events rich enough for off-chain indexing and audit.
-9. Distinguish global policy from pool-specific policy.
-10. Preserve an upgrade path for future BIA-specific mechanisms without forcing a full token redesign.
+The v1 on-chain integration scope is considered complete when it can demonstrably do all of the following:
+
+1. Resolve and use Sarafu pool contracts as the on-chain pool system of record.
+2. Keep TCOIN/orchestrator responsibilities scoped to city-token policy/redemption primitives.
+3. Support merchant redemption requests through manual approval/settlement workflows backed by Sarafu/app controls.
+4. Preserve indexer-derived attribution and reconciliation for pool-linked activity.
+5. Allow city-wide user payments across pools while keeping merchant redemption rights approval-gated.
+
+### 19.2 Optional / Future Phase
+
+The future-phase TCOIN contract roadmap may later include:
+
+1. Native on-chain BIA pool identity and lifecycle in TCOIN contracts.
+2. Pool-tagged mint/redeem attribution in TCOIN contracts.
+3. Pool-specific governance and guardrails enforced on-chain in TCOIN suite.
+4. Expanded event coverage in TCOIN contracts for pool accounting and audit.
 
 ---
 
@@ -666,10 +695,8 @@ The next document should translate these on-chain capabilities into a more concr
 
 ## 21. Summary
 
-To support TCOIN as a localized flatcoin rather than a single city-wide pooled liability, the contract suite on Celo must treat BIAs as real economic partitions.
+For v1, BIA pool mechanics are implemented through Sarafu contracts plus off-chain app/indexer attribution, while TCOIN contracts remain city-token focused.
 
-The key requirement is not to create separate user-facing currencies. It is to ensure that minting, redemption, reserve attribution, merchant obligations, and risk controls can all be scoped to a specific BIA pool.
+This achieves immediate delivery goals without requiring a TCOIN-native on-chain BIA pool layer in the same release.
 
-The orchestrator is the natural focal point for this design. The token can remain unified. But the pool logic must become explicit, enforceable, auditable, and governable.
-
-That is what turns BIA segmentation from a narrative into an actual containment mechanism.
+The contract sections in this document remain a structured **Optional / Future Phase** roadmap for deeper on-chain BIA-native controls if needed later.

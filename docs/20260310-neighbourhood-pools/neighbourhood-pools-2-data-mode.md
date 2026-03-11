@@ -12,6 +12,18 @@ This document should be read as a **capability specification**, not a low-level 
 
 ---
 
+## 1.1 Implementation Baseline (v1)
+
+This document is aligned to the v1 implementation scope:
+
+* Supabase is the authoritative operational source for BIA metadata, affiliations, controls, and workflow state.
+* Sarafu contracts are the on-chain pool system of record.
+* TCOIN contracts remain city-token and governance primitives; no BIA-native pool state is required in TCOIN contracts for v1.
+* Mint and liquidity attribution is derived through app/indexer data, not pool-tagged mint state in TCOIN contracts.
+* Advanced polygon-based geospatial matching is **Optional / Future Phase**.
+
+---
+
 ## 2. Context
 
 TCOIN is organized around geographically localized community pools aligned to **Business Improvement Areas (BIAs)**.
@@ -24,7 +36,7 @@ To support this model, the backend must be able to:
 * track which fiat inflows and redemption obligations belong to which BIA
 * expose these relationships cleanly to the wallet app, admin tools, and contract integration layer
 
-The Supabase layer acts as the **operational source of truth** for application-facing BIA metadata and affiliation logic, while on-chain contracts remain the source of truth for token balances and pool mechanics where applicable.
+The Supabase layer acts as the **operational source of truth** for application-facing BIA metadata and affiliation logic, while Sarafu contracts remain the source of truth for pool mechanics where applicable.
 
 ---
 
@@ -91,12 +103,12 @@ Each BIA record should be able to carry, at minimum:
 
 ### 5.2 Multiple geography representations
 
-The system should support both:
+In v1, the system should support:
 
 * a simple center coordinate for nearest-BIA suggestions
-* a richer boundary representation when available
+* optional storage hooks for a richer boundary representation when available (**Optional / Future Phase**)
 
-This matters because the early product may rely on “distance from center,” while later versions may need true “inside boundary” logic.
+This matters because v1 relies on “distance from center,” while later versions may need true “inside boundary” logic.
 
 ### 5.3 Lifecycle support
 
@@ -130,19 +142,13 @@ Given a geographic point, the system must be able to return:
 
 * the nearest BIAs in ranked order
 * distance from the input point to each suggested BIA
-* optionally, whether the point lies inside a BIA boundary when polygon data exists
+* polygon-containment hints only if enabled later (**Optional / Future Phase**)
 
 ### 6.3 Suggestion logic
 
-The backend should support at least two classes of matching logic:
+The v1 backend uses **distance-based ranking** for nearest suggestions.
 
-* **distance-based ranking** for simple nearest suggestions
-* **containment-based matching** when a polygon boundary exists
-
-A practical rule set could be:
-
-1. If the point lies inside one or more BIA boundaries, return those first.
-2. Otherwise return the nearest BIAs by center-point distance.
+Containment-based matching with polygon boundaries is **Optional / Future Phase**.
 
 ### 6.4 Manual override support
 
@@ -254,7 +260,9 @@ When a user purchases or mints TCOIN, the backend must be able to determine and 
 * which BIA the purchase is attributed to
 * what basis was used for that attribution
 * which reserve bucket or pool received the fiat-side credit
-* which on-chain or internal mint event corresponds to the purchase
+* which app/indexer event trail corresponds to the purchase attribution
+
+In v1, mint is treated as city-wide token issuance; pool attribution is analytics/indexer-derived.
 
 ### 9.3 BIA attribution rules
 
@@ -321,29 +329,31 @@ That is the whole point of the architecture.
 
 ---
 
-## 11. On-Chain Mapping Support
+## 11. On-Chain Mapping Support (Sarafu Pools in v1)
 
-Because BIAs also exist in the contract system as pool-like entities, the backend must support mapping between off-chain and on-chain representations.
+Because BIAs map to Sarafu pool infrastructure in v1, the backend must support mapping between off-chain BIA records and Sarafu pool contract tuples.
 
 ### 11.1 Required mapping capability
 
 For each BIA, the system should be able to associate:
 
 * application-level BIA identifier
-* on-chain pool identifier or contract reference
+* Sarafu pool identifier/address and related contract references
 * relevant chain/network metadata
-* status of synchronization or registration
+* status of synchronization and discovery validation
 
 ### 11.2 Contract registration state
 
-The backend should be able to track whether a BIA is:
+The backend should be able to track whether a BIA mapping is:
 
-* defined only off-chain
-* registered on-chain but not yet active
-* active both off-chain and on-chain
+* defined off-chain but not yet mapped to Sarafu
+* mapped and valid against current Sarafu discovery
+* mapped but stale/mismatched
 * deprecated or migrated
 
 This prevents operational ambiguity during rollout.
+
+TCOIN-native on-chain BIA registration states are **Optional / Future Phase**.
 
 ---
 
@@ -361,6 +371,8 @@ Admins should be able to:
 * review merchant/store BIA assignments
 * freeze or deactivate problematic merchants or pools
 * flag exceptions for manual handling
+* manage BIA-to-Sarafu pool mappings from the city-manager interface
+* approve/reject merchant redemption eligibility for pool participation
 
 ### 12.2 Guardrails
 
@@ -395,6 +407,7 @@ The backend should support queries or RPC-style endpoints for:
 * get current user’s BIA affiliation
 * set or update current user’s BIA affiliation
 * fetch merchant/store BIA details where relevant
+* list "merchants available in my pool" as a discovery/filter view
 
 ### 13.2 Admin-facing queries
 
@@ -412,7 +425,7 @@ The backend should support queries for:
 
 The backend should also expose enough structure for contract/indexer/integration layers to resolve:
 
-* BIA ↔ on-chain pool mapping
+* BIA ↔ Sarafu pool mapping
 * BIA routing rules
 * merchant redemption eligibility
 
@@ -530,11 +543,13 @@ The Supabase architecture should be considered capable of supporting the BIA mod
 3. Store and retrieve explicit user-to-BIA affiliations.
 4. Store and retrieve merchant/store-to-BIA affiliations.
 5. Map each BIA to a pool/reserve context.
-6. Attribute minting and reserve inflow events to a BIA.
+6. Attribute minting and reserve inflow events to a BIA through app/indexer-derived attribution.
 7. Attribute merchant redemption events and liabilities to a BIA.
 8. Expose BIA-aware data cleanly to wallet and admin clients.
 9. Preserve historical traceability of affiliation and attribution changes.
 10. Support BIA-level reporting and risk analysis.
+11. Support city-manager management of Sarafu pool mappings and merchant approval workflows.
+12. Support center-point proximity suggestions with manual override (polygon containment is Optional / Future Phase).
 
 ---
 

@@ -10,6 +10,17 @@ TCOIN is a community-backed flatcoin with partial reserves and localized BIA poo
 
 ---
 
+## 1.1 Implementation Baseline (v1)
+
+This governance document is aligned to the v1 delivery scope:
+
+* Governance and risk controls are primarily enforced in app/data-layer operations.
+* All privileged actions are auditable via governance action logs.
+* Pool freeze/throttle and merchant suspension controls are operator/admin actions in v1.
+* Steward/on-chain pool governance extensions are **Optional / Future Phase** unless already provided by Sarafu contracts.
+
+---
+
 # 2. Governance Objectives
 
 Governance must ensure that:
@@ -36,6 +47,8 @@ Typical steward powers:
 * vote on economic parameters
 * approve system upgrades
 * ratify BIA pool creation
+
+In v1, steward/on-chain pool governance expansion is **Optional / Future Phase**.
 
 ### Operators
 
@@ -102,6 +115,8 @@ Examples include:
 * redemption limits
 
 Parameter changes should follow a **structured voting process**.
+
+In v1, structured operational approval workflows and audit logs satisfy this requirement even when changes are not finalized by on-chain steward vote.
 
 ---
 
@@ -204,6 +219,8 @@ Upgrade process:
 
 Upgrades should only occur after adequate testing.
 
+Steward-governed on-chain upgrade workflows for pool-specific logic are **Optional / Future Phase**.
+
 ---
 
 # 13. Gradual Decentralization
@@ -224,11 +241,12 @@ This gradual decentralization increases legitimacy.
 
 The governance and risk system is considered operational when it can:
 
-1. update system parameters through governance
+1. update operational parameters through role-gated governance workflows with audit logs
 2. freeze or throttle individual BIA pools
 3. suspend merchants
-4. pause minting or redemption when necessary
+4. enforce operator-mediated redemption controls when necessary
 5. log governance actions transparently
+6. preserve a clear roadmap for Optional / Future Phase steward/on-chain governance controls
 
 ---
 

@@ -14,6 +14,11 @@ This document covers the imported contracts in `contracts/foundry/src/torontocoi
 - The intended architecture is sound: `Orchestrator` coordinates redemptions between `TCOIN`, `TTC`, and `CAD`, and `Voting` proposes policy updates.
 - As checked into this repo today, the system is **not deployable** due to dependency/import issues plus multiple critical logic bugs.
 
+### BIA v1 Release Alignment Note
+- P0/P1 fixes in this document remain important for making the TorontoCoin contract suite deployable and production-safe.
+- For the current BIA v1 rollout (off-chain BIA metadata/controls + Sarafu pool mechanics), these P0/P1 fixes are **not** a hard release gate.
+- This means BIA v1 can ship independently while TorontoCoin contract hardening proceeds in parallel.
+
 ### Build and Dependency Status
 - `forge build` currently fails because OpenZeppelin dependencies are not installed/remapped in `contracts/foundry`.
 - Required packages include both:

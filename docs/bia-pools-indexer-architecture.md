@@ -9,6 +9,23 @@ The release goal is to:
 - Extend the existing touch-triggered indexer to compute BIA-level operational/risk outputs.
 - Route wallet buy/redeem actions through BIA-aware API flows.
 
+## 1.1 Decision Lock (v1)
+
+This architecture is locked to the following decisions:
+
+1. BIA metadata, affiliations, and governance controls are off-chain (Supabase + app APIs).
+2. On-chain pool mechanics use Sarafu contracts only.
+3. TCOIN orchestrator remains city-token focused and is not a BIA pool registry.
+4. Mint remains city-wide; pool liquidity attribution is indexer/app-derived.
+5. Redemption attribution/enforcement remains off-chain workflow in v1.
+6. Merchant gating/approval uses Sarafu pool model plus app interfaces.
+7. Pool freeze/throttle controls remain app/data-layer controls with audit logs.
+8. Indexer keeps the derived model; richer on-chain event semantics are deferred.
+9. `/api/pools/buy` remains orchestration/persistence, not server-executed user tx.
+10. Redemption settlement remains operator-mediated queue flow.
+11. Geospatial matching remains center-point nearest ranking in v1.
+12. User spending is cross-pool permissive city-wide; merchant redemption rights require manual approval.
+
 ## 2. High-Level Design
 
 ```mermaid
@@ -126,6 +143,8 @@ Implemented in:
 Current behavior:
 - Top-up confirmation now calls `/api/pools/buy` to create a BIA-attributed pool purchase request record.
 - Off-ramp flow, for store owners, now calls `/api/redemptions/request` after burn/accounting to queue BIA-attributed redemption settlement.
+- Wallet behavior is city-wide and cross-pool permissive for user payments.
+- Wallet requirements include a "merchants in my pool" discovery/filter view.
 
 ## 7. Security and Access Model
 - API endpoints require authenticated Supabase session.
@@ -139,6 +158,7 @@ Current behavior:
 - BIA pool settlement is queue-driven and operator-mediated.
 - Geospatial suggestion remains center-point distance based (no polygon containment in this implementation).
 - Buy flow currently persists routed request state; on-chain tx execution remains an integration concern of wallet signing path.
+- Contract-rich BIA-native pool state/events in TCOIN suite are Optional / Future Phase.
 
 ## 9. Key Paths
 - Migration: `supabase/migrations/20260311110000_v0.96_bia_pools.sql`

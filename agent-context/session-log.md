@@ -1,3 +1,34 @@
+## v1.13
+### Timestamp
+- 2026-03-11 01:43:49 EDT
+
+### Objective
+- Realign the Neighbourhood/BIA PRD and alignment docs to the locked v1 scope: off-chain BIA operations with Sarafu on-chain pools, permissive cross-pool user spend, manual merchant approval/settlement, and explicit future-phase labeling for deferred on-chain TCOIN pool features.
+
+### What Changed
+- Added explicit v1 implementation baseline sections across PRD documents 1, 2, 4, 5, and 6.
+- Re-scoped PRD document 3 (`contract changes`) to a phased model:
+- `Required in v1`: Sarafu pool compatibility + app/indexer-derived attribution model.
+- `Optional / Future Phase`: TCOIN-native on-chain BIA registry, pool-tagged mint/redeem attribution, and on-chain pool governance controls.
+- Updated wallet/merchant/governance requirements to codify:
+- cross-pool permissive user payments city-wide,
+- wallet discovery/filter requirement for "merchants in my pool",
+- merchant redemption flow as request -> manual approval -> queued settlement.
+- Updated data-model requirements to mark center-point geospatial as v1 baseline and polygon containment as optional future phase.
+- Added a `Decision Lock (v1)` section to the BIA/indexer architecture doc reflecting all locked decisions and current operational limits.
+- Added TorontoCoin alignment note clarifying P0/P1 contract fixes remain important but are not a hard release gate for BIA v1 (off-chain + Sarafu model).
+
+### Files Edited
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-1-architecture.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-2-data-mode.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-3-contract-changes.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-4-wallet-us.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-5-merchants.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-6-governance.md`
+- `docs/bia-pools-indexer-architecture.md`
+- `docs/torontocoin-contracts-current-state.md`
+- `agent-context/session-log.md`
+
 ## v1.12
 ### Timestamp
 - 2026-03-10 23:54:38 EDT

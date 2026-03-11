@@ -12,6 +12,18 @@ Users should experience TCOIN as a **single simple currency**, while the system 
 
 ---
 
+## 1.1 Implementation Baseline (v1)
+
+This wallet spec is locked to the v1 model:
+
+* Users can transact with merchants across any city pool (no spend restriction by user BIA).
+* User primary BIA is used for buy/top-up attribution and personalization.
+* Merchant redemption remains request-based and operator-approved.
+* Wallet should expose a discovery/filter view for "merchants in my pool."
+* Geospatial matching uses center-point nearest ranking in v1; polygon containment is **Optional / Future Phase**.
+
+---
+
 # 2. UX Principles
 
 ### 2.1 One Currency
@@ -115,6 +127,8 @@ When a user pays a merchant:
 
 No UX complexity is required.
 
+User payments are city-wide and cross-pool permissive. A user's primary BIA must not block payment to a merchant in another pool.
+
 However, the receipt may optionally show:
 
 * merchant BIA
@@ -153,6 +167,8 @@ Examples:
 * merchants in your BIA
 * nearby merchants accepting TCOIN
 * activity in your BIA
+
+The "merchants in your BIA" view is discovery/filter functionality, not a payment restriction.
 
 This supports the **community trust layer** that underpins the economic model.
 
@@ -196,6 +212,7 @@ Future versions of the wallet may add:
 * local incentives or rewards
 * BIA-level governance participation
 * community funding flows
+* polygon-based geospatial containment and overlap resolution
 
 These features reinforce the **local economy narrative**.
 
@@ -209,8 +226,10 @@ The wallet UX supports the BIA architecture when it can:
 2. Allow users to select and change their primary BIA.
 3. Allow merchants to register stores tied to BIAs.
 4. Route purchases to the correct BIA pool.
-5. Display BIA context in transactions where helpful.
-6. Allow merchants to redeem within their BIA pool.
+5. Allow users to pay merchants across different city pools without pool-block errors.
+6. Display BIA context in transactions where helpful.
+7. Show "merchants in my pool" as a discovery/filter view.
+8. Allow merchants to redeem through request -> approval -> settlement workflow.
 
 ---
 

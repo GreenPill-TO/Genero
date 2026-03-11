@@ -16,6 +16,18 @@ This document focuses on **economic behavior**, not technical implementation.
 
 ---
 
+## 1.1 Implementation Baseline (v1)
+
+This document is aligned to the v1 operating model:
+
+* User payments are city-wide and cross-pool permissive.
+* Merchant redemption rights are approval-gated.
+* Redemption settlement is request-based and operator-mediated (queued flow).
+* Pool attribution is maintained in app/indexer data tied to Sarafu pool mappings.
+* TCOIN-native on-chain BIA pool governance is **Optional / Future Phase**.
+
+---
+
 # 2. Merchant Role in the System
 
 Merchants are the primary source of real-world utility for TCOIN.
@@ -83,11 +95,13 @@ Typical redemption flow:
 
 1. Merchant accumulates TCOIN
 2. Merchant submits redemption request
-3. System identifies merchant BIA
-4. Redemption attributed to that BIA pool
-5. Settlement asset issued or queued
+3. Operator reviews request and approves/rejects
+4. System identifies merchant BIA/pool attribution
+5. Approved requests enter settlement queue and are settled
 
 This attribution ensures pool-level accounting remains accurate.
+
+Cross-pool user purchases do not grant unrestricted merchant redemption rights. Merchant redemption still depends on explicit approval and pool eligibility.
 
 ---
 
@@ -218,9 +232,11 @@ The merchant economics model is considered implemented when:
 
 1. Merchants can accept TCOIN and redeem it through defined flows.
 2. Redemptions are attributed to BIA pools.
-3. Redemption limits can be applied per BIA.
-4. Merchant defaults affect only their BIA pool.
-5. Operators can monitor pool health metrics.
+3. Merchant redemption requests follow request -> manual approval -> queued settlement.
+4. Redemption limits can be applied per BIA.
+5. Merchant defaults affect only their BIA pool.
+6. Cross-pool user spending is permitted while merchant redemption remains approval-gated.
+7. Operators can monitor pool health metrics.
 
 ---
 
