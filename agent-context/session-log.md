@@ -1,3 +1,18 @@
+## v1.15
+### Timestamp
+- 2026-03-11 19:33:00 EDT
+
+### Objective
+- Record the latest state after voucher-layer integration work and prepare a commit while explicitly excluding Sarafu read-only reference docs under `contracts/foundry/src/registry/sarafu-read-only`.
+
+### What Changed
+- Confirmed there are no new code changes pending after `v1.14`.
+- Kept `contracts/foundry/src/registry/sarafu-read-only/` out of commit scope as requested.
+- Added this log entry to document the exclusion and repository state.
+
+### Files Edited
+- `agent-context/session-log.md`
+
 ## v1.14
 ### Timestamp
 - 2026-03-11 15:07:04 EDT
