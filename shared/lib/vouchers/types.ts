@@ -60,6 +60,8 @@ export type VoucherRouteQuote = {
   amountInTcoin: string;
   expectedVoucherOut?: string;
   minVoucherOut?: string;
+  quoteSource?: "pool_getQuote" | "quoter_valueFor" | "fallback";
+  feePpm?: number;
   slippageBps?: number;
   guardDecisions: string[];
 };

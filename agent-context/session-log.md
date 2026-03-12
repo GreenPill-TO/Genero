@@ -1,3 +1,69 @@
+## v1.16
+### Timestamp
+- 2026-03-12 03:25:00 EDT
+
+### Objective
+- Implement the TorontoCoin hardening + Sarafu-accurate integration pass: close outstanding torontocoin README items first, then align indexer/API/wallet behavior to the real Sarafu contract ABI semantics.
+
+### What Changed
+- Hardened and reconciled the new `torontocoin` contract suite to compile and test together under one shared interface model (`interfaces/*`).
+- Enforced deadline-gated governance execution while preserving early approval semantics.
+- Reconciled Charity/Steward coupling onto canonical `syncCharityAppointment(...)` flow and added treasury-required charity helper methods.
+- Fixed OZ v4 compatibility and compile blockers across contracts/scripts/tests (Ownable initializer patterns, token transfer hooks, script stack-depth, legacy test removal).
+- Replaced guessed Sarafu ABI usage with pinned semantics:
+- quote path now prefers pool `getQuote(out,in,amount)` and falls back to quoter `valueFor(out,in,amount)`.
+- execution path now uses pool `withdraw(out,in,amount)` (not `swap(...)`).
+- limiter reads now use canonical `limitOf(token,pool)` for voucher credit limits.
+- Updated voucher routing API/contracts integration:
+- `/api/vouchers/route` now resolves TCOIN decimals and returns quote-derived `expectedVoucherOut`, `minVoucherOut`, `quoteSource`, and `feePpm`.
+- fallback behavior is deterministic when quote paths are unavailable.
+- Updated wallet send flow to honor ABI-accurate route metadata and prevent silent fallback when a swap succeeded but transfer/slippage failed; errors now surface explicitly with swap tx context.
+- Extended indexer BIA diagnostics with explicit component mismatch counts (`componentMismatches`) for DB mapping vs on-chain pool tuple divergence.
+- Updated architecture docs with ABI-accurate Sarafu routing/limit semantics and mismatch diagnostics.
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/src/torontocoin/GeneroToken.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/CharityRegistry.sol`
+- `contracts/foundry/src/torontocoin/StewardRegistry.sol`
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/ReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/OracleRouter.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ICharityRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IStewardRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IOracleRouter.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITCOINToken.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IGovernance.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `contracts/foundry/test/unit/torontocoin/StewardSync.t.sol`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `contracts/foundry/test/unit/torontocoin-v2/VotingV2.t.sol`
+- `services/indexer/src/discovery/abis.ts`
+- `services/indexer/src/vouchers.ts`
+- `services/indexer/src/normalize/persist.ts`
+- `services/indexer/src/bia.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/types.ts`
+- `shared/lib/sarafu/abis.ts`
+- `shared/lib/sarafu/client.ts`
+- `shared/lib/vouchers/types.ts`
+- `shared/lib/vouchers/routing.ts`
+- `shared/lib/vouchers/onchain.ts`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/lib/indexer/types.ts`
+- `app/api/vouchers/route/route.ts`
+- `app/api/vouchers/route/route.test.ts`
+- `app/api/vouchers/merchants/route.ts`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `docs/indexer-architecture.md`
+- `docs/bia-pools-indexer-architecture.md`
+- `agent-context/session-log.md`
 ## v1.15
 ### Timestamp
 - 2026-03-11 19:33:00 EDT

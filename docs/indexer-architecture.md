@@ -6,6 +6,7 @@ Session `v1.07` introduced a user-triggered indexer for city contracts and Saraf
 - Triggering from real user activity instead of cron-only infrastructure.
 - Tracker-first ingestion with automatic RPC fallback.
 - Read-optimized indexed tables with strict write boundaries.
+- ABI-accurate Sarafu reads (`SwapPool`, `PriceIndexQuoter`, `Limiter`) instead of guessed function names.
 
 ## High-Level Flow
 ```mermaid
@@ -83,6 +84,8 @@ flowchart TD
 ### 6. Pool Discovery and Address Tracking
 - File: `services/indexer/src/discovery/pools.ts`.
 - Reads pools from Sarafu pool index contract.
+- Reads and refreshes full on-chain pool tuple every discovery run:
+- `tokenRegistry()`, `tokenLimiter()`, `quoter()`, `owner()`, `feeAddress()`.
 - Forces inclusion of required baseline pool/components from config constants.
 - Includes pools when:
 - pool token set overlaps with city token set (`TCOIN/TTC/CAD`), or
@@ -93,6 +96,7 @@ flowchart TD
 - `chain_data.pools`
 - `chain_data.tokens` (best-effort ERC20 metadata)
 - Deactivates stale pools not seen in current discovery pass.
+- Syncs mapping validation status and flags tuple mismatches when DB mapping components diverge from on-chain values.
 
 ### 7. Ingestion Sources
 - Tracker source: `services/indexer/src/ingest/trackerClient.ts`.
@@ -102,6 +106,13 @@ flowchart TD
 - Uses `viem` `getLogs` over tracked addresses in chunks.
 - Maps topic signatures to event types (`TRANSFER`, `MINT`, `BURN`, `SWAP`, `DEPOSIT`, `OWNERSHIP_TRANSFERRED`).
 - Decodes payloads when ABI match succeeds; stores raw fallback payload otherwise.
+- Event ABI names are aligned to Sarafu contracts (`_minter`, `_burner`, `_beneficiary`, `_value`, etc.).
+
+### 7.1 Sarafu ABI Truths Used
+- Quoter pricing path: `valueFor(address _outToken, address _inToken, uint256 _value)`.
+- Swap path (wallet execution): `withdraw(address _outToken, address _inToken, uint256 _value)`.
+- Pool quote preflight: `getQuote(address _outToken, address _inToken, uint256 _value)`.
+- Limit read path: `limitOf(address token, address holder)`.
 
 ### 8. Normalization and Persistence
 - Fingerprint builder: `services/indexer/src/normalize/fingerprint.ts`.
@@ -170,6 +181,7 @@ Defined in `services/indexer/src/config.ts`.
 - `runControl` (timestamps, state, cooldown eligibility, last error)
 - source checkpoints (`tracker` and `rpc`)
 - active pool count and distinct active token count
+- `biaSummary.componentMismatches` for strict DB-vs-chain pool component mismatch diagnostics.
 
 ## Failure Handling
 - Tracker pull failure automatically falls back to RPC in same run.

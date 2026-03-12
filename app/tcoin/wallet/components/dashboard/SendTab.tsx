@@ -211,6 +211,18 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       }
 
       try {
+        const isIrrecoverableVoucherExecutionError = (error: unknown) => {
+          if (!(error instanceof Error)) {
+            return false;
+          }
+          const message = error.message.toLowerCase();
+          return (
+            message.includes("post-trade slippage") ||
+            message.includes("after successful swap") ||
+            message.includes("swap tx:")
+          );
+        };
+
         const response = await fetch(
           `/api/vouchers/route?citySlug=tcoin&amount=${encodeURIComponent(
             amountNumeric.toString()
@@ -231,6 +243,8 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
               typeof quote?.reason === "string" ? quote.reason : "No eligible voucher route.",
             metadata: {
               guardDecisions: Array.isArray(quote?.guardDecisions) ? quote.guardDecisions : [],
+              quoteSource: typeof quote?.quoteSource === "string" ? quote.quoteSource : "fallback",
+              feePpm: typeof quote?.feePpm === "number" ? quote.feePpm : null,
             },
           });
           return fallbackTxHash;
@@ -258,6 +272,8 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
             metadata: {
               approvalTxHash: voucherTx.approvalTxHash,
               guardDecisions: routeQuote.guardDecisions,
+              quoteSource: routeQuote.quoteSource,
+              feePpm: typeof routeQuote.feePpm === "number" ? routeQuote.feePpm : null,
             },
           });
           return voucherTx.transferTxHash;
@@ -266,6 +282,23 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
         try {
           return await attemptVoucher(quote);
         } catch (firstError) {
+          if (isIrrecoverableVoucherExecutionError(firstError)) {
+            await postPaymentRecord({
+              mode: "voucher",
+              amountTcoin: amountNumeric,
+              status: "failed",
+              fallbackReason:
+                firstError instanceof Error
+                  ? firstError.message
+                  : "Voucher execution failed after swap.",
+              metadata: {
+                guardDecisions: Array.isArray(quote?.guardDecisions) ? quote.guardDecisions : [],
+                quoteSource: typeof quote?.quoteSource === "string" ? quote.quoteSource : "unknown",
+              },
+            });
+            throw firstError;
+          }
+
           // Retry once with refreshed quote before falling back.
           try {
             const retryResponse = await fetch(
@@ -281,6 +314,22 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
             }
             return await attemptVoucher(retryQuote);
           } catch (retryError) {
+            if (isIrrecoverableVoucherExecutionError(retryError)) {
+              await postPaymentRecord({
+                mode: "voucher",
+                amountTcoin: amountNumeric,
+                status: "failed",
+                fallbackReason:
+                  retryError instanceof Error
+                    ? retryError.message
+                    : "Voucher execution failed after swap.",
+                metadata: {
+                  quoteSource: typeof quote?.quoteSource === "string" ? quote.quoteSource : "unknown",
+                },
+              });
+              throw retryError;
+            }
+
             const fallbackTxHash = await sendMoney(amount);
             await postPaymentRecord({
               mode: "tcoin_fallback",

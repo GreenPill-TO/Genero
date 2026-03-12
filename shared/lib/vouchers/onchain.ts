@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
-import { createSarafuPublicClient } from "@shared/lib/sarafu/client";
-import { sarafuPoolWriteAbi, sarafuQuoterAbi } from "@shared/lib/sarafu/abis";
+import { quoteSarafuPoolSwap } from "@shared/lib/sarafu/client";
+import { sarafuPoolWriteAbi } from "@shared/lib/sarafu/abis";
 
 const erc20Abi = [
   "function allowance(address owner,address spender) view returns (uint256)",
@@ -15,28 +15,30 @@ function parseAmountUnits(amount: string, decimals = 18): ethers.BigNumber {
 
 export async function readVoucherSwapQuote(options: {
   chainId: number;
+  poolAddress: `0x${string}`;
   quoterAddress?: `0x${string}`;
   tokenIn: `0x${string}`;
   tokenOut: `0x${string}`;
   amountIn: string;
   tokenInDecimals?: number;
 }): Promise<string | null> {
-  if (!options.quoterAddress) {
-    return null;
-  }
-
   try {
-    const client = createSarafuPublicClient(options.chainId);
     const amountInUnits = BigInt(parseAmountUnits(options.amountIn, options.tokenInDecimals ?? 18).toString());
 
-    const quote = (await client.readContract({
-      address: options.quoterAddress,
-      abi: sarafuQuoterAbi,
-      functionName: "price",
-      args: [options.tokenIn, options.tokenOut, amountInUnits],
-    })) as bigint;
+    const quote = await quoteSarafuPoolSwap({
+      chainId: options.chainId,
+      poolAddress: options.poolAddress,
+      quoterAddress: options.quoterAddress,
+      tokenOut: options.tokenOut,
+      tokenIn: options.tokenIn,
+      amountIn: amountInUnits,
+    });
 
-    return ethers.utils.formatUnits(quote.toString(), options.tokenInDecimals ?? 18);
+    if (!quote) {
+      return null;
+    }
+
+    return ethers.utils.formatUnits(quote.expectedOut.toString(), options.tokenInDecimals ?? 18);
   } catch {
     return null;
   }
@@ -72,19 +74,21 @@ export async function executeVoucherSwapAndTransfer(options: {
   recipientAddress: `0x${string}`;
   amountInTcoin: string;
   minAmountOut: string;
-  tokenDecimals?: number;
+  inputTokenDecimals?: number;
+  outputTokenDecimals?: number;
 }): Promise<{
   approvalTxHash: string | null;
   swapTxHash: string;
   transferTxHash: string;
   transferAmount: string;
 }> {
-  const decimals = options.tokenDecimals ?? 18;
+  const inputTokenDecimals = options.inputTokenDecimals ?? 18;
+  const outputTokenDecimals = options.outputTokenDecimals ?? 18;
   const tokenOut = new ethers.Contract(options.voucherTokenAddress, erc20Abi, options.signer);
   const pool = new ethers.Contract(options.poolAddress, sarafuPoolWriteAbi, options.signer);
 
-  const amountInUnits = parseAmountUnits(options.amountInTcoin, decimals);
-  const minOutUnits = parseAmountUnits(options.minAmountOut, decimals);
+  const amountInUnits = parseAmountUnits(options.amountInTcoin, inputTokenDecimals);
+  const minOutUnits = parseAmountUnits(options.minAmountOut, outputTokenDecimals);
 
   const approvalTxHash = await ensureErc20Allowance({
     signer: options.signer,
@@ -92,32 +96,38 @@ export async function executeVoucherSwapAndTransfer(options: {
     spenderAddress: options.poolAddress,
     ownerAddress: options.senderAddress,
     amount: options.amountInTcoin,
-    decimals,
+    decimals: inputTokenDecimals,
   });
 
   const balanceBefore: ethers.BigNumber = await tokenOut.balanceOf(options.senderAddress);
 
-  const swapTx = await pool.swap(
-    options.tcoinAddress,
-    options.voucherTokenAddress,
-    amountInUnits,
-    minOutUnits
-  );
+  const swapTx = await pool.withdraw(options.voucherTokenAddress, options.tcoinAddress, amountInUnits);
   await swapTx.wait();
 
   const balanceAfter: ethers.BigNumber = await tokenOut.balanceOf(options.senderAddress);
-  let transferAmount = balanceAfter.sub(balanceBefore);
-  if (transferAmount.lte(0)) {
-    transferAmount = minOutUnits;
+  const transferAmount = balanceAfter.sub(balanceBefore);
+
+  if (transferAmount.lt(minOutUnits)) {
+    throw new Error(
+      `Post-trade slippage: received ${ethers.utils.formatUnits(
+        transferAmount,
+        outputTokenDecimals
+      )} < minimum ${ethers.utils.formatUnits(minOutUnits, outputTokenDecimals)} (swap tx: ${swapTx.hash})`
+    );
   }
 
-  const transferTx = await tokenOut.transfer(options.recipientAddress, transferAmount);
-  await transferTx.wait();
+  try {
+    const transferTx = await tokenOut.transfer(options.recipientAddress, transferAmount);
+    await transferTx.wait();
 
-  return {
-    approvalTxHash,
-    swapTxHash: swapTx.hash,
-    transferTxHash: transferTx.hash,
-    transferAmount: ethers.utils.formatUnits(transferAmount, decimals),
-  };
+    return {
+      approvalTxHash,
+      swapTxHash: swapTx.hash,
+      transferTxHash: transferTx.hash,
+      transferAmount: ethers.utils.formatUnits(transferAmount, outputTokenDecimals),
+    };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown transfer failure";
+    throw new Error(`Voucher transfer failed after successful swap (swap tx: ${swapTx.hash}): ${reason}`);
+  }
 }

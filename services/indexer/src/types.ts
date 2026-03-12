@@ -9,6 +9,7 @@ export type BiaScopeSummary = {
   mappedPools: number;
   unmappedPools: number;
   staleMappings: number;
+  componentMismatches: number;
   lastActivityByBia: Array<{
     biaId: string;
     biaCode: string;
@@ -124,6 +125,7 @@ export type IndexerTouchResult = {
     mappedPools: number;
     unmappedPools: number;
     staleMappings: number;
+    componentMismatches: number;
     rollupRows: number;
     riskSignals: number;
   };

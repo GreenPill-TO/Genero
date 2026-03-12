@@ -284,7 +284,7 @@ async function readOnchainCreditParameters(options: {
       ? await readOptionalUint256({
           client: options.client,
           address: options.limiterAddress,
-          functionNames: ["limitFor", "getLimitFor", "limits"],
+          functionNames: ["limitOf"],
           args: [options.tokenAddress, options.poolAddress],
         })
       : null;
@@ -292,7 +292,7 @@ async function readOnchainCreditParameters(options: {
   const limitFromPool = await readOptionalUint256({
     client: options.client,
     address: options.poolAddress,
-    functionNames: ["limitFor", "getLimitFor", "limits"],
+    functionNames: ["limitOf"],
     args: [options.tokenAddress, options.poolAddress],
   });
 

@@ -133,7 +133,18 @@ Added behavior:
   - active BIAs
   - mapped/unmapped pools
   - stale mappings
+  - component mismatches (DB mapping tuple vs on-chain pool tuple)
   - per-BIA last activity snapshot
+
+5. Sarafu ABI-accurate reads
+- Pool tuple reads use on-chain methods from the Sarafu read-only contracts:
+  - `tokenRegistry()`, `tokenLimiter()`, `quoter()`, `feeAddress()`.
+- Voucher quote/routing uses:
+  - `SwapPool.getQuote(out,in,amount)` first,
+  - fallback `PriceIndexQuoter.valueFor(out,in,amount)`,
+  - with `feePpm()` applied for expected/min output modeling.
+- Voucher execution path in wallet uses:
+  - pool `withdraw(out,in,amount)` plus post-withdraw transfer.
 
 ## 6. Wallet Integration Points
 Implemented in:
@@ -145,6 +156,9 @@ Current behavior:
 - Off-ramp flow, for store owners, now calls `/api/redemptions/request` after burn/accounting to queue BIA-attributed redemption settlement.
 - Wallet behavior is city-wide and cross-pool permissive for user payments.
 - Wallet requirements include a "merchants in my pool" discovery/filter view.
+- Merchant voucher payment routing is ABI-accurate and deterministic:
+  - on quote failure => explicit `tcoin_fallback`,
+  - on post-swap transfer/slippage failure => surfaced hard error with swap tx hash (no silent fallback).
 
 ## 7. Security and Access Model
 - API endpoints require authenticated Supabase session.

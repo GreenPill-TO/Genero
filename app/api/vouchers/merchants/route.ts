@@ -39,6 +39,8 @@ export async function GET(req: Request) {
       citySlug,
       chainId,
       scope,
+      liquiditySource: "sarafu_onchain",
+      readOnly: true,
       appInstanceId,
       biaScope: {
         primaryBiaId: userBiaScope.primaryBiaId,

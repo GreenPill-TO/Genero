@@ -6,6 +6,8 @@ const h = vi.hoisted(() => ({
   mockResolveActiveAppInstanceId: vi.fn(),
   mockGetActiveCityContracts: vi.fn(),
   mockResolveVoucherRouteQuote: vi.fn(),
+  mockTokenDecimalsMaybeSingle: vi.fn(),
+  mockWalletMaybeSingle: vi.fn(),
 }));
 
 vi.mock("@shared/lib/bia/apiAuth", () => ({
@@ -41,15 +43,56 @@ describe("GET /api/vouchers/route", () => {
     h.mockResolveActiveAppInstanceId.mockReset();
     h.mockGetActiveCityContracts.mockReset();
     h.mockResolveVoucherRouteQuote.mockReset();
+    h.mockTokenDecimalsMaybeSingle.mockReset();
+    h.mockWalletMaybeSingle.mockReset();
+
+    h.mockTokenDecimalsMaybeSingle.mockResolvedValue({
+      data: { token_decimals: 6 },
+      error: null,
+    });
+    h.mockWalletMaybeSingle.mockResolvedValue({
+      data: null,
+      error: null,
+    });
 
     h.mockResolveApiAuthContext.mockResolvedValue({
-      serviceRole: {},
+      serviceRole: {
+        schema: () => ({
+          from: () => ({
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  limit: () => ({
+                    maybeSingle: h.mockTokenDecimalsMaybeSingle,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                order: () => ({
+                  limit: () => ({
+                    maybeSingle: h.mockWalletMaybeSingle,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      },
       userRow: { id: 42 },
     });
 
     h.mockResolveActiveAppInstanceId.mockResolvedValue(12);
     h.mockGetActiveCityContracts.mockResolvedValue({
       chainId: 42220,
+      contracts: {
+        TCOIN: "0x298A698031e2fD7D8F0c830F3FD887601b40058C",
+      },
     });
   });
 

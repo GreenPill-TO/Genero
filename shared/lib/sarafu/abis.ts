@@ -36,6 +36,24 @@ export const sarafuPoolAbi = [
   },
   {
     type: "function",
+    name: "feePpm",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "getQuote",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_outToken", type: "address" },
+      { name: "_inToken", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "name",
     stateMutability: "view",
     inputs: [],
@@ -77,14 +95,14 @@ export const sarafuTokenRegistryAbi = [
 export const sarafuQuoterAbi = [
   {
     type: "function",
-    name: "price",
-    stateMutability: "view",
+    name: "valueFor",
+    stateMutability: "nonpayable",
     inputs: [
-      { name: "tokenIn", type: "address" },
-      { name: "tokenOut", type: "address" },
-      { name: "amountIn", type: "uint256" },
+      { name: "_outToken", type: "address" },
+      { name: "_inToken", type: "address" },
+      { name: "_value", type: "uint256" },
     ],
-    outputs: [{ name: "amountOut", type: "uint256" }],
+    outputs: [{ type: "uint256" }],
   },
 ] as const;
 
@@ -102,14 +120,26 @@ export const sarafuPoolWriteAbi = [
   },
   {
     type: "function",
-    name: "swap",
+    name: "withdraw",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "tokenIn", type: "address" },
-      { name: "tokenOut", type: "address" },
-      { name: "amountIn", type: "uint256" },
-      { name: "minAmountOut", type: "uint256" },
+      { name: "_outToken", type: "address" },
+      { name: "_inToken", type: "address" },
+      { name: "_value", type: "uint256" },
     ],
     outputs: [],
+  },
+] as const;
+
+export const sarafuLimiterAbi = [
+  {
+    type: "function",
+    name: "limitOf",
+    stateMutability: "view",
+    inputs: [
+      { name: "_token", type: "address" },
+      { name: "_holder", type: "address" },
+    ],
+    outputs: [{ type: "uint256" }],
   },
 ] as const;

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getAddress, isAddress, type Address } from "viem";
+import { formatUnits, getAddress, isAddress, parseUnits, type Address } from "viem";
 import type {
   MerchantVoucherLiquidity,
   VoucherPreference,
@@ -7,6 +7,7 @@ import type {
   VoucherToken,
 } from "./types";
 import { resolveTrustStatus } from "./preferences";
+import { quoteSarafuPoolSwap, readSarafuPoolContext } from "@shared/lib/sarafu/client";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -219,6 +220,7 @@ function buildFallbackRoute(options: {
   return {
     mode: "tcoin_fallback",
     reason: options.reason,
+    quoteSource: "fallback",
     citySlug: options.citySlug,
     chainId: options.chainId,
     recipientWallet: options.recipientWallet,
@@ -234,6 +236,8 @@ export async function resolveVoucherRouteQuote(options: {
   chainId: number;
   userId: number;
   appInstanceId: number;
+  tcoinAddress: Address;
+  tcoinDecimals?: number;
   recipientWallet: Address;
   amountInTcoin: number;
 }): Promise<VoucherRouteQuote> {
@@ -246,6 +250,7 @@ export async function resolveVoucherRouteQuote(options: {
       recipientWallet: options.recipientWallet,
       amountInTcoin,
       reason: "Invalid payment amount for voucher routing.",
+      decisions: ["quoteSource=fallback: invalid amount"],
     });
   }
 
@@ -261,6 +266,7 @@ export async function resolveVoucherRouteQuote(options: {
       recipientWallet: options.recipientWallet,
       amountInTcoin,
       reason: "Recipient is not an active merchant store.",
+      decisions: ["quoteSource=fallback: recipient not merchant"],
     });
   }
 
@@ -278,6 +284,7 @@ export async function resolveVoucherRouteQuote(options: {
       amountInTcoin,
       merchantStoreId,
       reason: "Merchant is not assigned to an active BIA.",
+      decisions: ["quoteSource=fallback: missing merchant BIA mapping"],
     });
   }
 
@@ -296,6 +303,7 @@ export async function resolveVoucherRouteQuote(options: {
       amountInTcoin,
       merchantStoreId,
       reason: "Merchant BIA does not have an active Sarafu pool mapping.",
+      decisions: ["quoteSource=fallback: missing active pool mapping"],
     });
   }
 
@@ -341,6 +349,7 @@ export async function resolveVoucherRouteQuote(options: {
       amountInTcoin,
       merchantStoreId,
       reason: "No active voucher tokens are indexed for this merchant pool.",
+      decisions: ["quoteSource=fallback: no indexed voucher tokens"],
     });
   }
 
@@ -420,9 +429,41 @@ export async function resolveVoucherRouteQuote(options: {
     });
   }
 
+  const tokenDecimals = typeof selected.token.tokenDecimals === "number" ? selected.token.tokenDecimals : 18;
+  const amountInUnits = parseUnits(amountInTcoin, options.tcoinDecimals ?? 18);
+  const poolContext = await readSarafuPoolContext({
+    chainId: options.chainId,
+    poolAddress,
+  });
+  const quoted = await quoteSarafuPoolSwap({
+    chainId: options.chainId,
+    poolAddress,
+    quoterAddress: poolContext.quoter,
+    tokenOut: selected.token.tokenAddress,
+    tokenIn: options.tcoinAddress,
+    amountIn: amountInUnits,
+  });
+
+  if (!quoted || quoted.expectedOut <= BigInt(0)) {
+    return buildFallbackRoute({
+      citySlug: options.citySlug,
+      chainId: options.chainId,
+      recipientWallet: options.recipientWallet,
+      amountInTcoin,
+      merchantStoreId,
+      reason: "Voucher route quote unavailable from pool/quoter.",
+      decisions: ["quoteSource=fallback: pool_getQuote and quoter_valueFor unavailable"],
+    });
+  }
+
   const slippageBps = 100;
-  const expectedOut = options.amountInTcoin;
-  const minOut = expectedOut * ((10_000 - slippageBps) / 10_000);
+  const minOutUnits = (quoted.expectedOut * BigInt(10_000 - slippageBps)) / BigInt(10_000);
+  const expectedOut = Number.parseFloat(formatUnits(quoted.expectedOut, tokenDecimals));
+  const minOut = Number.parseFloat(formatUnits(minOutUnits, tokenDecimals));
+  const feePpm =
+    quoted.feePpm != null && quoted.feePpm <= BigInt(Number.MAX_SAFE_INTEGER)
+      ? Number(quoted.feePpm)
+      : undefined;
 
   return {
     mode: "voucher",
@@ -434,12 +475,18 @@ export async function resolveVoucherRouteQuote(options: {
     poolAddress,
     tokenAddress: selected.token.tokenAddress,
     tokenSymbol: selected.token.tokenSymbol,
-    tokenDecimals: selected.token.tokenDecimals,
+    tokenDecimals,
     amountInTcoin,
     expectedVoucherOut: toFixedAmount(expectedOut),
     minVoucherOut: toFixedAmount(minOut),
+    quoteSource: quoted.quoteSource,
+    feePpm,
     slippageBps,
-    guardDecisions: evaluated.map((item) => item.reason),
+    guardDecisions: [
+      ...evaluated.map((item) => item.reason),
+      `quoteSource=${quoted.quoteSource}`,
+      feePpm != null ? `feePpm=${feePpm}` : "feePpm=unknown",
+    ],
   };
 }
 

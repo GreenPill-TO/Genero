@@ -1,6 +1,14 @@
-import { createPublicClient, getAddress, http, isAddress, type Address } from "viem";
+import {
+  createPublicClient,
+  decodeFunctionResult,
+  encodeFunctionData,
+  getAddress,
+  http,
+  isAddress,
+  type Address,
+} from "viem";
 import { getRpcUrlForChainId } from "@shared/lib/contracts/cityContracts";
-import { sarafuPoolAbi, sarafuTokenRegistryAbi } from "@shared/lib/sarafu/abis";
+import { sarafuPoolAbi, sarafuQuoterAbi, sarafuTokenRegistryAbi } from "@shared/lib/sarafu/abis";
 
 export type SarafuPoolContext = {
   poolAddress: Address;
@@ -9,9 +17,31 @@ export type SarafuPoolContext = {
   quoter?: Address;
   ownerAddress?: Address;
   feeAddress?: Address;
+  feePpm?: bigint;
   poolName?: string;
   poolSymbol?: string;
 };
+
+export type SarafuQuoteSource = "pool_getQuote" | "quoter_valueFor";
+
+export type SarafuQuoteResult = {
+  quoteSource: SarafuQuoteSource;
+  expectedOut: bigint;
+  feePpm: bigint | null;
+};
+
+const FEE_DENOMINATOR_PPM = BigInt(1_000_000);
+
+function applyFeePpm(rawAmountOut: bigint, feePpm: bigint | null): bigint {
+  if (feePpm == null || feePpm <= BigInt(0)) {
+    return rawAmountOut;
+  }
+  if (feePpm >= FEE_DENOMINATOR_PPM) {
+    return BigInt(0);
+  }
+  const fee = (rawAmountOut * feePpm) / FEE_DENOMINATOR_PPM;
+  return rawAmountOut - fee;
+}
 
 function toAddress(value: unknown): Address | undefined {
   if (typeof value !== "string" || !isAddress(value)) {
@@ -50,6 +80,24 @@ async function readAddressField(options: {
   }
 }
 
+async function readUintField(options: {
+  client: ReturnType<typeof createSarafuPublicClient>;
+  poolAddress: Address;
+  functionName: "feePpm";
+}) {
+  try {
+    const value = await options.client.readContract({
+      address: options.poolAddress,
+      abi: sarafuPoolAbi,
+      functionName: options.functionName,
+    });
+
+    return typeof value === "bigint" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 async function readStringField(options: {
   client: ReturnType<typeof createSarafuPublicClient>;
   poolAddress: Address;
@@ -75,15 +123,17 @@ export async function readSarafuPoolContext(options: {
 }): Promise<SarafuPoolContext> {
   const client = createSarafuPublicClient(options.chainId, options.rpcUrl);
 
-  const [tokenRegistry, tokenLimiter, quoter, ownerAddress, feeAddress, poolName, poolSymbol] = await Promise.all([
+  const [tokenRegistry, tokenLimiter, quoter, ownerAddress, feeAddress, feePpm, poolName, poolSymbol] =
+    await Promise.all([
     readAddressField({ client, poolAddress: options.poolAddress, functionName: "tokenRegistry" }),
     readAddressField({ client, poolAddress: options.poolAddress, functionName: "tokenLimiter" }),
     readAddressField({ client, poolAddress: options.poolAddress, functionName: "quoter" }),
     readAddressField({ client, poolAddress: options.poolAddress, functionName: "owner" }),
     readAddressField({ client, poolAddress: options.poolAddress, functionName: "feeAddress" }),
+    readUintField({ client, poolAddress: options.poolAddress, functionName: "feePpm" }),
     readStringField({ client, poolAddress: options.poolAddress, functionName: "name" }),
     readStringField({ client, poolAddress: options.poolAddress, functionName: "symbol" }),
-  ]);
+    ]);
 
   return {
     poolAddress: options.poolAddress,
@@ -92,8 +142,112 @@ export async function readSarafuPoolContext(options: {
     quoter,
     ownerAddress,
     feeAddress,
+    feePpm: feePpm ?? undefined,
     poolName,
     poolSymbol,
+  };
+}
+
+async function callSingleUintResult(options: {
+  client: ReturnType<typeof createSarafuPublicClient>;
+  target: Address;
+  data: `0x${string}`;
+  abi: readonly unknown[];
+  functionName: string;
+}): Promise<bigint | null> {
+  try {
+    const callResult = await options.client.call({
+      to: options.target,
+      data: options.data,
+    });
+    if (!callResult.data) {
+      return null;
+    }
+    const decoded = decodeFunctionResult({
+      abi: options.abi as any,
+      functionName: options.functionName as any,
+      data: callResult.data,
+    }) as unknown;
+    if (typeof decoded === "bigint") {
+      return decoded;
+    }
+    if (Array.isArray(decoded)) {
+      const firstBigint = decoded.find((part) => typeof part === "bigint");
+      if (typeof firstBigint === "bigint") {
+        return firstBigint;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function quoteSarafuPoolSwap(options: {
+  chainId: number;
+  poolAddress: Address;
+  quoterAddress?: Address;
+  tokenOut: Address;
+  tokenIn: Address;
+  amountIn: bigint;
+  rpcUrl?: string;
+}): Promise<SarafuQuoteResult | null> {
+  const client = createSarafuPublicClient(options.chainId, options.rpcUrl);
+
+  const feePpm = await readUintField({
+    client,
+    poolAddress: options.poolAddress,
+    functionName: "feePpm",
+  });
+
+  const getQuoteData = encodeFunctionData({
+    abi: sarafuPoolAbi,
+    functionName: "getQuote",
+    args: [options.tokenOut, options.tokenIn, options.amountIn],
+  });
+
+  const poolQuote = await callSingleUintResult({
+    client,
+    target: options.poolAddress,
+    data: getQuoteData,
+    abi: sarafuPoolAbi,
+    functionName: "getQuote",
+  });
+
+  if (poolQuote != null) {
+    return {
+      quoteSource: "pool_getQuote",
+      expectedOut: applyFeePpm(poolQuote, feePpm),
+      feePpm,
+    };
+  }
+
+  if (!options.quoterAddress) {
+    return null;
+  }
+
+  const valueForData = encodeFunctionData({
+    abi: sarafuQuoterAbi,
+    functionName: "valueFor",
+    args: [options.tokenOut, options.tokenIn, options.amountIn],
+  });
+
+  const quoterQuote = await callSingleUintResult({
+    client,
+    target: options.quoterAddress,
+    data: valueForData,
+    abi: sarafuQuoterAbi,
+    functionName: "valueFor",
+  });
+
+  if (quoterQuote == null) {
+    return null;
+  }
+
+  return {
+    quoteSource: "quoter_valueFor",
+    expectedOut: applyFeePpm(quoterQuote, feePpm),
+    feePpm,
   };
 }
 

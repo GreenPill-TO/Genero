@@ -58,6 +58,25 @@ export async function GET(req: Request) {
 
     const activeContracts = await getActiveCityContracts({ citySlug, forceRefresh: true });
     const chainId = requestedChainId > 0 ? Math.trunc(requestedChainId) : activeContracts.chainId;
+    const tcoinAddress = normalizeAddress(activeContracts.contracts.TCOIN);
+    if (!tcoinAddress) {
+      return NextResponse.json(
+        { error: "Active city contracts are missing a valid TCOIN address." },
+        { status: 500 }
+      );
+    }
+    const { data: tcoinRow } = await serviceRole
+      .schema("chain_data")
+      .from("tokens")
+      .select("token_decimals")
+      .eq("chain_id", chainId)
+      .eq("contract_address", tcoinAddress)
+      .limit(1)
+      .maybeSingle();
+    const tcoinDecimals =
+      typeof tcoinRow?.token_decimals === "number" && Number.isFinite(tcoinRow.token_decimals)
+        ? tcoinRow.token_decimals
+        : 18;
 
     const appInstanceId = await resolveActiveAppInstanceId({
       supabase: serviceRole,
@@ -83,6 +102,8 @@ export async function GET(req: Request) {
       chainId,
       userId: Number(userRow.id),
       appInstanceId,
+      tcoinAddress,
+      tcoinDecimals,
       recipientWallet,
       amountInTcoin: amount,
     });

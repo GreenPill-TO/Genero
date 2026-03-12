@@ -193,14 +193,17 @@ export async function syncBiaMappingValidation(options: {
 
   const updatedStatusById = new Map(updates.map((update) => [update.id, update.validation_status]));
   let staleMappings = 0;
+  let componentMismatches = 0;
   for (const row of rows ?? []) {
     const rowId = String((row as any).id ?? "");
     const status = (
       updatedStatusById.get(rowId) ??
       String((row as any).validation_status ?? "unknown")
     ).toLowerCase();
-    if (status === "stale" || status === "mismatch") {
+    if (status === "stale") {
       staleMappings += 1;
+    } else if (status === "mismatch") {
+      componentMismatches += 1;
     }
   }
 
@@ -215,6 +218,7 @@ export async function syncBiaMappingValidation(options: {
     mappedPools: mappedPoolSet.size,
     unmappedPools,
     staleMappings,
+    componentMismatches,
     updatedMappings: updates.length,
   };
 }
@@ -546,10 +550,13 @@ export async function buildBiaScopeSummary(options: {
   }
 
   let staleMappings = 0;
+  let componentMismatches = 0;
   for (const row of mappingRowsResult.data ?? []) {
     const status = String((row as any).validation_status ?? "unknown").toLowerCase();
-    if (status === "stale" || status === "mismatch") {
+    if (status === "stale") {
       staleMappings += 1;
+    } else if (status === "mismatch") {
+      componentMismatches += 1;
     }
   }
 
@@ -567,6 +574,7 @@ export async function buildBiaScopeSummary(options: {
     mappedPools: mappedPoolSet.size,
     unmappedPools,
     staleMappings,
+    componentMismatches,
     lastActivityByBia,
   };
 }
