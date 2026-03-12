@@ -6,3 +6,8 @@
 4. Implement code changes.
 5. Run lint and tests.
 6. Commit with conventional message.
+
+## Feature Delivery Rule
+
+1. After implementing any new feature, always add a session-log entry for that feature.
+2. After that session-log update, always create a commit that includes the feature work and the log entry.

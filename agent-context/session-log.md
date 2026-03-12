@@ -1,3 +1,44 @@
+## v1.17
+### Timestamp
+- 2026-03-12 11:10:00 EDT
+
+### Objective
+- Implement the new one-transaction reserve mint router flow (`mintTcoinWithUSDC`) in the TorontoCoin contract suite, including interfaces, tests, and architecture/spec documentation.
+
+### What Changed
+- Added `TcoinMintRouter` with:
+- generic input-token mint path (`mintTcoinWithToken`) and USDC convenience wrapper (`mintTcoinWithUSDC`),
+- adapter + treasury wiring via dedicated interfaces,
+- on-chain safety controls: deadline, token allowlist, slippage checks (`minCadmOut`, `minTcoinOut`), `Pausable`, and `ReentrancyGuard`,
+- balance-delta enforcement for swap and mint outputs,
+- refund handling for per-call residual `tokenIn`/`CADm`,
+- owner-managed runtime configuration for adapter, treasury, CADm config, USDC token, and enabled input tokens.
+- Added dedicated interfaces:
+- `ISwapAdapter` for token-in -> CADm swap abstraction and previewing.
+- `ITreasuryMinting` for treasury minting/preview calls used by the router.
+- Added new Foundry unit tests and mocks covering:
+- happy paths (USDC + generic token),
+- deadline/amount/recipient/allowlist validation failures,
+- slippage guard failures for swap and mint outputs,
+- pausable/owner-only behavior,
+- refund behavior,
+- malicious adapter reported-output mismatch,
+- adapter callback reentrancy attempt handling.
+- Added contract-level and architecture documentation for the router design and rollout assumptions.
+- Verified implementation with `forge build` and router-focused tests (`14 passed, 0 failed`).
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.sol`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.md`
+- `contracts/foundry/src/torontocoin/interfaces/ISwapAdapter.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryMinting.sol`
+- `contracts/foundry/test/unit/torontocoin/TcoinMintRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/mocks/MockERC20.sol`
+- `contracts/foundry/test/unit/torontocoin/mocks/MockSwapAdapter.sol`
+- `contracts/foundry/test/unit/torontocoin/mocks/MockTreasuryMinting.sol`
+- `docs/mintTcoinWithUSDC-architecture.md`
+- `agent-context/session-log.md`
+
 ## v1.16
 ### Timestamp
 - 2026-03-12 03:25:00 EDT
