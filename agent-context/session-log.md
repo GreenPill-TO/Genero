@@ -1061,3 +1061,25 @@
 - `app/tcoin/wallet/admin/page.tsx`
 - `.env.local.example`
 - `agent-context/session-log.md`
+
+## v1.19
+### Timestamp
+- 2026-03-12 12:58:00 EDT
+
+### Objective
+- Add a detailed architecture writeup for the Buy TCOIN checkout orchestrator and document this documentation pass in session-log.
+
+### What Changed
+- Added a dedicated architecture document for the implemented onramp checkout stack:
+- component model (wallet, API routes, service layer, chain execution, persistence),
+- sequence and state-machine flows,
+- settlement algorithm and guard rails,
+- webhook/idempotency/security controls,
+- API/data contracts,
+- operations/SLA/failure-mode handling,
+- deferred hardening and next-phase items.
+- Captured this documentation-only update as a new log entry.
+
+### Files Edited
+- `docs/buy-tcoin-checkout-orchestrator-architecture.md`
+- `agent-context/session-log.md`
