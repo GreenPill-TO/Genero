@@ -1114,3 +1114,28 @@
 ### Files Edited
 - `app/tcoin/wallet/styles/app.scss`
 - `agent-context/session-log.md`
+
+## v1.22
+### Timestamp
+- 2026-03-12 19:23:00 EDT
+
+### Objective
+- Align Buy TCOIN onramp with Transak’s secure backend widget URL generation requirement.
+
+### What Changed
+- Refactored Transak session creation to call the secure backend endpoint (`/api/v2/auth/session`) instead of building public query-string widget URLs.
+- Added backend request with required secure headers:
+- `access-token` (partner access token)
+- `authorization` (user auth token)
+- Added robust response parsing and failure handling for missing/invalid `widgetUrl` from provider response.
+- Updated session creation route to await async secure widget generation.
+- Extended onramp config/env requirements with new Transak secure widget settings.
+- Updated `.env.local.example` with new variables and staging/production endpoint examples.
+- Verified with targeted API tests and touched-file TypeScript checks.
+
+### Files Edited
+- `services/onramp/src/provider/transak.ts`
+- `services/onramp/src/config.ts`
+- `app/api/onramp/session/route.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`

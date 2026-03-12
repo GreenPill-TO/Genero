@@ -7,7 +7,7 @@ export type TransakSessionBuildResult = {
   providerSessionId: string;
   providerOrderId: string;
   widgetUrl: string;
-  widgetConfig: Record<string, string>;
+  widgetConfig: Record<string, unknown>;
 };
 
 function mapStatusHint(raw: string): OnrampSessionStatus | null {
@@ -47,42 +47,94 @@ function mapStatusHint(raw: string): OnrampSessionStatus | null {
   return null;
 }
 
-export function buildTransakSession(input: CreateOnrampSessionInput & {
+function resolveReferrerDomain(appBaseUrl: string): string {
+  try {
+    return new URL(appBaseUrl).host;
+  } catch {
+    return "localhost";
+  }
+}
+
+function extractWidgetUrl(payload: Record<string, unknown>): string | null {
+  const direct = extractString(payload.widgetUrl);
+  if (direct) {
+    return direct;
+  }
+
+  const data = payload.data;
+  if (data && typeof data === "object") {
+    const nested = extractString((data as Record<string, unknown>).widgetUrl);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
+}
+
+export async function buildTransakSession(input: CreateOnrampSessionInput & {
   sessionId: string;
   depositAddress: `0x${string}`;
-}): TransakSessionBuildResult {
+}): Promise<TransakSessionBuildResult> {
   const config = resolveOnrampConfig();
 
   const providerSessionId = input.sessionId;
   const providerOrderId = `genero-${input.sessionId}`;
-
-  const query = new URLSearchParams({
+  const widgetParams: Record<string, unknown> = {
     apiKey: config.transakApiKey,
     defaultNetwork: "celo",
     defaultCryptoCurrency: config.targetInputAsset,
     cryptoCurrencyCode: config.targetInputAsset,
     network: "celo",
     walletAddress: input.depositAddress,
-    disableWalletAddressForm: "true",
-    disableCryptoSelection: "true",
-    fiatAmount: input.fiatAmount.toString(),
+    disableWalletAddressForm: true,
+    disableCryptoSelection: true,
+    fiatAmount: input.fiatAmount,
     fiatCurrency: input.fiatCurrency.toUpperCase(),
     countryCode: (input.countryCode ?? "").toUpperCase(),
     redirectURL: `${config.appBaseUrl.replace(/\/$/, "")}/dashboard?onrampSession=${input.sessionId}`,
     partnerOrderId: providerOrderId,
     partnerCustomerId: String(input.userId),
     exchangeScreenTitle: "Buy TCOIN",
-    isAutoFillUserData: "true",
+    isAutoFillUserData: true,
+  };
+
+  const response = await fetch(config.transakWidgetApiUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "access-token": config.transakAccessToken,
+      authorization: config.transakAuthorizationToken,
+    },
+    body: JSON.stringify({
+      widgetParams,
+      referrerDomain: resolveReferrerDomain(config.appBaseUrl),
+    }),
   });
 
-  const widgetUrl = `https://global.transak.com?${query.toString()}`;
+  const responsePayload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) {
+    const errorMessage =
+      extractString(responsePayload.message) ??
+      extractString(responsePayload.error) ??
+      `Transak widget URL request failed with status ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  const widgetUrl = extractWidgetUrl(responsePayload);
+  if (!widgetUrl) {
+    throw new Error("Transak widget API response did not include widgetUrl.");
+  }
 
   return {
     provider: "transak",
     providerSessionId,
     providerOrderId,
     widgetUrl,
-    widgetConfig: Object.fromEntries(query.entries()),
+    widgetConfig: {
+      widgetParams,
+      referrerDomain: resolveReferrerDomain(config.appBaseUrl),
+    },
   };
 }
 

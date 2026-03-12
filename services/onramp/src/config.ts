@@ -62,6 +62,9 @@ export type OnrampConfig = {
   transakApiKey: string;
   transakSecret: string;
   transakWebhookSecret: string;
+  transakWidgetApiUrl: string;
+  transakAccessToken: string;
+  transakAuthorizationToken: string;
   targetChainId: number;
   targetInputAsset: string;
   finalAsset: string;
@@ -103,6 +106,9 @@ export function resolveOnrampConfig(): OnrampConfig {
     transakApiKey: parseString("ONRAMP_TRANSAK_API_KEY"),
     transakSecret: parseString("ONRAMP_TRANSAK_SECRET"),
     transakWebhookSecret: parseString("ONRAMP_TRANSAK_WEBHOOK_SECRET"),
+    transakWidgetApiUrl: parseString("ONRAMP_TRANSAK_WIDGET_API_URL", "https://api-gateway-stg.transak.com/api/v2/auth/session"),
+    transakAccessToken: parseString("ONRAMP_TRANSAK_ACCESS_TOKEN"),
+    transakAuthorizationToken: parseString("ONRAMP_TRANSAK_USER_AUTH_TOKEN"),
     targetChainId,
     targetInputAsset: parseString("ONRAMP_TARGET_INPUT_ASSET", "USDC"),
     finalAsset: parseString("ONRAMP_FINAL_ASSET", "TCOIN"),

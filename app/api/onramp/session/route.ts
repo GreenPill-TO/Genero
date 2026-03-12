@@ -127,7 +127,7 @@ export async function POST(req: Request) {
 
     const session = insertedResult.data as OnrampCheckoutSessionRow;
 
-    const transak = buildTransakSession({
+    const transak = await buildTransakSession({
       sessionId: session.id,
       userId: Number(userRow.id),
       appInstanceId,
