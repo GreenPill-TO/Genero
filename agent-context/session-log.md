@@ -1139,3 +1139,22 @@
 - `app/api/onramp/session/route.ts`
 - `.env.local.example`
 - `agent-context/session-log.md`
+
+## v1.23
+### Timestamp
+- 2026-03-12 19:41:00 EDT
+
+### Objective
+- Make Transak user authorization token optional for secure widget URL generation while preserving partner-token security flow.
+
+### What Changed
+- Updated onramp config type and parsing so `ONRAMP_TRANSAK_USER_AUTH_TOKEN` is optional (`string | null`) instead of required.
+- Updated Transak secure widget request headers to include `authorization` only when `ONRAMP_TRANSAK_USER_AUTH_TOKEN` is present.
+- Updated `.env.local.example` docs to clarify user auth token is optional unless user-authenticated Transak sessions are being used.
+- Verified with targeted onramp API tests.
+
+### Files Edited
+- `services/onramp/src/config.ts`
+- `services/onramp/src/provider/transak.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`

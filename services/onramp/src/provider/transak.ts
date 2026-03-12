@@ -104,7 +104,7 @@ export async function buildTransakSession(input: CreateOnrampSessionInput & {
     headers: {
       "content-type": "application/json",
       "access-token": config.transakAccessToken,
-      authorization: config.transakAuthorizationToken,
+      ...(config.transakAuthorizationToken ? { authorization: config.transakAuthorizationToken } : {}),
     },
     body: JSON.stringify({
       widgetParams,
