@@ -1083,3 +1083,20 @@
 ### Files Edited
 - `docs/buy-tcoin-checkout-orchestrator-architecture.md`
 - `agent-context/session-log.md`
+
+## v1.20
+### Timestamp
+- 2026-03-12 13:08:00 EDT
+
+### Objective
+- Reduce hyperlink visual intensity in wallet light/dark themes.
+
+### What Changed
+- Updated wallet link color token to match requested values:
+- light mode link color set to `#4d004d`.
+- dark mode link color set to `#ffe6ff`.
+- Updated base link styling so anchors and `.link-btn` use `--link-color` instead of `--primary`, preventing bright-pink primary color from overriding hyperlink tone.
+
+### Files Edited
+- `app/tcoin/wallet/styles/app.scss`
+- `agent-context/session-log.md`

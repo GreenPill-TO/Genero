@@ -32,7 +32,7 @@
     --ring: 220 70% 50%; /* Blue focus ring */
 
     /* Link and header color */
-    --link-color: 340 100% 70%; /* Pink link color (#ff4081) */
+    --link-color: 300 100% 15%; /* Link color (#4d004d) */
     --header-color: 340 100% 70%; /* Pink header color (#ff4081) */
 
     /* Chart colors in shades of blue */
@@ -75,7 +75,7 @@
     --ring: 220 80% 95%; /* Light blue focus ring */
 
     /* Link and header color */
-    --link-color: 340 100% 70%; /* Pink link color (#ff4081) */
+    --link-color: 300 100% 95%; /* Link color (#ffe6ff) */
     --header-color: 340 100% 70%; /* Pink header color (#ff4081) */
 
     /* Updated chart colors for blue theme */
@@ -89,11 +89,11 @@
 
 @layer base {
   a {
-    color: hsl(var(--primary)); /* Apply link color */
+    color: hsl(var(--link-color));
   }
 
   .link-btn {
-    color: hsl(var(--primary));
+    color: hsl(var(--link-color));
   }
 
   svg {
