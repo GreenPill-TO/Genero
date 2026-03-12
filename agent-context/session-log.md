@@ -1100,3 +1100,17 @@
 ### Files Edited
 - `app/tcoin/wallet/styles/app.scss`
 - `agent-context/session-log.md`
+
+## v1.21
+### Timestamp
+- 2026-03-12 13:11:00 EDT
+
+### Objective
+- Adjust wallet dark-mode hyperlink color to the requested softer pink.
+
+### What Changed
+- Updated wallet dark-mode `--link-color` from `#ffe6ff` to `#ffccff`.
+
+### Files Edited
+- `app/tcoin/wallet/styles/app.scss`
+- `agent-context/session-log.md`
