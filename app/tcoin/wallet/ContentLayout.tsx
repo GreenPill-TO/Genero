@@ -11,6 +11,9 @@ import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export const publicPaths = ["/", "/resources", "/contact", "/ecosystem"];
+const bypassAuthInLocalDev = ["local", "development"].includes(
+  (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
+);
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
@@ -29,7 +32,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     // Replace this with your actual authentication logic
 
-    if (!isLoading && !isAuthenticated && !isPublic) {
+    if (!isLoading && !isAuthenticated && !isPublic && !bypassAuthInLocalDev) {
       router.push("/");
     }
   }, [isAuthenticated, isLoading, isPublic, router]);

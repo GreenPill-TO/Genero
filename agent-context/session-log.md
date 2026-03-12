@@ -1184,3 +1184,30 @@
 - `app/api/onramp/webhooks/transak/route.test.ts`
 - `.env.local.example`
 - `agent-context/session-log.md`
+
+## v1.25
+### Timestamp
+- 2026-03-12 19:50:00 EDT
+
+### Objective
+- Bypass authentication requirements in local/development environments for faster wallet/onramp iteration.
+
+### What Changed
+- Added environment-gated auth bypass support when `NEXT_PUBLIC_APP_ENVIRONMENT` is `local` or `development`.
+- Updated shared API auth resolver to:
+- return normal auth context when Supabase session exists,
+- fallback to a service-role resolved user row when unauthenticated in local/dev,
+- optionally honor `AUTH_BYPASS_USER_ID` to pin bypass identity,
+- otherwise fallback to the first user in `public.users`.
+- Updated wallet content layout to skip non-public redirect-to-home for unauthenticated users in local/dev.
+- Updated indexer touch/status endpoints to allow unauthenticated invocation in local/dev only.
+- Added env template documentation for `AUTH_BYPASS_USER_ID`.
+- Verified touched files with TypeScript and reran onramp route tests.
+
+### Files Edited
+- `shared/lib/bia/apiAuth.ts`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/api/indexer/touch/route.ts`
+- `app/api/indexer/status/route.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`
