@@ -1158,3 +1158,29 @@
 - `services/onramp/src/provider/transak.ts`
 - `.env.local.example`
 - `agent-context/session-log.md`
+
+## v1.24
+### Timestamp
+- 2026-03-12 19:42:00 EDT
+
+### Objective
+- Migrate Transak webhook verification from required webhook secret to access-token/JWT verification, while keeping legacy HMAC as optional fallback.
+
+### What Changed
+- Made `ONRAMP_TRANSAK_WEBHOOK_SECRET` optional in onramp config.
+- Added JWT webhook verification path using `ONRAMP_TRANSAK_ACCESS_TOKEN` (HS256 verify + payload decode).
+- Updated webhook route to use unified verification+decode function:
+- accepts JWT payload verification via access token,
+- supports legacy signature mode if webhook secret is configured,
+- rejects unverifiable payloads with 401.
+- Updated service exports and webhook tests for new verification API.
+- Updated `.env.local.example` to mark webhook secret as optional legacy input.
+
+### Files Edited
+- `services/onramp/src/config.ts`
+- `services/onramp/src/provider/transak.ts`
+- `services/onramp/src/index.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`

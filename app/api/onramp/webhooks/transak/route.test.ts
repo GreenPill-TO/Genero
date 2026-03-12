@@ -48,7 +48,11 @@ const h = vi.hoisted(() => {
   return {
     state,
     createServiceRoleClientMock: vi.fn(() => serviceRole),
-    verifySignatureMock: vi.fn(() => true),
+    verifyWebhookMock: vi.fn(() => ({
+      isValid: true,
+      payload: { eventType: "ORDER_COMPLETED" },
+      mode: "jwt_access_token",
+    })),
     normalizeEventMock: vi.fn(() => ({
       provider: "transak",
       providerEventId: "evt-1",
@@ -72,7 +76,7 @@ vi.mock("@shared/lib/supabase/serviceRole", () => ({
 }));
 
 vi.mock("@services/onramp/src", () => ({
-  verifyTransakWebhookSignature: h.verifySignatureMock,
+  verifyAndDecodeTransakWebhookPayload: h.verifyWebhookMock,
   normaliseTransakWebhookEvent: h.normalizeEventMock,
   runSessionSettlement: h.runSessionSettlementMock,
 }));
@@ -82,7 +86,11 @@ import { POST } from "./route";
 describe("POST /api/onramp/webhooks/transak", () => {
   beforeEach(() => {
     h.state.updatedStatus = null;
-    h.verifySignatureMock.mockReturnValue(true);
+    h.verifyWebhookMock.mockReturnValue({
+      isValid: true,
+      payload: { eventType: "ORDER_COMPLETED" },
+      mode: "jwt_access_token",
+    } as any);
   });
 
   it("persists event, updates session, and triggers settlement", async () => {
@@ -111,7 +119,11 @@ describe("POST /api/onramp/webhooks/transak", () => {
   });
 
   it("rejects invalid signatures", async () => {
-    h.verifySignatureMock.mockReturnValue(false);
+    h.verifyWebhookMock.mockReturnValue({
+      isValid: false,
+      payload: null,
+      mode: "none",
+    } as any);
 
     const response = await POST(
       new Request("http://localhost/api/onramp/webhooks/transak", {

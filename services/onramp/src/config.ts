@@ -61,7 +61,7 @@ export type OnrampConfig = {
   provider: "transak";
   transakApiKey: string;
   transakSecret: string;
-  transakWebhookSecret: string;
+  transakWebhookSecret: string | null;
   transakWidgetApiUrl: string;
   transakAccessToken: string;
   transakAuthorizationToken: string | null;
@@ -105,7 +105,7 @@ export function resolveOnrampConfig(): OnrampConfig {
     provider: "transak",
     transakApiKey: parseString("ONRAMP_TRANSAK_API_KEY"),
     transakSecret: parseString("ONRAMP_TRANSAK_SECRET"),
-    transakWebhookSecret: parseString("ONRAMP_TRANSAK_WEBHOOK_SECRET"),
+    transakWebhookSecret: parseOptionalString("ONRAMP_TRANSAK_WEBHOOK_SECRET"),
     transakWidgetApiUrl: parseString("ONRAMP_TRANSAK_WIDGET_API_URL", "https://api-gateway-stg.transak.com/api/v2/auth/session"),
     transakAccessToken: parseString("ONRAMP_TRANSAK_ACCESS_TOKEN"),
     transakAuthorizationToken: parseOptionalString("ONRAMP_TRANSAK_USER_AUTH_TOKEN"),

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   normaliseTransakWebhookEvent,
   runSessionSettlement,
-  verifyTransakWebhookSignature,
+  verifyAndDecodeTransakWebhookPayload,
 } from "@services/onramp/src";
 import { createServiceRoleClient } from "@shared/lib/supabase/serviceRole";
 
@@ -48,24 +48,17 @@ export async function POST(req: Request) {
   const serviceRole = createServiceRoleClient();
   const rawBody = await req.text();
 
-  let payload: Record<string, unknown>;
-  try {
-    payload = JSON.parse(rawBody) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json({ error: "Invalid webhook payload." }, { status: 400 });
-  }
-
   const signature =
     headerValue(req, "x-transak-signature") ??
     headerValue(req, "transak-signature") ??
     headerValue(req, "x-signature");
 
-  const signatureValid = verifyTransakWebhookSignature(rawBody, signature);
-  if (!signatureValid) {
-    return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
+  const verification = verifyAndDecodeTransakWebhookPayload(rawBody, signature);
+  if (!verification.isValid || !verification.payload) {
+    return NextResponse.json({ error: "Invalid webhook verification." }, { status: 401 });
   }
 
-  const normalized = normaliseTransakWebhookEvent(payload);
+  const normalized = normaliseTransakWebhookEvent(verification.payload);
   const sessionId = await resolveSessionId(serviceRole, normalized);
 
   const insertEventResult = await serviceRole
@@ -77,7 +70,7 @@ export async function POST(req: Request) {
         provider_event_id: normalized.providerEventId,
         event_type: normalized.eventType,
         payload: normalized.payload,
-        signature_valid: true,
+        signature_valid: verification.mode !== "none",
       },
       {
         onConflict: "provider,provider_event_id",

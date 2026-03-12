@@ -3,7 +3,7 @@ export { getOrCreateDepositWallet, deriveWalletAtIndex } from "./depositWallets"
 export {
   buildTransakSession,
   normaliseTransakWebhookEvent,
-  verifyTransakWebhookSignature,
+  verifyAndDecodeTransakWebhookPayload,
 } from "./provider/transak";
 export { projectOnrampStatus, buildOnrampTimeline } from "./status";
 export { runSessionSettlement, runUserOnrampTouch } from "./settlement";
