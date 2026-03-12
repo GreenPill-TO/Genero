@@ -1211,3 +1211,21 @@
 - `app/api/indexer/status/route.ts`
 - `.env.local.example`
 - `agent-context/session-log.md`
+
+## v1.26
+### Timestamp
+- 2026-03-12 19:55:00 EDT
+
+### Objective
+- Reorganize `/dashboard` actions so Interac top-up appears under Buy TCOIN, and remove the Other panel from dashboard while keeping off-ramp in More.
+
+### What Changed
+- Updated `WalletHome` to remove `OtherCard` from both mobile and desktop dashboard layouts.
+- Added `Top Up with Interac eTransfer` button into the `Buy TCOIN` panel in `WalletHome`.
+- Kept `Buy TCOIN` checkout button in the same panel (feature-flagged behavior unchanged).
+- Left `Convert to CAD and Cash Out` untouched in the More tab flow.
+- Verified with `WalletHome` component test.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `agent-context/session-log.md`

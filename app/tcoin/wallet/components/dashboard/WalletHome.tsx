@@ -8,11 +8,10 @@ import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
 import { createClient } from "@shared/lib/supabase/client";
 import { Button } from "@shared/components/ui/Button";
-import { BuyTcoinModal } from "@tcoin/wallet/components/modals";
+import { BuyTcoinModal, TopUpModal } from "@tcoin/wallet/components/modals";
 import { ContributionsCard } from "./ContributionsCard";
 import { SendCard } from "./SendCard";
 import { AccountCard } from "./AccountCard";
-import { OtherCard } from "./OtherCard";
 import { Hypodata } from "./types";
 
 export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
@@ -235,6 +234,14 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
     });
   };
 
+  const openTopUpModal = () => {
+    openModal({
+      content: <TopUpModal closeModal={closeModal} tokenLabel={tokenLabel} />,
+      title: "Top Up with Interac eTransfer",
+      description: `Send an Interac eTransfer to top up your ${tokenLabel.toUpperCase()} balance.`,
+    });
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-8 pb-24">
       <div className="space-y-8 max-w-[400px] mx-auto md:hidden">
@@ -269,17 +276,20 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
           closeModal={closeModal}
           senderWallet={senderWallet ?? ""}
         />
-        {buyCheckoutEnabled && (
-          <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
-            <h3 className="text-sm font-semibold">Buy TCOIN</h3>
-            <p className="text-xs text-muted-foreground">
-              One checkout flow: fiat to USDC on Celo to TCOIN.
-            </p>
+        <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
+          <h3 className="text-sm font-semibold">Buy TCOIN</h3>
+          <p className="text-xs text-muted-foreground">
+            One checkout flow: fiat to USDC on Celo to TCOIN.
+          </p>
+          {buyCheckoutEnabled && (
             <Button className="w-full" onClick={openBuyTcoinModal}>
               Buy TCOIN
             </Button>
-          </div>
-        )}
+          )}
+          <Button className="w-full" variant="outline" onClick={openTopUpModal}>
+            Top Up with Interac eTransfer
+          </Button>
+        </div>
         <div className="rounded-xl border border-border bg-card/70 p-4">
           <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
           {myPoolMerchants.length === 0 ? (
@@ -297,11 +307,6 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
             </ul>
           )}
         </div>
-        <OtherCard
-          openModal={openModal}
-          closeModal={closeModal}
-          tokenLabel={tokenLabel}
-        />
       </div>
       <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         <ContributionsCard
@@ -335,17 +340,20 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
           closeModal={closeModal}
           senderWallet={senderWallet ?? ""}
         />
-        {buyCheckoutEnabled && (
-          <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
-            <h3 className="text-sm font-semibold">Buy TCOIN</h3>
-            <p className="text-xs text-muted-foreground">
-              One checkout flow: fiat to USDC on Celo to TCOIN.
-            </p>
+        <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
+          <h3 className="text-sm font-semibold">Buy TCOIN</h3>
+          <p className="text-xs text-muted-foreground">
+            One checkout flow: fiat to USDC on Celo to TCOIN.
+          </p>
+          {buyCheckoutEnabled && (
             <Button className="w-full" onClick={openBuyTcoinModal}>
               Buy TCOIN
             </Button>
-          </div>
-        )}
+          )}
+          <Button className="w-full" variant="outline" onClick={openTopUpModal}>
+            Top Up with Interac eTransfer
+          </Button>
+        </div>
         <div className="rounded-xl border border-border bg-card/70 p-4">
           <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
           {myPoolMerchants.length === 0 ? (
@@ -363,11 +371,6 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
             </ul>
           )}
         </div>
-        <OtherCard
-          openModal={openModal}
-          closeModal={closeModal}
-          tokenLabel={tokenLabel}
-        />
       </div>
     </div>
   );
