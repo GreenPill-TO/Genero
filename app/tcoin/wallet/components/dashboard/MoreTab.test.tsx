@@ -56,6 +56,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@tcoin/wallet/components/modals", () => ({
+  BuyTcoinModal: ({ closeModal }: any) => (
+    <button data-testid="buytcoin-modal" onClick={closeModal}>
+      buytcoin
+    </button>
+  ),
   TopUpModal: ({ closeModal }: any) => (
     <button data-testid="topup-modal" onClick={closeModal}>
       topup
@@ -90,6 +95,7 @@ import { MoreTab } from "./MoreTab";
 
 describe("MoreTab", () => {
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 = "false";
     useAuthMock.mockReturnValue({
       userData: {
         cubidData: {
@@ -116,6 +122,14 @@ describe("MoreTab", () => {
     expect(openModal.mock.calls[0][0].title).toBe(
       "Top Up with Interac eTransfer"
     );
+  });
+
+  it("shows Buy TCOIN button when checkout feature flag is enabled", () => {
+    process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 = "true";
+    render(<MoreTab />);
+    fireEvent.click(screen.getByRole("button", { name: /Buy TCOIN/i }));
+    expect(openModal).toHaveBeenCalled();
+    expect(openModal.mock.calls[0][0].title).toBe("Buy TCOIN");
   });
 
   it("opens the off-ramp modal", () => {

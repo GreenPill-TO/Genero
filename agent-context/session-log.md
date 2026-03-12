@@ -997,3 +997,67 @@
 ## v0.1
 
 - Initial bootstrap: added agent-context folder and CI workflow.
+
+## v1.18
+### Timestamp
+- 2026-03-12 12:45:00 EDT
+
+### Objective
+- Implement the Buy TCOIN checkout orchestrator flow in wallet + backend (Transak sessioning, managed deposit wallets, webhook ingestion, auto-mint via `TcoinMintRouter`, session status APIs, and admin retry visibility), with new persistence schema and feature-flagged UI entry points.
+
+### What Changed
+- Added Supabase migration `v0.98` for onramp orchestration:
+- `onramp_deposit_wallets`, `onramp_checkout_sessions`, `onramp_settlement_attempts`, `onramp_provider_events`, and `onramp_operation_locks`.
+- lock RPCs: `onramp_try_acquire_lock(...)`, `onramp_release_lock(...)`.
+- admin projection view: `v_onramp_checkout_admin`.
+- RLS/grants for user-scoped session visibility and service-role settlement writes.
+- Added new onramp service module under `services/onramp/src`:
+- env/config resolver for provider/chain/router/gas/HD settings.
+- deterministic per-user deposit wallet derivation + allocation.
+- Transak session builder + webhook signature validation + event normalization.
+- settlement runner with idempotent lock, USDC detection, quote/min-output guards, gas top-up, router mint execution, attempt/session persistence, and manual-review fallback.
+- status projection helpers for timeline rendering.
+- Added wallet-facing and ops-facing API routes:
+- `POST /api/onramp/session`
+- `GET|POST /api/onramp/session/[id]`
+- `POST /api/onramp/session/[id]/retry`
+- `POST /api/onramp/webhooks/transak`
+- `POST /api/onramp/touch`
+- `GET /api/onramp/admin/sessions`
+- Added shared onramp types/feature flag helpers in `shared/lib/onramp/*`.
+- Added new wallet modal `BuyTcoinModal` with checkout session creation, embedded widget frame, timeline polling, and deterministic status toasts.
+- Wired Buy TCOIN entry points into `WalletHome` and `MoreTab` behind `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1` while preserving Interac top-up/off-ramp actions.
+- Extended admin dashboard with a new Buy TCOIN checkout sessions panel and manual retry action.
+- Updated `.env.local.example` with all required onramp env variables and examples.
+- Corrected a critical provider-status mapping bug so provider `completed/success` maps to `crypto_sent` (not `mint_complete`), preventing premature terminal session status.
+- Ran targeted verification:
+- `npm run test -- app/api/onramp/session/route.test.ts app/api/onramp/webhooks/transak/route.test.ts app/tcoin/wallet/components/dashboard/MoreTab.test.tsx` (all passing).
+- `npx tsc --noEmit` checked for touched-file regressions (resolved for changed files).
+
+### Files Edited
+- `supabase/migrations/20260312113000_v0.98_onramp_checkout.sql`
+- `services/onramp/src/config.ts`
+- `services/onramp/src/depositWallets.ts`
+- `services/onramp/src/index.ts`
+- `services/onramp/src/provider/transak.ts`
+- `services/onramp/src/settlement.ts`
+- `services/onramp/src/status.ts`
+- `services/onramp/src/types.ts`
+- `shared/lib/onramp/feature.ts`
+- `shared/lib/onramp/types.ts`
+- `app/api/onramp/session/route.ts`
+- `app/api/onramp/session/route.test.ts`
+- `app/api/onramp/session/[id]/route.ts`
+- `app/api/onramp/session/[id]/retry/route.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `app/api/onramp/touch/route.ts`
+- `app/api/onramp/admin/sessions/route.ts`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/tcoin/wallet/components/modals/index.ts`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `.env.local.example`
+- `agent-context/session-log.md`

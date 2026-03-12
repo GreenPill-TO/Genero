@@ -7,6 +7,8 @@ import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
 import { createClient } from "@shared/lib/supabase/client";
+import { Button } from "@shared/components/ui/Button";
+import { BuyTcoinModal } from "@tcoin/wallet/components/modals";
 import { ContributionsCard } from "./ContributionsCard";
 import { SendCard } from "./SendCard";
 import { AccountCard } from "./AccountCard";
@@ -21,6 +23,8 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [selectedCharity, setSelectedCharity] = useState("");
+  const buyCheckoutEnabled =
+    (process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 ?? "false").trim().toLowerCase() === "true";
 
   useEffect(() => {
     const defaultCharity = activeProfile?.charityPreferences?.charity;
@@ -223,6 +227,14 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
     setCadAmount(cadNumeric.toFixed(2));
   };
 
+  const openBuyTcoinModal = () => {
+    openModal({
+      content: <BuyTcoinModal closeModal={closeModal} />,
+      title: "Buy TCOIN",
+      description: "Checkout with fiat to mint TCOIN automatically from USDC on Celo.",
+    });
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-8 pb-24">
       <div className="space-y-8 max-w-[400px] mx-auto md:hidden">
@@ -243,8 +255,6 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
           handleTcoinBlur={handleTcoinBlur}
           handleCadBlur={handleCadBlur}
           sendMoney={sendMoney}
-          setTcoin={setTcoinAmount}
-          setCad={setCadAmount}
           explorerLink={explorerLink}
           setExplorerLink={setExplorerLink}
           userBalance={userBalance}
@@ -257,8 +267,19 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
           voucherCount={portfolio?.voucherBalances?.length ?? 0}
           openModal={openModal}
           closeModal={closeModal}
-          senderWallet={senderWallet}
+          senderWallet={senderWallet ?? ""}
         />
+        {buyCheckoutEnabled && (
+          <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
+            <h3 className="text-sm font-semibold">Buy TCOIN</h3>
+            <p className="text-xs text-muted-foreground">
+              One checkout flow: fiat to USDC on Celo to TCOIN.
+            </p>
+            <Button className="w-full" onClick={openBuyTcoinModal}>
+              Buy TCOIN
+            </Button>
+          </div>
+        )}
         <div className="rounded-xl border border-border bg-card/70 p-4">
           <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
           {myPoolMerchants.length === 0 ? (
@@ -300,8 +321,6 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
           handleTcoinBlur={handleTcoinBlur}
           handleCadBlur={handleCadBlur}
           sendMoney={sendMoney}
-          setTcoin={setTcoinAmount}
-          setCad={setCadAmount}
           explorerLink={explorerLink}
           setExplorerLink={setExplorerLink}
           userBalance={userBalance}
@@ -314,8 +333,19 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
           voucherCount={portfolio?.voucherBalances?.length ?? 0}
           openModal={openModal}
           closeModal={closeModal}
-          senderWallet={senderWallet}
+          senderWallet={senderWallet ?? ""}
         />
+        {buyCheckoutEnabled && (
+          <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
+            <h3 className="text-sm font-semibold">Buy TCOIN</h3>
+            <p className="text-xs text-muted-foreground">
+              One checkout flow: fiat to USDC on Celo to TCOIN.
+            </p>
+            <Button className="w-full" onClick={openBuyTcoinModal}>
+              Buy TCOIN
+            </Button>
+          </div>
+        )}
         <div className="rounded-xl border border-border bg-card/70 p-4">
           <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
           {myPoolMerchants.length === 0 ? (

@@ -1,0 +1,185 @@
+import crypto from "crypto";
+import { resolveOnrampConfig } from "../config";
+import type { CreateOnrampSessionInput, OnrampProviderEventNormalized, OnrampSessionStatus } from "../types";
+
+export type TransakSessionBuildResult = {
+  provider: "transak";
+  providerSessionId: string;
+  providerOrderId: string;
+  widgetUrl: string;
+  widgetConfig: Record<string, string>;
+};
+
+function mapStatusHint(raw: string): OnrampSessionStatus | null {
+  const normalized = raw.trim().toLowerCase();
+
+  if (["created", "initialized", "init"].includes(normalized)) {
+    return "created";
+  }
+  if (["widget_opened", "opened"].includes(normalized)) {
+    return "widget_opened";
+  }
+  if (["pending", "awaiting_payment", "payment_submitted", "payment_initiated"].includes(normalized)) {
+    return "payment_submitted";
+  }
+  if (["processing", "crypto_sent", "crypto_processing", "order_processing"].includes(normalized)) {
+    return "crypto_sent";
+  }
+  if (["usdc_received", "wallet_credited"].includes(normalized)) {
+    return "usdc_received";
+  }
+  if (["mint_started"].includes(normalized)) {
+    return "mint_started";
+  }
+  if (["completed", "success", "order_completed", "order_successful"].includes(normalized)) {
+    return "crypto_sent";
+  }
+  if (["mint_complete"].includes(normalized)) {
+    return "mint_complete";
+  }
+  if (["manual_review"].includes(normalized)) {
+    return "manual_review";
+  }
+  if (["failed", "cancelled", "rejected", "expired", "error"].includes(normalized)) {
+    return "failed";
+  }
+
+  return null;
+}
+
+export function buildTransakSession(input: CreateOnrampSessionInput & {
+  sessionId: string;
+  depositAddress: `0x${string}`;
+}): TransakSessionBuildResult {
+  const config = resolveOnrampConfig();
+
+  const providerSessionId = input.sessionId;
+  const providerOrderId = `genero-${input.sessionId}`;
+
+  const query = new URLSearchParams({
+    apiKey: config.transakApiKey,
+    defaultNetwork: "celo",
+    defaultCryptoCurrency: config.targetInputAsset,
+    cryptoCurrencyCode: config.targetInputAsset,
+    network: "celo",
+    walletAddress: input.depositAddress,
+    disableWalletAddressForm: "true",
+    disableCryptoSelection: "true",
+    fiatAmount: input.fiatAmount.toString(),
+    fiatCurrency: input.fiatCurrency.toUpperCase(),
+    countryCode: (input.countryCode ?? "").toUpperCase(),
+    redirectURL: `${config.appBaseUrl.replace(/\/$/, "")}/dashboard?onrampSession=${input.sessionId}`,
+    partnerOrderId: providerOrderId,
+    partnerCustomerId: String(input.userId),
+    exchangeScreenTitle: "Buy TCOIN",
+    isAutoFillUserData: "true",
+  });
+
+  const widgetUrl = `https://global.transak.com?${query.toString()}`;
+
+  return {
+    provider: "transak",
+    providerSessionId,
+    providerOrderId,
+    widgetUrl,
+    widgetConfig: Object.fromEntries(query.entries()),
+  };
+}
+
+function extractString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+function payloadPath(payload: Record<string, unknown>, path: string[]): unknown {
+  let current: unknown = payload;
+  for (const key of path) {
+    if (!current || typeof current !== "object" || !(key in current)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+}
+
+function pickFirstString(payload: Record<string, unknown>, paths: string[][]): string | null {
+  for (const path of paths) {
+    const value = payloadPath(payload, path);
+    const extracted = extractString(value);
+    if (extracted) {
+      return extracted;
+    }
+  }
+  return null;
+}
+
+export function normaliseTransakWebhookEvent(payload: Record<string, unknown>): OnrampProviderEventNormalized {
+  const eventType =
+    pickFirstString(payload, [["eventType"], ["event"], ["webhookEvent"], ["status"], ["data", "status"]]) ??
+    "unknown";
+
+  const orderId = pickFirstString(payload, [
+    ["orderId"],
+    ["partnerOrderId"],
+    ["data", "orderId"],
+    ["data", "partnerOrderId"],
+    ["id"],
+  ]);
+
+  const sessionId = pickFirstString(payload, [["sessionId"], ["partnerSessionId"], ["metadata", "sessionId"]]);
+
+  const eventId = pickFirstString(payload, [["eventId"], ["id"], ["data", "eventId"]]);
+
+  const txHash = pickFirstString(payload, [
+    ["txHash"],
+    ["transactionHash"],
+    ["data", "txHash"],
+    ["data", "transactionHash"],
+  ]);
+
+  const statusRaw =
+    pickFirstString(payload, [["status"], ["eventType"], ["data", "status"], ["orderStatus"]]) ?? eventType;
+
+  return {
+    provider: "transak",
+    providerEventId: eventId,
+    providerOrderId: orderId,
+    providerSessionId: sessionId,
+    eventType,
+    statusHint: mapStatusHint(statusRaw),
+    txHash,
+    payload,
+  };
+}
+
+function constantTimeEqualsHex(a: string, b: string): boolean {
+  try {
+    const aBuf = Buffer.from(a, "hex");
+    const bBuf = Buffer.from(b, "hex");
+    if (aBuf.length !== bBuf.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(aBuf, bBuf);
+  } catch {
+    return false;
+  }
+}
+
+export function verifyTransakWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
+  const config = resolveOnrampConfig();
+  if (!signatureHeader) {
+    return false;
+  }
+
+  const signature = signatureHeader.trim();
+  const normalizedSignature = signature.startsWith("sha256=") ? signature.slice("sha256=".length) : signature;
+  if (!/^[0-9a-fA-F]+$/.test(normalizedSignature)) {
+    return false;
+  }
+
+  const expected = crypto
+    .createHmac("sha256", config.transakWebhookSecret)
+    .update(rawBody)
+    .digest("hex");
+
+  return constantTimeEqualsHex(expected.toLowerCase(), normalizedSignature.toLowerCase());
+}

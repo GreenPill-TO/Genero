@@ -150,6 +150,27 @@ type MerchantVoucherLiquidity = {
   available: boolean;
 };
 
+type OnrampCheckoutSessionSummary = {
+  id: string;
+  userId: number;
+  provider: string;
+  fiatAmount: string;
+  fiatCurrency: string;
+  status: string;
+  statusReason: string | null;
+  depositAddress: string;
+  recipientWallet: string;
+  incomingUsdcTxHash: string | null;
+  mintTxHash: string | null;
+  tcoinOutAmount: string | null;
+  latestAttemptNo: number | null;
+  latestAttemptMode: string | null;
+  latestAttemptState: string | null;
+  latestAttemptError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type SettlementDraft = {
   settlementAmount: string;
   settlementAsset: string;
@@ -332,6 +353,7 @@ export default function AdminDashboardPage() {
   const [governanceActions, setGovernanceActions] = useState<GovernanceActionRecord[]>([]);
   const [voucherRules, setVoucherRules] = useState<VoucherCompatibilityRule[]>([]);
   const [merchantLiquidityRows, setMerchantLiquidityRows] = useState<MerchantVoucherLiquidity[]>([]);
+  const [onrampCheckoutSessions, setOnrampCheckoutSessions] = useState<OnrampCheckoutSessionSummary[]>([]);
   const [controlPlaneError, setControlPlaneError] = useState<string | null>(null);
   const [isControlPlaneLoading, setIsControlPlaneLoading] = useState(false);
   const [biaCreateForm, setBiaCreateForm] = useState({
@@ -548,6 +570,7 @@ export default function AdminDashboardPage() {
         governanceList,
         voucherRuleList,
         voucherMerchants,
+        onrampAdminList,
       ] = await Promise.all([
         fetchJson<{ bias?: BiaRecord[]; controls?: BiaControlRecord[] }>(
           "/api/bias/list?citySlug=tcoin&includeMappings=true"
@@ -573,6 +596,9 @@ export default function AdminDashboardPage() {
         fetchJson<{ merchants?: MerchantVoucherLiquidity[] }>(
           "/api/vouchers/merchants?citySlug=tcoin&chainId=42220&scope=city"
         ),
+        fetchJson<{ sessions?: OnrampCheckoutSessionSummary[] }>(
+          "/api/onramp/admin/sessions?citySlug=tcoin&limit=50"
+        ),
       ]);
 
       if (!isMountedRef.current) return;
@@ -585,6 +611,7 @@ export default function AdminDashboardPage() {
       setGovernanceActions(governanceList.actions ?? []);
       setVoucherRules(voucherRuleList.rules ?? []);
       setMerchantLiquidityRows(voucherMerchants.merchants ?? []);
+      setOnrampCheckoutSessions(onrampAdminList.sessions ?? []);
       setLastSyncedAt(new Date());
 
       if (nextBias.length > 0) {
@@ -897,6 +924,24 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleRetryOnrampSession = async (sessionId: string) => {
+    const key = `onramp-retry-${sessionId}`;
+    markSaving(key);
+    try {
+      await fetchJson(`/api/onramp/session/${sessionId}/retry`, {
+        method: "POST",
+        body: JSON.stringify({ citySlug: "tcoin" }),
+      });
+      toast.success("On-ramp settlement retry submitted.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to retry on-ramp session", error);
+      toast.error(error instanceof Error ? error.message : "Could not retry on-ramp settlement.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
   const availableOnRampStatuses = useMemo(() => {
     const derived = onRampRequests
       .map((request) => request.status)
@@ -1189,6 +1234,65 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Buy TCOIN Checkout Sessions</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {onrampCheckoutSessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No on-ramp checkout sessions found yet.
+            </p>
+          ) : (
+            onrampCheckoutSessions.map((session) => {
+              const isRetrying = pendingUpdates[`onramp-retry-${session.id}`] === true;
+              const canRetry = session.status === "manual_review" || session.status === "failed";
+              return (
+                <div key={session.id} className="rounded-md border p-4 space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Session {session.id}</p>
+                      <p className="text-xs text-muted-foreground">
+                        User #{session.userId} · {session.provider} · {session.fiatAmount} {session.fiatCurrency}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Created {formatDateTime(session.createdAt)} · Updated {formatDateTime(session.updatedAt)}
+                      </p>
+                    </div>
+                    <Badge variant={getBadgeVariant(session.status)}>{session.status}</Badge>
+                  </div>
+                  <div className="grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
+                    <p>Deposit: {session.depositAddress}</p>
+                    <p>Recipient: {session.recipientWallet}</p>
+                    <p>USDC tx: {session.incomingUsdcTxHash ?? "n/a"}</p>
+                    <p>Mint tx: {session.mintTxHash ?? "n/a"}</p>
+                    <p>TCOIN out: {session.tcoinOutAmount ?? "n/a"}</p>
+                    <p>
+                      Attempt: {session.latestAttemptNo ?? "n/a"} ({session.latestAttemptMode ?? "n/a"} /{" "}
+                      {session.latestAttemptState ?? "n/a"})
+                    </p>
+                  </div>
+                  {(session.statusReason || session.latestAttemptError) && (
+                    <p className="text-xs text-red-600">
+                      {session.statusReason ?? session.latestAttemptError}
+                    </p>
+                  )}
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      disabled={!canRetry || isRetrying}
+                      onClick={() => void handleRetryOnrampSession(session.id)}
+                    >
+                      {isRetrying ? "Retrying..." : "Retry Settlement"}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
