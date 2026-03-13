@@ -1273,3 +1273,23 @@
 - `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
 - `app/tcoin/wallet/components/dashboard/SendCard.tsx`
 - `agent-context/session-log.md`
+
+## v1.29
+### Timestamp
+- 2026-03-12 20:32:55 EDT
+
+### Objective
+- Increase contrast of the dashboard header `TCOIN` logo in both light and dark mode.
+
+### What Changed
+- Added a dedicated navbar brand-logo class (`wallet-brand-logo`) so the header logo is not constrained by generic link colors.
+- Applied theme-specific logo color tokens:
+- light mode: white logo on teal navbar.
+- dark mode: deep purple logo on white navbar.
+- Forced the brand logo to full opacity in navbar (`!opacity-100`) so non-active route dimming does not reduce readability.
+- Verified with targeted navbar tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `agent-context/session-log.md`

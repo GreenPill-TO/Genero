@@ -34,6 +34,7 @@
     /* Link and header color */
     --link-color: 300 100% 15%; /* Link color (#4d004d) */
     --header-color: 340 100% 70%; /* Pink header color (#ff4081) */
+    --wallet-logo-color: 0 0% 100%; /* White logo on teal navbar */
 
     /* Chart colors in shades of blue */
     --chart-1: 210 100% 50%; /* Bright blue */
@@ -77,6 +78,7 @@
     /* Link and header color */
     --link-color: 300 100% 90%; /* Link color (#ffccff) */
     --header-color: 340 100% 70%; /* Pink header color (#ff4081) */
+    --wallet-logo-color: 285 100% 16%; /* Deep purple logo on white navbar */
 
     /* Updated chart colors for blue theme */
     --chart-1: 210 60% 50%; /* Medium blue */
@@ -94,6 +96,10 @@
 
   .link-btn {
     color: hsl(var(--link-color));
+  }
+
+  .wallet-brand-logo {
+    color: hsl(var(--wallet-logo-color));
   }
 
   svg {

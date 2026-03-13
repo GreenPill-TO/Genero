@@ -171,7 +171,11 @@ export default function Navbar({ title }: { title?: string }) {
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center max-w-7xl mx-auto">
-          <NavLink link="/" title={title ?? "TCOIN"} optionalClass="text-2xl font-bold no-underline" />
+          <NavLink
+            link="/"
+            title={title ?? "TCOIN"}
+            optionalClass="wallet-brand-logo !opacity-100 text-2xl font-bold no-underline"
+          />
           <div className="hidden sm:flex sm:items-center sm:space-x-8 mx-auto">
             {homePageLinks}
             {isAuthenticated && navLinksProtected}
