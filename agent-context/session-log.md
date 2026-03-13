@@ -1576,3 +1576,21 @@
 ### Files Edited
 - `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
 - `agent-context/session-log.md`
+
+## v1.42
+### Timestamp
+- 2026-03-13 13:41:23 EDT
+
+### Objective
+- Adjust large-screen left sidebar grouping so `Home` appears with the central nav button stack (above `Receive`).
+
+### What Changed
+- Updated desktop sidebar composition in `DashboardFooter`:
+- removed the separate top-pinned `Home` item.
+- included `Home` in the centered middle group and kept button order so it appears directly above `Receive`.
+- kept `More` pinned at the bottom.
+- Verified with focused footer tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `agent-context/session-log.md`

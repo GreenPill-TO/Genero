@@ -67,9 +67,8 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
     </button>
   );
 
-  const home = desktopItems.find((item) => item.key === "home")!;
   const more = desktopItems.find((item) => item.key === "more")!;
-  const middle = desktopItems.filter((item) => item.key !== "home" && item.key !== "more");
+  const middle = desktopItems.filter((item) => item.key !== "more");
 
   return (
     <>
@@ -93,16 +92,6 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
 
       <nav className="fixed left-0 top-16 bottom-0 hidden w-24 border-r bg-background lg:block">
         <div className="flex h-full flex-col items-center py-4">
-          <div className="w-full px-2">
-            {renderItem({
-              key: home.key,
-              label: home.label,
-              Icon: home.icon,
-              testId: `sidebar-${home.key}`,
-              compact: true,
-            })}
-          </div>
-
           <div className="flex flex-1 w-full flex-col items-center justify-center gap-6 px-2">
             {middle.map((item) => (
               <div key={item.key} className="w-full">
