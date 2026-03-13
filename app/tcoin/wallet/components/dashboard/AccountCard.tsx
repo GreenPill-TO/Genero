@@ -1,10 +1,30 @@
 import React, { useState } from "react";
-import { FiCopy, FiDollarSign, FiList } from "react-icons/fi";
+import { FiCopy, FiDollarSign, FiHeart, FiList, FiTrendingUp } from "react-icons/fi";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Label } from "@shared/components/ui/Label";
 import { Switch } from "@shared/components/ui/Switch";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
+
+const balanceHistory = [
+  { date: "2023-06-01", balance: 800 },
+  { date: "2023-06-15", balance: 950 },
+  { date: "2023-06-30", balance: 1100 },
+  { date: "2023-07-15", balance: 1000 },
+  { date: "2023-07-30", balance: 1200 },
+];
 
 const recentTransactions = [
   { id: 1, type: "Received", amount: 100, from: "Alice", date: "2023-07-30" },
@@ -12,6 +32,14 @@ const recentTransactions = [
   { id: 3, type: "Charity", amount: 20, to: "Save the Trees", date: "2023-07-28" },
   { id: 4, type: "Received", amount: 200, from: "Work", date: "2023-07-27" },
   { id: 5, type: "Sent", amount: 30, to: "Coffee Shop", date: "2023-07-26" },
+];
+
+const charityContributionData = [
+  { date: "2023-05-01", TheShelter: 10, TheFoodBank: 0 },
+  { date: "2023-06-01", TheShelter: 15, TheFoodBank: 0 },
+  { date: "2023-07-01", TheShelter: 20, TheFoodBank: 5 },
+  { date: "2023-08-01", TheShelter: 18, TheFoodBank: 12 },
+  { date: "2023-09-01", TheShelter: 22, TheFoodBank: 18 },
 ];
 
 export function AccountCard({
@@ -76,7 +104,9 @@ export function AccountCard({
         <div className="flex justify-around mb-4">
           {[
             { key: "balance", icon: <FiDollarSign className="font-bold" />, label: "Balance" },
+            { key: "graph", icon: <FiTrendingUp className="font-bold" />, label: "Graph" },
             { key: "transactions", icon: <FiList className="font-bold" />, label: "Transactions" },
+            { key: "charity", icon: <FiHeart className="font-bold" />, label: "Charity" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -94,6 +124,19 @@ export function AccountCard({
         </div>
 
         <div>
+          {activeAccountTab === "graph" && (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={balanceHistory}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="balance" stroke="#8884d8" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
           {activeAccountTab === "balance" && (
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
@@ -173,6 +216,32 @@ export function AccountCard({
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+          {activeAccountTab === "charity" && (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={charityContributionData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area
+                    type="monotone"
+                    dataKey="TheShelter"
+                    stackId="1"
+                    stroke="#8884d8"
+                    fill="#8884d8"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="TheFoodBank"
+                    stackId="1"
+                    stroke="#82ca9d"
+                    fill="#82ca9d"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           )}
         </div>

@@ -578,78 +578,68 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
         </div>
         <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
       </div>
-      <div className="hidden md:grid md:grid-cols-3 gap-4">
-        <div className="space-y-4">
-          <AccountCard
-            balance={userBalance}
-            totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
-            voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
-            voucherCount={portfolio?.voucherBalances?.length ?? 0}
-            openModal={openModal}
-            closeModal={closeModal}
-            senderWallet={senderWallet ?? ""}
-          />
-        </div>
-
-        <div className="space-y-4">
-          <SendCard
-            toSendData={toSendData}
-            setToSendData={setToSendData}
-            tcoinAmount={tcoinAmount}
-            cadAmount={cadAmount}
-            handleTcoinChange={handleTcoinChange}
-            handleCadChange={handleCadChange}
-            handleTcoinBlur={handleTcoinBlur}
-            handleCadBlur={handleCadBlur}
-            sendMoney={sendMoney}
-            explorerLink={explorerLink}
-            setExplorerLink={setExplorerLink}
-            userBalance={userBalance}
-            onUseMax={handleUseMax}
-          />
-          <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
-            <h3 className="text-sm font-semibold">Buy TCOIN</h3>
-            <p className="text-xs text-muted-foreground">One checkout flow: fiat to USDC on Celo to TCOIN.</p>
-            {buyCheckoutEnabled && (
-              <Button className="w-full" onClick={openBuyTcoinModal}>
-                Buy TCOIN
-              </Button>
-            )}
-            <Button className="w-full" variant="outline" onClick={openTopUpModal}>
-              Top Up with Interac eTransfer
+      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ContributionsCard
+          selectedCharity={selectedCharity}
+          setSelectedCharity={setSelectedCharity}
+          charityData={charityData}
+          openModal={openModal}
+          closeModal={closeModal}
+        />
+        <SendCard
+          toSendData={toSendData}
+          setToSendData={setToSendData}
+          tcoinAmount={tcoinAmount}
+          cadAmount={cadAmount}
+          handleTcoinChange={handleTcoinChange}
+          handleCadChange={handleCadChange}
+          handleTcoinBlur={handleTcoinBlur}
+          handleCadBlur={handleCadBlur}
+          sendMoney={sendMoney}
+          explorerLink={explorerLink}
+          setExplorerLink={setExplorerLink}
+          userBalance={userBalance}
+          onUseMax={handleUseMax}
+        />
+        <AccountCard
+          balance={userBalance}
+          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
+          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
+          voucherCount={portfolio?.voucherBalances?.length ?? 0}
+          openModal={openModal}
+          closeModal={closeModal}
+          senderWallet={senderWallet ?? ""}
+        />
+        <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
+          <h3 className="text-sm font-semibold">Buy TCOIN</h3>
+          <p className="text-xs text-muted-foreground">One checkout flow: fiat to USDC on Celo to TCOIN.</p>
+          {buyCheckoutEnabled && (
+            <Button className="w-full" onClick={openBuyTcoinModal}>
+              Buy TCOIN
             </Button>
-          </div>
-          <div className="rounded-xl border border-border bg-card/70 p-4">
-            <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
-            {myPoolMerchants.length === 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                No mapped merchants were found in your primary/secondary BIA pools.
-              </p>
-            ) : (
-              <ul className="mt-2 space-y-1 text-xs">
-                {myPoolMerchants.map((merchant) => (
-                  <li key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}>
-                    {merchant.displayName ?? `Store ${merchant.merchantStoreId}`}
-                    {merchant.tokenSymbol ? ` - ${merchant.tokenSymbol}` : ""}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
+          <Button className="w-full" variant="outline" onClick={openTopUpModal}>
+            Top Up with Interac eTransfer
+          </Button>
         </div>
-
-        <div className="space-y-4">
-          <ContributionsCard
-            selectedCharity={selectedCharity}
-            setSelectedCharity={setSelectedCharity}
-            charityData={charityData}
-            openModal={openModal}
-            closeModal={closeModal}
-            compact
-          />
-          <div className="min-h-[140px] rounded-xl border border-dashed border-border/60 bg-card/30" />
-          <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
+        <div className="rounded-xl border border-border bg-card/70 p-4">
+          <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
+          {myPoolMerchants.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              No mapped merchants were found in your primary/secondary BIA pools.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1 text-xs">
+              {myPoolMerchants.map((merchant) => (
+                <li key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}>
+                  {merchant.displayName ?? `Store ${merchant.merchantStoreId}`}
+                  {merchant.tokenSymbol ? ` - ${merchant.tokenSymbol}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+        <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
       </div>
     </div>
   );
