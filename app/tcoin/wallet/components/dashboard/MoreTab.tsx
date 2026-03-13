@@ -17,6 +17,7 @@ import {
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
 import {
   LuBuilding2,
+  LuClipboardList,
   LuDollarSign,
   LuFlaskConical,
   LuHeart,
@@ -57,6 +58,7 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     trustStatus: "default",
   });
   const [isSavingVoucherPreference, setIsSavingVoucherPreference] = useState(false);
+  const [merchantActionLabel, setMerchantActionLabel] = useState("Sign up as Merchant");
   const charityData = useMemo(() => DEFAULT_CHARITY_DATA, []);
 
   useEffect(() => {
@@ -104,6 +106,35 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     };
 
     void loadBiaSelection();
+  }, []);
+
+  useEffect(() => {
+    const loadMerchantActionState = async () => {
+      try {
+        const response = await fetch("/api/merchant/application/status?citySlug=tcoin", {
+          credentials: "include",
+        });
+        const body = await response.json();
+        if (!response.ok) return;
+        const state = typeof body?.state === "string" ? body.state : "none";
+
+        if (state === "none") {
+          setMerchantActionLabel("Sign up as Merchant");
+          return;
+        }
+
+        if (state === "draft") {
+          setMerchantActionLabel("Continue Merchant Application");
+          return;
+        }
+
+        setMerchantActionLabel("Open Merchant Dashboard");
+      } catch {
+        // Keep default CTA label when status lookup fails.
+      }
+    };
+
+    void loadMerchantActionState();
   }, []);
 
   const toggleSecondaryBia = (biaId: string) => {
@@ -279,6 +310,10 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     router.push("/merchant");
   };
 
+  const handleOpenCityManager = () => {
+    router.push("/city-manager");
+  };
+
   return (
     <div className="lg:px-[25vw]">
       <Card>
@@ -308,8 +343,13 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
             <LuFlaskConical className="mr-2 h-4 w-4" /> Future app features
           </Button>
           <Button type="button" className="w-full justify-start" onClick={handleOpenMerchant}>
-            <LuBuilding2 className="mr-2 h-4 w-4" /> Open Merchant Dashboard
+            <LuBuilding2 className="mr-2 h-4 w-4" /> {merchantActionLabel}
           </Button>
+          {isAdmin && (
+            <Button type="button" className="w-full justify-start" onClick={handleOpenCityManager}>
+              <LuClipboardList className="mr-2 h-4 w-4" /> Open City Manager
+            </Button>
+          )}
           {isAdmin && (
             <Button type="button" className="w-full justify-start" onClick={handleOpenAdmin}>
               <LuShield className="mr-2 h-4 w-4" /> Open Admin Dashboard

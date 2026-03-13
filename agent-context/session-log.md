@@ -1623,3 +1623,70 @@
 - `shared/hooks/useDarkMode.tsx`
 - `app/tcoin/wallet/merchant/page.tsx`
 - `agent-context/session-log.md`
+
+## v1.44
+### Timestamp
+- 2026-03-13 19:05:37 EDT
+
+### Objective
+- Implement merchant signup workflow with draft/pending/live/rejected lifecycle, per-city slug uniqueness, and city-manager approval APIs/UI in wallet app.
+
+### What Changed
+- Added new merchant signup schema migration (`v0.99`) with:
+- store lifecycle + signup progression fields on `stores`.
+- app-scoped slug/media/profile fields on `store_profiles`.
+- `is_admin` on `store_employees`.
+- `store_signup_events` audit table.
+- Added merchant signup backend APIs:
+- `GET /api/merchant/application/status`
+- `POST /api/merchant/application/start`
+- `POST /api/merchant/application/restart`
+- `POST /api/merchant/application/step`
+- `POST /api/merchant/application/submit`
+- `GET /api/merchant/slug-availability`
+- `POST /api/merchant/geocode` (Nominatim)
+- Added city-manager backend APIs:
+- `GET /api/city-manager/stores`
+- `POST /api/city-manager/stores/:id/approve`
+- `POST /api/city-manager/stores/:id/reject`
+- Added shared merchant-signup server/types helpers.
+- Updated store mutation APIs to require store-admin access for sensitive updates and seed first employee as admin.
+- Updated wallet More tab merchant CTA to dynamic label based on merchant application state:
+- `Sign up as Merchant`
+- `Continue Merchant Application`
+- `Open Merchant Dashboard`
+- Added admin shortcut to wallet `/city-manager`.
+- Refactored wallet merchant route:
+- moved existing live merchant workspace into `LiveMerchantDashboard`.
+- new `merchant/page.tsx` now orchestrates lifecycle states and guided 5-step signup flow with continue/restart draft handling.
+- Added wallet city-manager page at `app/tcoin/wallet/city-manager/page.tsx` with pending/live/rejected filters and approve/reject actions.
+- Extended `.env.local.example` with merchant signup feature flag and Nominatim user-agent configuration.
+
+### Verification
+- Ran `pnpm test app/tcoin/wallet/components/dashboard/MoreTab.test.tsx` (pass).
+- Ran `pnpm exec tsc --noEmit` (fails due pre-existing unrelated TS issues outside this feature scope; no filtered errors from new merchant/city-manager files).
+
+### Files Edited
+- `supabase/migrations/20260313161000_v0.99_merchant_signup_city_manager.sql`
+- `shared/lib/bia/server.ts`
+- `shared/lib/merchantSignup/types.ts`
+- `shared/lib/merchantSignup/server.ts`
+- `shared/lib/merchantSignup/application.ts`
+- `app/api/stores/route.ts`
+- `app/api/stores/[id]/bia/route.ts`
+- `app/api/merchant/application/status/route.ts`
+- `app/api/merchant/application/start/route.ts`
+- `app/api/merchant/application/restart/route.ts`
+- `app/api/merchant/application/step/route.ts`
+- `app/api/merchant/application/submit/route.ts`
+- `app/api/merchant/slug-availability/route.ts`
+- `app/api/merchant/geocode/route.ts`
+- `app/api/city-manager/stores/route.ts`
+- `app/api/city-manager/stores/[id]/approve/route.ts`
+- `app/api/city-manager/stores/[id]/reject/route.ts`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/merchant/LiveMerchantDashboard.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `.env.local.example`
+- `agent-context/session-log.md`

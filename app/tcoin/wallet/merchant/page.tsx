@@ -2,11 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
+import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui/alert";
+import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/Button";
+import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
-import { Textarea } from "@shared/components/ui/TextArea";
 import {
   Select,
   SelectContent,
@@ -14,144 +14,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@shared/components/ui/Select";
-import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui/alert";
-import { Badge } from "@shared/components/ui/badge";
+import { Textarea } from "@shared/components/ui/TextArea";
+import type { MerchantApplicationStatusResponse } from "@shared/lib/merchantSignup/types";
 import { toast } from "react-toastify";
+import { LiveMerchantDashboard } from "./LiveMerchantDashboard";
 
 const CITY_SLUG = "tcoin";
-const bypassAuthInLocalDev = ["local", "development"].includes(
-  (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
-);
 
 type BiaRecord = {
   id: string;
   code: string;
   name: string;
-  status: string;
 };
 
-type RedemptionRequestRecord = {
-  id: string | number;
-  status: string;
-  token_amount: number | null;
-  settlement_amount: number | null;
-  settlement_asset: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-  bia: { id: string; code: string; name: string } | null;
-  storeProfile: { store_id: number; display_name: string | null; wallet_address: string | null } | null;
-  settlements: Array<{
-    id: string | number;
-    status: string;
-    settlement_amount: number | null;
-    settlement_asset: string | null;
-    created_at: string | null;
-  }>;
-};
-
-type GovernanceActionRecord = {
-  id: string | number;
-  action_type: string;
-  reason: string | null;
-  created_at: string | null;
-};
-
-type MerchantVoucherLiquidity = {
-  merchantStoreId: number;
-  displayName?: string;
-  poolAddress?: string;
-  tokenAddress?: string;
-  tokenSymbol?: string;
-  tokenName?: string;
-  voucherIssueLimit?: string | null;
-  requiredLiquidityAbsolute?: string | null;
-  requiredLiquidityRatio?: string | null;
-  creditIssued?: string;
-  creditRemaining?: string | null;
-  sourceMode?: string;
-  available: boolean;
-};
-
-type MerchantStoreForm = {
-  storeId: string;
+type SignupForm = {
+  consentAccepted: boolean;
   displayName: string;
-  walletAddress: string;
+  description: string;
+  logoUrl: string;
+  bannerUrl: string;
   addressText: string;
   lat: string;
   lng: string;
   biaId: string;
+  slug: string;
 };
 
-type RedemptionForm = {
-  tokenAmount: string;
-  settlementAmount: string;
-  settlementAsset: string;
-  notes: string;
+const EMPTY_FORM: SignupForm = {
+  consentAccepted: false,
+  displayName: "",
+  description: "",
+  logoUrl: "",
+  bannerUrl: "",
+  addressText: "",
+  lat: "",
+  lng: "",
+  biaId: "",
+  slug: "",
 };
 
-const tokenFormatter = new Intl.NumberFormat("en-CA", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-const formatLiquiditySource = (value: string | undefined): string => {
-  if (value === "contract_field") {
-    return "sarafu_onchain";
-  }
-  return "derived_supply";
+const lifecycleLabel: Record<string, string> = {
+  none: "Not started",
+  draft: "Draft",
+  pending: "Pending approval",
+  live: "Live",
+  rejected: "Rejected",
 };
 
-const cadFormatter = new Intl.NumberFormat("en-CA", {
-  style: "currency",
-  currency: "CAD",
-  minimumFractionDigits: 2,
-});
-
-const formatDateTime = (value: string | null): string => {
-  if (!value) return "Unknown";
-  const timestamp = Date.parse(value);
-  if (Number.isNaN(timestamp)) return "Unknown";
-  return new Date(timestamp).toLocaleString("en-CA", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-};
-
-const getBadgeVariant = (
-  status: string | null | undefined
-): "default" | "secondary" | "destructive" | "outline" => {
-  if (!status) return "outline";
-  const normalized = status.toLowerCase();
-  if (["completed", "approved", "settled", "submitted", "processing"].includes(normalized)) {
-    return "secondary";
-  }
-  if (["failed", "aborted", "burned", "rejected"].includes(normalized)) {
-    return "destructive";
-  }
-  return "outline";
-};
-
-const asApiErrorMessage = (status: number, body: unknown): string => {
-  if (body && typeof body === "object" && "error" in body) {
-    const candidate = (body as { error?: unknown }).error;
-    if (typeof candidate === "string" && candidate.trim() !== "") {
-      return candidate;
-    }
-  }
-  return `Request failed with status ${status}`;
-};
-
-const fetchJson = async <T,>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
+async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
   const response = await fetch(input, {
     credentials: "include",
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      "content-type": "application/json",
       ...(init?.headers ?? {}),
     },
   });
 
-  let body: unknown = null;
+  let body: any = null;
   try {
     body = await response.json();
   } catch {
@@ -159,279 +79,251 @@ const fetchJson = async <T,>(input: RequestInfo | URL, init?: RequestInit): Prom
   }
 
   if (!response.ok) {
-    throw new Error(asApiErrorMessage(response.status, body));
+    throw new Error(typeof body?.error === "string" ? body.error : `Request failed (${response.status})`);
   }
 
   return body as T;
-};
+}
 
 export default function MerchantDashboardPage() {
-  const router = useRouter();
-  const { userData, isLoadingUser, error } = useAuth();
+  const { isLoadingUser, error } = useAuth();
 
-  const [bias, setBias] = useState<BiaRecord[]>([]);
-  const [redemptions, setRedemptions] = useState<RedemptionRequestRecord[]>([]);
-  const [governanceActions, setGovernanceActions] = useState<GovernanceActionRecord[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [pendingUpdates, setPendingUpdates] = useState<Record<string, boolean>>({});
-  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
-  const [voucherLiquidityRows, setVoucherLiquidityRows] = useState<MerchantVoucherLiquidity[]>([]);
+  const [status, setStatus] = useState<MerchantApplicationStatusResponse | null>(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [form, setForm] = useState<SignupForm>(EMPTY_FORM);
+  const [biaOptions, setBiaOptions] = useState<BiaRecord[]>([]);
+  const [isSavingStep, setIsSavingStep] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [slugCheck, setSlugCheck] = useState<{ available: boolean; checkedSlug: string } | null>(null);
 
-  const [storeForm, setStoreForm] = useState<MerchantStoreForm>({
-    storeId: "",
-    displayName: "",
-    walletAddress: "",
-    addressText: "",
-    lat: "",
-    lng: "",
-    biaId: "",
-  });
+  const appState = status?.state ?? "none";
+  const isDraft = appState === "draft";
+  const isPending = appState === "pending";
+  const isRejected = appState === "rejected";
+  const isLive = appState === "live";
 
-  const [redemptionForm, setRedemptionForm] = useState<RedemptionForm>({
-    tokenAmount: "",
-    settlementAmount: "",
-    settlementAsset: "CAD",
-    notes: "",
-  });
+  const storeId = status?.storeId ?? null;
 
-  const storeOptions = useMemo(() => {
-    const byStoreId = new Map<number, { id: number; label: string; wallet: string | null }>();
-    redemptions.forEach((request) => {
-      const profile = request.storeProfile;
-      if (!profile || !Number.isFinite(profile.store_id) || profile.store_id <= 0) {
-        return;
-      }
-      if (!byStoreId.has(profile.store_id)) {
-        byStoreId.set(profile.store_id, {
-          id: profile.store_id,
-          label: profile.display_name?.trim() || `Store ${profile.store_id}`,
-          wallet: profile.wallet_address ?? null,
-        });
-      }
-    });
-    return Array.from(byStoreId.values()).sort((a, b) => a.id - b.id);
-  }, [redemptions]);
-
-  useEffect(() => {
-    if (!isLoadingUser && !userData?.cubidData?.full_name && !bypassAuthInLocalDev) {
-      router.replace("/");
-    }
-  }, [isLoadingUser, userData, router]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
+  const syncFormFromStatus = useCallback((nextStatus: MerchantApplicationStatusResponse) => {
+    const app = nextStatus.application;
+    if (!app) {
+      setForm(EMPTY_FORM);
       return;
     }
-    const cached = window.localStorage.getItem("tcoin_merchant_store_id");
-    if (cached && /^\d+$/.test(cached)) {
-      setStoreForm((prev) => ({ ...prev, storeId: cached }));
-    }
+
+    setForm((prev) => ({
+      ...prev,
+      displayName: app.profile.displayName ?? "",
+      description: app.profile.description ?? "",
+      logoUrl: app.profile.logoUrl ?? "",
+      bannerUrl: app.profile.bannerUrl ?? "",
+      addressText: app.profile.addressText ?? "",
+      lat: app.profile.lat != null ? String(app.profile.lat) : "",
+      lng: app.profile.lng != null ? String(app.profile.lng) : "",
+      biaId: app.bia?.id ?? "",
+      slug: app.profile.slug ?? "",
+    }));
   }, []);
 
-  useEffect(() => {
-    if (!storeForm.storeId && storeOptions.length > 0) {
-      const first = String(storeOptions[0].id);
-      setStoreForm((prev) => ({ ...prev, storeId: first }));
-    }
-  }, [storeOptions, storeForm.storeId]);
-
-  const markSaving = (key: string) => {
-    setPendingUpdates((prev) => ({ ...prev, [key]: true }));
-  };
-
-  const clearSaving = (key: string) => {
-    setPendingUpdates((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-  };
-
-  const loadData = useCallback(async () => {
-    setIsLoadingData(true);
-    setLoadError(null);
-
+  const loadStatus = useCallback(async () => {
+    setIsLoadingStatus(true);
     try {
-      const [biaResponse, redemptionResponse, governanceResponse, voucherMerchantsResponse] = await Promise.all([
-        fetchJson<{ activeAffiliation?: { biaId?: string }; bias?: BiaRecord[] }>(
-          `/api/bias/list?citySlug=${CITY_SLUG}`
-        ),
-        fetchJson<{ requests?: RedemptionRequestRecord[] }>(
-          `/api/redemptions/list?citySlug=${CITY_SLUG}&limit=75`
-        ),
-        fetchJson<{ actions?: GovernanceActionRecord[] }>(
-          `/api/governance/actions?citySlug=${CITY_SLUG}&limit=20`
-        ),
-        fetchJson<{ merchants?: MerchantVoucherLiquidity[] }>(
-          `/api/vouchers/merchants?citySlug=${CITY_SLUG}&chainId=42220&scope=city`
-        ),
-      ]);
-
-      const nextBias = biaResponse.bias ?? [];
-      setBias(nextBias);
-      setRedemptions(redemptionResponse.requests ?? []);
-      setGovernanceActions(governanceResponse.actions ?? []);
-      setVoucherLiquidityRows(voucherMerchantsResponse.merchants ?? []);
-      setLastSyncedAt(new Date());
-
-      if (!storeForm.biaId) {
-        const preferredBiaId = biaResponse.activeAffiliation?.biaId ?? nextBias[0]?.id;
-        if (preferredBiaId) {
-          setStoreForm((prev) => ({ ...prev, biaId: preferredBiaId }));
-        }
+      const next = await fetchJson<MerchantApplicationStatusResponse>(
+        `/api/merchant/application/status?citySlug=${CITY_SLUG}`
+      );
+      setStatus(next);
+      if (next.signupStep && Number.isFinite(next.signupStep)) {
+        setWizardStep(Math.max(1, Math.min(5, Number(next.signupStep))));
       }
-    } catch (loadErr) {
-      setLoadError(loadErr instanceof Error ? loadErr.message : "Failed to load merchant data.");
+      syncFormFromStatus(next);
+    } catch (loadError) {
+      toast.error(loadError instanceof Error ? loadError.message : "Failed to load merchant application status.");
     } finally {
-      setIsLoadingData(false);
+      setIsLoadingStatus(false);
     }
-  }, [storeForm.biaId]);
+  }, [syncFormFromStatus]);
 
   useEffect(() => {
-    if (!isLoadingUser && (userData?.cubidData?.full_name || bypassAuthInLocalDev)) {
-      void loadData();
+    if (!isLoadingUser) {
+      void loadStatus();
     }
-  }, [isLoadingUser, userData, loadData]);
+  }, [isLoadingUser, loadStatus]);
 
-  const handleSaveStore = async () => {
-    const key = "save-store";
-    markSaving(key);
+  useEffect(() => {
+    const loadBiaOptions = async () => {
+      if (!showWizard || wizardStep < 4) {
+        return;
+      }
+      try {
+        const response = await fetchJson<{ bias?: BiaRecord[] }>(`/api/bias/list?citySlug=${CITY_SLUG}`);
+        setBiaOptions(Array.isArray(response.bias) ? response.bias : []);
+      } catch {
+        setBiaOptions([]);
+      }
+    };
+
+    void loadBiaOptions();
+  }, [showWizard, wizardStep]);
+
+  const startApplication = async (forceNew: boolean) => {
+    try {
+      const response = await fetchJson<{ signupStep?: number }>("/api/merchant/application/start", {
+        method: "POST",
+        body: JSON.stringify({ citySlug: CITY_SLUG, forceNew }),
+      });
+      await loadStatus();
+      setShowWizard(true);
+      setWizardStep(response.signupStep && Number.isFinite(response.signupStep) ? Number(response.signupStep) : 1);
+      toast.success("Merchant application started.");
+    } catch (startError) {
+      toast.error(startError instanceof Error ? startError.message : "Could not start merchant application.");
+    }
+  };
+
+  const restartApplication = async () => {
+    try {
+      const response = await fetchJson<{ signupStep?: number }>("/api/merchant/application/restart", {
+        method: "POST",
+        body: JSON.stringify({ citySlug: CITY_SLUG }),
+      });
+      await loadStatus();
+      setShowWizard(true);
+      setWizardStep(response.signupStep && Number.isFinite(response.signupStep) ? Number(response.signupStep) : 1);
+      setSlugCheck(null);
+      toast.success("Started a new merchant application.");
+    } catch (restartError) {
+      toast.error(restartError instanceof Error ? restartError.message : "Could not restart merchant application.");
+    }
+  };
+
+  const lookupAddress = async () => {
+    if (!form.addressText.trim()) {
+      toast.error("Enter an address to geocode first.");
+      return;
+    }
 
     try {
-      const parsedStoreId = Number.parseInt(storeForm.storeId, 10);
-      const parsedLat = storeForm.lat.trim() === "" ? undefined : Number.parseFloat(storeForm.lat);
-      const parsedLng = storeForm.lng.trim() === "" ? undefined : Number.parseFloat(storeForm.lng);
-
-      if ((storeForm.lat.trim() !== "" && !Number.isFinite(parsedLat)) || (storeForm.lng.trim() !== "" && !Number.isFinite(parsedLng))) {
-        throw new Error("Latitude and longitude must be numeric values.");
-      }
-
-      const response = await fetchJson<{ store?: { store_id?: number }; affiliation?: { bia_id?: string } }>(
-        "/api/stores",
+      const response = await fetchJson<{ normalizedAddress: string; lat: number; lng: number }>(
+        "/api/merchant/geocode",
         {
           method: "POST",
-          body: JSON.stringify({
-            citySlug: CITY_SLUG,
-            storeId: Number.isFinite(parsedStoreId) && parsedStoreId > 0 ? parsedStoreId : undefined,
-            displayName: storeForm.displayName.trim() || undefined,
-            walletAddress: storeForm.walletAddress.trim() || undefined,
-            addressText: storeForm.addressText.trim() || undefined,
-            lat: Number.isFinite(parsedLat) ? parsedLat : undefined,
-            lng: Number.isFinite(parsedLng) ? parsedLng : undefined,
-            biaId: storeForm.biaId || undefined,
-            source: "merchant_selected",
-            status: "active",
-          }),
+          body: JSON.stringify({ citySlug: CITY_SLUG, address: form.addressText.trim() }),
         }
       );
 
-      const nextStoreId = Number(response.store?.store_id ?? parsedStoreId);
-      if (Number.isFinite(nextStoreId) && nextStoreId > 0) {
-        const nextStoreIdString = String(nextStoreId);
-        setStoreForm((prev) => ({ ...prev, storeId: nextStoreIdString }));
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem("tcoin_merchant_store_id", nextStoreIdString);
-        }
-      }
-
-      if (response.affiliation?.bia_id) {
-        setStoreForm((prev) => ({ ...prev, biaId: response.affiliation?.bia_id ?? prev.biaId }));
-      }
-
-      toast.success("Store profile saved.");
-      await loadData();
-    } catch (saveErr) {
-      toast.error(saveErr instanceof Error ? saveErr.message : "Could not save store profile.");
-    } finally {
-      clearSaving(key);
+      setForm((prev) => ({
+        ...prev,
+        addressText: response.normalizedAddress,
+        lat: String(response.lat),
+        lng: String(response.lng),
+      }));
+      toast.success("Address matched successfully.");
+    } catch (geoError) {
+      toast.error(geoError instanceof Error ? geoError.message : "Could not geocode that address.");
     }
   };
 
-  const handleAssignStoreBia = async () => {
-    const parsedStoreId = Number.parseInt(storeForm.storeId, 10);
-    if (!Number.isFinite(parsedStoreId) || parsedStoreId <= 0) {
-      toast.error("Set a valid store id before assigning a BIA.");
+  const checkSlugAvailability = async () => {
+    if (!form.slug.trim()) {
+      setSlugCheck(null);
       return;
     }
-    if (!storeForm.biaId) {
-      toast.error("Select a BIA before assigning.");
-      return;
-    }
-
-    const key = "assign-bia";
-    markSaving(key);
 
     try {
-      await fetchJson(`/api/stores/${parsedStoreId}/bia`, {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: CITY_SLUG,
-          biaId: storeForm.biaId,
-          source: "merchant_selected",
-        }),
-      });
-      toast.success("Store BIA assignment updated.");
-      await loadData();
-    } catch (assignErr) {
-      toast.error(assignErr instanceof Error ? assignErr.message : "Could not update store BIA.");
-    } finally {
-      clearSaving(key);
+      const response = await fetchJson<{ available: boolean; slug: string }>(
+        `/api/merchant/slug-availability?citySlug=${CITY_SLUG}&slug=${encodeURIComponent(form.slug.trim())}${
+          storeId ? `&excludeStoreId=${storeId}` : ""
+        }`
+      );
+      setSlugCheck({ available: response.available, checkedSlug: response.slug });
+    } catch (slugError) {
+      toast.error(slugError instanceof Error ? slugError.message : "Could not check slug availability.");
+      setSlugCheck(null);
     }
   };
 
-  const handleCreateRedemption = async () => {
-    const parsedStoreId = Number.parseInt(storeForm.storeId, 10);
-    const tokenAmount = Number.parseFloat(redemptionForm.tokenAmount);
-    const settlementAmount = Number.parseFloat(redemptionForm.settlementAmount);
+  const currentStepPayload = useMemo(() => {
+    if (wizardStep === 1) {
+      return { consentAccepted: form.consentAccepted };
+    }
+    if (wizardStep === 2) {
+      return {
+        displayName: form.displayName.trim(),
+        description: form.description.trim(),
+        logoUrl: form.logoUrl.trim(),
+        bannerUrl: form.bannerUrl.trim(),
+      };
+    }
+    if (wizardStep === 3) {
+      return {
+        addressText: form.addressText.trim(),
+        lat: Number.parseFloat(form.lat),
+        lng: Number.parseFloat(form.lng),
+      };
+    }
+    if (wizardStep === 4) {
+      return { biaId: form.biaId };
+    }
+    return { slug: form.slug.trim().toLowerCase() };
+  }, [wizardStep, form]);
 
-    if (!Number.isFinite(parsedStoreId) || parsedStoreId <= 0) {
-      toast.error("Set a valid store id before creating a redemption request.");
-      return;
+  const saveCurrentStep = async () => {
+    if (!storeId) {
+      toast.error("No draft application found to save.");
+      return false;
     }
 
-    if (!Number.isFinite(tokenAmount) || tokenAmount <= 0) {
-      toast.error("Token amount must be a positive number.");
-      return;
-    }
-
-    if (!Number.isFinite(settlementAmount) || settlementAmount <= 0) {
-      toast.error("Settlement amount must be a positive number.");
-      return;
-    }
-
-    const key = "create-redemption";
-    markSaving(key);
-
+    setIsSavingStep(true);
     try {
-      await fetchJson("/api/redemptions/request", {
+      await fetchJson("/api/merchant/application/step", {
         method: "POST",
         body: JSON.stringify({
           citySlug: CITY_SLUG,
-          storeId: parsedStoreId,
-          chainId: 42220,
-          tokenAmount,
-          settlementAsset: redemptionForm.settlementAsset.trim() || "CAD",
-          settlementAmount,
-          metadata: {
-            merchantNotes: redemptionForm.notes.trim() || null,
-            source: "merchant_dashboard",
-          },
+          storeId,
+          step: wizardStep,
+          payload: currentStepPayload,
         }),
       });
-
-      toast.success("Redemption request submitted.");
-      setRedemptionForm({
-        tokenAmount: "",
-        settlementAmount: "",
-        settlementAsset: redemptionForm.settlementAsset,
-        notes: "",
-      });
-      await loadData();
-    } catch (requestErr) {
-      toast.error(requestErr instanceof Error ? requestErr.message : "Could not create redemption request.");
+      await loadStatus();
+      return true;
+    } catch (saveError) {
+      toast.error(saveError instanceof Error ? saveError.message : "Could not save this signup step.");
+      return false;
     } finally {
-      clearSaving(key);
+      setIsSavingStep(false);
+    }
+  };
+
+  const nextStep = async () => {
+    const ok = await saveCurrentStep();
+    if (!ok) return;
+    setWizardStep((prev) => Math.min(5, prev + 1));
+  };
+
+  const submitApplication = async () => {
+    if (!storeId) {
+      toast.error("No draft application found to submit.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const ok = await saveCurrentStep();
+      if (!ok) return;
+
+      await fetchJson("/api/merchant/application/submit", {
+        method: "POST",
+        body: JSON.stringify({ citySlug: CITY_SLUG, storeId }),
+      });
+      await loadStatus();
+      setShowWizard(false);
+      toast.success("Merchant application submitted for city-manager review.");
+    } catch (submitError) {
+      toast.error(submitError instanceof Error ? submitError.message : "Could not submit merchant application.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -439,320 +331,212 @@ export default function MerchantDashboardPage() {
     return <div className="p-6 text-sm">Error loading user data: {error.message}</div>;
   }
 
-  if (isLoadingUser) {
+  if (isLoadingUser || isLoadingStatus) {
     return <div className="p-6 text-sm">Loading merchant workspace…</div>;
   }
 
-  const pendingCount = redemptions.filter((request) => request.status === "pending").length;
-  const settledCount = redemptions.filter((request) => request.status === "settled").length;
+  if (isLive) {
+    return <LiveMerchantDashboard />;
+  }
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Merchant Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage store profile + BIA affiliation and submit/view redemption requests.
-          </p>
+          <p className="text-sm text-muted-foreground">Apply to become a live merchant store in your city.</p>
         </div>
-        <div className="flex items-center gap-2">
-          {lastSyncedAt && (
-            <span className="text-xs text-muted-foreground">
-              Synced {lastSyncedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          )}
-          <Button variant="outline" onClick={() => void loadData()} disabled={isLoadingData}>
-            {isLoadingData ? "Refreshing…" : "Refresh"}
-          </Button>
-        </div>
+        <Badge variant="outline">Status: {lifecycleLabel[appState] ?? appState}</Badge>
       </div>
 
-      {loadError && (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load merchant data</AlertTitle>
-          <AlertDescription>{loadError}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-3">
+      {appState === "none" && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">Available BIAs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{bias.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending redemptions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{pendingCount}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">Settled redemptions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{settledCount}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Store Profile + BIA</CardTitle>
+            <CardTitle>Sign up as Merchant</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid gap-3 md:grid-cols-2">
-              <Input
-                placeholder="Store ID (optional for new store)"
-                value={storeForm.storeId}
-                onChange={(event) => setStoreForm((prev) => ({ ...prev, storeId: event.target.value }))}
-                aria-label="Store id"
-              />
-              <Select
-                value={storeForm.biaId || undefined}
-                onValueChange={(value) => setStoreForm((prev) => ({ ...prev, biaId: value }))}
-              >
-                <SelectTrigger aria-label="Store BIA">
+            <p className="text-sm text-muted-foreground">
+              Complete a guided 5-step application so the city manager can review and approve your store.
+            </p>
+            <Button onClick={() => void startApplication(false)}>Start merchant application</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {isDraft && !showWizard && (
+        <Card>
+          <CardHeader>
+            <CardTitle>It looks like you have an ongoing application</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Continue from step {status?.signupStep ?? 1}, or start a new application to clear your current draft.
+            </p>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowWizard(true)}>Continue</Button>
+              <Button variant="outline" onClick={() => void restartApplication()}>
+                Start new application
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isDraft && showWizard && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Merchant Signup (Step {wizardStep} of 5)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {wizardStep === 1 && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Merchants are expected to keep profile details accurate, follow city settlement policy, and maintain
+                  redeemable operations when approved.
+                </p>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.consentAccepted}
+                    onChange={(event) => setForm((prev) => ({ ...prev, consentAccepted: event.target.checked }))}
+                  />
+                  I understand merchant responsibilities and want to continue.
+                </label>
+              </div>
+            )}
+
+            {wizardStep === 2 && (
+              <div className="space-y-3">
+                <Input
+                  placeholder="Store name"
+                  value={form.displayName}
+                  onChange={(event) => setForm((prev) => ({ ...prev, displayName: event.target.value }))}
+                />
+                <Textarea
+                  placeholder="Store description"
+                  value={form.description}
+                  onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                />
+                <Input
+                  placeholder="Logo image URL"
+                  value={form.logoUrl}
+                  onChange={(event) => setForm((prev) => ({ ...prev, logoUrl: event.target.value }))}
+                />
+                <Input
+                  placeholder="Banner image URL"
+                  value={form.bannerUrl}
+                  onChange={(event) => setForm((prev) => ({ ...prev, bannerUrl: event.target.value }))}
+                />
+              </div>
+            )}
+
+            {wizardStep === 3 && (
+              <div className="space-y-3">
+                <Textarea
+                  placeholder="Business address"
+                  value={form.addressText}
+                  onChange={(event) => setForm((prev) => ({ ...prev, addressText: event.target.value }))}
+                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Latitude"
+                    value={form.lat}
+                    onChange={(event) => setForm((prev) => ({ ...prev, lat: event.target.value }))}
+                  />
+                  <Input
+                    placeholder="Longitude"
+                    value={form.lng}
+                    onChange={(event) => setForm((prev) => ({ ...prev, lng: event.target.value }))}
+                  />
+                </div>
+                <Button variant="outline" onClick={() => void lookupAddress()}>
+                  Geocode address
+                </Button>
+              </div>
+            )}
+
+            {wizardStep === 4 && (
+              <Select value={form.biaId || undefined} onValueChange={(value) => setForm((prev) => ({ ...prev, biaId: value }))}>
+                <SelectTrigger>
                   <SelectValue placeholder="Select BIA" />
                 </SelectTrigger>
                 <SelectContent>
-                  {bias.map((bia) => (
+                  {biaOptions.map((bia) => (
                     <SelectItem key={bia.id} value={bia.id}>
                       {bia.code} · {bia.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            )}
 
-            <Input
-              placeholder="Store display name"
-              value={storeForm.displayName}
-              onChange={(event) => setStoreForm((prev) => ({ ...prev, displayName: event.target.value }))}
-              aria-label="Store display name"
-            />
-            <Input
-              placeholder="Store wallet address"
-              value={storeForm.walletAddress}
-              onChange={(event) => setStoreForm((prev) => ({ ...prev, walletAddress: event.target.value }))}
-              aria-label="Store wallet address"
-            />
-            <Input
-              placeholder="Store address"
-              value={storeForm.addressText}
-              onChange={(event) => setStoreForm((prev) => ({ ...prev, addressText: event.target.value }))}
-              aria-label="Store address"
-            />
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <Input
-                placeholder="Latitude"
-                value={storeForm.lat}
-                onChange={(event) => setStoreForm((prev) => ({ ...prev, lat: event.target.value }))}
-                aria-label="Store latitude"
-              />
-              <Input
-                placeholder="Longitude"
-                value={storeForm.lng}
-                onChange={(event) => setStoreForm((prev) => ({ ...prev, lng: event.target.value }))}
-                aria-label="Store longitude"
-              />
-            </div>
-
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => void handleAssignStoreBia()}
-                disabled={pendingUpdates["assign-bia"] === true}
-              >
-                {pendingUpdates["assign-bia"] ? "Assigning…" : "Assign BIA"}
-              </Button>
-              <Button onClick={() => void handleSaveStore()} disabled={pendingUpdates["save-store"] === true}>
-                {pendingUpdates["save-store"] ? "Saving…" : "Save Store"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Redemption Request</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Input
-              placeholder="Token amount"
-              value={redemptionForm.tokenAmount}
-              onChange={(event) =>
-                setRedemptionForm((prev) => ({ ...prev, tokenAmount: event.target.value }))
-              }
-              aria-label="Redemption token amount"
-            />
-            <Input
-              placeholder="Settlement amount"
-              value={redemptionForm.settlementAmount}
-              onChange={(event) =>
-                setRedemptionForm((prev) => ({ ...prev, settlementAmount: event.target.value }))
-              }
-              aria-label="Redemption settlement amount"
-            />
-            <Input
-              placeholder="Settlement asset"
-              value={redemptionForm.settlementAsset}
-              onChange={(event) =>
-                setRedemptionForm((prev) => ({ ...prev, settlementAsset: event.target.value }))
-              }
-              aria-label="Redemption settlement asset"
-            />
-            <Textarea
-              rows={3}
-              placeholder="Notes"
-              value={redemptionForm.notes}
-              onChange={(event) =>
-                setRedemptionForm((prev) => ({ ...prev, notes: event.target.value }))
-              }
-              aria-label="Redemption notes"
-            />
-            <div className="flex justify-end">
-              <Button
-                onClick={() => void handleCreateRedemption()}
-                disabled={pendingUpdates["create-redemption"] === true}
-              >
-                {pendingUpdates["create-redemption"] ? "Submitting…" : "Submit Redemption"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>My Redemption Requests</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {redemptions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No redemption requests yet.</p>
-          ) : (
-            redemptions.map((request) => (
-              <div key={String(request.id)} className="rounded-md border p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold">Request #{String(request.id)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDateTime(request.created_at)} · {request.bia?.code ?? "Unknown BIA"}
-                    </p>
-                  </div>
-                  <Badge variant={getBadgeVariant(request.status)}>{request.status}</Badge>
-                </div>
-                <div className="mt-2 grid gap-2 md:grid-cols-2 text-sm">
-                  <p>Token amount: {tokenFormatter.format(request.token_amount ?? 0)}</p>
-                  <p>
-                    Settlement: {request.settlement_amount != null ? cadFormatter.format(request.settlement_amount) : "n/a"}{" "}
-                    {request.settlement_asset ?? ""}
+            {wizardStep === 5 && (
+              <div className="space-y-3">
+                <Input
+                  placeholder="Store slug (e.g. king-west-cafe)"
+                  value={form.slug}
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, slug: event.target.value.toLowerCase() }));
+                    setSlugCheck(null);
+                  }}
+                />
+                <Button variant="outline" onClick={() => void checkSlugAvailability()}>
+                  Check slug availability
+                </Button>
+                {slugCheck && (
+                  <p className={`text-xs ${slugCheck.available ? "text-emerald-600" : "text-red-600"}`}>
+                    {slugCheck.available
+                      ? `Slug '${slugCheck.checkedSlug}' is available.`
+                      : `Slug '${slugCheck.checkedSlug}' is already taken.`}
                   </p>
-                </div>
-                {request.settlements?.length > 0 && (
-                  <div className="mt-2 rounded-md bg-muted p-2 text-xs">
-                    {request.settlements.map((settlement) => (
-                      <p key={String(settlement.id)}>
-                        {settlement.status} · {settlement.settlement_amount ?? "?"} {settlement.settlement_asset ?? ""} ·{" "}
-                        {formatDateTime(settlement.created_at)}
-                      </p>
-                    ))}
-                  </div>
                 )}
               </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+            )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Governance / Operations Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {governanceActions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent actions found.</p>
-          ) : (
-            governanceActions.map((action) => (
-              <div key={String(action.id)} className="rounded-md border p-3 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">{action.action_type}</p>
-                  <p className="text-xs text-muted-foreground">{formatDateTime(action.created_at)}</p>
-                </div>
-                {action.reason && <p className="text-muted-foreground">{action.reason}</p>}
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
-
-      {storeOptions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Known Store Profiles</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {storeOptions.map((store) => (
-              <div key={store.id} className="rounded-md border p-2 text-sm">
-                <p className="font-medium">{store.label}</p>
-                <p className="text-xs text-muted-foreground">Store ID {store.id}</p>
-                {store.wallet && <p className="text-xs text-muted-foreground break-all">{store.wallet}</p>}
-              </div>
-            ))}
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setWizardStep((prev) => Math.max(1, prev - 1))}
+                disabled={wizardStep <= 1 || isSavingStep || isSubmitting}
+              >
+                Back
+              </Button>
+              {wizardStep < 5 ? (
+                <Button onClick={() => void nextStep()} disabled={isSavingStep || isSubmitting}>
+                  {isSavingStep ? "Saving…" : "Save and continue"}
+                </Button>
+              ) : (
+                <Button onClick={() => void submitApplication()} disabled={isSavingStep || isSubmitting}>
+                  {isSubmitting ? "Submitting…" : "Submit application"}
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Voucher Liquidity + Credit</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-xs text-muted-foreground">
-            Voucher issuance and liquidity requirements come from Sarafu pool contracts and are shown read-only here.
-          </p>
-          {voucherLiquidityRows.filter((row) => row.merchantStoreId === Number.parseInt(storeForm.storeId, 10))
-            .length === 0 ? (
+      {isPending && (
+        <Alert>
+          <AlertTitle>Application pending review</AlertTitle>
+          <AlertDescription>
+            Your store application has been submitted and is awaiting city-manager approval.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isRejected && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Application rejected</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              No voucher liquidity rows are indexed for this store yet.
+              {status?.statusMeta?.rejectionReason ?? "Your last application was rejected."}
             </p>
-          ) : (
-            voucherLiquidityRows
-              .filter((row) => row.merchantStoreId === Number.parseInt(storeForm.storeId, 10))
-              .map((row, index) => (
-                <div
-                  key={`${row.merchantStoreId}:${row.tokenAddress ?? "none"}:${index}`}
-                  className="rounded-md border p-3 text-sm"
-                >
-                  <p className="font-medium">
-                    {row.tokenSymbol ?? "Voucher"} {row.tokenName ? `· ${row.tokenName}` : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground break-all">
-                    Pool: {row.poolAddress ?? "n/a"} · Token: {row.tokenAddress ?? "n/a"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Credit issued: {row.creditIssued ?? "0"} · Remaining: {row.creditRemaining ?? "n/a"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Voucher limit: {row.voucherIssueLimit ?? "null"} · liquidity abs:{" "}
-                    {row.requiredLiquidityAbsolute ?? "null"} · liquidity ratio:{" "}
-                    {row.requiredLiquidityRatio ?? "null"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Source: {formatLiquiditySource(row.sourceMode)}
-                  </p>
-                </div>
-              ))
-          )}
-        </CardContent>
-      </Card>
+            <Button onClick={() => void restartApplication()}>Start new application</Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

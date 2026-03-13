@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAddress } from "viem";
 import { resolveApiAuthContext } from "@shared/lib/bia/apiAuth";
-import { assertStoreAccess, resolveActiveAppInstanceId, resolveCitySlug, toNumber } from "@shared/lib/bia/server";
+import { assertStoreAdminAccess, resolveActiveAppInstanceId, resolveCitySlug, toNumber } from "@shared/lib/bia/server";
 
 export async function POST(req: Request) {
   try {
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Store not found in this app instance." }, { status: 404 });
       }
 
-      await assertStoreAccess({
+      await assertStoreAdminAccess({
         supabase: serviceRole,
         userId: Number(userRow.id),
         storeId,
@@ -81,6 +81,7 @@ export async function POST(req: Request) {
           store_id: storeId,
           user_id: userRow.id,
           app_instance_id: appInstanceId,
+          is_admin: true,
         });
 
         if (employeeError) {

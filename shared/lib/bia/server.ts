@@ -192,6 +192,51 @@ export async function assertStoreAccess(options: {
   }
 }
 
+export async function assertStoreAdminAccess(options: {
+  supabase: SupabaseClient<any, any, any>;
+  userId: number;
+  storeId: number;
+  appInstanceId?: number;
+}) {
+  const hasScopedAppInstance =
+    typeof options.appInstanceId === "number" && Number.isFinite(options.appInstanceId) && options.appInstanceId > 0;
+
+  let storeAccessQuery = options.supabase
+    .from("store_employees")
+    .select("store_id,is_admin")
+    .eq("store_id", options.storeId)
+    .eq("user_id", options.userId)
+    .eq("is_admin", true)
+    .limit(1);
+
+  if (hasScopedAppInstance) {
+    storeAccessQuery = storeAccessQuery.eq("app_instance_id", options.appInstanceId as number);
+  }
+
+  const [isAdminOrOperator, storeEmployeeResult] = await Promise.all([
+    userHasAnyRole({
+      supabase: options.supabase,
+      userId: options.userId,
+      appInstanceId: hasScopedAppInstance ? (options.appInstanceId as number) : undefined,
+      roles: ["admin", "operator"],
+    }),
+    storeAccessQuery,
+  ]);
+
+  if (isAdminOrOperator) {
+    return;
+  }
+
+  if (storeEmployeeResult.error) {
+    throw new Error(`Failed to validate store admin access: ${storeEmployeeResult.error.message}`);
+  }
+
+  const storeRows = storeEmployeeResult.data;
+  if (!Array.isArray(storeRows) || storeRows.length === 0) {
+    throw new Error("Forbidden: store admin access required.");
+  }
+}
+
 export function toNumber(value: unknown, fallback = 0): number {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;

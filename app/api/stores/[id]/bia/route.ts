@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveApiAuthContext } from "@shared/lib/bia/apiAuth";
-import { assertStoreAccess, resolveActiveAppInstanceId, resolveCitySlug } from "@shared/lib/bia/server";
+import { assertStoreAdminAccess, resolveActiveAppInstanceId, resolveCitySlug } from "@shared/lib/bia/server";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -43,7 +43,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: "Store not found in this app instance." }, { status: 404 });
     }
 
-    await assertStoreAccess({
+    await assertStoreAdminAccess({
       supabase: serviceRole,
       userId: Number(userRow.id),
       storeId,
