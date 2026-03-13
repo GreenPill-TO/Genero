@@ -1229,3 +1229,27 @@
 ### Files Edited
 - `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
 - `agent-context/session-log.md`
+
+## v1.27
+### Timestamp
+- 2026-03-12 20:07:00 EDT
+
+### Objective
+- Simplify `/dashboard` so initial view emphasizes balance and clearly separates user intent flows: pay, top-up/buy, and request.
+
+### What Changed
+- Refactored `WalletHome` to remove the always-visible send amount form from initial load.
+- New default dashboard home now shows:
+- balance-first account surface,
+- explicit intent actions (`Pay To`, `Request`),
+- dedicated `Top Up / Buy` panel with Buy TCOIN + Interac top-up actions.
+- Added intent gating so `SendCard` only appears after user explicitly chooses `Pay To` (or deep-link scan intent), eliminating the ambiguous `Amount` panel at initial load.
+- Wired `Request` intent to switch to the Receive tab from dashboard parent.
+- Removed off-ramp as a dashboard-home action (off-ramp remains in More tab).
+- Updated `WalletHome` tests to match the new intent-driven behavior and verify send flow appears only after selecting Pay To.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `agent-context/session-log.md`

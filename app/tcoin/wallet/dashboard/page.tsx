@@ -28,7 +28,16 @@ export default function Dashboard() {
   const content = useMemo(() => {
     if (isLoadingUser || error) return null;
     if (activeTab === "home") {
-      return <WalletHome tokenLabel="TCOIN" />;
+      return (
+        <WalletHome
+          tokenLabel="TCOIN"
+          onOpenRequest={() => {
+            setRequestRecipient(null);
+            setReceiveQrVisible(true);
+            setActiveTab("receive");
+          }}
+        />
+      );
     }
     if (activeTab === "contacts") {
       return (
