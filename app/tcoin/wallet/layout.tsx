@@ -23,6 +23,10 @@ import 'cubid-wallet/dist/styles.css'
 import 'cubid-sdk/dist/index.css'
 
 const queryClient = new QueryClient();
+const enableCubidWalletProviders =
+  (process.env.NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS ?? "false")
+    .trim()
+    .toLowerCase() === "true";
 
 export default function RootLayout({
   children,
@@ -53,17 +57,27 @@ export default function RootLayout({
         `}</style>
         <QueryClientProvider client={queryClient}>
           <WalletConnectErrorGuard />
-          <Provider>
-            <WalletCubidProvider>
-              <ReactQueryProvider>
-                <DarkModeProvider>
-                  <ModalProvider>
-                    <ContentLayout>{children}</ContentLayout>
-                  </ModalProvider>
-                </DarkModeProvider>
-              </ReactQueryProvider>
-            </WalletCubidProvider>
-          </Provider>
+          {enableCubidWalletProviders ? (
+            <Provider>
+              <WalletCubidProvider>
+                <ReactQueryProvider>
+                  <DarkModeProvider>
+                    <ModalProvider>
+                      <ContentLayout>{children}</ContentLayout>
+                    </ModalProvider>
+                  </DarkModeProvider>
+                </ReactQueryProvider>
+              </WalletCubidProvider>
+            </Provider>
+          ) : (
+            <ReactQueryProvider>
+              <DarkModeProvider>
+                <ModalProvider>
+                  <ContentLayout>{children}</ContentLayout>
+                </ModalProvider>
+              </DarkModeProvider>
+            </ReactQueryProvider>
+          )}
         </QueryClientProvider>
       </body>
     </html>

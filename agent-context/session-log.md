@@ -1538,3 +1538,23 @@
 - `app/tcoin/wallet/components/dashboard/AccountCard.test.tsx`
 - `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
 - `agent-context/session-log.md`
+
+## v1.40
+### Timestamp
+- 2026-03-13 13:12:27 EDT
+
+### Objective
+- Eliminate recurring dashboard crash caused by WalletConnect runtime disconnect errors (`this.provider.disconnect is not a function`).
+
+### What Changed
+- Updated wallet layout provider bootstrapping to make Cubid WalletConnect provider stack opt-in instead of always-on.
+- Added env-controlled switch:
+- `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS=true` to explicitly enable `cubid-sdk` + `cubid-wallet` providers.
+- default behavior is now disabled (`false`) to avoid initializing the problematic WalletConnect path in normal wallet/dashboard usage.
+- Preserved all existing app providers and rendering flow when Cubid providers are disabled.
+- Kept existing `WalletConnectErrorGuard` in place for defense-in-depth.
+- Verified no regressions on focused wallet tests (`wallet page`, `navbar`, `wallet home`).
+
+### Files Edited
+- `app/tcoin/wallet/layout.tsx`
+- `agent-context/session-log.md`
