@@ -522,12 +522,13 @@ export function WalletHome({
   return (
     <div className="container mx-auto p-4 space-y-8 pb-24">
       <div className="space-y-8 max-w-[400px] mx-auto md:hidden">
-        <ContributionsCard
-          selectedCharity={selectedCharity}
-          setSelectedCharity={setSelectedCharity}
-          charityData={charityData}
-          openModal={openModal}
-          closeModal={closeModal}
+        <AccountCard
+          balance={userBalance}
+          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
+          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
+          voucherCount={portfolio?.voucherBalances?.length ?? 0}
+          senderWallet={senderWallet ?? ""}
+          onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
         />
         <SendCard
           toSendData={toSendData}
@@ -544,13 +545,12 @@ export function WalletHome({
           userBalance={userBalance}
           onUseMax={handleUseMax}
         />
-        <AccountCard
-          balance={userBalance}
-          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
-          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
-          voucherCount={portfolio?.voucherBalances?.length ?? 0}
-          senderWallet={senderWallet ?? ""}
-          onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
+        <ContributionsCard
+          selectedCharity={selectedCharity}
+          setSelectedCharity={setSelectedCharity}
+          charityData={charityData}
+          openModal={openModal}
+          closeModal={closeModal}
         />
         <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
           <h3 className="text-sm font-semibold">Buy TCOIN</h3>
@@ -584,12 +584,13 @@ export function WalletHome({
         <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
       </div>
       <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <ContributionsCard
-          selectedCharity={selectedCharity}
-          setSelectedCharity={setSelectedCharity}
-          charityData={charityData}
-          openModal={openModal}
-          closeModal={closeModal}
+        <AccountCard
+          balance={userBalance}
+          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
+          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
+          voucherCount={portfolio?.voucherBalances?.length ?? 0}
+          senderWallet={senderWallet ?? ""}
+          onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
         />
         <SendCard
           toSendData={toSendData}
@@ -606,13 +607,12 @@ export function WalletHome({
           userBalance={userBalance}
           onUseMax={handleUseMax}
         />
-        <AccountCard
-          balance={userBalance}
-          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
-          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
-          voucherCount={portfolio?.voucherBalances?.length ?? 0}
-          senderWallet={senderWallet ?? ""}
-          onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
+        <ContributionsCard
+          selectedCharity={selectedCharity}
+          setSelectedCharity={setSelectedCharity}
+          charityData={charityData}
+          openModal={openModal}
+          closeModal={closeModal}
         />
         <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
           <h3 className="text-sm font-semibold">Buy TCOIN</h3>

@@ -1558,3 +1558,21 @@
 ### Files Edited
 - `app/tcoin/wallet/layout.tsx`
 - `agent-context/session-log.md`
+
+## v1.41
+### Timestamp
+- 2026-03-13 13:39:05 EDT
+
+### Objective
+- Stop stale local dev instance on `3000` and swap `My Account` / `Charitable Contributions` panel positions on dashboard.
+
+### What Changed
+- Stopped the old server still listening on `:3000` so only the current app instance remains active.
+- Updated `WalletHome` card order for both mobile and desktop dashboard grids:
+- `My Account` now appears before `Charitable Contributions`.
+- `Charitable Contributions` now appears where `My Account` previously appeared.
+- Verified with focused dashboard home tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `agent-context/session-log.md`
