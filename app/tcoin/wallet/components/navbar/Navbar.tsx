@@ -186,6 +186,7 @@ export default function Navbar({ title }: { title?: string }) {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Open QR scanner"
                 onClick={() =>
                   openModal({
                     content: (
@@ -198,6 +199,8 @@ export default function Navbar({ title }: { title?: string }) {
                     ),
                     title: "Scan QR",
                     description: "Use your device's camera to scan a code.",
+                    elSize: "4xl",
+                    isResponsive: true,
                   })
                 }
                 className="mr-2"

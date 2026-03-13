@@ -1456,3 +1456,22 @@
 - `app/tcoin/wallet/components/dashboard/SendTab.tsx`
 - `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
 - `agent-context/session-log.md`
+
+## v1.37
+### Timestamp
+- 2026-03-12 21:01:00 EDT
+
+### Objective
+- Enlarge the header camera QR scanner modal so the camera feed has enough space on open.
+
+### What Changed
+- Updated the header camera button modal config to open the QR scanner with:
+- `elSize: "4xl"` for a larger modal width.
+- `isResponsive: true` so layout adapts better across viewport sizes.
+- Added an explicit camera button accessibility label (`aria-label="Open QR scanner"`).
+- Added navbar test coverage verifying the camera button opens a large, responsive QR modal with expected modal options.
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `agent-context/session-log.md`

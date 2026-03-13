@@ -95,4 +95,15 @@ describe("Navbar session control", () => {
 
     expect(signOut).toHaveBeenCalled();
   });
+
+  it("opens a large responsive QR scanner modal from the camera button", () => {
+    render(<Navbar />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open qr scanner/i }));
+
+    expect(openModal).toHaveBeenCalled();
+    expect(openModal.mock.calls[0][0].title).toBe("Scan QR");
+    expect(openModal.mock.calls[0][0].elSize).toBe("4xl");
+    expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+  });
 });
