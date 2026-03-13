@@ -1385,3 +1385,31 @@
 ### Files Edited
 - `app/tcoin/wallet/components/dashboard/SendCard.tsx`
 - `agent-context/session-log.md`
+
+## v1.34
+### Timestamp
+- 2026-03-12 20:52:27 EDT
+
+### Objective
+- Add dashboard Recents panel and a dedicated contact profile page with send/request actions and transaction history.
+
+### What Changed
+- Added a new `Recents` panel to `/dashboard` home (mobile + desktop cards).
+- Recents logic now resolves up to 4 most recent interaction users by combining:
+- contact recency (`connections` via `fetchContactsForOwner`),
+- recent transfer counterparties (`act_transaction_entries` + wallet/user joins),
+- request counterparties (`invoice_pay_request`).
+- Recents avatars now navigate to a new contact profile route: `/dashboard/contacts/[id]`.
+- Added new contact profile page at `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx` with:
+- public profile details (name, username, avatar, bio/country/address when available, wallet),
+- transaction history between current user and contact,
+- inline amount input + `Send` button for direct payment,
+- `Request money from [user]` button opening a separate amount-entry modal that creates `invoice_pay_request`.
+- Updated WalletHome tests to support new recents data loading and routing behavior.
+- Added test coverage for opening a contact profile from the Recents panel.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `agent-context/session-log.md`
