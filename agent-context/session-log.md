@@ -1253,3 +1253,23 @@
 - `app/tcoin/wallet/dashboard/page.tsx`
 - `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
 - `agent-context/session-log.md`
+
+## v1.28
+### Timestamp
+- 2026-03-12 20:31:10 EDT
+
+### Objective
+- Revert the dashboard to the previous layout and keep only one UX adjustment: merge the separate `Amount` section into the `Send To` panel.
+
+### What Changed
+- Restored dashboard files from the pre-redesign state so `/dashboard` behavior and structure match the prior layout.
+- Removed the standalone `Amount` card section in `SendCard` and embedded its amount input/conversion block directly inside the `Send To` card.
+- Kept all other dashboard behavior unchanged relative to the pre-redesign baseline.
+- Re-ran focused dashboard tests to confirm no regressions in restored layout and send flow interactions.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `agent-context/session-log.md`

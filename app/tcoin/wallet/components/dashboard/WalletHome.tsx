@@ -9,28 +9,37 @@ import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
 import { createClient } from "@shared/lib/supabase/client";
 import { Button } from "@shared/components/ui/Button";
 import { BuyTcoinModal, TopUpModal } from "@tcoin/wallet/components/modals";
+import { ContributionsCard } from "./ContributionsCard";
 import { SendCard } from "./SendCard";
 import { AccountCard } from "./AccountCard";
 import { Hypodata } from "./types";
 
-type WalletHomeProps = {
-  tokenLabel?: string;
-  onOpenRequest?: () => void;
-};
-
-export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomeProps) {
+export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
+  const activeProfile = userData?.cubidData?.activeProfile;
 
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
-  const [activeIntent, setActiveIntent] = useState<"overview" | "pay">("overview");
-
+  const [selectedCharity, setSelectedCharity] = useState("");
   const buyCheckoutEnabled =
     (process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 ?? "false").trim().toLowerCase() === "true";
 
+  useEffect(() => {
+    const defaultCharity = activeProfile?.charityPreferences?.charity;
+    if (defaultCharity) {
+      setSelectedCharity(defaultCharity);
+    }
+  }, [activeProfile]);
+
   const { exchangeRate } = useControlVariables();
-  const userId = userData?.cubidData.id;
+  const [charityData] = useState({
+    personalContribution: 50,
+    allUsersToCharity: 600,
+    allUsersToAllCharities: 7000,
+  });
+
+  const user_id = userData?.cubidData.id;
 
   const sanitizeNumeric = useCallback((value: string) => value.replace(/[^\d.]/g, ""), []);
   const safeExchangeRate =
@@ -39,14 +48,14 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
       : 0;
 
   const convertTcoinToCad = useCallback((value: string) => {
-    const num = Number.parseFloat(value);
-    if (Number.isNaN(num) || safeExchangeRate === 0) return "";
+    const num = parseFloat(value);
+    if (isNaN(num) || safeExchangeRate === 0) return "";
     return (num * safeExchangeRate).toString();
   }, [safeExchangeRate]);
 
   const convertCadToTcoin = useCallback((value: string) => {
-    const num = Number.parseFloat(value);
-    if (Number.isNaN(num) || safeExchangeRate === 0) return "";
+    const num = parseFloat(value);
+    if (isNaN(num) || safeExchangeRate === 0) return "";
     return (num / safeExchangeRate).toString();
   }, [safeExchangeRate]);
 
@@ -57,7 +66,8 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
       setCadAmount("");
       return;
     }
-    setCadAmount(convertTcoinToCad(rawValue));
+    const cadRaw = convertTcoinToCad(rawValue);
+    setCadAmount(cadRaw);
   };
 
   const handleCadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,7 +77,8 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
       setTcoinAmount("");
       return;
     }
-    setTcoinAmount(convertCadToTcoin(rawValue));
+    const tcoinRaw = convertCadToTcoin(rawValue);
+    setTcoinAmount(tcoinRaw);
   };
 
   const handleTcoinBlur = () => {
@@ -75,8 +86,8 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
       setCadAmount("");
       return;
     }
-    const numericValue = Number.parseFloat(tcoinAmount);
-    if (Number.isNaN(numericValue)) {
+    const numericValue = parseFloat(tcoinAmount);
+    if (isNaN(numericValue)) {
       setTcoinAmount("");
       setCadAmount("");
       return;
@@ -92,8 +103,8 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
       setTcoinAmount("");
       return;
     }
-    const numericValue = Number.parseFloat(cadAmount);
-    if (Number.isNaN(numericValue)) {
+    const numericValue = parseFloat(cadAmount);
+    if (isNaN(numericValue)) {
       setCadAmount("");
       setTcoinAmount("");
       return;
@@ -117,19 +128,16 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
     }
   }
 
-  const [toSendData, setToSendData] = useState<Hypodata | null>(null);
-  const [explorerLink, setExplorerLink] = useState<string | null>(null);
-
   const handleScan = useCallback(
-    async (data: string) => {
-      const payload = extractAndDecodeBase64(data);
-      if (!payload?.nano_id) return;
+    async (data: any) => {
+      const rest = extractAndDecodeBase64(data);
+      if (!rest?.nano_id) return;
       try {
         const supabase = createClient();
         const { data: userDataFromSupabaseTable, error } = await supabase
           .from("users")
           .select("*")
-          .match({ user_identifier: payload.nano_id });
+          .match({ user_identifier: rest.nano_id });
         if (error) throw error;
 
         const { error: insertError } = await supabase.from("connections").insert({
@@ -139,9 +147,9 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
         });
         if (insertError) throw insertError;
 
-        setToSendData(userDataFromSupabaseTable?.[0] ?? null);
-        if (payload?.qrTcoinAmount) {
-          const sanitized = sanitizeNumeric(String(payload.qrTcoinAmount));
+        setToSendData(userDataFromSupabaseTable?.[0]);
+        if (rest?.qrTcoinAmount) {
+          const sanitized = sanitizeNumeric(String(rest.qrTcoinAmount));
           if (sanitized) {
             const numeric = Number.parseFloat(sanitized);
             if (Number.isFinite(numeric)) {
@@ -151,8 +159,6 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
             }
           }
         }
-
-        setActiveIntent("pay");
         toast.success("Scanned User Successfully");
       } catch (err) {
         console.error("handleScan error", err);
@@ -165,18 +171,54 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     if (url.searchParams.has("pay")) {
-      void handleScan(url.toString());
+      handleScan(url.toString());
     }
   }, [handleScan]);
+  const [toSendData, setToSendData] = useState<Hypodata | null>(null);
+  const [explorerLink, setExplorerLink] = useState<string | null>(null);
 
   const { senderWallet, sendMoney } = useSendMoney({
-    senderId: userId ?? 0,
+    senderId: user_id ?? 0,
     receiverId: toSendData?.id ?? null,
   });
 
   const { balance: rawBalance } = useTokenBalance(senderWallet);
-  const userBalance = Number.parseFloat(rawBalance) || 0;
+  const userBalance = parseFloat(rawBalance) || 0;
   const { portfolio } = useVoucherPortfolio({ enabled: Boolean(senderWallet) });
+  const [myPoolMerchants, setMyPoolMerchants] = useState<
+    Array<{ merchantStoreId: number; displayName?: string; tokenSymbol?: string }>
+  >([]);
+
+  useEffect(() => {
+    if (!senderWallet) return;
+
+    const loadMerchants = async () => {
+      try {
+        const response = await fetch("/api/vouchers/merchants?citySlug=tcoin&scope=my_pool", {
+          credentials: "include",
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          return;
+        }
+        const rows = Array.isArray(body?.merchants) ? body.merchants : [];
+        const normalized = rows
+          .filter((row: any) => row && typeof row === "object" && row.available === true)
+          .map((row: any) => ({
+            merchantStoreId: Number(row.merchantStoreId),
+            displayName: typeof row.displayName === "string" ? row.displayName : undefined,
+            tokenSymbol: typeof row.tokenSymbol === "string" ? row.tokenSymbol : undefined,
+          }))
+          .filter((row: any) => Number.isFinite(row.merchantStoreId))
+          .slice(0, 6);
+        setMyPoolMerchants(normalized);
+      } catch {
+        setMyPoolMerchants([]);
+      }
+    };
+
+    void loadMerchants();
+  }, [senderWallet]);
 
   const handleUseMax = () => {
     const cadNumeric = safeExchangeRate === 0 ? 0 : userBalance * safeExchangeRate;
@@ -200,17 +242,31 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
     });
   };
 
-  const handleRequestIntent = () => {
-    if (onOpenRequest) {
-      onOpenRequest();
-      return;
-    }
-    toast.info("Open the Receive tab to create a request.");
-  };
-
   return (
-    <div className="container mx-auto p-4 pb-24">
-      <div className="mx-auto max-w-[520px] space-y-6">
+    <div className="container mx-auto p-4 space-y-8 pb-24">
+      <div className="space-y-8 max-w-[400px] mx-auto md:hidden">
+        <ContributionsCard
+          selectedCharity={selectedCharity}
+          setSelectedCharity={setSelectedCharity}
+          charityData={charityData}
+          openModal={openModal}
+          closeModal={closeModal}
+        />
+        <SendCard
+          toSendData={toSendData}
+          setToSendData={setToSendData}
+          tcoinAmount={tcoinAmount}
+          cadAmount={cadAmount}
+          handleTcoinChange={handleTcoinChange}
+          handleCadChange={handleCadChange}
+          handleTcoinBlur={handleTcoinBlur}
+          handleCadBlur={handleCadBlur}
+          sendMoney={sendMoney}
+          explorerLink={explorerLink}
+          setExplorerLink={setExplorerLink}
+          userBalance={userBalance}
+          onUseMax={handleUseMax}
+        />
         <AccountCard
           balance={userBalance}
           totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
@@ -220,60 +276,10 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
           closeModal={closeModal}
           senderWallet={senderWallet ?? ""}
         />
-
-        <div className="rounded-xl border border-border bg-card/70 p-4 space-y-3">
-          <h3 className="text-sm font-semibold">Pay To</h3>
-          <p className="text-xs text-muted-foreground">
-            Start a payment, top up, or request separately to keep each flow clear.
-          </p>
-          <Button className="w-full" onClick={() => setActiveIntent("pay")}>
-            Pay To
-          </Button>
-          <Button className="w-full" variant="outline" onClick={handleRequestIntent}>
-            Request
-          </Button>
-        </div>
-
-        {activeIntent === "pay" && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Send Payment</h3>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setActiveIntent("overview");
-                  setToSendData(null);
-                  setTcoinAmount("");
-                  setCadAmount("");
-                  setExplorerLink(null);
-                }}
-              >
-                Back to Balance
-              </Button>
-            </div>
-            <SendCard
-              toSendData={toSendData}
-              setToSendData={setToSendData}
-              tcoinAmount={tcoinAmount}
-              cadAmount={cadAmount}
-              handleTcoinChange={handleTcoinChange}
-              handleCadChange={handleCadChange}
-              handleTcoinBlur={handleTcoinBlur}
-              handleCadBlur={handleCadBlur}
-              sendMoney={sendMoney}
-              explorerLink={explorerLink}
-              setExplorerLink={setExplorerLink}
-              userBalance={userBalance}
-              onUseMax={handleUseMax}
-            />
-          </div>
-        )}
-
         <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
-          <h3 className="text-sm font-semibold">Top Up / Buy</h3>
+          <h3 className="text-sm font-semibold">Buy TCOIN</h3>
           <p className="text-xs text-muted-foreground">
-            Add funds using Buy TCOIN checkout or Interac top-up.
+            One checkout flow: fiat to USDC on Celo to TCOIN.
           </p>
           {buyCheckoutEnabled && (
             <Button className="w-full" onClick={openBuyTcoinModal}>
@@ -283,6 +289,87 @@ export function WalletHome({ tokenLabel = "TCOIN", onOpenRequest }: WalletHomePr
           <Button className="w-full" variant="outline" onClick={openTopUpModal}>
             Top Up with Interac eTransfer
           </Button>
+        </div>
+        <div className="rounded-xl border border-border bg-card/70 p-4">
+          <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
+          {myPoolMerchants.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              No mapped merchants were found in your primary/secondary BIA pools.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1 text-xs">
+              {myPoolMerchants.map((merchant) => (
+                <li key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}>
+                  {merchant.displayName ?? `Store ${merchant.merchantStoreId}`}
+                  {merchant.tokenSymbol ? ` - ${merchant.tokenSymbol}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <ContributionsCard
+          selectedCharity={selectedCharity}
+          setSelectedCharity={setSelectedCharity}
+          charityData={charityData}
+          openModal={openModal}
+          closeModal={closeModal}
+        />
+        <SendCard
+          toSendData={toSendData}
+          setToSendData={setToSendData}
+          tcoinAmount={tcoinAmount}
+          cadAmount={cadAmount}
+          handleTcoinChange={handleTcoinChange}
+          handleCadChange={handleCadChange}
+          handleTcoinBlur={handleTcoinBlur}
+          handleCadBlur={handleCadBlur}
+          sendMoney={sendMoney}
+          explorerLink={explorerLink}
+          setExplorerLink={setExplorerLink}
+          userBalance={userBalance}
+          onUseMax={handleUseMax}
+        />
+        <AccountCard
+          balance={userBalance}
+          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
+          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
+          voucherCount={portfolio?.voucherBalances?.length ?? 0}
+          openModal={openModal}
+          closeModal={closeModal}
+          senderWallet={senderWallet ?? ""}
+        />
+        <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
+          <h3 className="text-sm font-semibold">Buy TCOIN</h3>
+          <p className="text-xs text-muted-foreground">
+            One checkout flow: fiat to USDC on Celo to TCOIN.
+          </p>
+          {buyCheckoutEnabled && (
+            <Button className="w-full" onClick={openBuyTcoinModal}>
+              Buy TCOIN
+            </Button>
+          )}
+          <Button className="w-full" variant="outline" onClick={openTopUpModal}>
+            Top Up with Interac eTransfer
+          </Button>
+        </div>
+        <div className="rounded-xl border border-border bg-card/70 p-4">
+          <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
+          {myPoolMerchants.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              No mapped merchants were found in your primary/secondary BIA pools.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1 text-xs">
+              {myPoolMerchants.map((merchant) => (
+                <li key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}>
+                  {merchant.displayName ?? `Store ${merchant.merchantStoreId}`}
+                  {merchant.tokenSymbol ? ` - ${merchant.tokenSymbol}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

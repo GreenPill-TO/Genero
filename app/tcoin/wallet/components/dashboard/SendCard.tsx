@@ -312,12 +312,33 @@ export function SendCard({
     <div className="mx-auto flex w-full max-w-2xl flex-col space-y-4">
       <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Amount</h2>
-          {amountHeaderActions && (
-            <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
-              {amountHeaderActions}
-            </div>
-          )}
+          <h2 className="text-lg font-semibold">{recipientHeading}</h2>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {amountHeaderActions && (
+              <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+                {amountHeaderActions}
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={openContactSelector}
+              disabled={recipientLocked}
+            >
+              <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
+            </Button>
+            {toSendData && !recipientLocked && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={clearRecipient}
+                aria-label="Clear recipient"
+              >
+                <LuX className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <div className="relative mx-auto mt-4 flex w-full flex-col items-center gap-4 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
           <div className="w-full text-center">
@@ -395,33 +416,6 @@ export function SendCard({
                 Use Max
               </Button>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">{recipientHeading}</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={openContactSelector}
-              disabled={recipientLocked}
-            >
-              <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
-            </Button>
-            {toSendData && !recipientLocked && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={clearRecipient}
-                aria-label="Clear recipient"
-              >
-                <LuX className="h-4 w-4" />
-              </Button>
-            )}
           </div>
         </div>
 

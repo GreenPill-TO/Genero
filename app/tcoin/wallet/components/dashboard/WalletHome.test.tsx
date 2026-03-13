@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
+import { render, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const toastSuccess = vi.hoisted(() => vi.fn());
 
@@ -51,7 +51,7 @@ vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
 }));
 
 vi.mock("@shared/hooks/useSendMoney", () => ({
-  useSendMoney: () => ({ senderWallet: "0xabc", sendMoney: vi.fn() }),
+  useSendMoney: () => ({ sendMoney: vi.fn() }),
 }));
 
 const tokenBalanceMock = vi.hoisted(() => vi.fn(() => ({ balance: "0" })));
@@ -76,14 +76,18 @@ vi.mock("@shared/lib/supabase/client", () => ({
 }));
 
 vi.mock("@tcoin/wallet/components/modals", () => ({
-  BuyTcoinModal: () => <div>buy-modal</div>,
-  TopUpModal: () => <div>topup-modal</div>,
+  QrScanModal: () => <div>qr-modal</div>,
 }));
-const sendCardMock = vi.hoisted(() => vi.fn((_props: any) => <div />));
+
+vi.mock("./ContributionsCard", () => ({
+  ContributionsCard: () => <div />,
+}));
+const sendCardMock = vi.hoisted(() => vi.fn(() => <div />));
 vi.mock("./SendCard", () => ({
   SendCard: (props: any) => sendCardMock(props),
 }));
 vi.mock("./AccountCard", () => ({ AccountCard: () => <div /> }));
+vi.mock("./OtherCard", () => ({ OtherCard: () => <div /> }));
 
 import { WalletHome } from "./WalletHome";
 
@@ -96,16 +100,11 @@ describe("WalletHome deep-link scanning", () => {
     window.history.replaceState({}, "", "/dashboard");
   });
 
-  afterEach(() => {
-    cleanup();
-  });
-
   it("skips handleScan when URL lacks pay param", () => {
     render(<WalletHome />);
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(matchMock).not.toHaveBeenCalled();
     expect(insertMock).not.toHaveBeenCalled();
-    expect(sendCardMock).not.toHaveBeenCalled();
   });
 
   it("processes scan and shows toast when URL has pay param", async () => {
@@ -127,12 +126,12 @@ describe("WalletHome deep-link scanning", () => {
     });
   });
 
-  it("passes numeric userBalance to SendCard after selecting Pay To intent", () => {
-    tokenBalanceMock.mockReturnValue({ balance: "5.5" });
+  it("passes numeric userBalance to SendCard", () => {
+    tokenBalanceMock.mockReturnValueOnce({ balance: "5.5" });
     render(<WalletHome />);
-    fireEvent.click(screen.getByRole("button", { name: "Pay To" }));
     expect(sendCardMock).toHaveBeenCalled();
-    const props = sendCardMock.mock.calls[sendCardMock.mock.calls.length - 1]?.[0];
+    const props = sendCardMock.mock.calls[0][0];
     expect(props.userBalance).toBe(5.5);
   });
 });
+
