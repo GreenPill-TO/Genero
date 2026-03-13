@@ -1498,3 +1498,35 @@
 - `app/tcoin/wallet/layout.tsx`
 - `app/tcoin/contracts/layout.tsx`
 - `agent-context/session-log.md`
+
+## v1.39
+### Timestamp
+- 2026-03-13 12:39:29 EDT
+
+### Objective
+- Clean up `/dashboard` by removing in-panel experimental graphs, moving them behind a dedicated modal in More, and reorganizing desktop card layout.
+
+### What Changed
+- Removed the two graph views from `My Account` on dashboard:
+- removed `Graph` and `Charity` tabs from `AccountCard`.
+- kept `Balance` and `Transactions` tabs.
+- Added a new modal for experimental visuals:
+- created `FutureAppFeaturesModal` with the two illustrative charts previously shown in `My Account`.
+- exported it via the wallet modals barrel.
+- Added a new `Future app features` button on the `More` tab to open that modal.
+- Restructured desktop dashboard (`md+`) into explicit three columns:
+- left column: `My Account` panel.
+- center column: `Send To`, `Buy TCOIN`, and `Merchants in My Pool`.
+- right column: compact `Charitable Contributions`, then a new empty placeholder panel, then `Recents`.
+- Added compact mode to `ContributionsCard` to reduce panel height on desktop in the new right column placement.
+- Updated `MoreTab` tests to cover the new `Future app features` button/modal.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ContributionsCard.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/modals/FutureAppFeaturesModal.tsx`
+- `app/tcoin/wallet/components/modals/index.ts`
+- `agent-context/session-log.md`
