@@ -98,7 +98,6 @@ import { MoreTab } from "./MoreTab";
 
 describe("MoreTab", () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 = "false";
     useAuthMock.mockReturnValue({
       userData: {
         cubidData: {
@@ -116,23 +115,10 @@ describe("MoreTab", () => {
     pushMock.mockReset();
   });
 
-  it("opens the top up modal", () => {
+  it("does not render buy/top-up actions in the More tab", () => {
     render(<MoreTab />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /Top Up with Interac eTransfer/i })
-    );
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe(
-      "Top Up with Interac eTransfer"
-    );
-  });
-
-  it("shows Buy TCOIN button when checkout feature flag is enabled", () => {
-    process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 = "true";
-    render(<MoreTab />);
-    fireEvent.click(screen.getByRole("button", { name: /Buy TCOIN/i }));
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Buy TCOIN");
+    expect(screen.queryByRole("button", { name: /Buy TCOIN/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Top Up with Interac eTransfer/i })).toBeNull();
   });
 
   it("opens the off-ramp modal", () => {

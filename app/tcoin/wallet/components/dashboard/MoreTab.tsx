@@ -6,8 +6,6 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import {
-  BuyTcoinModal,
-  TopUpModal,
   OffRampModal,
   CharitySelectModal,
   CharityContributionsModal,
@@ -19,7 +17,6 @@ import {
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
 import {
   LuBuilding2,
-  LuCreditCard,
   LuDollarSign,
   LuFlaskConical,
   LuHeart,
@@ -60,8 +57,6 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     trustStatus: "default",
   });
   const [isSavingVoucherPreference, setIsSavingVoucherPreference] = useState(false);
-  const buyCheckoutEnabled =
-    (process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 ?? "false").trim().toLowerCase() === "true";
   const charityData = useMemo(() => DEFAULT_CHARITY_DATA, []);
 
   useEffect(() => {
@@ -173,27 +168,11 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     }
   };
 
-  const openTopUpModal = () => {
-    openModal({
-      content: <TopUpModal closeModal={closeModal} tokenLabel={tokenLabel} />,
-      title: "Top Up with Interac eTransfer",
-      description: `Send an Interac eTransfer to top up your ${tokenLabel.toUpperCase()} balance.`,
-    });
-  };
-
-  const openBuyTcoinModal = () => {
-    openModal({
-      content: <BuyTcoinModal closeModal={closeModal} />,
-      title: "Buy TCOIN",
-      description: "Checkout with fiat to mint TCOIN automatically from USDC on Celo.",
-    });
-  };
-
   const openOffRampModal = () => {
     openModal({
       content: <OffRampModal closeModal={closeModal} userBalance={userBalance} />,
       title: "Convert and Off-ramp",
-      description: "Convert your TCOIN to CAD and transfer to your bank account.",
+      description: `Convert your ${tokenLabel.toUpperCase()} to CAD and transfer to your bank account.`,
     });
   };
 
@@ -307,14 +286,6 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           <CardTitle>More</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {buyCheckoutEnabled && (
-            <Button type="button" className="w-full justify-start" onClick={openBuyTcoinModal}>
-              <LuCreditCard className="mr-2 h-4 w-4" /> Buy TCOIN
-            </Button>
-          )}
-          <Button type="button" className="w-full justify-start" onClick={openTopUpModal}>
-            <LuCreditCard className="mr-2 h-4 w-4" /> Top Up with Interac eTransfer
-          </Button>
           <Button type="button" className="w-full justify-start" onClick={openOffRampModal}>
             <LuDollarSign className="mr-2 h-4 w-4" /> Convert to CAD and Cash Out
           </Button>

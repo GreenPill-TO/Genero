@@ -19,6 +19,9 @@ import { Badge } from "@shared/components/ui/badge";
 import { toast } from "react-toastify";
 
 const CITY_SLUG = "tcoin";
+const bypassAuthInLocalDev = ["local", "development"].includes(
+  (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
+);
 
 type BiaRecord = {
   id: string;
@@ -211,7 +214,7 @@ export default function MerchantDashboardPage() {
   }, [redemptions]);
 
   useEffect(() => {
-    if (!isLoadingUser && !userData?.cubidData?.full_name) {
+    if (!isLoadingUser && !userData?.cubidData?.full_name && !bypassAuthInLocalDev) {
       router.replace("/");
     }
   }, [isLoadingUser, userData, router]);
@@ -286,7 +289,7 @@ export default function MerchantDashboardPage() {
   }, [storeForm.biaId]);
 
   useEffect(() => {
-    if (!isLoadingUser && userData?.cubidData?.full_name) {
+    if (!isLoadingUser && (userData?.cubidData?.full_name || bypassAuthInLocalDev)) {
       void loadData();
     }
   }, [isLoadingUser, userData, loadData]);

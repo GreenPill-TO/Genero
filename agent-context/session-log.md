@@ -1594,3 +1594,32 @@
 ### Files Edited
 - `app/tcoin/wallet/components/DashboardFooter.tsx`
 - `agent-context/session-log.md`
+
+## v1.43
+### Timestamp
+- 2026-03-13 15:27:57 EDT
+
+### Objective
+- Simplify `More` actions and add explicit system-theme fallback in theme settings, then fix merchant dashboard redirect behavior in local/development environments.
+
+### What Changed
+- Removed `Buy TCOIN` and `Top Up with Interac eTransfer` actions from the wallet `More` tab.
+- Added a third theme option in `Select Theme`:
+- `Remove theme override` now clears local theme preference and follows system light/dark mode again.
+- Extended dark-mode hook capabilities:
+- added explicit theme override setter.
+- added override-clear method.
+- tracked whether current mode is following system preference.
+- Updated merchant dashboard local-dev access guard:
+- `/merchant` no longer redirects to `/` in `NEXT_PUBLIC_APP_ENVIRONMENT=local|development` when profile name is absent.
+- data loading on `/merchant` is allowed in local/dev bypass mode.
+- Updated `MoreTab` tests to reflect removed actions.
+- Ran focused wallet tests for modified areas.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/modals/ThemeSelectModal.tsx`
+- `shared/hooks/useDarkMode.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
