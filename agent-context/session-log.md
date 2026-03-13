@@ -1413,3 +1413,19 @@
 - `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
 - `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
 - `agent-context/session-log.md`
+
+## v1.35
+### Timestamp
+- 2026-03-12 20:53:34 EDT
+
+### Objective
+- Simplify Receive tab caption copy by removing the token suffix from the default “any amount” state.
+
+### What Changed
+- Updated Receive QR caption fallback text from `Receive any amount TCOIN` to `Receive any amount`.
+- Kept amount-specific caption behavior unchanged (`Receive {amount} TCOIN`).
+- Verified with focused ReceiveCard tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `agent-context/session-log.md`
