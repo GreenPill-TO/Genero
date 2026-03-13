@@ -1368,3 +1368,20 @@
 ### Files Edited
 - `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
 - `agent-context/session-log.md`
+
+## v1.33
+### Timestamp
+- 2026-03-12 20:43:04 EDT
+
+### Objective
+- Move the dashboard send action button into the `Send To` panel so action placement matches panel context.
+
+### What Changed
+- Relocated the primary send CTA (`Send...` / `Pay this request`) from below the card to inside the `Send To` section in `SendCard`.
+- Kept existing validation, modal confirmation, and disabled-state behavior unchanged.
+- Added top margin to maintain spacing inside the panel.
+- Verified with focused send-flow tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `agent-context/session-log.md`

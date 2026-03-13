@@ -477,48 +477,48 @@ export function SendCard({
             )}
           </div>
         )}
-      </section>
 
-      <Button
-        ref={sendButtonRef}
-        className={`w-full ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
-        aria-disabled={!canSend}
-        onClick={() => {
-          if (!toSendData) {
-            toast.error("Select a recipient first.");
-            return;
-          }
-          if (!hasTcoinAmount) {
-            toast.error("Please enter an amount greater than zero.");
-            return;
-          }
-          if (!Number.isFinite(cadValue) && cadAmount.trim() !== "") {
-            toast.error("Enter a valid CAD amount or switch currencies.");
-            return;
-          }
-          if (amountExceedsBalance) {
-            toast.error("Amount exceeds your available balance.");
-            return;
-          }
-          openModal({
-            content: (
-              <ConfirmTransactionModal
-                tcoinAmount={tcoinAmount}
-                cadAmount={cadAmount}
-                toSendData={toSendData}
-                closeModal={closeModal}
-                sendMoney={sendMoney}
-                setExplorerLink={setExplorerLink}
-                getLastTransferRecord={getLastTransferRecord}
-                onPaymentComplete={onPaymentComplete}
-              />
-            ),
-            title: "Confirm Payment",
-          });
-        }}
-      >
-        <LuSend className="mr-2 h-4 w-4" /> {actionLabel}
-      </Button>
+        <Button
+          ref={sendButtonRef}
+          className={`mt-4 w-full ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
+          aria-disabled={!canSend}
+          onClick={() => {
+            if (!toSendData) {
+              toast.error("Select a recipient first.");
+              return;
+            }
+            if (!hasTcoinAmount) {
+              toast.error("Please enter an amount greater than zero.");
+              return;
+            }
+            if (!Number.isFinite(cadValue) && cadAmount.trim() !== "") {
+              toast.error("Enter a valid CAD amount or switch currencies.");
+              return;
+            }
+            if (amountExceedsBalance) {
+              toast.error("Amount exceeds your available balance.");
+              return;
+            }
+            openModal({
+              content: (
+                <ConfirmTransactionModal
+                  tcoinAmount={tcoinAmount}
+                  cadAmount={cadAmount}
+                  toSendData={toSendData}
+                  closeModal={closeModal}
+                  sendMoney={sendMoney}
+                  setExplorerLink={setExplorerLink}
+                  getLastTransferRecord={getLastTransferRecord}
+                  onPaymentComplete={onPaymentComplete}
+                />
+              ),
+              title: "Confirm Payment",
+            });
+          }}
+        >
+          <LuSend className="mr-2 h-4 w-4" /> {actionLabel}
+        </Button>
+      </section>
 
       {explorerLink && (
         <div className="rounded-lg bg-green-900/20 p-4">
