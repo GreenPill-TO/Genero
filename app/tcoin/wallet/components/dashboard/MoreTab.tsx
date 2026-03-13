@@ -14,12 +14,14 @@ import {
   ThemeSelectModal,
   BiaPreferencesModal,
   VoucherRoutingPreferencesModal,
+  FutureAppFeaturesModal,
 } from "@tcoin/wallet/components/modals";
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
 import {
   LuBuilding2,
   LuCreditCard,
   LuDollarSign,
+  LuFlaskConical,
   LuHeart,
   LuMapPin,
   LuPalette,
@@ -278,6 +280,16 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     });
   };
 
+  const openFutureAppFeaturesModal = () => {
+    openModal({
+      content: <FutureAppFeaturesModal />,
+      title: "Future app features",
+      description: "Preview experimental dashboard visualizations using sample data.",
+      elSize: "4xl",
+      isResponsive: true,
+    });
+  };
+
   const isAdmin = hasAdminAccess(userData?.cubidData?.is_admin ?? userData?.user?.is_admin);
 
   const handleOpenAdmin = () => {
@@ -320,6 +332,9 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           </Button>
           <Button type="button" className="w-full justify-start" onClick={openVoucherRoutingPreferencesModal}>
             <LuShuffle className="mr-2 h-4 w-4" /> Voucher Routing Preferences
+          </Button>
+          <Button type="button" className="w-full justify-start" onClick={openFutureAppFeaturesModal}>
+            <LuFlaskConical className="mr-2 h-4 w-4" /> Future app features
           </Button>
           <Button type="button" className="w-full justify-start" onClick={handleOpenMerchant}>
             <LuBuilding2 className="mr-2 h-4 w-4" /> Open Merchant Dashboard

@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, QrCode, Send, Users, Settings } from "lucide-react";
+import { Home, QrCode, Send, Users, Settings, History } from "lucide-react";
 import { cn } from "@shared/utils/classnames";
 
 interface FooterProps {
@@ -7,11 +7,20 @@ interface FooterProps {
   onChange: (key: string) => void;
 }
 
-const items = [
+const mobileItems = [
   { key: "home", label: "Home", icon: Home },
   { key: "receive", label: "Receive", icon: QrCode },
   { key: "send", label: "Send", icon: Send },
   { key: "contacts", label: "Contacts", icon: Users },
+  { key: "more", label: "More", icon: Settings },
+];
+
+const desktopItems = [
+  { key: "home", label: "Home", icon: Home },
+  { key: "receive", label: "Receive", icon: QrCode },
+  { key: "send", label: "Send", icon: Send },
+  { key: "contacts", label: "Contacts", icon: Users },
+  { key: "history", label: "History", icon: History },
   { key: "more", label: "More", icon: Settings },
 ];
 
@@ -58,15 +67,15 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
     </button>
   );
 
-  const home = items.find((item) => item.key === "home")!;
-  const more = items.find((item) => item.key === "more")!;
-  const middle = items.filter((item) => item.key !== "home" && item.key !== "more");
+  const home = desktopItems.find((item) => item.key === "home")!;
+  const more = desktopItems.find((item) => item.key === "more")!;
+  const middle = desktopItems.filter((item) => item.key !== "home" && item.key !== "more");
 
   return (
     <>
       <nav className="fixed bottom-0 left-0 right-0 border-t bg-background lg:hidden">
         <ul className="grid grid-cols-5">
-          {items.map((item) => {
+          {mobileItems.map((item) => {
             const Icon = item.icon;
             return (
               <li key={item.key} className="flex justify-center">

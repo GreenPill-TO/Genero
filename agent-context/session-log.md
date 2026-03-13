@@ -1498,3 +1498,43 @@
 - `app/tcoin/wallet/layout.tsx`
 - `app/tcoin/contracts/layout.tsx`
 - `agent-context/session-log.md`
+
+## v1.39
+### Timestamp
+- 2026-03-13 12:52:07 EDT
+
+### Objective
+- Split dashboard cleanup into smaller changes: simplify `My Account`, move experimental graphs to a modal in `More`, and introduce a dedicated `Transaction History` dashboard tab.
+
+### What Changed
+- Simplified `My Account` panel:
+- removed the four internal tab buttons.
+- removed in-panel graph views and in-panel transaction history.
+- kept balance summary and wallet/explorer details.
+- added a new `View transaction history` button.
+- Added `Future app features` modal:
+- created `FutureAppFeaturesModal` containing the two existing experimental charts.
+- added `Future app features` button to `More` tab to open that modal.
+- Added a dedicated `Transaction History` dashboard tab:
+- new `TransactionHistoryTab` component fetches and displays recent `TCOIN` transfers from `act_transaction_entries` using the current user’s wallets.
+- wired dashboard state so `My Account` button opens this tab.
+- added a top-right back arrow button on small/medium screens only (`lg:hidden`) to return to main dashboard home.
+- Updated dashboard navigation:
+- desktop left sidebar now includes `History`.
+- mobile/tablet bottom footer remains unchanged (no `History` tab added there).
+- Updated/added tests for the modified dashboard/footer/more/account behavior.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/modals/FutureAppFeaturesModal.tsx`
+- `app/tcoin/wallet/components/modals/index.ts`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/index.ts`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `agent-context/session-log.md`

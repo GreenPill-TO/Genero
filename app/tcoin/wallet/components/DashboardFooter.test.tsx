@@ -9,6 +9,7 @@ vi.mock("lucide-react", () => ({
   QrCode: () => <div />,
   Send: () => <div />,
   Users: () => <div />,
+  History: () => <div />,
   Settings: () => <div />,
 }));
 

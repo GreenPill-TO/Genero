@@ -25,7 +25,13 @@ type RecentInteraction = {
   lastInteractionAt: string | null;
 };
 
-export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
+export function WalletHome({
+  tokenLabel = "Tcoin",
+  onOpenTransactionHistory,
+}: {
+  tokenLabel?: string;
+  onOpenTransactionHistory?: () => void;
+}) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
   const router = useRouter();
@@ -543,9 +549,8 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
           totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
           voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
           voucherCount={portfolio?.voucherBalances?.length ?? 0}
-          openModal={openModal}
-          closeModal={closeModal}
           senderWallet={senderWallet ?? ""}
+          onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
         />
         <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
           <h3 className="text-sm font-semibold">Buy TCOIN</h3>
@@ -606,9 +611,8 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
           totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
           voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
           voucherCount={portfolio?.voucherBalances?.length ?? 0}
-          openModal={openModal}
-          closeModal={closeModal}
           senderWallet={senderWallet ?? ""}
+          onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
         />
         <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
           <h3 className="text-sm font-semibold">Buy TCOIN</h3>

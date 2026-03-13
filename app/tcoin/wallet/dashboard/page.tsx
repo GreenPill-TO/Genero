@@ -7,6 +7,7 @@ import {
   SendTab,
   ReceiveTab,
   MoreTab,
+  TransactionHistoryTab,
 } from "@tcoin/wallet/components/dashboard";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
 import { ErrorBoundary } from "@shared/components/ErrorBoundary";
@@ -28,7 +29,12 @@ export default function Dashboard() {
   const content = useMemo(() => {
     if (isLoadingUser || error) return null;
     if (activeTab === "home") {
-      return <WalletHome tokenLabel="TCOIN" />;
+      return (
+        <WalletHome
+          tokenLabel="TCOIN"
+          onOpenTransactionHistory={() => setActiveTab("history")}
+        />
+      );
     }
     if (activeTab === "contacts") {
       return (
@@ -68,6 +74,13 @@ export default function Dashboard() {
     }
     if (activeTab === "more") {
       return <MoreTab tokenLabel="TCOIN" />;
+    }
+    if (activeTab === "history") {
+      return (
+        <TransactionHistoryTab
+          onBackToDashboard={() => setActiveTab("home")}
+        />
+      );
     }
     const label = activeTab.charAt(0).toUpperCase() + activeTab.slice(1);
     return (
