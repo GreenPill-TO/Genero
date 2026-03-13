@@ -33,11 +33,6 @@ vi.mock("@shared/hooks/useTokenBalance", () => ({
   useTokenBalance: useTokenBalanceMock,
 }));
 
-const openModal = vi.fn();
-vi.mock("@shared/contexts/ModalContext", () => ({
-  useModal: () => ({ openModal, closeModal: vi.fn() }),
-}));
-
 const invoiceRequests = [
   {
     id: 1,
@@ -181,7 +176,6 @@ import { SendTab } from "./SendTab";
 afterEach(() => {
   cleanup();
   sendCardProps = undefined;
-  openModal.mockReset();
   updateMock.mockReset();
   updateEqMock.mockReset();
   useTokenBalanceMock.mockClear();
@@ -196,14 +190,15 @@ describe("SendTab", () => {
     });
   });
 
-  it("renders send mode actions and opens the QR scanner", () => {
+  it("renders send mode actions and shows inline QR scanner panel", () => {
     render(<SendTab recipient={null} />);
     expect(screen.getByText("Manual")).toBeTruthy();
     expect(screen.getByText("Scan QR Code")).toBeTruthy();
     expect(screen.getByText("Pay Link")).toBeTruthy();
     expect(screen.getByText("Requests")).toBeTruthy();
     fireEvent.click(screen.getByText("Scan QR Code"));
-    expect(openModal).toHaveBeenCalled();
+    expect(screen.getByText("Scan QR")).toBeTruthy();
+    expect(screen.getByText("qr-modal")).toBeTruthy();
   });
 
   it("passes numeric userBalance to SendCard", () => {
@@ -234,27 +229,23 @@ describe("SendTab", () => {
     expect(onRecipientChange).toHaveBeenCalledWith(null);
   });
 
-  it("opens the requests modal with pending entries", async () => {
+  it("shows incoming requests in-panel", async () => {
     render(<SendTab recipient={null} />);
     await act(async () => {
       fireEvent.click(screen.getByText("Requests"));
       await Promise.resolve();
     });
 
-    expect(openModal).toHaveBeenCalled();
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    expect(modalArgs.title).toBe("Incoming Requests To Pay");
-    const modal = render(modalArgs.content as React.ReactElement);
-    expect(modal.getByText("12.00 TCOIN")).toBeTruthy();
-    expect(modal.getByText("Any Amount")).toBeTruthy();
-    expect(modal.getByText(/Requested by Requester One/i)).toBeTruthy();
-    const payButtons = modal.getAllByRole("button", { name: /^Pay$/i });
-    const ignoreButtons = modal.getAllByRole("button", { name: /^Ignore$/i });
+    expect(screen.getByText("Incoming Requests To Pay")).toBeTruthy();
+    expect(screen.getByText("12.00 TCOIN")).toBeTruthy();
+    expect(screen.getByText("Any Amount")).toBeTruthy();
+    expect(screen.getByText(/Requested by Requester One/i)).toBeTruthy();
+    const payButtons = screen.getAllByRole("button", { name: /^Pay$/i });
+    const ignoreButtons = screen.getAllByRole("button", { name: /^Ignore$/i });
     expect(payButtons).toHaveLength(2);
     expect(ignoreButtons).toHaveLength(2);
     expect(payButtons[0].className).toContain("bg-primary");
     expect(ignoreButtons[0].className).toContain("bg-white");
-    modal.unmount();
   });
 
   it("locks the send card when a request is selected", async () => {
@@ -264,17 +255,13 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const selectButton = modal.getAllByRole("button", { name: /^Pay$/i })[0];
+    const selectButton = screen.getAllByRole("button", { name: /^Pay$/i })[0];
 
     await act(async () => {
       fireEvent.click(selectButton);
       await Promise.resolve();
       await Promise.resolve();
     });
-
-    modal.unmount();
 
     expect(sendCardProps.locked).toBe(true);
     expect(sendCardProps.lockRecipient).toBe(true);
@@ -291,9 +278,7 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const payButtons = modal.getAllByRole("button", { name: /^Pay$/i });
+    const payButtons = screen.getAllByRole("button", { name: /^Pay$/i });
     const variableButton = payButtons[1];
 
     await act(async () => {
@@ -301,8 +286,6 @@ describe("SendTab", () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-
-    modal.unmount();
 
     expect(sendCardProps.lockRecipient).toBe(true);
     expect(sendCardProps.lockAmount).toBe(false);
@@ -318,9 +301,7 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const ignoreButtons = modal.getAllByRole("button", { name: /^Ignore$/i });
+    const ignoreButtons = screen.getAllByRole("button", { name: /^Ignore$/i });
 
     await act(async () => {
       fireEvent.click(ignoreButtons[0]);
@@ -329,9 +310,6 @@ describe("SendTab", () => {
 
     expect(updateMock).toHaveBeenCalledWith({ is_active: false });
     expect(updateEqMock).toHaveBeenCalledWith("id", 1);
-    expect(modal.getAllByRole("button", { name: /^Pay$/i })).toHaveLength(1);
-
-    modal.unmount();
   });
 
   it("marks the selected request as paid when payment completes", async () => {
@@ -341,9 +319,7 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const selectButton = modal.getAllByRole("button", { name: /^Pay$/i })[0];
+    const selectButton = screen.getAllByRole("button", { name: /^Pay$/i })[0];
 
     await act(async () => {
       fireEvent.click(selectButton);
@@ -370,8 +346,6 @@ describe("SendTab", () => {
       is_active: false,
     });
     expect(updateEqMock).toHaveBeenCalledWith("id", 1);
-
-    modal.unmount();
   });
 
   it("extracts the transaction id from transfer metadata when not provided", async () => {
@@ -381,9 +355,7 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const selectButton = modal.getAllByRole("button", { name: /^Pay$/i })[0];
+    const selectButton = screen.getAllByRole("button", { name: /^Pay$/i })[0];
 
     await act(async () => {
       fireEvent.click(selectButton);
@@ -409,8 +381,5 @@ describe("SendTab", () => {
       is_active: false,
     });
     expect(updateEqMock).toHaveBeenCalledWith("id", 1);
-
-    modal.unmount();
   });
 });
-

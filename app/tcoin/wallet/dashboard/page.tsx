@@ -23,7 +23,7 @@ export default function Dashboard() {
   const [receiveQrVisible, setReceiveQrVisible] = useState(true);
   const router = useRouter();
 
-  const mainClass = "font-sans pb-24 p-4 sm:p-8 bg-background text-foreground min-h-screen";
+  const mainClass = "font-sans pb-24 p-4 sm:p-8 lg:pb-8 lg:pl-28 bg-background text-foreground min-h-screen";
 
   const content = useMemo(() => {
     if (isLoadingUser || error) return null;

@@ -7,7 +7,6 @@ import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { createClient } from "@shared/lib/supabase/client";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
-import { useModal } from "@shared/contexts/ModalContext";
 import { Hypodata, InvoicePayRequest, contactRecordToHypodata } from "./types";
 import { SendCard, type PaymentCompletionDetails } from "./SendCard";
 import { QrScanModal } from "@tcoin/wallet/components/modals";
@@ -112,15 +111,13 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
-  const [mode, setMode] = useState<"manual" | "link">("manual");
   const [activeAction, setActiveAction] = useState<
     "manual" | "scan" | "link" | "requests"
   >("manual");
-  const [, setIncomingRequests] = useState<IncomingRequest[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<IncomingRequest | null>(null);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [payLink, setPayLink] = useState("");
-  const { openModal, closeModal } = useModal();
   const contactsById = useMemo(() => {
     const map = new Map<number, Hypodata>();
     (contacts ?? []).forEach((contact) => {
@@ -435,21 +432,6 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     setPayLink("");
   }, [updateRecipient]);
 
-  const openScanner = useCallback(() => {
-    openModal({
-      content: (
-        <QrScanModal
-          closeModal={closeModal}
-          setToSendData={(d: Hypodata) => updateRecipient(d)}
-          setTcoin={setTcoinAmount}
-          setCad={setCadAmount}
-        />
-      ),
-      title: "Scan QR",
-      description: "Use your device's camera to scan a code.",
-    });
-  }, [closeModal, openModal, updateRecipient]);
-
   const fetchIncomingRequests = useCallback(async (): Promise<IncomingRequest[]> => {
     const currentUserId = userData?.cubidData?.id;
     if (!currentUserId) {
@@ -643,12 +625,10 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       }
 
       setSelectedRequest({ ...request, requester });
-      setActiveAction("requests");
-      setMode("manual");
+      setActiveAction("manual");
       setPayLink("");
-      closeModal();
     },
-    [closeModal, contactsById, safeExchangeRate, updateRecipient]
+    [contactsById, safeExchangeRate, updateRecipient]
   );
 
   const handleIgnoreRequest = useCallback(
@@ -678,42 +658,21 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     [fetchIncomingRequests]
   );
 
-  const openRequestsModal = useCallback(async () => {
+  const openRequestsPanel = useCallback(async () => {
     if (isLoadingRequests) return;
     setIsLoadingRequests(true);
     try {
       const requests = await fetchIncomingRequests();
       setIncomingRequests(requests);
-      openModal({
-        title: "Incoming Requests To Pay",
-        description:
-          "Choose a request to pay or ignore. Ignored requests will be archived.",
-        content: (
-          <RequestsList
-            requests={requests}
-            onSelect={(selection) => {
-              void handleRequestSelection(selection);
-            }}
-            onIgnore={(request) => handleIgnoreRequest(request)}
-          />
-        ),
-      });
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [
-    fetchIncomingRequests,
-    handleIgnoreRequest,
-    handleRequestSelection,
-    isLoadingRequests,
-    openModal,
-  ]);
+  }, [fetchIncomingRequests, isLoadingRequests]);
 
   const handleManualClick = () => {
     if (selectedRequest) {
       setSelectedRequest(null);
     }
-    setMode("manual");
     setActiveAction("manual");
   };
 
@@ -723,9 +682,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       setSelectedRequest(null);
     }
     reset();
-    setMode("manual");
     setActiveAction("scan");
-    openScanner();
   };
 
   const handleLinkClick = () => {
@@ -735,9 +692,16 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     }
     reset();
     setPayLink("");
-    setMode("link");
     setActiveAction("link");
   };
+
+  const handleRequestsClick = useCallback(() => {
+    if (selectedRequest) {
+      setSelectedRequest(null);
+    }
+    setActiveAction("requests");
+    void openRequestsPanel();
+  }, [openRequestsPanel, selectedRequest]);
 
   const handleRequestPaid = useCallback(
     async (details?: PaymentCompletionDetails) => {
@@ -765,12 +729,6 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     },
     [fetchIncomingRequests, selectedRequest]
   );
-
-  useEffect(() => {
-    if (!selectedRequest && activeAction === "requests") {
-      setActiveAction("manual");
-    }
-  }, [activeAction, selectedRequest]);
 
   useEffect(() => {
     if (!toSendData && selectedRequest) {
@@ -856,9 +814,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       <Button
         type="button"
         variant={activeAction === "requests" ? "default" : "outline"}
-        onClick={() => {
-          void openRequestsModal();
-        }}
+        onClick={handleRequestsClick}
         className="min-w-[120px]"
         disabled={isLoadingRequests}
       >
@@ -873,7 +829,11 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
 
   return (
     <div className="space-y-4 lg:px-[25vw]">
-      {mode !== "link" && (
+      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">{modeActions}</div>
+      </section>
+
+      {activeAction === "manual" && (
         <SendCard
           toSendData={toSendData}
           setToSendData={updateRecipient}
@@ -889,7 +849,6 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           userBalance={balance}
           onUseMax={handleUseMax}
           contacts={contacts}
-          amountHeaderActions={modeActions}
           locked={lockRecipient}
           actionLabel={selectedRequest ? "Pay this request" : "Send..."}
           getLastTransferRecord={getLastTransferRecord}
@@ -900,13 +859,31 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
         />
       )}
 
-      {mode === "link" && (
+      {activeAction === "scan" && (
+        <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Scan QR</h2>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Scan a payment QR code to load recipient and amount details.
+          </p>
+          <div className="mt-4">
+            <QrScanModal
+              closeModal={() => setActiveAction("manual")}
+              setToSendData={(d: Hypodata) => updateRecipient(d)}
+              setTcoin={setTcoinAmount}
+              setCad={setCadAmount}
+            />
+          </div>
+        </section>
+      )}
+
+      {activeAction === "link" && (
         <>
           {!toSendData ? (
             <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Amount</h2>
-                {modeActions}
+                <h2 className="text-lg font-semibold">Pay Link</h2>
               </div>
               <div className="mt-4 space-y-3">
                 <Input
@@ -936,11 +913,44 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
               userBalance={balance}
               onUseMax={handleUseMax}
               contacts={contacts}
-              amountHeaderActions={modeActions}
               getLastTransferRecord={getLastTransferRecord}
             />
           )}
         </>
+      )}
+
+      {activeAction === "requests" && (
+        <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Incoming Requests To Pay</h2>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void openRequestsPanel();
+              }}
+              disabled={isLoadingRequests}
+            >
+              Refresh
+            </Button>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Choose a request to pay or ignore. Ignored requests are archived.
+          </p>
+          <div className="mt-4">
+            {isLoadingRequests ? (
+              <p className="text-sm text-muted-foreground">Loading requests...</p>
+            ) : (
+              <RequestsList
+                requests={incomingRequests}
+                onSelect={(selection) => {
+                  void handleRequestSelection(selection);
+                }}
+                onIgnore={(request) => handleIgnoreRequest(request)}
+              />
+            )}
+          </div>
+        </section>
       )}
     </div>
   );

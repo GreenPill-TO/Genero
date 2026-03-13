@@ -1429,3 +1429,30 @@
 ### Files Edited
 - `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
 - `agent-context/session-log.md`
+
+## v1.36
+### Timestamp
+- 2026-03-12 20:59:23 EDT
+
+### Objective
+- Improve dashboard navigation responsiveness and refactor Send tab action modes into inline, panel-based flows.
+
+### What Changed
+- Updated dashboard navigation behavior:
+- kept the bottom footer for phone/tablet (`lg:hidden`).
+- added a desktop left sidebar (`lg:block`) with `Home` pinned to top, `More` pinned to bottom, and middle tabs (`Receive`, `Send`, `Contacts`) vertically centered.
+- adjusted dashboard page spacing to avoid sidebar overlap on large screens (`lg:pl-28`, `lg:pb-8`).
+- Refactored Send tab mode controls:
+- moved `Manual / Scan QR Code / Pay Link / Requests` into a dedicated tab row above the main panel.
+- changed `Scan QR Code` to render inline in-panel using `QrScanModal` (no modal launch).
+- changed `Requests` to render inline as an `Incoming Requests To Pay` panel (no modal launch), including refresh and pay/ignore actions.
+- kept request-to-send flow intact by switching back to the manual send card after selecting a request.
+- preserved pay-link sending behavior by showing link input first, then rendering the locked send card once recipient/amount are loaded.
+- Updated Send tab tests for inline QR/requests behavior and validated both affected suites.
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `agent-context/session-log.md`
