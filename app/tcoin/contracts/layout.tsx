@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ModalProvider } from "@shared/contexts/ModalContext";
+import { WalletConnectErrorGuard } from "@shared/providers/walletconnect-error-guard";
 import Link from "next/link";
 import "cubid-wallet/dist/styles.css";
 import "cubid-sdk/dist/index.css";
@@ -22,6 +23,7 @@ export default function ContractsLayout({ children }: { children: React.ReactNod
     <html lang="en">
       <body>
         <QueryClientProvider client={queryClient}>
+          <WalletConnectErrorGuard />
           <Provider>
             <WalletCubidProvider>
               <ReactQueryProvider>

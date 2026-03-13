@@ -2,6 +2,7 @@
 import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
+import { WalletConnectErrorGuard } from "@shared/providers/walletconnect-error-guard";
 import "@tcoin/wallet/styles/app.scss";
 import ContentLayout from "./ContentLayout";
 import dynamic from "next/dynamic";
@@ -51,6 +52,7 @@ export default function RootLayout({
           }
         `}</style>
         <QueryClientProvider client={queryClient}>
+          <WalletConnectErrorGuard />
           <Provider>
             <WalletCubidProvider>
               <ReactQueryProvider>

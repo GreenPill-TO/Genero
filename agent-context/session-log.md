@@ -1475,3 +1475,26 @@
 - `app/tcoin/wallet/components/navbar/Navbar.tsx`
 - `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
 - `agent-context/session-log.md`
+
+## v1.38
+### Timestamp
+- 2026-03-13 12:18:51 EDT
+
+### Objective
+- Prevent wallet/dashboard crashes caused by unhandled WalletConnect disconnect errors (`this.provider.disconnect is not a function`).
+
+### What Changed
+- Added a new client-side runtime guard provider that listens to `error` and `unhandledrejection` events and suppresses only the known WalletConnect disconnect error signature.
+- Guard matching is narrow and requires both:
+- message containing `this.provider.disconnect is not a function`
+- WalletConnect markers in stack trace.
+- Mounted this guard in both app shells that include Cubid providers:
+- wallet layout
+- contracts layout
+- Verified no regressions with focused wallet/nav test runs.
+
+### Files Edited
+- `shared/providers/walletconnect-error-guard.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/contracts/layout.tsx`
+- `agent-context/session-log.md`
