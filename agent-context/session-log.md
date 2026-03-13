@@ -1352,3 +1352,19 @@
 - `app/tcoin/wallet/components/modals/VoucherRoutingPreferencesModal.tsx`
 - `app/tcoin/wallet/components/modals/index.ts`
 - `agent-context/session-log.md`
+
+## v1.32
+### Timestamp
+- 2026-03-12 20:41:32 EDT
+
+### Objective
+- Increase horizontal margins and center the Contacts tab content to match the spacing style of other dashboard tabs.
+
+### What Changed
+- Updated the Contacts tab root container to use desktop-centered padding (`lg:px-[25vw]`), aligning it with Send/Receive/More layout patterns.
+- Preserved existing mobile behavior and all contact interactions.
+- Verified with focused Contacts tab tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `agent-context/session-log.md`

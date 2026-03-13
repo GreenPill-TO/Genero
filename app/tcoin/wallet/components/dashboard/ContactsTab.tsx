@@ -348,7 +348,7 @@ export function ContactsTab({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:px-[25vw]">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">Contacts</h1>
         <div className="flex items-center gap-2">
