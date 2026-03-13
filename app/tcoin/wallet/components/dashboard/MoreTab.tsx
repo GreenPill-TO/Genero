@@ -12,9 +12,21 @@ import {
   CharitySelectModal,
   CharityContributionsModal,
   ThemeSelectModal,
+  BiaPreferencesModal,
+  VoucherRoutingPreferencesModal,
 } from "@tcoin/wallet/components/modals";
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
-import { LuBuilding2, LuCreditCard, LuDollarSign, LuHeart, LuPalette, LuShield, LuUser } from "react-icons/lu";
+import {
+  LuBuilding2,
+  LuCreditCard,
+  LuDollarSign,
+  LuHeart,
+  LuMapPin,
+  LuPalette,
+  LuShield,
+  LuShuffle,
+  LuUser,
+} from "react-icons/lu";
 import { hasAdminAccess } from "@shared/utils/access";
 import { useRouter } from "next/navigation";
 
@@ -231,6 +243,41 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     });
   };
 
+  const openBiaPreferencesModal = () => {
+    openModal({
+      content: (
+        <BiaPreferencesModal
+          closeModal={closeModal}
+          biaOptions={biaOptions}
+          primaryBiaId={primaryBiaId}
+          secondaryBiaIds={secondaryBiaIds}
+          setPrimaryBiaId={setPrimaryBiaId}
+          toggleSecondaryBia={toggleSecondaryBia}
+          onSave={saveBiaSelection}
+          isSaving={isSavingBiaSelection}
+        />
+      ),
+      title: "BIA Preferences",
+      description: "Choose your primary and secondary BIAs to personalize neighbourhood-related routing and discovery.",
+    });
+  };
+
+  const openVoucherRoutingPreferencesModal = () => {
+    openModal({
+      content: (
+        <VoucherRoutingPreferencesModal
+          closeModal={closeModal}
+          voucherPreferenceForm={voucherPreferenceForm}
+          setVoucherPreferenceForm={setVoucherPreferenceForm}
+          onSave={saveVoucherPreference}
+          isSaving={isSavingVoucherPreference}
+        />
+      ),
+      title: "Voucher Routing Preferences",
+      description: "Control trust/blocked/default routing behavior for merchant or token voucher paths.",
+    });
+  };
+
   const isAdmin = hasAdminAccess(userData?.cubidData?.is_admin ?? userData?.user?.is_admin);
 
   const handleOpenAdmin = () => {
@@ -268,97 +315,12 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           <Button type="button" className="w-full justify-start" onClick={openThemeModal}>
             <LuPalette className="mr-2 h-4 w-4" /> Select Theme
           </Button>
-          <div className="rounded-md border border-border p-3 space-y-2">
-            <p className="text-sm font-semibold">BIA Preferences</p>
-            <select
-              value={primaryBiaId}
-              onChange={(event) => setPrimaryBiaId(event.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              {biaOptions.map((bia) => (
-                <option key={bia.id} value={bia.id}>
-                  {bia.code} · {bia.name}
-                </option>
-              ))}
-            </select>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Secondary BIAs</p>
-              {biaOptions
-                .filter((bia) => bia.id !== primaryBiaId)
-                .map((bia) => (
-                  <label key={bia.id} className="flex items-center gap-2 text-xs">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={secondaryBiaIds.includes(bia.id)}
-                      onChange={() => toggleSecondaryBia(bia.id)}
-                    />
-                    <span>
-                      {bia.code} · {bia.name}
-                    </span>
-                  </label>
-                ))}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={saveBiaSelection}
-              disabled={isSavingBiaSelection || !primaryBiaId}
-            >
-              {isSavingBiaSelection ? "Saving BIA Selection…" : "Save BIA Selection"}
-            </Button>
-          </div>
-          <div className="rounded-md border border-border p-3 space-y-2">
-            <p className="text-sm font-semibold">Voucher Routing Preferences</p>
-            <input
-              type="text"
-              value={voucherPreferenceForm.merchantStoreId}
-              onChange={(event) =>
-                setVoucherPreferenceForm((prev) => ({
-                  ...prev,
-                  merchantStoreId: event.target.value,
-                }))
-              }
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Merchant store id (optional)"
-            />
-            <input
-              type="text"
-              value={voucherPreferenceForm.tokenAddress}
-              onChange={(event) =>
-                setVoucherPreferenceForm((prev) => ({
-                  ...prev,
-                  tokenAddress: event.target.value,
-                }))
-              }
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Token address (optional)"
-            />
-            <select
-              value={voucherPreferenceForm.trustStatus}
-              onChange={(event) =>
-                setVoucherPreferenceForm((prev) => ({
-                  ...prev,
-                  trustStatus: event.target.value,
-                }))
-              }
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="default">Default</option>
-              <option value="trusted">Trusted</option>
-              <option value="blocked">Blocked</option>
-            </select>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={saveVoucherPreference}
-              disabled={isSavingVoucherPreference}
-            >
-              {isSavingVoucherPreference ? "Saving Preference…" : "Save Voucher Preference"}
-            </Button>
-          </div>
+          <Button type="button" className="w-full justify-start" onClick={openBiaPreferencesModal}>
+            <LuMapPin className="mr-2 h-4 w-4" /> BIA Preferences
+          </Button>
+          <Button type="button" className="w-full justify-start" onClick={openVoucherRoutingPreferencesModal}>
+            <LuShuffle className="mr-2 h-4 w-4" /> Voucher Routing Preferences
+          </Button>
           <Button type="button" className="w-full justify-start" onClick={handleOpenMerchant}>
             <LuBuilding2 className="mr-2 h-4 w-4" /> Open Merchant Dashboard
           </Button>

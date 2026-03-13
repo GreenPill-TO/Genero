@@ -84,6 +84,8 @@ vi.mock("@tcoin/wallet/components/modals", () => ({
       change
     </button>
   ),
+  BiaPreferencesModal: () => <div data-testid="bia-preferences-modal" />,
+  VoucherRoutingPreferencesModal: () => <div data-testid="voucher-routing-preferences-modal" />,
   ThemeSelectModal: () => <div data-testid="theme-modal" />,
 }));
 
@@ -169,6 +171,20 @@ describe("MoreTab", () => {
     fireEvent.click(screen.getByRole("button", { name: /Select Theme/i }));
     expect(openModal).toHaveBeenCalled();
     expect(openModal.mock.calls[0][0].title).toBe("Select Theme");
+  });
+
+  it("opens BIA Preferences in a dedicated modal", () => {
+    render(<MoreTab />);
+    fireEvent.click(screen.getByRole("button", { name: /BIA Preferences/i }));
+    expect(openModal).toHaveBeenCalled();
+    expect(openModal.mock.calls[0][0].title).toBe("BIA Preferences");
+  });
+
+  it("opens Voucher Routing Preferences in a dedicated modal", () => {
+    render(<MoreTab />);
+    fireEvent.click(screen.getByRole("button", { name: /Voucher Routing Preferences/i }));
+    expect(openModal).toHaveBeenCalled();
+    expect(openModal.mock.calls[0][0].title).toBe("Voucher Routing Preferences");
   });
 
   it("does not render admin controls for non-admin users", () => {

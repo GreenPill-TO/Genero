@@ -7,4 +7,6 @@ export * from "./QrScanModal";
 export * from "./ShareQrModal";
 export * from "./TopUpModal";
 export * from "./BuyTcoinModal";
+export * from "./BiaPreferencesModal";
+export * from "./VoucherRoutingPreferencesModal";
 export * from "./ThemeSelectModal";

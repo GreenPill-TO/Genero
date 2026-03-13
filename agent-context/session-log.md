@@ -1327,3 +1327,28 @@
 - `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
 - `app/api/onramp/session/route.ts`
 - `agent-context/session-log.md`
+
+## v1.31
+### Timestamp
+- 2026-03-12 20:40:25 EDT
+
+### Objective
+- Move BIA and Voucher Routing preference editors off the More tab surface into dedicated modals with user-facing explanatory preambles.
+
+### What Changed
+- Added two new dedicated modal components:
+- `BiaPreferencesModal` with preamble explaining primary vs secondary BIAs, personalization impact, and non-restrictive spending behavior.
+- `VoucherRoutingPreferencesModal` with preamble explaining trust/default/blocked routing behavior and merchant/token scope.
+- Updated More tab actions:
+- removed inline `BIA Preferences` and `Voucher Routing Preferences` detail panels,
+- added button actions that open each preference flow in its own modal.
+- Wired modal exports through the shared modal barrel.
+- Expanded MoreTab tests to verify both new modal entry points open correctly.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx`
+- `app/tcoin/wallet/components/modals/VoucherRoutingPreferencesModal.tsx`
+- `app/tcoin/wallet/components/modals/index.ts`
+- `agent-context/session-log.md`
