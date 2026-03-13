@@ -1293,3 +1293,37 @@
 - `app/tcoin/wallet/components/navbar/Navbar.tsx`
 - `app/tcoin/wallet/styles/app.scss`
 - `agent-context/session-log.md`
+
+## v1.30
+### Timestamp
+- 2026-03-12 20:37:51 EDT
+
+### Objective
+- Improve Buy TCOIN modal UX clarity and error handling for checkout startup failures.
+
+### What Changed
+- Removed duplicate modal heading text (`Buy TCOIN`) from modal body so the modal title is shown only once.
+- Switched modal content typography to dashboard style via `font-sans` (instead of inheriting homepage-style font).
+- Replaced fiat-first amount fields with a send-style dual-currency amount flow:
+- default editable input is `TCOIN`.
+- live preview shows equivalent `CAD`.
+- toggle lets user switch to editing `CAD` with equivalent `TCOIN` preview.
+- Added clearer checkout locale fields:
+- fixed checkout currency display (`CAD`),
+- country code field with explicit explanation (`CA` default used by Transak for compliance/payment methods).
+- Improved checkout startup error UX:
+- user-facing, non-technical error toast/message,
+- optional “Show technical details” expansion for debugging.
+- Hardened `POST /api/onramp/session` error responses:
+- classify config/auth/wallet/not-found session errors,
+- return user-safe error message + `errorCode`,
+- include `technicalError` only in `local/development` environments for debug UI.
+- Verified with targeted tests:
+- `app/api/onramp/session/route.test.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/api/onramp/session/route.ts`
+- `agent-context/session-log.md`

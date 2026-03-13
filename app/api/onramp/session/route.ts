@@ -26,6 +26,54 @@ function normalizeCountryCode(value: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+function shouldIncludeTechnicalErrors(): boolean {
+  const appEnv = (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase();
+  return appEnv === "local" || appEnv === "development";
+}
+
+function classifySessionError(message: string): {
+  status: number;
+  userError: string;
+  errorCode: string;
+} {
+  if (message === "Unauthorized") {
+    return {
+      status: 401,
+      userError: "Unauthorized",
+      errorCode: "AUTH_UNAUTHORIZED",
+    };
+  }
+
+  if (message.startsWith("No EVM wallet")) {
+    return {
+      status: 400,
+      userError: "No EVM wallet found for this user. Connect wallet before using Buy TCOIN.",
+      errorCode: "WALLET_NOT_FOUND",
+    };
+  }
+
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("invalid hex bytes value") ||
+    lower.includes("private key") ||
+    lower.includes("onramp_") ||
+    lower.includes("must be a valid 0x address")
+  ) {
+    return {
+      status: 500,
+      userError:
+        "Buy TCOIN checkout is temporarily unavailable due to server configuration. Please use Top Up with Interac eTransfer for now.",
+      errorCode: "ONRAMP_CONFIG_ERROR",
+    };
+  }
+
+  return {
+    status: 500,
+    userError: "Could not create checkout session right now. Please try again shortly.",
+    errorCode: "ONRAMP_SESSION_CREATE_FAILED",
+  };
+}
+
 async function resolveUserRecipientWallet(serviceRole: any, userId: number): Promise<`0x${string}`> {
   const { data, error } = await serviceRole
     .from("wallet_list")
@@ -183,10 +231,14 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected onramp session error";
-    const status = message === "Unauthorized" ? 401 : message.startsWith("No EVM wallet") ? 400 : 500;
+    const { status, userError, errorCode } = classifySessionError(message);
+    const includeTechnicalError = shouldIncludeTechnicalErrors();
+
     return NextResponse.json(
       {
-        error: message,
+        error: userError,
+        errorCode,
+        technicalError: includeTechnicalError ? message : undefined,
         fallback: "Use Top Up with Interac eTransfer.",
       },
       { status }
