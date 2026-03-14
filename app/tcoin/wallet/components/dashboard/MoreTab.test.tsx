@@ -44,9 +44,21 @@ const useAuthMock = vi.hoisted(() =>
     },
   }))
 );
+const useControlPlaneAccessMock = vi.hoisted(() =>
+  vi.fn(() => ({
+    data: {
+      canAccessAdminDashboard: false,
+      canAccessCityManager: false,
+    },
+  }))
+);
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock("@shared/api/hooks/useControlPlaneAccess", () => ({
+  useControlPlaneAccess: () => useControlPlaneAccessMock(),
 }));
 
 const pushMock = vi.hoisted(() => vi.fn());
@@ -104,6 +116,12 @@ describe("MoreTab", () => {
           is_admin: false,
           activeProfile: createProfile(),
         },
+      },
+    });
+    useControlPlaneAccessMock.mockReturnValue({
+      data: {
+        canAccessAdminDashboard: false,
+        canAccessCityManager: false,
       },
     });
   });
@@ -193,6 +211,12 @@ describe("MoreTab", () => {
           is_admin: true,
           activeProfile: createProfile(),
         },
+      },
+    });
+    useControlPlaneAccessMock.mockReturnValue({
+      data: {
+        canAccessAdminDashboard: true,
+        canAccessCityManager: true,
       },
     });
 

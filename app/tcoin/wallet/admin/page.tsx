@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { useControlPlaneAccess } from "@shared/api/hooks/useControlPlaneAccess";
 import { useRouter } from "next/navigation";
 import { createClient } from "@shared/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
@@ -18,7 +19,6 @@ import { Input } from "@shared/components/ui/Input";
 import { Textarea } from "@shared/components/ui/TextArea";
 import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui/alert";
 import { toast } from "react-toastify";
-import { hasAdminAccess } from "@shared/utils/access";
 
 type OnRampRequest = {
   id: number;
@@ -330,6 +330,7 @@ export default function AdminDashboardPage() {
   const { userData, isLoading } = useAuth();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const controlPlaneAccess = useControlPlaneAccess("tcoin", !isLoading);
   const isMountedRef = useRef(true);
 
   const [onRampRequests, setOnRampRequests] = useState<OnRampRequest[]>([]);
@@ -440,47 +441,34 @@ export default function AdminDashboardPage() {
     });
   }, [offRampRequests, buildOffRampEditState]);
 
-  const isAdmin = hasAdminAccess(
-    userData?.cubidData?.is_admin ?? userData?.user?.is_admin
-  );
+  const canAccessAdminDashboard = controlPlaneAccess.data?.canAccessAdminDashboard === true;
+  const accessError = controlPlaneAccess.error instanceof Error ? controlPlaneAccess.error.message : null;
 
   useEffect(() => {
-    if (!isLoading && !isAdmin) {
+    if (isLoading || controlPlaneAccess.isLoading) {
+      return;
+    }
+
+    if (accessError === "Unauthorized" || (!accessError && !canAccessAdminDashboard)) {
       router.replace("/dashboard");
     }
-  }, [isLoading, isAdmin, router]);
+  }, [accessError, canAccessAdminDashboard, controlPlaneAccess.isLoading, isLoading, router]);
 
   const loadRequests = useCallback(async () => {
     if (!isMountedRef.current) return;
+    if (!canAccessAdminDashboard) return;
 
     setIsFetching(true);
     setLoadError(null);
 
     try {
-      const [onRampResult, offRampResult, statusResult] = await Promise.all([
-        supabase
-          .from("interac_transfer")
-          .select(
-            "id, created_at, amount, amount_override, status, admin_notes, bank_reference, interac_code, is_sent, approved_timestamp, user_id, users(full_name, email)"
-          )
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("off_ramp_req")
-          .select(
-            "id, created_at, updated_at, cad_to_user, tokens_burned, exchange_rate, cad_off_ramp_fee, admin_notes, bank_reference_number, status, interac_transfer_target, wallet_account, user_id, users(full_name, email)"
-          )
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("ref_request_statuses")
-          .select("status")
-          .order("status", { ascending: true }),
-      ]);
+      const body = await fetchJson<{
+        onRampRequests?: Array<Record<string, unknown>>;
+        offRampRequests?: Array<Record<string, unknown>>;
+        statuses?: Array<Record<string, unknown>>;
+      }>("/api/admin/ramp-requests?citySlug=tcoin");
 
-      if (onRampResult.error) throw onRampResult.error;
-      if (offRampResult.error) throw offRampResult.error;
-      if (statusResult.error) throw statusResult.error;
-
-      const normalisedOnRamps: OnRampRequest[] = (onRampResult.data ?? []).map(
+      const normalisedOnRamps: OnRampRequest[] = (body.onRampRequests ?? []).map(
         (row: Record<string, unknown>) => {
           const { name, email } = extractUserInfo(row.users);
           return {
@@ -501,7 +489,7 @@ export default function AdminDashboardPage() {
         }
       );
 
-      const normalisedOffRamps: OffRampRequest[] = (offRampResult.data ?? []).map(
+      const normalisedOffRamps: OffRampRequest[] = (body.offRampRequests ?? []).map(
         (row: Record<string, unknown>) => {
           const { name, email } = extractUserInfo(row.users);
           const status = normaliseString(row.status) as OffRampStatus | null;
@@ -527,7 +515,7 @@ export default function AdminDashboardPage() {
         }
       );
 
-      const statusValues = (statusResult.data ?? [])
+      const statusValues = (body.statuses ?? [])
         .map((row: Record<string, unknown>) => normaliseString(row.status))
         .filter((value): value is string => Boolean(value));
 
@@ -540,20 +528,22 @@ export default function AdminDashboardPage() {
     } catch (error) {
       console.error("Failed to load ramp requests", error);
       if (isMountedRef.current) {
-        setLoadError("Unable to load the latest ramp requests. Please try again.");
+        setLoadError(
+          error instanceof Error ? error.message : "Unable to load the latest ramp requests. Please try again."
+        );
       }
     } finally {
       if (isMountedRef.current) {
         setIsFetching(false);
       }
     }
-  }, [supabase]);
+  }, [canAccessAdminDashboard]);
 
   useEffect(() => {
-    if (!isLoading && isAdmin) {
+    if (!isLoading && !controlPlaneAccess.isLoading && canAccessAdminDashboard) {
       void loadRequests();
     }
-  }, [isLoading, isAdmin, loadRequests]);
+  }, [canAccessAdminDashboard, controlPlaneAccess.isLoading, isLoading, loadRequests]);
 
   const loadControlPlaneData = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -633,10 +623,10 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && isAdmin) {
+    if (!isLoading && !controlPlaneAccess.isLoading && canAccessAdminDashboard) {
       void loadControlPlaneData();
     }
-  }, [isLoading, isAdmin, loadControlPlaneData]);
+  }, [canAccessAdminDashboard, controlPlaneAccess.isLoading, isLoading, loadControlPlaneData]);
 
   useEffect(() => {
     if (!controlsForm.biaId) return;
@@ -1134,11 +1124,26 @@ export default function AdminDashboardPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || controlPlaneAccess.isLoading) {
     return <div className="p-6 text-sm">Checking admin permissions…</div>;
   }
 
-  if (!isAdmin) {
+  if (accessError && accessError !== "Unauthorized") {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Could not verify access</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{accessError}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!canAccessAdminDashboard) {
     return (
       <div className="p-6">
         <Card>

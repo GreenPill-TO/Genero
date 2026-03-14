@@ -1,3 +1,51 @@
+## v1.19
+### Timestamp
+- 2026-03-13 23:38:00 EDT
+
+### Objective
+- Add an explicit repository guardrail preventing agents from changing the linked Supabase database without human approval.
+
+### What Changed
+- Updated `AGENTS.md` to state that agents must never directly modify the linked Supabase database.
+- Added a second explicit instruction requiring agents to stop and ask for human permission before any Supabase command that could change the linked database, including `supabase db push`, `supabase migration up`, `supabase db reset --linked`, `supabase link`, and other `supabase --linked` write operations.
+
+### Files Edited
+- `AGENTS.md`
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+
+## v1.18
+### Timestamp
+- 2026-03-13 23:33:00 EDT
+
+### Objective
+- Align `/admin` and `/city-manager` UI access with the same app-scoped API role checks, and diagnose the failing legacy ramp-request loader on `/admin`.
+
+### What Changed
+- Added a shared control-plane access API (`/api/control-plane/access`) that resolves the active app instance and checks `roles` for `admin`/`operator`.
+- Updated wallet More-tab shortcuts so the City Admin and Admin Dashboard buttons only render when that API confirms access, instead of relying on the local `is_admin` profile flag.
+- Updated `/admin` and `/city-manager` pages to wait for the same server-side access decision before loading protected data and to redirect back to `/dashboard` when the user lacks the required role.
+- Moved `/admin` legacy ramp-request reads behind a new server route (`/api/admin/ramp-requests`) so the browser no longer queries protected legacy tables directly.
+- Added explicit diagnostics for missing legacy ramp schema so admin users now see the actual missing table/column/relationship failure instead of the previous generic load error.
+- Confirmed the repository migrations do not fully describe the legacy ramp-request schema currently queried by `/admin`:
+- `interac_transfer` and `off_ramp_req` are only minimally defined in-repo, while the UI expects additional legacy columns.
+- `ref_request_statuses` is referenced by the UI but is not created anywhere under `supabase/migrations/`.
+- Added targeted Vitest coverage for More-tab access gating, admin access gating plus ramp-request loading, and direct city-manager redirect behavior.
+
+### Files Edited
+- `app/api/control-plane/access/route.ts`
+- `app/api/admin/ramp-requests/route.ts`
+- `shared/api/hooks/useControlPlaneAccess.ts`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/admin/page.test.tsx`
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/city-manager/page.test.tsx`
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+- `agent-context/functional-spec.md`
+
 ## v1.17
 ### Timestamp
 - 2026-03-12 11:10:00 EDT

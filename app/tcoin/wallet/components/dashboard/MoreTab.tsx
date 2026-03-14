@@ -27,7 +27,7 @@ import {
   LuShuffle,
   LuUser,
 } from "react-icons/lu";
-import { hasAdminAccess } from "@shared/utils/access";
+import { useControlPlaneAccess } from "@shared/api/hooks/useControlPlaneAccess";
 import { useRouter } from "next/navigation";
 
 const DEFAULT_CHARITY_DATA = {
@@ -47,6 +47,7 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   const userBalance = Number.parseFloat(rawBalance) || 0;
   const activeProfile = userData?.cubidData?.activeProfile;
   const router = useRouter();
+  const controlPlaneAccess = useControlPlaneAccess("tcoin");
   const [selectedCharity, setSelectedCharity] = useState("None");
   const [biaOptions, setBiaOptions] = useState<Array<{ id: string; code: string; name: string }>>([]);
   const [primaryBiaId, setPrimaryBiaId] = useState<string>("");
@@ -300,7 +301,8 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     });
   };
 
-  const isAdmin = hasAdminAccess(userData?.cubidData?.is_admin ?? userData?.user?.is_admin);
+  const canAccessCityManager = controlPlaneAccess.data?.canAccessCityManager === true;
+  const canAccessAdminDashboard = controlPlaneAccess.data?.canAccessAdminDashboard === true;
 
   const handleOpenAdmin = () => {
     router.push("/admin");
@@ -345,12 +347,12 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           <Button type="button" className="w-full justify-start" onClick={handleOpenMerchant}>
             <LuBuilding2 className="mr-2 h-4 w-4" /> {merchantActionLabel}
           </Button>
-          {isAdmin && (
+          {canAccessCityManager && (
             <Button type="button" className="w-full justify-start" onClick={handleOpenCityAdmin}>
               <LuClipboardList className="mr-2 h-4 w-4" /> Open City Admin
             </Button>
           )}
-          {isAdmin && (
+          {canAccessAdminDashboard && (
             <Button type="button" className="w-full justify-start" onClick={handleOpenAdmin}>
               <LuShield className="mr-2 h-4 w-4" /> Open Admin Dashboard
             </Button>

@@ -110,3 +110,5 @@ Agents **must** read and follow `workflow.md` each time.
 * Pre-commit hook **warns** (not blocks) if ESLint and similar (e.g. in Foundry) cannot start.
 * Session log must bump version +1 for each session
 * All new external calls must use SafeERC20 / Address.functionCall and be covered in tests.
+* Agents must **never** directly modify the linked Supabase database. Only a human may run commands that target the linked database and change its state.
+* Agents must always stop and ask for explicit human permission before proposing or running any Supabase command that could change the linked database, including `supabase db push`, `supabase migration up`, `supabase db reset --linked`, `supabase link`, or any `supabase --linked` write operation.
