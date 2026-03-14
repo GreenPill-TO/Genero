@@ -435,9 +435,22 @@ export default function MerchantDashboardPage() {
 
   const mapEmbedSrc = useMemo(() => {
     if (!geocodeReady) return null;
-    return `https://www.openstreetmap.org/export/embed.html?layer=mapnik&marker=${encodeURIComponent(
-      `${form.lat},${form.lng}`
-    )}`;
+    const lat = Number.parseFloat(form.lat);
+    const lng = Number.parseFloat(form.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    // Approximate a neighborhood-scale viewport (~1000m total span).
+    const latSpan = 1000 / 111_320;
+    const lngSpan = 1000 / (111_320 * Math.max(Math.cos((lat * Math.PI) / 180), 0.1));
+    const minLat = lat - latSpan / 2;
+    const maxLat = lat + latSpan / 2;
+    const minLng = lng - lngSpan / 2;
+    const maxLng = lng + lngSpan / 2;
+    const bbox = `${minLng},${minLat},${maxLng},${maxLat}`;
+
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(
+      bbox
+    )}&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`;
   }, [geocodeReady, form.lat, form.lng]);
 
   const saveCurrentStep = async () => {
@@ -679,6 +692,7 @@ export default function MerchantDashboardPage() {
               <div className="space-y-3">
                 <Textarea
                   placeholder="123 Main St, Smallville, England"
+                  className="placeholder:text-muted-foreground/55"
                   value={form.addressText}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, addressText: event.target.value, lat: "", lng: "" }))
@@ -769,7 +783,6 @@ export default function MerchantDashboardPage() {
                 {wizardStep === 3 && (
                   <Button
                     type="button"
-                    className="bg-[#d600d6] text-white hover:bg-[#bc00bc] dark:bg-[#ff99ff] dark:text-black dark:hover:bg-[#ffb3ff]"
                     onClick={() => void lookupAddress()}
                     disabled={isGeocoding || isSavingStep || isSubmitting || form.addressText.trim().length === 0}
                   >

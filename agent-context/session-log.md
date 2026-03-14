@@ -1829,3 +1829,23 @@
 ### Files Edited
 - `app/tcoin/wallet/merchant/page.tsx`
 - `agent-context/session-log.md`
+
+## v1.51
+### Timestamp
+- 2026-03-13 21:51:23 EDT
+
+### Objective
+- Align step-3 geocode CTA/button styling and improve address/map usability.
+
+### What Changed
+- Removed hardcoded color override from step-3 `Find this address` button so it uses the standard app button styling (shared CSS theme pink).
+- Lightened step-3 address placeholder text styling for better visual distinction from user-entered text.
+- Updated OSM embed URL generation to include a computed neighborhood-scale bbox (~1000m span) centered on the geocoded coordinates.
+- Kept marker centered on the resolved address while defaulting initial view to local neighborhood scale instead of global zoom.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
