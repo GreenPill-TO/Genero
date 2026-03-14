@@ -95,8 +95,7 @@ export async function POST(req: Request) {
       .eq("city_slug", citySlug)
       .eq("chain_id", chainId)
       .eq("pool_address", poolAddress)
-      .eq("token_address", tokenAddress)
-      .eq("rule_status", "active");
+      .eq("token_address", tokenAddress);
 
     if (merchantStoreId == null) {
       existingQuery = existingQuery.is("merchant_store_id", null);

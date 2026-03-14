@@ -19,8 +19,8 @@ const WalletCubidProvider = dynamic(
   () => import('cubid-wallet').then((mod) => mod.WalletCubidProvider),
   { ssr: false }
 );
-import 'cubid-wallet/dist/styles.css'
-import 'cubid-sdk/dist/index.css'
+import "cubid-wallet/dist/styles.css";
+import "cubid-sdk/dist/index.css";
 
 const queryClient = new QueryClient();
 const enableCubidWalletProviders =

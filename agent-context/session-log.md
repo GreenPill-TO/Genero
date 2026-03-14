@@ -1,3 +1,35 @@
+## v1.20
+### Timestamp
+- 2026-03-14 02:20:00 EDT
+
+### Objective
+- Address the outstanding inline review comments on PR #55 covering voucher lookups, dashboard tab syncing, top-up CAD display fallback, client auth bypass safety, env documentation, and control-plane access caching.
+
+### What Changed
+- Fixed `app/api/vouchers/preferences/route.ts` so scope filters are applied before `.limit(1).maybeSingle()`, avoiding a finalized Supabase builder being filtered afterward.
+- Fixed `app/api/vouchers/compatibility/route.ts` so existing-rule lookup no longer filters to active rules only, preventing duplicate rows when reactivating an inactive rule scope.
+- Updated `app/tcoin/wallet/dashboard/page.tsx` so programmatic tab changes now flow through the URL-backed tab handler instead of mutating local tab state independently.
+- Updated `app/tcoin/wallet/components/modals/TopUpModal.tsx` to use one shared fiat fallback calculation for both submit-time routing and the displayed CAD amount.
+- Tightened the client-only auth bypass in `app/tcoin/wallet/ContentLayout.tsx` so it only activates outside production, and kept the effect dependency list aligned.
+- Updated `shared/api/hooks/useControlPlaneAccess.ts` so the React Query cache key includes the authenticated user id, preventing stale access state from leaking across account switches.
+- Documented `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS` in `.env.local.example`.
+- Added focused regression tests for dashboard history deep-linking, top-up CAD fallback, and the control-plane access query key.
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+- `app/api/vouchers/preferences/route.ts`
+- `app/api/vouchers/compatibility/route.ts`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/components/modals/TopUpModal.tsx`
+- `app/tcoin/wallet/components/modals/TopUpModal.test.tsx`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `shared/api/hooks/useControlPlaneAccess.ts`
+- `shared/api/hooks/useControlPlaneAccess.test.ts`
+- `.env.local.example`
+
 ## v1.19
 ### Timestamp
 - 2026-03-13 23:38:00 EDT

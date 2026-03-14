@@ -11,9 +11,6 @@ import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export const publicPaths = ["/", "/resources", "/contact", "/ecosystem"];
-const bypassAuthInLocalDev = ["local", "development"].includes(
-  (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
-);
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
@@ -21,6 +18,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname();
   const isPublic = publicPaths.includes(pathname);
+  const bypassAuthInLocalDev =
+    process.env.NODE_ENV !== "production" &&
+    ["local", "development"].includes(
+      (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
+    );
 
   const bodyClass = cn(
     "min-h-screen",
@@ -35,7 +37,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     if (!isLoading && !isAuthenticated && !isPublic && !bypassAuthInLocalDev) {
       router.push("/");
     }
-  }, [isAuthenticated, isLoading, isPublic, router]);
+  }, [bypassAuthInLocalDev, isAuthenticated, isLoading, isPublic, router]);
 
   if (isLoading) {
     return <div className={bodyClass}>...loading </div>;
