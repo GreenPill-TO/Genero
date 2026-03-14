@@ -1,3 +1,417 @@
+## v1.20
+### Timestamp
+- 2026-03-14 02:20:00 EDT
+
+### Objective
+- Address the outstanding inline review comments on PR #55 covering voucher lookups, dashboard tab syncing, top-up CAD display fallback, client auth bypass safety, env documentation, and control-plane access caching.
+
+### What Changed
+- Fixed `app/api/vouchers/preferences/route.ts` so scope filters are applied before `.limit(1).maybeSingle()`, avoiding a finalized Supabase builder being filtered afterward.
+- Fixed `app/api/vouchers/compatibility/route.ts` so existing-rule lookup no longer filters to active rules only, preventing duplicate rows when reactivating an inactive rule scope.
+- Updated `app/tcoin/wallet/dashboard/page.tsx` so programmatic tab changes now flow through the URL-backed tab handler instead of mutating local tab state independently.
+- Updated `app/tcoin/wallet/components/modals/TopUpModal.tsx` to use one shared fiat fallback calculation for both submit-time routing and the displayed CAD amount.
+- Tightened the client-only auth bypass in `app/tcoin/wallet/ContentLayout.tsx` so it only activates outside production, and kept the effect dependency list aligned.
+- Updated `shared/api/hooks/useControlPlaneAccess.ts` so the React Query cache key includes the authenticated user id, preventing stale access state from leaking across account switches.
+- Documented `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS` in `.env.local.example`.
+- Added focused regression tests for dashboard history deep-linking, top-up CAD fallback, and the control-plane access query key.
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+- `app/api/vouchers/preferences/route.ts`
+- `app/api/vouchers/compatibility/route.ts`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/components/modals/TopUpModal.tsx`
+- `app/tcoin/wallet/components/modals/TopUpModal.test.tsx`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `shared/api/hooks/useControlPlaneAccess.ts`
+- `shared/api/hooks/useControlPlaneAccess.test.ts`
+- `.env.local.example`
+
+## v1.19
+### Timestamp
+- 2026-03-13 23:38:00 EDT
+
+### Objective
+- Add an explicit repository guardrail preventing agents from changing the linked Supabase database without human approval.
+
+### What Changed
+- Updated `AGENTS.md` to state that agents must never directly modify the linked Supabase database.
+- Added a second explicit instruction requiring agents to stop and ask for human permission before any Supabase command that could change the linked database, including `supabase db push`, `supabase migration up`, `supabase db reset --linked`, `supabase link`, and other `supabase --linked` write operations.
+
+### Files Edited
+- `AGENTS.md`
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+
+## v1.18
+### Timestamp
+- 2026-03-13 23:33:00 EDT
+
+### Objective
+- Align `/admin` and `/city-manager` UI access with the same app-scoped API role checks, and diagnose the failing legacy ramp-request loader on `/admin`.
+
+### What Changed
+- Added a shared control-plane access API (`/api/control-plane/access`) that resolves the active app instance and checks `roles` for `admin`/`operator`.
+- Updated wallet More-tab shortcuts so the City Admin and Admin Dashboard buttons only render when that API confirms access, instead of relying on the local `is_admin` profile flag.
+- Updated `/admin` and `/city-manager` pages to wait for the same server-side access decision before loading protected data and to redirect back to `/dashboard` when the user lacks the required role.
+- Moved `/admin` legacy ramp-request reads behind a new server route (`/api/admin/ramp-requests`) so the browser no longer queries protected legacy tables directly.
+- Added explicit diagnostics for missing legacy ramp schema so admin users now see the actual missing table/column/relationship failure instead of the previous generic load error.
+- Confirmed the repository migrations do not fully describe the legacy ramp-request schema currently queried by `/admin`:
+- `interac_transfer` and `off_ramp_req` are only minimally defined in-repo, while the UI expects additional legacy columns.
+- `ref_request_statuses` is referenced by the UI but is not created anywhere under `supabase/migrations/`.
+- Added targeted Vitest coverage for More-tab access gating, admin access gating plus ramp-request loading, and direct city-manager redirect behavior.
+
+### Files Edited
+- `app/api/control-plane/access/route.ts`
+- `app/api/admin/ramp-requests/route.ts`
+- `shared/api/hooks/useControlPlaneAccess.ts`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/admin/page.test.tsx`
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/city-manager/page.test.tsx`
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+- `agent-context/functional-spec.md`
+
+## v1.17
+### Timestamp
+- 2026-03-12 11:10:00 EDT
+
+### Objective
+- Implement the new one-transaction reserve mint router flow (`mintTcoinWithUSDC`) in the TorontoCoin contract suite, including interfaces, tests, and architecture/spec documentation.
+
+### What Changed
+- Added `TcoinMintRouter` with:
+- generic input-token mint path (`mintTcoinWithToken`) and USDC convenience wrapper (`mintTcoinWithUSDC`),
+- adapter + treasury wiring via dedicated interfaces,
+- on-chain safety controls: deadline, token allowlist, slippage checks (`minCadmOut`, `minTcoinOut`), `Pausable`, and `ReentrancyGuard`,
+- balance-delta enforcement for swap and mint outputs,
+- refund handling for per-call residual `tokenIn`/`CADm`,
+- owner-managed runtime configuration for adapter, treasury, CADm config, USDC token, and enabled input tokens.
+- Added dedicated interfaces:
+- `ISwapAdapter` for token-in -> CADm swap abstraction and previewing.
+- `ITreasuryMinting` for treasury minting/preview calls used by the router.
+- Added new Foundry unit tests and mocks covering:
+- happy paths (USDC + generic token),
+- deadline/amount/recipient/allowlist validation failures,
+- slippage guard failures for swap and mint outputs,
+- pausable/owner-only behavior,
+- refund behavior,
+- malicious adapter reported-output mismatch,
+- adapter callback reentrancy attempt handling.
+- Added contract-level and architecture documentation for the router design and rollout assumptions.
+- Verified implementation with `forge build` and router-focused tests (`14 passed, 0 failed`).
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.sol`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.md`
+- `contracts/foundry/src/torontocoin/interfaces/ISwapAdapter.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryMinting.sol`
+- `contracts/foundry/test/unit/torontocoin/TcoinMintRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/mocks/MockERC20.sol`
+- `contracts/foundry/test/unit/torontocoin/mocks/MockSwapAdapter.sol`
+- `contracts/foundry/test/unit/torontocoin/mocks/MockTreasuryMinting.sol`
+- `docs/mintTcoinWithUSDC-architecture.md`
+- `agent-context/session-log.md`
+
+## v1.16
+### Timestamp
+- 2026-03-12 03:25:00 EDT
+
+### Objective
+- Implement the TorontoCoin hardening + Sarafu-accurate integration pass: close outstanding torontocoin README items first, then align indexer/API/wallet behavior to the real Sarafu contract ABI semantics.
+
+### What Changed
+- Hardened and reconciled the new `torontocoin` contract suite to compile and test together under one shared interface model (`interfaces/*`).
+- Enforced deadline-gated governance execution while preserving early approval semantics.
+- Reconciled Charity/Steward coupling onto canonical `syncCharityAppointment(...)` flow and added treasury-required charity helper methods.
+- Fixed OZ v4 compatibility and compile blockers across contracts/scripts/tests (Ownable initializer patterns, token transfer hooks, script stack-depth, legacy test removal).
+- Replaced guessed Sarafu ABI usage with pinned semantics:
+- quote path now prefers pool `getQuote(out,in,amount)` and falls back to quoter `valueFor(out,in,amount)`.
+- execution path now uses pool `withdraw(out,in,amount)` (not `swap(...)`).
+- limiter reads now use canonical `limitOf(token,pool)` for voucher credit limits.
+- Updated voucher routing API/contracts integration:
+- `/api/vouchers/route` now resolves TCOIN decimals and returns quote-derived `expectedVoucherOut`, `minVoucherOut`, `quoteSource`, and `feePpm`.
+- fallback behavior is deterministic when quote paths are unavailable.
+- Updated wallet send flow to honor ABI-accurate route metadata and prevent silent fallback when a swap succeeded but transfer/slippage failed; errors now surface explicitly with swap tx context.
+- Extended indexer BIA diagnostics with explicit component mismatch counts (`componentMismatches`) for DB mapping vs on-chain pool tuple divergence.
+- Updated architecture docs with ABI-accurate Sarafu routing/limit semantics and mismatch diagnostics.
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/src/torontocoin/GeneroToken.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/CharityRegistry.sol`
+- `contracts/foundry/src/torontocoin/StewardRegistry.sol`
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/ReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/OracleRouter.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ICharityRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IStewardRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IOracleRouter.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITCOINToken.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IGovernance.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `contracts/foundry/test/unit/torontocoin/StewardSync.t.sol`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `contracts/foundry/test/unit/torontocoin-v2/VotingV2.t.sol`
+- `services/indexer/src/discovery/abis.ts`
+- `services/indexer/src/vouchers.ts`
+- `services/indexer/src/normalize/persist.ts`
+- `services/indexer/src/bia.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/types.ts`
+- `shared/lib/sarafu/abis.ts`
+- `shared/lib/sarafu/client.ts`
+- `shared/lib/vouchers/types.ts`
+- `shared/lib/vouchers/routing.ts`
+- `shared/lib/vouchers/onchain.ts`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/lib/indexer/types.ts`
+- `app/api/vouchers/route/route.ts`
+- `app/api/vouchers/route/route.test.ts`
+- `app/api/vouchers/merchants/route.ts`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `docs/indexer-architecture.md`
+- `docs/bia-pools-indexer-architecture.md`
+- `agent-context/session-log.md`
+## v1.15
+### Timestamp
+- 2026-03-11 19:33:00 EDT
+
+### Objective
+- Record the latest state after voucher-layer integration work and prepare a commit while explicitly excluding Sarafu read-only reference docs under `contracts/foundry/src/registry/sarafu-read-only`.
+
+### What Changed
+- Confirmed there are no new code changes pending after `v1.14`.
+- Kept `contracts/foundry/src/registry/sarafu-read-only/` out of commit scope as requested.
+- Added this log entry to document the exclusion and repository state.
+
+### Files Edited
+- `agent-context/session-log.md`
+
+## v1.14
+### Timestamp
+- 2026-03-11 15:07:04 EDT
+
+### Objective
+- Implement Merchant Liquidity Layer (Doc 7) on top of the existing BIA/indexer architecture: add voucher data model and APIs, extend indexer for voucher/credit state, wire wallet/admin/merchant UX, and reflect that merchant credit limits/liquidity requirements are sourced from Sarafu on-chain contracts (read-only in Genero UI, no new Genero smart-contract logic).
+
+### What Changed
+- Added `v0.97` Supabase migration for voucher-layer entities and views:
+- secondary BIA affiliations for users,
+- voucher token catalog and wallet voucher balance snapshots,
+- merchant credit/liquidity state mirror,
+- voucher compatibility rules and user voucher preferences,
+- voucher payment records,
+- wallet total-value view including voucher 1:1 equivalent rollup.
+- Added voucher API surface:
+- `GET /api/vouchers/portfolio`,
+- `GET /api/vouchers/merchants`,
+- `GET /api/vouchers/route`,
+- `GET|POST /api/vouchers/preferences`,
+- `GET|POST /api/vouchers/compatibility`,
+- `POST /api/vouchers/payment-record`.
+- Extended BIA endpoints for hybrid affiliation model:
+- `GET /api/bias/list` now returns secondary affiliations,
+- `POST /api/bias/select` now supports `secondaryBiaIds[]`.
+- Added shared voucher library (`shared/lib/vouchers`) with typed models, preference precedence, deterministic route resolution, valuation, and on-chain execution wrappers.
+- Extended indexer voucher pipeline:
+- classify voucher tokens from discovered pools excluding city core tokens,
+- compute wallet voucher + TCOIN snapshots,
+- derive merchant credit state and persist voucher summary metrics,
+- extend indexer status summary/types with voucher dimensions.
+- Updated wallet UX:
+- total balance now supports voucher-equivalent portfolio display,
+- merchant send flow can resolve voucher route, execute swap+transfer path, and deterministically fallback to TCOIN transfer,
+- `More` tab includes secondary BIA selection and voucher preference controls,
+- wallet home shows “Merchants in My Pool” data.
+- Updated admin and merchant dashboards:
+- voucher compatibility rule management in admin,
+- merchant voucher liquidity panels in admin/merchant,
+- explicit UI copy and source labels clarifying voucher issue limits and liquidity requirements are read from Sarafu on-chain contracts and shown read-only in Genero.
+- Added/updated test coverage:
+- voucher route API tests,
+- indexer status tests for voucher summary payload,
+- voucher preference precedence unit test.
+
+### Files Edited
+- `supabase/migrations/20260311130000_v0.97_merchant_liquidity_layer.sql`
+- `app/api/vouchers/portfolio/route.ts`
+- `app/api/vouchers/merchants/route.ts`
+- `app/api/vouchers/route/route.ts`
+- `app/api/vouchers/route/route.test.ts`
+- `app/api/vouchers/preferences/route.ts`
+- `app/api/vouchers/compatibility/route.ts`
+- `app/api/vouchers/payment-record/route.ts`
+- `app/api/bias/list/route.ts`
+- `app/api/bias/select/route.ts`
+- `shared/lib/vouchers/index.ts`
+- `shared/lib/vouchers/onchain.ts`
+- `shared/lib/vouchers/preferences.ts`
+- `shared/lib/vouchers/preferences.test.ts`
+- `shared/lib/vouchers/routing.ts`
+- `shared/lib/vouchers/types.ts`
+- `shared/lib/vouchers/valuation.ts`
+- `shared/hooks/useVoucherPortfolio.ts`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/lib/indexer/types.ts`
+- `services/indexer/src/vouchers.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/state/runControl.ts`
+- `services/indexer/src/types.ts`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/api/indexer/status/route.test.ts`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-7-merchant-liquidity-layer.md`
+- `agent-context/session-log.md`
+
+## v1.13
+### Timestamp
+- 2026-03-11 01:43:49 EDT
+
+### Objective
+- Realign the Neighbourhood/BIA PRD and alignment docs to the locked v1 scope: off-chain BIA operations with Sarafu on-chain pools, permissive cross-pool user spend, manual merchant approval/settlement, and explicit future-phase labeling for deferred on-chain TCOIN pool features.
+
+### What Changed
+- Added explicit v1 implementation baseline sections across PRD documents 1, 2, 4, 5, and 6.
+- Re-scoped PRD document 3 (`contract changes`) to a phased model:
+- `Required in v1`: Sarafu pool compatibility + app/indexer-derived attribution model.
+- `Optional / Future Phase`: TCOIN-native on-chain BIA registry, pool-tagged mint/redeem attribution, and on-chain pool governance controls.
+- Updated wallet/merchant/governance requirements to codify:
+- cross-pool permissive user payments city-wide,
+- wallet discovery/filter requirement for "merchants in my pool",
+- merchant redemption flow as request -> manual approval -> queued settlement.
+- Updated data-model requirements to mark center-point geospatial as v1 baseline and polygon containment as optional future phase.
+- Added a `Decision Lock (v1)` section to the BIA/indexer architecture doc reflecting all locked decisions and current operational limits.
+- Added TorontoCoin alignment note clarifying P0/P1 contract fixes remain important but are not a hard release gate for BIA v1 (off-chain + Sarafu model).
+
+### Files Edited
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-1-architecture.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-2-data-mode.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-3-contract-changes.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-4-wallet-us.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-5-merchants.md`
+- `docs/20260310-neighbourhood-pools/neighbourhood-pools-6-governance.md`
+- `docs/bia-pools-indexer-architecture.md`
+- `docs/torontocoin-contracts-current-state.md`
+- `agent-context/session-log.md`
+
+## v1.12
+### Timestamp
+- 2026-03-10 23:54:38 EDT
+
+### Objective
+- Complete BIA/redeem/governance control-plane integration in wallet admin/merchant UI, fix dynamic API routing in local dev, add route integration tests, and validate local Supabase + API smoke paths.
+
+### What Changed
+- Extended wallet admin UI to call the new BIA/redeem/governance endpoints directly for BIA creation, pool mapping, BIA controls, redemption approve/settle actions, and governance feed visibility.
+- Added a new merchant dashboard at `/merchant` for store profile/BIA assignment and redemption request workflows powered by `/api/stores*`, `/api/redemptions/*`, and `/api/governance/actions`.
+- Added merchant navigation entry from wallet `More` tab.
+- Fixed dynamic API route resolution by narrowing app rewrites to non-API paths, preventing the catch-all rewrite from swallowing `app/api` dynamic routes.
+- Added route integration tests for:
+- `POST /api/pools/buy`
+- `/api/redemptions/*` (request, list validation, approve, settle)
+- `GET /api/indexer/status` including `biaSummary`
+- Hardened the `v0.91` share-credential migration to be backward compatible with legacy schemas by adding missing columns (`user_share_encrypted.created_at`, `wallet_keys.user_share_encrypted`) when absent.
+- Added neighbourhood/BIA architecture and runbook documents under `/docs`.
+- Re-ran local Supabase reset and dynamic API smoke checks; dynamic endpoints now resolve (method/auth responses instead of 404).
+
+### Files Edited
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `next.config.js`
+- `app/api/pools/buy/route.test.ts`
+- `app/api/redemptions/routes.test.ts`
+- `app/api/indexer/status/route.test.ts`
+- `supabase/migrations/20260212150000_v0.91_user_share_credentials.sql`
+- `docs/bia-pools-indexer-architecture.md`
+- `docs/bia-pools-runbook.md`
+- `agent-context/session-log.md`
+
+## v1.11
+### Timestamp
+- 2026-03-10 21:39:19 EDT
+
+### Objective
+- Implement the Neighbourhood/BIA Pools + Indexer tandem release foundations across Supabase schema, backend APIs, indexer BIA attribution/health, and wallet buy/redeem integration points.
+
+### What Changed
+- Added the BIA/pool operational migration (`v0.96`) with BIA registry/mappings/affiliations, store profile and affiliation tables, purchase/redemption workflow tables, risk-control and governance audit tables, BIA rollup/risk indexer tables, and analytics views.
+- Added shared BIA + Sarafu server modules for auth context, app/city resolution, role/store guards, pool routing, pool/token validation, and redemption risk checks.
+- Added new API routes for BIA and operations workflows:
+- `POST /api/bias/create`
+- `GET|POST /api/bias/mappings`
+- `GET|POST /api/bias/controls`
+- `POST /api/stores`, `POST /api/stores/[id]/bia`, `POST /api/stores/risk`
+- `POST /api/pools/buy`
+- `POST /api/redemptions/request`, `GET /api/redemptions/list`, `POST /api/redemptions/[id]/approve`, `POST /api/redemptions/[id]/settle`
+- `GET /api/governance/actions`
+- Extended indexer service with BIA tandem logic:
+- mapping validation sync (`valid/stale/mismatch`) against discovery outputs,
+- per-range BIA rollup derivation from indexed raw events,
+- BIA risk signal upserts (`pending_redemption`, `redemption_pressure`, `stress_level`),
+- status summary expansion with `biaSummary` (active BIAs, mapped/unmapped pools, stale mappings, per-BIA activity).
+- Extended shared/client-facing indexer response types to include BIA summary and BIA ingestion payloads.
+- Wired wallet buy/redeem entry points to the new BIA APIs:
+- Top-up confirmation now triggers `/api/pools/buy` to create BIA-attributed purchase requests.
+- Off-ramp flow now creates `/api/redemptions/request` for store owners after burn/accounting operations.
+- Applied app-instance scoping fixes to new store/BIA endpoints so role/store checks and inserts are isolated per app instance.
+- Verified indexer unit tests still pass:
+- `services/indexer/src/state/cooldown.test.ts`
+- `services/indexer/src/discovery/pools.test.ts`
+- `services/indexer/src/normalize/fingerprint.test.ts`
+
+### Files Edited
+- `supabase/migrations/20260311110000_v0.96_bia_pools.sql`
+- `shared/lib/bia/apiAuth.ts`
+- `shared/lib/bia/server.ts`
+- `shared/lib/bia/types.ts`
+- `shared/lib/bia/index.ts`
+- `shared/lib/sarafu/abis.ts`
+- `shared/lib/sarafu/client.ts`
+- `shared/lib/sarafu/routing.ts`
+- `shared/lib/sarafu/guards.ts`
+- `shared/lib/sarafu/index.ts`
+- `app/api/bias/list/route.ts`
+- `app/api/bias/suggest/route.ts`
+- `app/api/bias/select/route.ts`
+- `app/api/bias/create/route.ts`
+- `app/api/bias/mappings/route.ts`
+- `app/api/bias/controls/route.ts`
+- `app/api/stores/route.ts`
+- `app/api/stores/[id]/bia/route.ts`
+- `app/api/stores/risk/route.ts`
+- `app/api/pools/buy/route.ts`
+- `app/api/redemptions/request/route.ts`
+- `app/api/redemptions/list/route.ts`
+- `app/api/redemptions/[id]/approve/route.ts`
+- `app/api/redemptions/[id]/settle/route.ts`
+- `app/api/governance/actions/route.ts`
+- `services/indexer/src/bia.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/state/runControl.ts`
+- `services/indexer/src/types.ts`
+- `shared/lib/indexer/types.ts`
+- `app/tcoin/wallet/components/modals/TopUpModal.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `agent-context/session-log.md`
+
 ## v0.92
 - Hardened `v0.91` passkey migration by inferring `app_instance_id` from each user’s latest `app_user_profiles` row before falling back to wallet/tcoin, preserving legacy app context where possible.
 - Added deterministic legacy credential backfill tokens plus a `credential_id NOT NULL` enforcement, deduplicated `user_encrypted_share` rows by `(wallet_key_id, app_instance_id, credential_id)`, and kept only the most recent record before the unique constraint is applied.
@@ -663,3 +1077,956 @@
 ## v0.1
 
 - Initial bootstrap: added agent-context folder and CI workflow.
+
+## v1.18
+### Timestamp
+- 2026-03-12 12:45:00 EDT
+
+### Objective
+- Implement the Buy TCOIN checkout orchestrator flow in wallet + backend (Transak sessioning, managed deposit wallets, webhook ingestion, auto-mint via `TcoinMintRouter`, session status APIs, and admin retry visibility), with new persistence schema and feature-flagged UI entry points.
+
+### What Changed
+- Added Supabase migration `v0.98` for onramp orchestration:
+- `onramp_deposit_wallets`, `onramp_checkout_sessions`, `onramp_settlement_attempts`, `onramp_provider_events`, and `onramp_operation_locks`.
+- lock RPCs: `onramp_try_acquire_lock(...)`, `onramp_release_lock(...)`.
+- admin projection view: `v_onramp_checkout_admin`.
+- RLS/grants for user-scoped session visibility and service-role settlement writes.
+- Added new onramp service module under `services/onramp/src`:
+- env/config resolver for provider/chain/router/gas/HD settings.
+- deterministic per-user deposit wallet derivation + allocation.
+- Transak session builder + webhook signature validation + event normalization.
+- settlement runner with idempotent lock, USDC detection, quote/min-output guards, gas top-up, router mint execution, attempt/session persistence, and manual-review fallback.
+- status projection helpers for timeline rendering.
+- Added wallet-facing and ops-facing API routes:
+- `POST /api/onramp/session`
+- `GET|POST /api/onramp/session/[id]`
+- `POST /api/onramp/session/[id]/retry`
+- `POST /api/onramp/webhooks/transak`
+- `POST /api/onramp/touch`
+- `GET /api/onramp/admin/sessions`
+- Added shared onramp types/feature flag helpers in `shared/lib/onramp/*`.
+- Added new wallet modal `BuyTcoinModal` with checkout session creation, embedded widget frame, timeline polling, and deterministic status toasts.
+- Wired Buy TCOIN entry points into `WalletHome` and `MoreTab` behind `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1` while preserving Interac top-up/off-ramp actions.
+- Extended admin dashboard with a new Buy TCOIN checkout sessions panel and manual retry action.
+- Updated `.env.local.example` with all required onramp env variables and examples.
+- Corrected a critical provider-status mapping bug so provider `completed/success` maps to `crypto_sent` (not `mint_complete`), preventing premature terminal session status.
+- Ran targeted verification:
+- `npm run test -- app/api/onramp/session/route.test.ts app/api/onramp/webhooks/transak/route.test.ts app/tcoin/wallet/components/dashboard/MoreTab.test.tsx` (all passing).
+- `npx tsc --noEmit` checked for touched-file regressions (resolved for changed files).
+
+### Files Edited
+- `supabase/migrations/20260312113000_v0.98_onramp_checkout.sql`
+- `services/onramp/src/config.ts`
+- `services/onramp/src/depositWallets.ts`
+- `services/onramp/src/index.ts`
+- `services/onramp/src/provider/transak.ts`
+- `services/onramp/src/settlement.ts`
+- `services/onramp/src/status.ts`
+- `services/onramp/src/types.ts`
+- `shared/lib/onramp/feature.ts`
+- `shared/lib/onramp/types.ts`
+- `app/api/onramp/session/route.ts`
+- `app/api/onramp/session/route.test.ts`
+- `app/api/onramp/session/[id]/route.ts`
+- `app/api/onramp/session/[id]/retry/route.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `app/api/onramp/touch/route.ts`
+- `app/api/onramp/admin/sessions/route.ts`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/tcoin/wallet/components/modals/index.ts`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `.env.local.example`
+- `agent-context/session-log.md`
+
+## v1.19
+### Timestamp
+- 2026-03-12 12:58:00 EDT
+
+### Objective
+- Add a detailed architecture writeup for the Buy TCOIN checkout orchestrator and document this documentation pass in session-log.
+
+### What Changed
+- Added a dedicated architecture document for the implemented onramp checkout stack:
+- component model (wallet, API routes, service layer, chain execution, persistence),
+- sequence and state-machine flows,
+- settlement algorithm and guard rails,
+- webhook/idempotency/security controls,
+- API/data contracts,
+- operations/SLA/failure-mode handling,
+- deferred hardening and next-phase items.
+- Captured this documentation-only update as a new log entry.
+
+### Files Edited
+- `docs/buy-tcoin-checkout-orchestrator-architecture.md`
+- `agent-context/session-log.md`
+
+## v1.20
+### Timestamp
+- 2026-03-12 13:08:00 EDT
+
+### Objective
+- Reduce hyperlink visual intensity in wallet light/dark themes.
+
+### What Changed
+- Updated wallet link color token to match requested values:
+- light mode link color set to `#4d004d`.
+- dark mode link color set to `#ffe6ff`.
+- Updated base link styling so anchors and `.link-btn` use `--link-color` instead of `--primary`, preventing bright-pink primary color from overriding hyperlink tone.
+
+### Files Edited
+- `app/tcoin/wallet/styles/app.scss`
+- `agent-context/session-log.md`
+
+## v1.21
+### Timestamp
+- 2026-03-12 13:11:00 EDT
+
+### Objective
+- Adjust wallet dark-mode hyperlink color to the requested softer pink.
+
+### What Changed
+- Updated wallet dark-mode `--link-color` from `#ffe6ff` to `#ffccff`.
+
+### Files Edited
+- `app/tcoin/wallet/styles/app.scss`
+- `agent-context/session-log.md`
+
+## v1.22
+### Timestamp
+- 2026-03-12 19:23:00 EDT
+
+### Objective
+- Align Buy TCOIN onramp with Transak’s secure backend widget URL generation requirement.
+
+### What Changed
+- Refactored Transak session creation to call the secure backend endpoint (`/api/v2/auth/session`) instead of building public query-string widget URLs.
+- Added backend request with required secure headers:
+- `access-token` (partner access token)
+- `authorization` (user auth token)
+- Added robust response parsing and failure handling for missing/invalid `widgetUrl` from provider response.
+- Updated session creation route to await async secure widget generation.
+- Extended onramp config/env requirements with new Transak secure widget settings.
+- Updated `.env.local.example` with new variables and staging/production endpoint examples.
+- Verified with targeted API tests and touched-file TypeScript checks.
+
+### Files Edited
+- `services/onramp/src/provider/transak.ts`
+- `services/onramp/src/config.ts`
+- `app/api/onramp/session/route.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`
+
+## v1.23
+### Timestamp
+- 2026-03-12 19:41:00 EDT
+
+### Objective
+- Make Transak user authorization token optional for secure widget URL generation while preserving partner-token security flow.
+
+### What Changed
+- Updated onramp config type and parsing so `ONRAMP_TRANSAK_USER_AUTH_TOKEN` is optional (`string | null`) instead of required.
+- Updated Transak secure widget request headers to include `authorization` only when `ONRAMP_TRANSAK_USER_AUTH_TOKEN` is present.
+- Updated `.env.local.example` docs to clarify user auth token is optional unless user-authenticated Transak sessions are being used.
+- Verified with targeted onramp API tests.
+
+### Files Edited
+- `services/onramp/src/config.ts`
+- `services/onramp/src/provider/transak.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`
+
+## v1.24
+### Timestamp
+- 2026-03-12 19:42:00 EDT
+
+### Objective
+- Migrate Transak webhook verification from required webhook secret to access-token/JWT verification, while keeping legacy HMAC as optional fallback.
+
+### What Changed
+- Made `ONRAMP_TRANSAK_WEBHOOK_SECRET` optional in onramp config.
+- Added JWT webhook verification path using `ONRAMP_TRANSAK_ACCESS_TOKEN` (HS256 verify + payload decode).
+- Updated webhook route to use unified verification+decode function:
+- accepts JWT payload verification via access token,
+- supports legacy signature mode if webhook secret is configured,
+- rejects unverifiable payloads with 401.
+- Updated service exports and webhook tests for new verification API.
+- Updated `.env.local.example` to mark webhook secret as optional legacy input.
+
+### Files Edited
+- `services/onramp/src/config.ts`
+- `services/onramp/src/provider/transak.ts`
+- `services/onramp/src/index.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`
+
+## v1.25
+### Timestamp
+- 2026-03-12 19:50:00 EDT
+
+### Objective
+- Bypass authentication requirements in local/development environments for faster wallet/onramp iteration.
+
+### What Changed
+- Added environment-gated auth bypass support when `NEXT_PUBLIC_APP_ENVIRONMENT` is `local` or `development`.
+- Updated shared API auth resolver to:
+- return normal auth context when Supabase session exists,
+- fallback to a service-role resolved user row when unauthenticated in local/dev,
+- optionally honor `AUTH_BYPASS_USER_ID` to pin bypass identity,
+- otherwise fallback to the first user in `public.users`.
+- Updated wallet content layout to skip non-public redirect-to-home for unauthenticated users in local/dev.
+- Updated indexer touch/status endpoints to allow unauthenticated invocation in local/dev only.
+- Added env template documentation for `AUTH_BYPASS_USER_ID`.
+- Verified touched files with TypeScript and reran onramp route tests.
+
+### Files Edited
+- `shared/lib/bia/apiAuth.ts`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/api/indexer/touch/route.ts`
+- `app/api/indexer/status/route.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`
+
+## v1.26
+### Timestamp
+- 2026-03-12 19:55:00 EDT
+
+### Objective
+- Reorganize `/dashboard` actions so Interac top-up appears under Buy TCOIN, and remove the Other panel from dashboard while keeping off-ramp in More.
+
+### What Changed
+- Updated `WalletHome` to remove `OtherCard` from both mobile and desktop dashboard layouts.
+- Added `Top Up with Interac eTransfer` button into the `Buy TCOIN` panel in `WalletHome`.
+- Kept `Buy TCOIN` checkout button in the same panel (feature-flagged behavior unchanged).
+- Left `Convert to CAD and Cash Out` untouched in the More tab flow.
+- Verified with `WalletHome` component test.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `agent-context/session-log.md`
+
+## v1.27
+### Timestamp
+- 2026-03-12 20:07:00 EDT
+
+### Objective
+- Simplify `/dashboard` so initial view emphasizes balance and clearly separates user intent flows: pay, top-up/buy, and request.
+
+### What Changed
+- Refactored `WalletHome` to remove the always-visible send amount form from initial load.
+- New default dashboard home now shows:
+- balance-first account surface,
+- explicit intent actions (`Pay To`, `Request`),
+- dedicated `Top Up / Buy` panel with Buy TCOIN + Interac top-up actions.
+- Added intent gating so `SendCard` only appears after user explicitly chooses `Pay To` (or deep-link scan intent), eliminating the ambiguous `Amount` panel at initial load.
+- Wired `Request` intent to switch to the Receive tab from dashboard parent.
+- Removed off-ramp as a dashboard-home action (off-ramp remains in More tab).
+- Updated `WalletHome` tests to match the new intent-driven behavior and verify send flow appears only after selecting Pay To.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `agent-context/session-log.md`
+
+## v1.28
+### Timestamp
+- 2026-03-12 20:31:10 EDT
+
+### Objective
+- Revert the dashboard to the previous layout and keep only one UX adjustment: merge the separate `Amount` section into the `Send To` panel.
+
+### What Changed
+- Restored dashboard files from the pre-redesign state so `/dashboard` behavior and structure match the prior layout.
+- Removed the standalone `Amount` card section in `SendCard` and embedded its amount input/conversion block directly inside the `Send To` card.
+- Kept all other dashboard behavior unchanged relative to the pre-redesign baseline.
+- Re-ran focused dashboard tests to confirm no regressions in restored layout and send flow interactions.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `agent-context/session-log.md`
+
+## v1.29
+### Timestamp
+- 2026-03-12 20:32:55 EDT
+
+### Objective
+- Increase contrast of the dashboard header `TCOIN` logo in both light and dark mode.
+
+### What Changed
+- Added a dedicated navbar brand-logo class (`wallet-brand-logo`) so the header logo is not constrained by generic link colors.
+- Applied theme-specific logo color tokens:
+- light mode: white logo on teal navbar.
+- dark mode: deep purple logo on white navbar.
+- Forced the brand logo to full opacity in navbar (`!opacity-100`) so non-active route dimming does not reduce readability.
+- Verified with targeted navbar tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `agent-context/session-log.md`
+
+## v1.30
+### Timestamp
+- 2026-03-12 20:37:51 EDT
+
+### Objective
+- Improve Buy TCOIN modal UX clarity and error handling for checkout startup failures.
+
+### What Changed
+- Removed duplicate modal heading text (`Buy TCOIN`) from modal body so the modal title is shown only once.
+- Switched modal content typography to dashboard style via `font-sans` (instead of inheriting homepage-style font).
+- Replaced fiat-first amount fields with a send-style dual-currency amount flow:
+- default editable input is `TCOIN`.
+- live preview shows equivalent `CAD`.
+- toggle lets user switch to editing `CAD` with equivalent `TCOIN` preview.
+- Added clearer checkout locale fields:
+- fixed checkout currency display (`CAD`),
+- country code field with explicit explanation (`CA` default used by Transak for compliance/payment methods).
+- Improved checkout startup error UX:
+- user-facing, non-technical error toast/message,
+- optional “Show technical details” expansion for debugging.
+- Hardened `POST /api/onramp/session` error responses:
+- classify config/auth/wallet/not-found session errors,
+- return user-safe error message + `errorCode`,
+- include `technicalError` only in `local/development` environments for debug UI.
+- Verified with targeted tests:
+- `app/api/onramp/session/route.test.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/api/onramp/session/route.ts`
+- `agent-context/session-log.md`
+
+## v1.31
+### Timestamp
+- 2026-03-12 20:40:25 EDT
+
+### Objective
+- Move BIA and Voucher Routing preference editors off the More tab surface into dedicated modals with user-facing explanatory preambles.
+
+### What Changed
+- Added two new dedicated modal components:
+- `BiaPreferencesModal` with preamble explaining primary vs secondary BIAs, personalization impact, and non-restrictive spending behavior.
+- `VoucherRoutingPreferencesModal` with preamble explaining trust/default/blocked routing behavior and merchant/token scope.
+- Updated More tab actions:
+- removed inline `BIA Preferences` and `Voucher Routing Preferences` detail panels,
+- added button actions that open each preference flow in its own modal.
+- Wired modal exports through the shared modal barrel.
+- Expanded MoreTab tests to verify both new modal entry points open correctly.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx`
+- `app/tcoin/wallet/components/modals/VoucherRoutingPreferencesModal.tsx`
+- `app/tcoin/wallet/components/modals/index.ts`
+- `agent-context/session-log.md`
+
+## v1.32
+### Timestamp
+- 2026-03-12 20:41:32 EDT
+
+### Objective
+- Increase horizontal margins and center the Contacts tab content to match the spacing style of other dashboard tabs.
+
+### What Changed
+- Updated the Contacts tab root container to use desktop-centered padding (`lg:px-[25vw]`), aligning it with Send/Receive/More layout patterns.
+- Preserved existing mobile behavior and all contact interactions.
+- Verified with focused Contacts tab tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `agent-context/session-log.md`
+
+## v1.33
+### Timestamp
+- 2026-03-12 20:43:04 EDT
+
+### Objective
+- Move the dashboard send action button into the `Send To` panel so action placement matches panel context.
+
+### What Changed
+- Relocated the primary send CTA (`Send...` / `Pay this request`) from below the card to inside the `Send To` section in `SendCard`.
+- Kept existing validation, modal confirmation, and disabled-state behavior unchanged.
+- Added top margin to maintain spacing inside the panel.
+- Verified with focused send-flow tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `agent-context/session-log.md`
+
+## v1.34
+### Timestamp
+- 2026-03-12 20:52:27 EDT
+
+### Objective
+- Add dashboard Recents panel and a dedicated contact profile page with send/request actions and transaction history.
+
+### What Changed
+- Added a new `Recents` panel to `/dashboard` home (mobile + desktop cards).
+- Recents logic now resolves up to 4 most recent interaction users by combining:
+- contact recency (`connections` via `fetchContactsForOwner`),
+- recent transfer counterparties (`act_transaction_entries` + wallet/user joins),
+- request counterparties (`invoice_pay_request`).
+- Recents avatars now navigate to a new contact profile route: `/dashboard/contacts/[id]`.
+- Added new contact profile page at `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx` with:
+- public profile details (name, username, avatar, bio/country/address when available, wallet),
+- transaction history between current user and contact,
+- inline amount input + `Send` button for direct payment,
+- `Request money from [user]` button opening a separate amount-entry modal that creates `invoice_pay_request`.
+- Updated WalletHome tests to support new recents data loading and routing behavior.
+- Added test coverage for opening a contact profile from the Recents panel.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.35
+### Timestamp
+- 2026-03-12 20:53:34 EDT
+
+### Objective
+- Simplify Receive tab caption copy by removing the token suffix from the default “any amount” state.
+
+### What Changed
+- Updated Receive QR caption fallback text from `Receive any amount TCOIN` to `Receive any amount`.
+- Kept amount-specific caption behavior unchanged (`Receive {amount} TCOIN`).
+- Verified with focused ReceiveCard tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `agent-context/session-log.md`
+
+## v1.36
+### Timestamp
+- 2026-03-12 20:59:23 EDT
+
+### Objective
+- Improve dashboard navigation responsiveness and refactor Send tab action modes into inline, panel-based flows.
+
+### What Changed
+- Updated dashboard navigation behavior:
+- kept the bottom footer for phone/tablet (`lg:hidden`).
+- added a desktop left sidebar (`lg:block`) with `Home` pinned to top, `More` pinned to bottom, and middle tabs (`Receive`, `Send`, `Contacts`) vertically centered.
+- adjusted dashboard page spacing to avoid sidebar overlap on large screens (`lg:pl-28`, `lg:pb-8`).
+- Refactored Send tab mode controls:
+- moved `Manual / Scan QR Code / Pay Link / Requests` into a dedicated tab row above the main panel.
+- changed `Scan QR Code` to render inline in-panel using `QrScanModal` (no modal launch).
+- changed `Requests` to render inline as an `Incoming Requests To Pay` panel (no modal launch), including refresh and pay/ignore actions.
+- kept request-to-send flow intact by switching back to the manual send card after selecting a request.
+- preserved pay-link sending behavior by showing link input first, then rendering the locked send card once recipient/amount are loaded.
+- Updated Send tab tests for inline QR/requests behavior and validated both affected suites.
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `agent-context/session-log.md`
+
+## v1.37
+### Timestamp
+- 2026-03-12 21:01:00 EDT
+
+### Objective
+- Enlarge the header camera QR scanner modal so the camera feed has enough space on open.
+
+### What Changed
+- Updated the header camera button modal config to open the QR scanner with:
+- `elSize: "4xl"` for a larger modal width.
+- `isResponsive: true` so layout adapts better across viewport sizes.
+- Added an explicit camera button accessibility label (`aria-label="Open QR scanner"`).
+- Added navbar test coverage verifying the camera button opens a large, responsive QR modal with expected modal options.
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `agent-context/session-log.md`
+
+## v1.38
+### Timestamp
+- 2026-03-13 12:18:51 EDT
+
+### Objective
+- Prevent wallet/dashboard crashes caused by unhandled WalletConnect disconnect errors (`this.provider.disconnect is not a function`).
+
+### What Changed
+- Added a new client-side runtime guard provider that listens to `error` and `unhandledrejection` events and suppresses only the known WalletConnect disconnect error signature.
+- Guard matching is narrow and requires both:
+- message containing `this.provider.disconnect is not a function`
+- WalletConnect markers in stack trace.
+- Mounted this guard in both app shells that include Cubid providers:
+- wallet layout
+- contracts layout
+- Verified no regressions with focused wallet/nav test runs.
+
+### Files Edited
+- `shared/providers/walletconnect-error-guard.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/contracts/layout.tsx`
+- `agent-context/session-log.md`
+
+## v1.39
+### Timestamp
+- 2026-03-13 12:52:07 EDT
+
+### Objective
+- Split dashboard cleanup into smaller changes: simplify `My Account`, move experimental graphs to a modal in `More`, and introduce a dedicated `Transaction History` dashboard tab.
+
+### What Changed
+- Simplified `My Account` panel:
+- removed the four internal tab buttons.
+- removed in-panel graph views and in-panel transaction history.
+- kept balance summary and wallet/explorer details.
+- added a new `View transaction history` button.
+- Added `Future app features` modal:
+- created `FutureAppFeaturesModal` containing the two existing experimental charts.
+- added `Future app features` button to `More` tab to open that modal.
+- Added a dedicated `Transaction History` dashboard tab:
+- new `TransactionHistoryTab` component fetches and displays recent `TCOIN` transfers from `act_transaction_entries` using the current user’s wallets.
+- wired dashboard state so `My Account` button opens this tab.
+- added a top-right back arrow button on small/medium screens only (`lg:hidden`) to return to main dashboard home.
+- Updated dashboard navigation:
+- desktop left sidebar now includes `History`.
+- mobile/tablet bottom footer remains unchanged (no `History` tab added there).
+- Updated/added tests for the modified dashboard/footer/more/account behavior.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/modals/FutureAppFeaturesModal.tsx`
+- `app/tcoin/wallet/components/modals/index.ts`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/index.ts`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `agent-context/session-log.md`
+
+## v1.40
+### Timestamp
+- 2026-03-13 13:12:27 EDT
+
+### Objective
+- Eliminate recurring dashboard crash caused by WalletConnect runtime disconnect errors (`this.provider.disconnect is not a function`).
+
+### What Changed
+- Updated wallet layout provider bootstrapping to make Cubid WalletConnect provider stack opt-in instead of always-on.
+- Added env-controlled switch:
+- `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS=true` to explicitly enable `cubid-sdk` + `cubid-wallet` providers.
+- default behavior is now disabled (`false`) to avoid initializing the problematic WalletConnect path in normal wallet/dashboard usage.
+- Preserved all existing app providers and rendering flow when Cubid providers are disabled.
+- Kept existing `WalletConnectErrorGuard` in place for defense-in-depth.
+- Verified no regressions on focused wallet tests (`wallet page`, `navbar`, `wallet home`).
+
+### Files Edited
+- `app/tcoin/wallet/layout.tsx`
+- `agent-context/session-log.md`
+
+## v1.41
+### Timestamp
+- 2026-03-13 13:39:05 EDT
+
+### Objective
+- Stop stale local dev instance on `3000` and swap `My Account` / `Charitable Contributions` panel positions on dashboard.
+
+### What Changed
+- Stopped the old server still listening on `:3000` so only the current app instance remains active.
+- Updated `WalletHome` card order for both mobile and desktop dashboard grids:
+- `My Account` now appears before `Charitable Contributions`.
+- `Charitable Contributions` now appears where `My Account` previously appeared.
+- Verified with focused dashboard home tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `agent-context/session-log.md`
+
+## v1.42
+### Timestamp
+- 2026-03-13 13:41:23 EDT
+
+### Objective
+- Adjust large-screen left sidebar grouping so `Home` appears with the central nav button stack (above `Receive`).
+
+### What Changed
+- Updated desktop sidebar composition in `DashboardFooter`:
+- removed the separate top-pinned `Home` item.
+- included `Home` in the centered middle group and kept button order so it appears directly above `Receive`.
+- kept `More` pinned at the bottom.
+- Verified with focused footer tests.
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `agent-context/session-log.md`
+
+## v1.43
+### Timestamp
+- 2026-03-13 15:27:57 EDT
+
+### Objective
+- Simplify `More` actions and add explicit system-theme fallback in theme settings, then fix merchant dashboard redirect behavior in local/development environments.
+
+### What Changed
+- Removed `Buy TCOIN` and `Top Up with Interac eTransfer` actions from the wallet `More` tab.
+- Added a third theme option in `Select Theme`:
+- `Remove theme override` now clears local theme preference and follows system light/dark mode again.
+- Extended dark-mode hook capabilities:
+- added explicit theme override setter.
+- added override-clear method.
+- tracked whether current mode is following system preference.
+- Updated merchant dashboard local-dev access guard:
+- `/merchant` no longer redirects to `/` in `NEXT_PUBLIC_APP_ENVIRONMENT=local|development` when profile name is absent.
+- data loading on `/merchant` is allowed in local/dev bypass mode.
+- Updated `MoreTab` tests to reflect removed actions.
+- Ran focused wallet tests for modified areas.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/modals/ThemeSelectModal.tsx`
+- `shared/hooks/useDarkMode.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.44
+### Timestamp
+- 2026-03-13 19:05:37 EDT
+
+### Objective
+- Implement merchant signup workflow with draft/pending/live/rejected lifecycle, per-city slug uniqueness, and city-manager approval APIs/UI in wallet app.
+
+### What Changed
+- Added new merchant signup schema migration (`v0.99`) with:
+- store lifecycle + signup progression fields on `stores`.
+- app-scoped slug/media/profile fields on `store_profiles`.
+- `is_admin` on `store_employees`.
+- `store_signup_events` audit table.
+- Added merchant signup backend APIs:
+- `GET /api/merchant/application/status`
+- `POST /api/merchant/application/start`
+- `POST /api/merchant/application/restart`
+- `POST /api/merchant/application/step`
+- `POST /api/merchant/application/submit`
+- `GET /api/merchant/slug-availability`
+- `POST /api/merchant/geocode` (Nominatim)
+- Added city-manager backend APIs:
+- `GET /api/city-manager/stores`
+- `POST /api/city-manager/stores/:id/approve`
+- `POST /api/city-manager/stores/:id/reject`
+- Added shared merchant-signup server/types helpers.
+- Updated store mutation APIs to require store-admin access for sensitive updates and seed first employee as admin.
+- Updated wallet More tab merchant CTA to dynamic label based on merchant application state:
+- `Sign up as Merchant`
+- `Continue Merchant Application`
+- `Open Merchant Dashboard`
+- Added admin shortcut to wallet `/city-manager`.
+- Refactored wallet merchant route:
+- moved existing live merchant workspace into `LiveMerchantDashboard`.
+- new `merchant/page.tsx` now orchestrates lifecycle states and guided 5-step signup flow with continue/restart draft handling.
+- Added wallet city-manager page at `app/tcoin/wallet/city-manager/page.tsx` with pending/live/rejected filters and approve/reject actions.
+- Extended `.env.local.example` with merchant signup feature flag and Nominatim user-agent configuration.
+
+### Verification
+- Ran `pnpm test app/tcoin/wallet/components/dashboard/MoreTab.test.tsx` (pass).
+- Ran `pnpm exec tsc --noEmit` (fails due pre-existing unrelated TS issues outside this feature scope; no filtered errors from new merchant/city-manager files).
+
+### Files Edited
+- `supabase/migrations/20260313161000_v0.99_merchant_signup_city_manager.sql`
+- `shared/lib/bia/server.ts`
+- `shared/lib/merchantSignup/types.ts`
+- `shared/lib/merchantSignup/server.ts`
+- `shared/lib/merchantSignup/application.ts`
+- `app/api/stores/route.ts`
+- `app/api/stores/[id]/bia/route.ts`
+- `app/api/merchant/application/status/route.ts`
+- `app/api/merchant/application/start/route.ts`
+- `app/api/merchant/application/restart/route.ts`
+- `app/api/merchant/application/step/route.ts`
+- `app/api/merchant/application/submit/route.ts`
+- `app/api/merchant/slug-availability/route.ts`
+- `app/api/merchant/geocode/route.ts`
+- `app/api/city-manager/stores/route.ts`
+- `app/api/city-manager/stores/[id]/approve/route.ts`
+- `app/api/city-manager/stores/[id]/reject/route.ts`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/merchant/LiveMerchantDashboard.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `.env.local.example`
+- `agent-context/session-log.md`
+
+## v1.45
+### Timestamp
+- 2026-03-13 20:28:59 EDT
+
+### Objective
+- Apply the new merchant-signup migration to the linked Supabase DB, document the architecture in `/docs`, and prepare a follow-up commit.
+
+### What Changed
+- Applied linked DB migration with `supabase db push --linked`:
+- `20260313161000_v0.99_merchant_signup_city_manager.sql`.
+- Added architecture write-up for the implemented merchant signup + city-manager solution:
+- `docs/merchant-signup-city-manager-architecture.md`.
+- Updated session log with this follow-up execution record.
+
+### Verification
+- `supabase db push --linked` completed with migration applied.
+
+### Files Edited
+- `docs/merchant-signup-city-manager-architecture.md`
+- `agent-context/session-log.md`
+
+## v1.46
+### Timestamp
+- 2026-03-13 20:45:52 EDT
+
+### Objective
+- Improve merchant signup step-1 UX content and controls.
+
+### What Changed
+- Updated merchant signup step-1 introduction copy to clearly explain:
+- merchants accept TCOIN (including partial payments),
+- each merchant belongs to one neighbourhood/BIA,
+- payments may arrive as TCOIN or local merchant tokens within the same BIA,
+- only TCOIN is redeemable to CADm on CELO,
+- redemptions are at 97% of par (3% below par), with 3% retained for charitable donations.
+- Added a `Cancel` button on step 1 of the signup wizard.
+- Step-1 cancel now closes the wizard and returns the user to the draft-application state view.
+
+### Verification
+- Reviewed rendered diff for `merchant/page.tsx` to confirm updated copy and step-1 cancel/back behavior.
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.47
+### Timestamp
+- 2026-03-13 21:01:56 EDT
+
+### Objective
+- Upgrade merchant signup UX with image uploads, live store preview, strict per-step completion gating, and clearer geocode/map behavior.
+
+### What Changed
+- Replaced step-2 image URL inputs with image upload functionality supporting both:
+- file browsing,
+- drag-and-drop upload.
+- Added Supabase storage upload flow for step-2 logo/banner assets (`profile_pictures` bucket, `merchant_assets/...` paths).
+- Added immediate visual preview handling for uploaded images and wired preview state cleanup for local blob URLs.
+- Split step 2 into two halves:
+- left side: store details + image upload controls,
+- right side: live store page preview (banner frame + overlaid circular logo frame + live name/description).
+- Added step validation gating so `Save and continue`/`Submit application` remain disabled until each step is fulfilled.
+- Enforced step-2 gating to require both banner and logo uploads (and no in-flight upload) before continue.
+- Updated step 3:
+- lat/lng are now read-only display values (no editable input fields),
+- editing address clears old coordinates until geocoded again,
+- map preview is displayed after successful geocode.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass, no errors/warnings).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.48
+### Timestamp
+- 2026-03-13 21:12:51 EDT
+
+### Objective
+- Fix step-2 merchant preview overlap behavior and align image uploads to a dedicated merchant bucket.
+
+### What Changed
+- Updated merchant signup preview layout so the logo circle is overlaid across the bottom edge of the banner (clear partial overlap).
+- Added spacing adjustments so preview text sits correctly below the overlaid logo.
+- Switched merchant image uploads to dedicated Supabase bucket constant:
+- `merchant_assets`.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.49
+### Timestamp
+- 2026-03-13 21:18:25 EDT
+
+### Objective
+- Add a migration that provisions the merchant image storage bucket and required policies.
+
+### What Changed
+- Added idempotent Supabase migration to create bucket:
+- `merchant_assets` (public).
+- Added `storage.objects` policies scoped to `merchant_assets`:
+- public `SELECT`,
+- authenticated `INSERT`,
+- authenticated `UPDATE` (required for upload upserts),
+- authenticated `DELETE`.
+
+### Files Edited
+- `supabase/migrations/20260313211500_v1.00_merchant_assets_bucket.sql`
+- `agent-context/session-log.md`
+
+## v1.50
+### Timestamp
+- 2026-03-13 21:30:40 EDT
+
+### Objective
+- Refine merchant signup step-3 address UX and CTA placement.
+
+### What Changed
+- Updated step-3 address placeholder to sample text:
+- `123 Main St, Smallville, England`.
+- Hid latitude/longitude display until geocoding succeeds.
+- Removed inline geocode button from step body and moved it into the bottom action row.
+- Added pink primary CTA in step 3:
+- button text `Find this address`,
+- positioned immediately left of `Save and continue`.
+- Added geocoding loading state for this CTA (`Finding...`) and disabled it when address is empty or while requests are in flight.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.51
+### Timestamp
+- 2026-03-13 21:51:23 EDT
+
+### Objective
+- Align step-3 geocode CTA/button styling and improve address/map usability.
+
+### What Changed
+- Removed hardcoded color override from step-3 `Find this address` button so it uses the standard app button styling (shared CSS theme pink).
+- Lightened step-3 address placeholder text styling for better visual distinction from user-entered text.
+- Updated OSM embed URL generation to include a computed neighborhood-scale bbox (~1000m span) centered on the geocoded coordinates.
+- Kept marker centered on the resolved address while defaulting initial view to local neighborhood scale instead of global zoom.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.52
+### Timestamp
+- 2026-03-13 22:03:35 EDT
+
+### Objective
+- Improve step-3 address flow by locking geocoded addresses and adding explicit edit/re-geocode behavior.
+
+### What Changed
+- Added address edit/lock state to step 3:
+- after successful geocode, address field becomes read-only display,
+- geocoded address is rendered as multi-line rows (split by comma segments),
+- input frame is removed in read-only mode.
+- Added `Edit address` button in action row for step 3:
+- reenables address editing,
+- clears lat/lng so re-geocoding is required,
+- disables `Save and continue` until address is geocoded again.
+- Updated step-completion gate for step 3 to require both geocoded coordinates and non-editing (locked) state.
+- Kept map/coordinate display only after geocoding succeeds.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.53
+### Timestamp
+- 2026-03-13 22:23:43 EDT
+
+### Objective
+- Expand Supabase seed data substantially across project tables and use it to reset/populate the linked database.
+
+### What Changed
+- Added new comprehensive seed file:
+- `supabase/seed.sql`.
+- Seed now includes representative dummy data across:
+- core public app tables (`users`, app registry tables, wallet/share tables, transactions, notifications, stores, merchant signup, approvals),
+- BIA/voucher/onramp tables,
+- contract management metadata tables,
+- indexer control + derived tables (`indexer.*`),
+- chain event/materialized data tables (`chain_data.*`),
+- cron logging table.
+- Included deterministic IDs/UUIDs and conflict-safe upserts to keep seed rerunnable.
+- Added sequence sync statements for identity-backed tables seeded with explicit IDs.
+- Fixed seed compatibility with current migrated schema by removing non-portable `user_encrypted_share` column assumptions (`credential_id` was not present at runtime schema state).
+
+### Verification
+- Ran linked remote reset with seed execution:
+- `printf 'y\n' | supabase db reset --linked`
+- Reset completed successfully and seeded data from `supabase/seed.sql`.
+
+### Files Edited
+- `supabase/seed.sql`
+- `agent-context/session-log.md`
+
+## v1.54
+### Timestamp
+- 2026-03-13 22:25:06 EDT
+
+### Objective
+- Add explicit City Admin access from the wallet More tab.
+
+### What Changed
+- Updated More tab admin controls to include a dedicated button:
+- `Open City Admin`.
+- Routed button to new wallet route alias:
+- `/city-admin`.
+- Added new route:
+- `app/tcoin/wallet/city-admin/page.tsx` which redirects to existing city manager workspace (`/city-manager`).
+- Updated More tab tests to assert city-admin button visibility for admin users and route navigation behavior.
+
+### Verification
+- Ran `pnpm test app/tcoin/wallet/components/dashboard/MoreTab.test.tsx` (pass, 10 tests).
+- Ran `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/city-admin/page.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/city-admin/page.tsx`
+- `agent-context/session-log.md`
+
+## v1.55
+### Timestamp
+- 2026-03-13 22:46:29 EDT
+
+### Objective
+- Add a seeded admin user for `hubert.cormac@gmail.com`.
+
+### What Changed
+- Updated `supabase/seed.sql` to include:
+- new user row with email `hubert.cormac@gmail.com`,
+- `is_admin = true`,
+- deterministic seeded identity values (`id=1004`, username `hubert-cormac`).
+- Added matching seeded admin role assignment in wallet dev app instance.
+- Added matching seeded `app_user_profiles` row for consistency.
+
+### Files Edited
+- `supabase/seed.sql`
+- `agent-context/session-log.md`

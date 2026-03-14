@@ -312,12 +312,33 @@ export function SendCard({
     <div className="mx-auto flex w-full max-w-2xl flex-col space-y-4">
       <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Amount</h2>
-          {amountHeaderActions && (
-            <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
-              {amountHeaderActions}
-            </div>
-          )}
+          <h2 className="text-lg font-semibold">{recipientHeading}</h2>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {amountHeaderActions && (
+              <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+                {amountHeaderActions}
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={openContactSelector}
+              disabled={recipientLocked}
+            >
+              <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
+            </Button>
+            {toSendData && !recipientLocked && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={clearRecipient}
+                aria-label="Clear recipient"
+              >
+                <LuX className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <div className="relative mx-auto mt-4 flex w-full flex-col items-center gap-4 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
           <div className="w-full text-center">
@@ -397,33 +418,6 @@ export function SendCard({
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">{recipientHeading}</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={openContactSelector}
-              disabled={recipientLocked}
-            >
-              <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
-            </Button>
-            {toSendData && !recipientLocked && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={clearRecipient}
-                aria-label="Clear recipient"
-              >
-                <LuX className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
 
         {toSendData ? (
           <div className="mt-4 flex items-center gap-4 rounded-2xl border border-border bg-background/70 p-4">
@@ -483,48 +477,48 @@ export function SendCard({
             )}
           </div>
         )}
-      </section>
 
-      <Button
-        ref={sendButtonRef}
-        className={`w-full ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
-        aria-disabled={!canSend}
-        onClick={() => {
-          if (!toSendData) {
-            toast.error("Select a recipient first.");
-            return;
-          }
-          if (!hasTcoinAmount) {
-            toast.error("Please enter an amount greater than zero.");
-            return;
-          }
-          if (!Number.isFinite(cadValue) && cadAmount.trim() !== "") {
-            toast.error("Enter a valid CAD amount or switch currencies.");
-            return;
-          }
-          if (amountExceedsBalance) {
-            toast.error("Amount exceeds your available balance.");
-            return;
-          }
-          openModal({
-            content: (
-              <ConfirmTransactionModal
-                tcoinAmount={tcoinAmount}
-                cadAmount={cadAmount}
-                toSendData={toSendData}
-                closeModal={closeModal}
-                sendMoney={sendMoney}
-                setExplorerLink={setExplorerLink}
-                getLastTransferRecord={getLastTransferRecord}
-                onPaymentComplete={onPaymentComplete}
-              />
-            ),
-            title: "Confirm Payment",
-          });
-        }}
-      >
-        <LuSend className="mr-2 h-4 w-4" /> {actionLabel}
-      </Button>
+        <Button
+          ref={sendButtonRef}
+          className={`mt-4 w-full ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
+          aria-disabled={!canSend}
+          onClick={() => {
+            if (!toSendData) {
+              toast.error("Select a recipient first.");
+              return;
+            }
+            if (!hasTcoinAmount) {
+              toast.error("Please enter an amount greater than zero.");
+              return;
+            }
+            if (!Number.isFinite(cadValue) && cadAmount.trim() !== "") {
+              toast.error("Enter a valid CAD amount or switch currencies.");
+              return;
+            }
+            if (amountExceedsBalance) {
+              toast.error("Amount exceeds your available balance.");
+              return;
+            }
+            openModal({
+              content: (
+                <ConfirmTransactionModal
+                  tcoinAmount={tcoinAmount}
+                  cadAmount={cadAmount}
+                  toSendData={toSendData}
+                  closeModal={closeModal}
+                  sendMoney={sendMoney}
+                  setExplorerLink={setExplorerLink}
+                  getLastTransferRecord={getLastTransferRecord}
+                  onPaymentComplete={onPaymentComplete}
+                />
+              ),
+              title: "Confirm Payment",
+            });
+          }}
+        >
+          <LuSend className="mr-2 h-4 w-4" /> {actionLabel}
+        </Button>
+      </section>
 
       {explorerLink && (
         <div className="rounded-lg bg-green-900/20 p-4">

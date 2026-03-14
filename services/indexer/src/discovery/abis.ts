@@ -60,6 +60,24 @@ export const poolAbi = [
   },
   {
     type: "function",
+    name: "feePpm",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "getQuote",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_outToken", type: "address" },
+      { name: "_inToken", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "name",
     stateMutability: "view",
     inputs: [],
@@ -137,7 +155,7 @@ export const trackerEventAbis = [
     type: "event",
     name: "Mint",
     inputs: [
-      { indexed: true, name: "_tokenMinter", type: "address" },
+      { indexed: true, name: "_minter", type: "address" },
       { indexed: true, name: "_beneficiary", type: "address" },
       { indexed: false, name: "_value", type: "uint256" },
     ],
@@ -147,7 +165,7 @@ export const trackerEventAbis = [
     type: "event",
     name: "Burn",
     inputs: [
-      { indexed: true, name: "_tokenBurner", type: "address" },
+      { indexed: true, name: "_burner", type: "address" },
       { indexed: false, name: "_value", type: "uint256" },
     ],
     anonymous: false,

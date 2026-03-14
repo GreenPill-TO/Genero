@@ -2,6 +2,7 @@
 import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
+import { WalletConnectErrorGuard } from "@shared/providers/walletconnect-error-guard";
 import "@tcoin/wallet/styles/app.scss";
 import ContentLayout from "./ContentLayout";
 import dynamic from "next/dynamic";
@@ -18,10 +19,14 @@ const WalletCubidProvider = dynamic(
   () => import('cubid-wallet').then((mod) => mod.WalletCubidProvider),
   { ssr: false }
 );
-import 'cubid-wallet/dist/styles.css'
-import 'cubid-sdk/dist/index.css'
+import "cubid-wallet/dist/styles.css";
+import "cubid-sdk/dist/index.css";
 
 const queryClient = new QueryClient();
+const enableCubidWalletProviders =
+  (process.env.NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS ?? "false")
+    .trim()
+    .toLowerCase() === "true";
 
 export default function RootLayout({
   children,
@@ -51,17 +56,28 @@ export default function RootLayout({
           }
         `}</style>
         <QueryClientProvider client={queryClient}>
-          <Provider>
-            <WalletCubidProvider>
-              <ReactQueryProvider>
-                <DarkModeProvider>
-                  <ModalProvider>
-                    <ContentLayout>{children}</ContentLayout>
-                  </ModalProvider>
-                </DarkModeProvider>
-              </ReactQueryProvider>
-            </WalletCubidProvider>
-          </Provider>
+          <WalletConnectErrorGuard />
+          {enableCubidWalletProviders ? (
+            <Provider>
+              <WalletCubidProvider>
+                <ReactQueryProvider>
+                  <DarkModeProvider>
+                    <ModalProvider>
+                      <ContentLayout>{children}</ContentLayout>
+                    </ModalProvider>
+                  </DarkModeProvider>
+                </ReactQueryProvider>
+              </WalletCubidProvider>
+            </Provider>
+          ) : (
+            <ReactQueryProvider>
+              <DarkModeProvider>
+                <ModalProvider>
+                  <ContentLayout>{children}</ContentLayout>
+                </ModalProvider>
+              </DarkModeProvider>
+            </ReactQueryProvider>
+          )}
         </QueryClientProvider>
       </body>
     </html>

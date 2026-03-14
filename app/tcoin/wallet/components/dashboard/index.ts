@@ -9,3 +9,4 @@ export * from "./ContactsTab";
 export * from "./SendTab";
 export * from "./ReceiveTab";
 export * from "./MoreTab";
+export * from "./TransactionHistoryTab";

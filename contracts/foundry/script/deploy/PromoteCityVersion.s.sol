@@ -40,47 +40,21 @@ contract PromoteCityVersion is Script {
         vm.createDir(promotionsDir, true);
 
         string memory outputPath = string.concat(promotionsDir, "/", vm.toString(block.timestamp), ".json");
-        string memory payload = string.concat(
-            "{\n",
-            '  "citySlug": "',
-            _toLower(input.citySlug),
-            '",\n',
-            '  "cityId": "',
-            vm.toString(cityId),
-            '",\n',
-            '  "chainId": ',
-            vm.toString(input.chainId),
-            ",\n",
-            '  "registryAddress": "',
-            vm.toString(registryAddress),
-            '",\n',
-            '  "version": ',
-            vm.toString(promotedVersion),
-            ",\n",
-            '  "metadataURI": "',
-            input.metadataURI,
-            '",\n',
-            '  "contracts": {\n',
-            '    "TCOIN": "',
-            vm.toString(input.contracts.tcoin),
-            '",\n',
-            '    "TTC": "',
-            vm.toString(input.contracts.ttc),
-            '",\n',
-            '    "CAD": "',
-            vm.toString(input.contracts.cad),
-            '",\n',
-            '    "ORCHESTRATOR": "',
-            vm.toString(input.contracts.orchestrator),
-            '",\n',
-            '    "VOTING": "',
-            vm.toString(input.contracts.voting),
-            '"\n',
-            "  },\n",
-            '  "promotedAt": ',
-            vm.toString(block.timestamp),
-            "\n}"
-        );
+        string memory payload = "{\n";
+        payload = string.concat(payload, '  "citySlug": "', _toLower(input.citySlug), '",\n');
+        payload = string.concat(payload, '  "cityId": "', vm.toString(cityId), '",\n');
+        payload = string.concat(payload, '  "chainId": ', vm.toString(input.chainId), ",\n");
+        payload = string.concat(payload, '  "registryAddress": "', vm.toString(registryAddress), '",\n');
+        payload = string.concat(payload, '  "version": ', vm.toString(promotedVersion), ",\n");
+        payload = string.concat(payload, '  "metadataURI": "', input.metadataURI, '",\n');
+        payload = string.concat(payload, '  "contracts": {\n');
+        payload = string.concat(payload, '    "TCOIN": "', vm.toString(input.contracts.tcoin), '",\n');
+        payload = string.concat(payload, '    "TTC": "', vm.toString(input.contracts.ttc), '",\n');
+        payload = string.concat(payload, '    "CAD": "', vm.toString(input.contracts.cad), '",\n');
+        payload = string.concat(payload, '    "ORCHESTRATOR": "', vm.toString(input.contracts.orchestrator), '",\n');
+        payload = string.concat(payload, '    "VOTING": "', vm.toString(input.contracts.voting), '"\n');
+        payload = string.concat(payload, "  },\n");
+        payload = string.concat(payload, '  "promotedAt": ', vm.toString(block.timestamp), "\n}");
         vm.writeFile(outputPath, payload);
 
         console2.log("Promoted city version");

@@ -159,45 +159,93 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       return;
     }
 
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const offRampRequestId = uuidv4();
-    const transactionId = uuidv4();
+      const offRampRequestId = uuidv4();
+      const transactionId = uuidv4();
 
-    const isStoreOwner = userData?.isStoreOwner || false;
-    const feePercentage = isStoreOwner ? 0.02 : 0.05;
-    const CAD_offramp_fee = parseFloat((estimatedCAD * feePercentage).toFixed(2));
-    const CAD_to_user = parseFloat((estimatedCAD - CAD_offramp_fee).toFixed(2));
+      const isStoreOwner = userData?.isStoreOwner || false;
+      const feePercentage = isStoreOwner ? 0.02 : 0.05;
+      const CAD_offramp_fee = parseFloat((estimatedCAD * feePercentage).toFixed(2));
+      const CAD_to_user = parseFloat((estimatedCAD - CAD_offramp_fee).toFixed(2));
 
-    off_ramp_req({
-      p_current_token_balance: userBalance,
-      p_etransfer_target: data.interac_email,
-      p_is_store: true,
-      p_tokens_burned: (estimatedCAD / exchangeRate).toFixed(2),
-      p_user_id: userData?.cubidData?.id,
-      p_wallet_account_from: senderWallet,
-      p_wallet_account_to: null,
-      p_exchange_rate: exchangeRate,
-    });
+      off_ramp_req({
+        p_current_token_balance: userBalance,
+        p_etransfer_target: data.interac_email,
+        p_is_store: true,
+        p_tokens_burned: (estimatedCAD / exchangeRate).toFixed(2),
+        p_user_id: userData?.cubidData?.id,
+        p_wallet_account_from: senderWallet,
+        p_wallet_account_to: null,
+        p_exchange_rate: exchangeRate,
+      });
 
-    await burnMoney(donationAmount);
+      await burnMoney(donationAmount);
 
-    const supabase = createClient();
-    const { data: off_ramp_req_data, error } = await supabase
-      .from("off_ramp_req")
-      .select("*")
-      .match({ user_id: userData?.cubidData?.id })
-      .order("id", { ascending: false })
-      .limit(1);
+      const supabase = createClient();
+      const { data: off_ramp_req_data, error } = await supabase
+        .from("off_ramp_req")
+        .select("*")
+        .match({ user_id: userData?.cubidData?.id })
+        .order("id", { ascending: false })
+        .limit(1);
 
-    await supabase
-      .rpc('accounting_after_offramp_burn', {
-        p_offramp_req_id: off_ramp_req_data?.[0]?.id
-      })
+      if (error) {
+        throw new Error(error.message);
+      }
 
-    setLoading(false);
-    reset();
-    closeModal();
+      await supabase.rpc("accounting_after_offramp_burn", {
+        p_offramp_req_id: off_ramp_req_data?.[0]?.id,
+      });
+
+      if (isStoreOwner) {
+        const { data: storeEmployeeRow } = await supabase
+          .from("store_employees")
+          .select("store_id")
+          .eq("user_id", userData?.cubidData?.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const storeId = Number(storeEmployeeRow?.store_id ?? 0);
+        if (Number.isFinite(storeId) && storeId > 0) {
+          const redemptionResponse = await fetch("/api/redemptions/request", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              storeId,
+              tokenAmount: donationAmount,
+              settlementAsset: "CAD",
+              settlementAmount: CAD_to_user,
+              metadata: {
+                offRampReqId: off_ramp_req_data?.[0]?.id ?? null,
+                offRampRequestUuid: offRampRequestId,
+                transactionId,
+              },
+            }),
+          });
+
+          if (!redemptionResponse.ok) {
+            const body = await redemptionResponse.json();
+            const message =
+              body?.error ??
+              "Off-ramp burn succeeded, but BIA redemption request creation failed.";
+            throw new Error(message);
+          }
+        }
+      }
+
+      reset();
+      closeModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to complete off-ramp.";
+      setErrorMessage(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

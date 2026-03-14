@@ -6,6 +6,7 @@ import { LuMoon, LuSun } from "react-icons/lu";
 
 export default function useDarkMode() {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isFollowingSystem, setIsFollowingSystem] = useState(true);
 
   const applyClass = (dark: boolean) => {
     const root = document.documentElement;
@@ -17,33 +18,59 @@ export default function useDarkMode() {
     setIsDarkMode(dark);
   };
 
-  const toggleDarkMode = () => {
-    const next = !isDarkMode;
+  const setThemeOverride = (mode: "light" | "dark") => {
+    const next = mode === "dark";
     if (typeof window !== "undefined") {
       window.localStorage.setItem("theme", next ? "dark" : "light");
       window.localStorage.setItem("theme_user_set", "1");
     }
+    setIsFollowingSystem(false);
     applyClass(next);
+  };
+
+  const toggleDarkMode = () => {
+    setThemeOverride(isDarkMode ? "light" : "dark");
+  };
+
+  const clearThemeOverride = () => {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem("theme");
+    window.localStorage.removeItem("theme_user_set");
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    setIsFollowingSystem(true);
+    applyClass(mediaQuery.matches);
   };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("theme");
-    const userSetTheme = window.localStorage.getItem("theme_user_set") === "1";
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => {
+      const stored = window.localStorage.getItem("theme");
+      const userSetTheme = window.localStorage.getItem("theme_user_set") === "1";
 
-    if (userSetTheme && (stored === "dark" || stored === "light")) {
-      applyClass(stored === "dark");
-      return;
-    }
+      if (userSetTheme && (stored === "dark" || stored === "light")) {
+        setIsFollowingSystem(false);
+        applyClass(stored === "dark");
+        return;
+      }
 
-    applyClass(mediaQuery.matches);
-    const listener = (e: MediaQueryListEvent) => applyClass(e.matches);
+      setIsFollowingSystem(true);
+      applyClass(mediaQuery.matches);
+    };
+
+    sync();
+    const listener = (e: MediaQueryListEvent) => {
+      const userSetTheme = window.localStorage.getItem("theme_user_set") === "1";
+      if (!userSetTheme) {
+        setIsFollowingSystem(true);
+        applyClass(e.matches);
+      }
+    };
     mediaQuery.addEventListener("change", listener);
     return () => mediaQuery.removeEventListener("change", listener);
   }, []);
 
-  return { isDarkMode, toggleDarkMode };
+  return { isDarkMode, isFollowingSystem, toggleDarkMode, setThemeOverride, clearThemeOverride };
 }
 
 export function ThemeToggleButton() {

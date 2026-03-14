@@ -44,9 +44,21 @@ const useAuthMock = vi.hoisted(() =>
     },
   }))
 );
+const useControlPlaneAccessMock = vi.hoisted(() =>
+  vi.fn(() => ({
+    data: {
+      canAccessAdminDashboard: false,
+      canAccessCityManager: false,
+    },
+  }))
+);
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock("@shared/api/hooks/useControlPlaneAccess", () => ({
+  useControlPlaneAccess: () => useControlPlaneAccessMock(),
 }));
 
 const pushMock = vi.hoisted(() => vi.fn());
@@ -56,6 +68,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@tcoin/wallet/components/modals", () => ({
+  BuyTcoinModal: ({ closeModal }: any) => (
+    <button data-testid="buytcoin-modal" onClick={closeModal}>
+      buytcoin
+    </button>
+  ),
   TopUpModal: ({ closeModal }: any) => (
     <button data-testid="topup-modal" onClick={closeModal}>
       topup
@@ -79,7 +96,10 @@ vi.mock("@tcoin/wallet/components/modals", () => ({
       change
     </button>
   ),
+  BiaPreferencesModal: () => <div data-testid="bia-preferences-modal" />,
+  VoucherRoutingPreferencesModal: () => <div data-testid="voucher-routing-preferences-modal" />,
   ThemeSelectModal: () => <div data-testid="theme-modal" />,
+  FutureAppFeaturesModal: () => <div data-testid="future-features-modal" />,
 }));
 
 vi.mock("@tcoin/wallet/components/modals/UserProfileModal", () => ({
@@ -98,6 +118,12 @@ describe("MoreTab", () => {
         },
       },
     });
+    useControlPlaneAccessMock.mockReturnValue({
+      data: {
+        canAccessAdminDashboard: false,
+        canAccessCityManager: false,
+      },
+    });
   });
 
   afterEach(() => {
@@ -107,15 +133,10 @@ describe("MoreTab", () => {
     pushMock.mockReset();
   });
 
-  it("opens the top up modal", () => {
+  it("does not render buy/top-up actions in the More tab", () => {
     render(<MoreTab />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /Top Up with Interac eTransfer/i })
-    );
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe(
-      "Top Up with Interac eTransfer"
-    );
+    expect(screen.queryByRole("button", { name: /Buy TCOIN/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Top Up with Interac eTransfer/i })).toBeNull();
   });
 
   it("opens the off-ramp modal", () => {
@@ -157,6 +178,27 @@ describe("MoreTab", () => {
     expect(openModal.mock.calls[0][0].title).toBe("Select Theme");
   });
 
+  it("opens BIA Preferences in a dedicated modal", () => {
+    render(<MoreTab />);
+    fireEvent.click(screen.getByRole("button", { name: /BIA Preferences/i }));
+    expect(openModal).toHaveBeenCalled();
+    expect(openModal.mock.calls[0][0].title).toBe("BIA Preferences");
+  });
+
+  it("opens Voucher Routing Preferences in a dedicated modal", () => {
+    render(<MoreTab />);
+    fireEvent.click(screen.getByRole("button", { name: /Voucher Routing Preferences/i }));
+    expect(openModal).toHaveBeenCalled();
+    expect(openModal.mock.calls[0][0].title).toBe("Voucher Routing Preferences");
+  });
+
+  it("opens Future app features in a dedicated modal", () => {
+    render(<MoreTab />);
+    fireEvent.click(screen.getByRole("button", { name: /Future app features/i }));
+    expect(openModal).toHaveBeenCalled();
+    expect(openModal.mock.calls[0][0].title).toBe("Future app features");
+  });
+
   it("does not render admin controls for non-admin users", () => {
     render(<MoreTab />);
     expect(screen.queryByRole("button", { name: /Open Admin Dashboard/i })).toBeNull();
@@ -171,8 +213,20 @@ describe("MoreTab", () => {
         },
       },
     });
+    useControlPlaneAccessMock.mockReturnValue({
+      data: {
+        canAccessAdminDashboard: true,
+        canAccessCityManager: true,
+      },
+    });
 
     render(<MoreTab />);
+
+    const cityAdminButton = screen.getByRole("button", { name: /Open City Admin/i });
+    expect(cityAdminButton).toBeTruthy();
+
+    fireEvent.click(cityAdminButton);
+    expect(pushMock).toHaveBeenCalledWith("/city-admin");
 
     const adminButton = screen.getByRole("button", { name: /Open Admin Dashboard/i });
     expect(adminButton).toBeTruthy();

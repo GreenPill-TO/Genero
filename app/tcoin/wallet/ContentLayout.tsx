@@ -18,6 +18,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname();
   const isPublic = publicPaths.includes(pathname);
+  const bypassAuthInLocalDev =
+    process.env.NODE_ENV !== "production" &&
+    ["local", "development"].includes(
+      (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
+    );
 
   const bodyClass = cn(
     "min-h-screen",
@@ -29,10 +34,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     // Replace this with your actual authentication logic
 
-    if (!isLoading && !isAuthenticated && !isPublic) {
+    if (!isLoading && !isAuthenticated && !isPublic && !bypassAuthInLocalDev) {
       router.push("/");
     }
-  }, [isAuthenticated, isLoading, isPublic, router]);
+  }, [bypassAuthInLocalDev, isAuthenticated, isLoading, isPublic, router]);
 
   if (isLoading) {
     return <div className={bodyClass}>...loading </div>;

@@ -17,6 +17,7 @@
   - `agent-context/sql-schema-v0.sql` snapshots the current public schema (tables, enums, RPC signatures) pulled via the Supabase OpenAPI using the anon key; function bodies remain server-side
   - `public.app_user_profiles` enforces row-level security so authenticated users can only read and mutate profile rows tied to their own `auth_user_id`.
   - `public.connections` uses composite foreign keys `(owner_user_id, app_instance_id)` and `(connected_user_id, app_instance_id)` into `public.app_user_profiles` with `ON DELETE CASCADE` for app-scoped relationship integrity.
+  - Agents may prepare migrations and inspect local schema files, but linked-database mutation commands remain human-only and require explicit approval before any `supabase --linked` or equivalent write operation is attempted.
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
 
@@ -28,6 +29,8 @@
   [citycoin]/sparechange/
   shared/ # Shared UI + logic
 - **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
+  - Protected wallet control-plane routes now resolve app-scoped access server-side from `public.roles` (`admin`/`operator`) against the active `ref_app_instances` record, and UI affordances are keyed from that same API contract.
+  - Client control-plane access caching is now keyed by authenticated user identity as well as city slug so role-derived UI state cannot leak across account switches.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
   - **App Registry**: `ref_apps`, `ref_citycoins`, and `ref_app_instances` tables track each deployment pairing with unique slugs;
     runtime helpers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
@@ -71,6 +74,7 @@
 - Contact page features a form that records user requests in Supabase `user_requests` along with an array of detected IP addresses and offers clearer spacing before the return-home link.
 - Resources and Contact pages reuse the landing page header and footer, adopt the wider layout and are accessible without authentication.
 - Wallet dashboard (`/dashboard`) is also a public route, allowing unauthenticated access and rendering without the navbar or toast notifications.
+- Dashboard tab deep-links are now URL-backed for both footer navigation and programmatic tab changes, so internal transitions remain consistent with `/dashboard?tab=...`.
 - Landing page links resolve to the whitepaper, Telegram chat, presentation and source code repository.
 - Twilio API routes initialise clients inside handlers so builds succeed without environment variables.
 - All section headings use the `font-extrabold` class for extra emphasis.
@@ -82,6 +86,8 @@
 - Global footer removed from layout; the dashboard renders its own fixed footer navigation.
 - Wallet dashboard is composed from modular cards (Contributions, Receive, Send, Account and Other) within `WalletHome`.
 - `/admin` route renders an admin-only dashboard that fetches on-ramp/off-ramp requests from Supabase, lets admins adjust status, fees and notes, and is linked from the More tab when `is_admin` is true.
+- `/admin` and `/city-manager` access is now aligned to the app-scoped API role check instead of the looser local `is_admin` profile flag, preventing UI links from exposing pages that the API will reject.
+- Legacy `/admin` ramp-request loading now runs through a server endpoint that can report missing legacy schema objects directly; the repository migrations currently do not fully define the legacy `interac_transfer`/`off_ramp_req` shape or `ref_request_statuses`.
 - Deep-link scans on the wallet dashboard run only when the URL includes a `pay` query, and success toasts fire after user lookup and connection insertion.
 - Footer navigation icons are evenly spaced and centred, with a prominent Send action.
 - Send tab uses a shared QR scanning modal instead of an embedded scanner, but still offers buttons to select a contact or paste a pay link and always displays the send form with amount inputs and a send button.

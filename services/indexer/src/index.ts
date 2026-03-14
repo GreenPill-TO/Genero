@@ -1,10 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient, getAddress, http, type Address } from "viem";
+import { deriveBiaRollupsAndRisk, syncBiaMappingValidation } from "./bia";
 import { discoverTrackedPools } from "./discovery/pools";
 import { resolveCityContractSet } from "./discovery/cityContracts";
 import { pullRpcEvents } from "./ingest/rpcFallback";
 import { pullTrackerEvents } from "./ingest/trackerClient";
 import { persistNormalizedEvents } from "./normalize/persist";
+import { deriveVoucherState } from "./vouchers";
 import {
   buildScopeKey,
   completeRun,
@@ -101,6 +103,13 @@ export async function runIndexerTouch(options: {
       poolLimit: config.discoveryPoolLimit,
     });
 
+    const biaMappingHealth = await syncBiaMappingValidation({
+      supabase: options.supabase,
+      citySlug,
+      chainId,
+      activePools: discovery.activePools,
+    });
+
     const contractAddresses = Object.values(cityContracts.contracts).filter(
       (address): address is Address => Boolean(address)
     );
@@ -131,6 +140,24 @@ export async function runIndexerTouch(options: {
     });
 
     if (!blockRange) {
+      const biaDerived = await deriveBiaRollupsAndRisk({
+        supabase: options.supabase,
+        scopeKey,
+        citySlug,
+        chainId,
+        fromBlock: latestBlock,
+        toBlock: latestBlock,
+        activePools: discovery.activePools,
+      });
+      const voucherDerived = await deriveVoucherState({
+        supabase: options.supabase,
+        client,
+        scopeKey,
+        chainId,
+        cityContracts,
+        activePools: discovery.activePools,
+      });
+
       await completeRun({
         supabase: options.supabase,
         scopeKey,
@@ -155,6 +182,15 @@ export async function runIndexerTouch(options: {
           eventsSeen: 0,
           eventsPersisted: 0,
         },
+        bia: {
+          mappedPools: biaMappingHealth.mappedPools,
+          unmappedPools: biaMappingHealth.unmappedPools,
+          staleMappings: biaMappingHealth.staleMappings,
+          componentMismatches: biaMappingHealth.componentMismatches,
+          rollupRows: biaDerived.rollupRows,
+          riskSignals: biaDerived.riskSignals,
+        },
+        voucher: voucherDerived,
       };
     }
 
@@ -198,6 +234,24 @@ export async function runIndexerTouch(options: {
       events,
     });
 
+    const biaDerived = await deriveBiaRollupsAndRisk({
+      supabase: options.supabase,
+      scopeKey,
+      citySlug,
+      chainId,
+      fromBlock: blockRange.fromBlock,
+      toBlock: blockRange.toBlock,
+      activePools: discovery.activePools,
+    });
+    const voucherDerived = await deriveVoucherState({
+      supabase: options.supabase,
+      client,
+      scopeKey,
+      chainId,
+      cityContracts,
+      activePools: discovery.activePools,
+    });
+
     await upsertCheckpoint({
       supabase: options.supabase,
       scopeKey,
@@ -230,6 +284,15 @@ export async function runIndexerTouch(options: {
         eventsSeen: events.length,
         eventsPersisted: persistResult.persistedEvents,
       },
+      bia: {
+        mappedPools: biaMappingHealth.mappedPools,
+        unmappedPools: biaMappingHealth.unmappedPools,
+        staleMappings: biaMappingHealth.staleMappings,
+        componentMismatches: biaMappingHealth.componentMismatches,
+        rollupRows: biaDerived.rollupRows,
+        riskSignals: biaDerived.riskSignals,
+      },
+      voucher: voucherDerived,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown indexer error";

@@ -7,7 +7,6 @@ import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { createClient } from "@shared/lib/supabase/client";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
-import { useModal } from "@shared/contexts/ModalContext";
 import { Hypodata, InvoicePayRequest, contactRecordToHypodata } from "./types";
 import { SendCard, type PaymentCompletionDetails } from "./SendCard";
 import { QrScanModal } from "@tcoin/wallet/components/modals";
@@ -112,15 +111,13 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
-  const [mode, setMode] = useState<"manual" | "link">("manual");
   const [activeAction, setActiveAction] = useState<
     "manual" | "scan" | "link" | "requests"
   >("manual");
-  const [, setIncomingRequests] = useState<IncomingRequest[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<IncomingRequest | null>(null);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [payLink, setPayLink] = useState("");
-  const { openModal, closeModal } = useModal();
   const contactsById = useMemo(() => {
     const map = new Map<number, Hypodata>();
     (contacts ?? []).forEach((contact) => {
@@ -129,8 +126,13 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     return map;
   }, [contacts]);
 
-  const { senderWallet, sendMoney, getLastTransferRecord } = useSendMoney({
-    senderId: userData?.cubidData?.id,
+  const {
+    senderWallet,
+    sendMoney,
+    executeVoucherPayment,
+    getLastTransferRecord,
+  } = useSendMoney({
+    senderId: userData?.cubidData?.id ?? 0,
     receiverId: toSendData?.id ?? null,
   });
   const { balance: rawBalance } = useTokenBalance(senderWallet ?? null);
@@ -173,6 +175,189 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     setTcoinAmount(balance.toFixed(2));
     setCadAmount(cadNumeric.toFixed(2));
   };
+
+  const postPaymentRecord = useCallback(
+    async (payload: Record<string, unknown>) => {
+      try {
+        await fetch("/api/vouchers/payment-record", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            citySlug: "tcoin",
+            chainId: 42220,
+            payerWallet: senderWallet,
+            recipientWallet: toSendData?.wallet_address ?? null,
+            ...payload,
+          }),
+        });
+      } catch {
+        // Best-effort logging only.
+      }
+    },
+    [senderWallet, toSendData?.wallet_address]
+  );
+
+  const sendMoneyWithRouting = useCallback(
+    async (amount: string) => {
+      const recipientWallet =
+        typeof toSendData?.wallet_address === "string" ? toSendData.wallet_address.trim() : "";
+      const amountNumeric = Number.parseFloat(amount);
+      if (!recipientWallet || !Number.isFinite(amountNumeric) || amountNumeric <= 0) {
+        return sendMoney(amount);
+      }
+
+      try {
+        const isIrrecoverableVoucherExecutionError = (error: unknown) => {
+          if (!(error instanceof Error)) {
+            return false;
+          }
+          const message = error.message.toLowerCase();
+          return (
+            message.includes("post-trade slippage") ||
+            message.includes("after successful swap") ||
+            message.includes("swap tx:")
+          );
+        };
+
+        const response = await fetch(
+          `/api/vouchers/route?citySlug=tcoin&amount=${encodeURIComponent(
+            amountNumeric.toString()
+          )}&recipientWallet=${encodeURIComponent(recipientWallet)}`,
+          { credentials: "include" }
+        );
+        const body = await response.json();
+        const quote = body?.quote;
+
+        if (!quote || quote.mode !== "voucher") {
+          const fallbackTxHash = await sendMoney(amount);
+          await postPaymentRecord({
+            mode: "tcoin_fallback",
+            transferTxHash: fallbackTxHash,
+            amountTcoin: amountNumeric,
+            status: "completed",
+            fallbackReason:
+              typeof quote?.reason === "string" ? quote.reason : "No eligible voucher route.",
+            metadata: {
+              guardDecisions: Array.isArray(quote?.guardDecisions) ? quote.guardDecisions : [],
+              quoteSource: typeof quote?.quoteSource === "string" ? quote.quoteSource : "fallback",
+              feePpm: typeof quote?.feePpm === "number" ? quote.feePpm : null,
+            },
+          });
+          return fallbackTxHash;
+        }
+
+        const attemptVoucher = async (routeQuote: any) => {
+          const voucherTx = await executeVoucherPayment({
+            amount,
+            poolAddress: routeQuote.poolAddress,
+            voucherTokenAddress: routeQuote.tokenAddress,
+            recipientWalletAddress: recipientWallet,
+            minAmountOut: routeQuote.minVoucherOut ?? amount,
+            tokenDecimals:
+              typeof routeQuote.tokenDecimals === "number" ? routeQuote.tokenDecimals : 18,
+          });
+          await postPaymentRecord({
+            mode: "voucher",
+            poolAddress: routeQuote.poolAddress,
+            tokenAddress: routeQuote.tokenAddress,
+            amountTcoin: amountNumeric,
+            amountVoucher: Number.parseFloat(voucherTx.transferAmount),
+            swapTxHash: voucherTx.swapTxHash,
+            transferTxHash: voucherTx.transferTxHash,
+            status: "completed",
+            metadata: {
+              approvalTxHash: voucherTx.approvalTxHash,
+              guardDecisions: routeQuote.guardDecisions,
+              quoteSource: routeQuote.quoteSource,
+              feePpm: typeof routeQuote.feePpm === "number" ? routeQuote.feePpm : null,
+            },
+          });
+          return voucherTx.transferTxHash;
+        };
+
+        try {
+          return await attemptVoucher(quote);
+        } catch (firstError) {
+          if (isIrrecoverableVoucherExecutionError(firstError)) {
+            await postPaymentRecord({
+              mode: "voucher",
+              amountTcoin: amountNumeric,
+              status: "failed",
+              fallbackReason:
+                firstError instanceof Error
+                  ? firstError.message
+                  : "Voucher execution failed after swap.",
+              metadata: {
+                guardDecisions: Array.isArray(quote?.guardDecisions) ? quote.guardDecisions : [],
+                quoteSource: typeof quote?.quoteSource === "string" ? quote.quoteSource : "unknown",
+              },
+            });
+            throw firstError;
+          }
+
+          // Retry once with refreshed quote before falling back.
+          try {
+            const retryResponse = await fetch(
+              `/api/vouchers/route?citySlug=tcoin&amount=${encodeURIComponent(
+                amountNumeric.toString()
+              )}&recipientWallet=${encodeURIComponent(recipientWallet)}`,
+              { credentials: "include" }
+            );
+            const retryBody = await retryResponse.json();
+            const retryQuote = retryBody?.quote;
+            if (!retryQuote || retryQuote.mode !== "voucher") {
+              throw firstError;
+            }
+            return await attemptVoucher(retryQuote);
+          } catch (retryError) {
+            if (isIrrecoverableVoucherExecutionError(retryError)) {
+              await postPaymentRecord({
+                mode: "voucher",
+                amountTcoin: amountNumeric,
+                status: "failed",
+                fallbackReason:
+                  retryError instanceof Error
+                    ? retryError.message
+                    : "Voucher execution failed after swap.",
+                metadata: {
+                  quoteSource: typeof quote?.quoteSource === "string" ? quote.quoteSource : "unknown",
+                },
+              });
+              throw retryError;
+            }
+
+            const fallbackTxHash = await sendMoney(amount);
+            await postPaymentRecord({
+              mode: "tcoin_fallback",
+              transferTxHash: fallbackTxHash,
+              amountTcoin: amountNumeric,
+              status: "completed",
+              fallbackReason:
+                retryError instanceof Error
+                  ? `Voucher route failed: ${retryError.message}`
+                  : "Voucher route failed.",
+            });
+            return fallbackTxHash;
+          }
+        }
+      } catch (routeError) {
+        const fallbackTxHash = await sendMoney(amount);
+        await postPaymentRecord({
+          mode: "tcoin_fallback",
+          transferTxHash: fallbackTxHash,
+          amountTcoin: amountNumeric,
+          status: "completed",
+          fallbackReason:
+            routeError instanceof Error
+              ? `Voucher routing unavailable: ${routeError.message}`
+              : "Voucher routing unavailable.",
+        });
+        return fallbackTxHash;
+      }
+    },
+    [toSendData?.wallet_address, executeVoucherPayment, sendMoney, postPaymentRecord]
+  );
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = sanitizeNumeric(e.target.value);
@@ -246,21 +431,6 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     setCadAmount("");
     setPayLink("");
   }, [updateRecipient]);
-
-  const openScanner = useCallback(() => {
-    openModal({
-      content: (
-        <QrScanModal
-          closeModal={closeModal}
-          setToSendData={(d: Hypodata) => updateRecipient(d)}
-          setTcoin={setTcoinAmount}
-          setCad={setCadAmount}
-        />
-      ),
-      title: "Scan QR",
-      description: "Use your device's camera to scan a code.",
-    });
-  }, [closeModal, openModal, updateRecipient]);
 
   const fetchIncomingRequests = useCallback(async (): Promise<IncomingRequest[]> => {
     const currentUserId = userData?.cubidData?.id;
@@ -455,12 +625,10 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       }
 
       setSelectedRequest({ ...request, requester });
-      setActiveAction("requests");
-      setMode("manual");
+      setActiveAction("manual");
       setPayLink("");
-      closeModal();
     },
-    [closeModal, contactsById, safeExchangeRate, updateRecipient]
+    [contactsById, safeExchangeRate, updateRecipient]
   );
 
   const handleIgnoreRequest = useCallback(
@@ -490,42 +658,21 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     [fetchIncomingRequests]
   );
 
-  const openRequestsModal = useCallback(async () => {
+  const openRequestsPanel = useCallback(async () => {
     if (isLoadingRequests) return;
     setIsLoadingRequests(true);
     try {
       const requests = await fetchIncomingRequests();
       setIncomingRequests(requests);
-      openModal({
-        title: "Incoming Requests To Pay",
-        description:
-          "Choose a request to pay or ignore. Ignored requests will be archived.",
-        content: (
-          <RequestsList
-            requests={requests}
-            onSelect={(selection) => {
-              void handleRequestSelection(selection);
-            }}
-            onIgnore={(request) => handleIgnoreRequest(request)}
-          />
-        ),
-      });
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [
-    fetchIncomingRequests,
-    handleIgnoreRequest,
-    handleRequestSelection,
-    isLoadingRequests,
-    openModal,
-  ]);
+  }, [fetchIncomingRequests, isLoadingRequests]);
 
   const handleManualClick = () => {
     if (selectedRequest) {
       setSelectedRequest(null);
     }
-    setMode("manual");
     setActiveAction("manual");
   };
 
@@ -535,9 +682,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       setSelectedRequest(null);
     }
     reset();
-    setMode("manual");
     setActiveAction("scan");
-    openScanner();
   };
 
   const handleLinkClick = () => {
@@ -547,9 +692,16 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     }
     reset();
     setPayLink("");
-    setMode("link");
     setActiveAction("link");
   };
+
+  const handleRequestsClick = useCallback(() => {
+    if (selectedRequest) {
+      setSelectedRequest(null);
+    }
+    setActiveAction("requests");
+    void openRequestsPanel();
+  }, [openRequestsPanel, selectedRequest]);
 
   const handleRequestPaid = useCallback(
     async (details?: PaymentCompletionDetails) => {
@@ -577,12 +729,6 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     },
     [fetchIncomingRequests, selectedRequest]
   );
-
-  useEffect(() => {
-    if (!selectedRequest && activeAction === "requests") {
-      setActiveAction("manual");
-    }
-  }, [activeAction, selectedRequest]);
 
   useEffect(() => {
     if (!toSendData && selectedRequest) {
@@ -668,9 +814,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       <Button
         type="button"
         variant={activeAction === "requests" ? "default" : "outline"}
-        onClick={() => {
-          void openRequestsModal();
-        }}
+        onClick={handleRequestsClick}
         className="min-w-[120px]"
         disabled={isLoadingRequests}
       >
@@ -685,7 +829,11 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
 
   return (
     <div className="space-y-4 lg:px-[25vw]">
-      {mode !== "link" && (
+      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">{modeActions}</div>
+      </section>
+
+      {activeAction === "manual" && (
         <SendCard
           toSendData={toSendData}
           setToSendData={updateRecipient}
@@ -697,11 +845,10 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           handleCadBlur={handleCadBlur}
           explorerLink={explorerLink}
           setExplorerLink={setExplorerLink}
-          sendMoney={sendMoney}
+          sendMoney={sendMoneyWithRouting}
           userBalance={balance}
           onUseMax={handleUseMax}
           contacts={contacts}
-          amountHeaderActions={modeActions}
           locked={lockRecipient}
           actionLabel={selectedRequest ? "Pay this request" : "Send..."}
           getLastTransferRecord={getLastTransferRecord}
@@ -712,13 +859,31 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
         />
       )}
 
-      {mode === "link" && (
+      {activeAction === "scan" && (
+        <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Scan QR</h2>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Scan a payment QR code to load recipient and amount details.
+          </p>
+          <div className="mt-4">
+            <QrScanModal
+              closeModal={() => setActiveAction("manual")}
+              setToSendData={(d: Hypodata) => updateRecipient(d)}
+              setTcoin={setTcoinAmount}
+              setCad={setCadAmount}
+            />
+          </div>
+        </section>
+      )}
+
+      {activeAction === "link" && (
         <>
           {!toSendData ? (
             <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Amount</h2>
-                {modeActions}
+                <h2 className="text-lg font-semibold">Pay Link</h2>
               </div>
               <div className="mt-4 space-y-3">
                 <Input
@@ -744,15 +909,48 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
               handleCadBlur={handleCadBlur}
               explorerLink={explorerLink}
               setExplorerLink={setExplorerLink}
-              sendMoney={sendMoney}
+              sendMoney={sendMoneyWithRouting}
               userBalance={balance}
               onUseMax={handleUseMax}
               contacts={contacts}
-              amountHeaderActions={modeActions}
               getLastTransferRecord={getLastTransferRecord}
             />
           )}
         </>
+      )}
+
+      {activeAction === "requests" && (
+        <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Incoming Requests To Pay</h2>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void openRequestsPanel();
+              }}
+              disabled={isLoadingRequests}
+            >
+              Refresh
+            </Button>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Choose a request to pay or ignore. Ignored requests are archived.
+          </p>
+          <div className="mt-4">
+            {isLoadingRequests ? (
+              <p className="text-sm text-muted-foreground">Loading requests...</p>
+            ) : (
+              <RequestsList
+                requests={incomingRequests}
+                onSelect={(selection) => {
+                  void handleRequestSelection(selection);
+                }}
+                onIgnore={(request) => handleIgnoreRequest(request)}
+              />
+            )}
+          </div>
+        </section>
       )}
     </div>
   );
@@ -847,4 +1045,3 @@ function RequestsList({
     </div>
   );
 }
-

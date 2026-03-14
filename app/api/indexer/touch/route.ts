@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
 import { createServiceRoleClient } from "@shared/lib/supabase/serviceRole";
+import { isLocalOrDevelopmentEnvironment } from "@shared/lib/bia/apiAuth";
 import { runIndexerTouch } from "@services/indexer/src";
 
 export async function POST(req: Request) {
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
       error: userError,
     } = await supabase.auth.getUser();
 
-    if (userError || !user) {
+    if ((userError || !user) && !isLocalOrDevelopmentEnvironment()) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

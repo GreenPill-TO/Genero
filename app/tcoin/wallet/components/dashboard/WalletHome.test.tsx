@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const toastSuccess = vi.hoisted(() => vi.fn());
@@ -51,7 +51,7 @@ vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
 }));
 
 vi.mock("@shared/hooks/useSendMoney", () => ({
-  useSendMoney: () => ({ sendMoney: vi.fn() }),
+  useSendMoney: () => ({ senderWallet: "0xabc", sendMoney: vi.fn() }),
 }));
 
 const tokenBalanceMock = vi.hoisted(() => vi.fn(() => ({ balance: "0" })));
@@ -68,11 +68,48 @@ const fromMock = vi.hoisted(() => vi.fn((table: string) => {
   if (table === "users") {
     return { select: () => ({ match: matchMock }) } as any;
   }
-  return { insert: insertMock } as any;
+  if (table === "wallet_list") {
+    return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) } as any;
+  }
+  if (table === "act_transaction_entries") {
+    return {
+      select: () => ({
+        eq: () => ({
+          in: () => ({
+            order: () => ({
+              limit: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any;
+  }
+  if (table === "invoice_pay_request") {
+    return {
+      select: () => ({
+        or: () => ({
+          order: () => ({
+            limit: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }),
+      }),
+    } as any;
+  }
+  return { insert: insertMock, select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) } as any;
 }));
 
 vi.mock("@shared/lib/supabase/client", () => ({
   createClient: () => ({ from: fromMock }),
+}));
+
+const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn(async () => []));
+vi.mock("@shared/api/services/supabaseService", () => ({
+  fetchContactsForOwner: (...args: any[]) => fetchContactsForOwnerMock(...args),
+}));
+
+const pushMock = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock("@tcoin/wallet/components/modals", () => ({
@@ -97,6 +134,9 @@ describe("WalletHome deep-link scanning", () => {
     matchMock.mockClear();
     insertMock.mockClear();
     sendCardMock.mockClear();
+    fetchContactsForOwnerMock.mockReset();
+    fetchContactsForOwnerMock.mockResolvedValue([]);
+    pushMock.mockReset();
     window.history.replaceState({}, "", "/dashboard");
   });
 
@@ -133,5 +173,26 @@ describe("WalletHome deep-link scanning", () => {
     const props = sendCardMock.mock.calls[0][0];
     expect(props.userBalance).toBe(5.5);
   });
-});
 
+  it("opens contact profile page from Recents avatar", async () => {
+    fetchContactsForOwnerMock.mockResolvedValueOnce([
+      {
+        id: 77,
+        full_name: "Recent Contact",
+        username: "recent",
+        profile_image_url: null,
+        wallet_address: null,
+        state: "accepted",
+        last_interaction: "2026-03-11T10:00:00.000Z",
+      },
+    ]);
+
+    render(<WalletHome />);
+
+    const buttons = await screen.findAllByRole("button", {
+      name: /Open profile for Recent Contact/i,
+    });
+    fireEvent.click(buttons[0]);
+    expect(pushMock).toHaveBeenCalledWith("/dashboard/contacts/77");
+  });
+});

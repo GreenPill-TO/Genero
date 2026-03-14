@@ -13,10 +13,20 @@ const generateReferenceCode = () => {
   return `${base}-${randomPart}`;
 };
 
+function calculateFiatAmount(tokenAmount: number, exchangeRate: unknown): number {
+  if (!Number.isFinite(tokenAmount)) {
+    return 0;
+  }
+  return typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
+    ? tokenAmount * exchangeRate
+    : tokenAmount;
+}
+
 export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: any; tokenLabel?: string }) {
   const [step, setStep] = useState("input");
   const [amount, setAmount] = useState("");
   const [refCode, setRefCode] = useState(generateReferenceCode());
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { userData } = useAuth();
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -51,6 +61,12 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
 
   const handleConfirm = async () => {
     try {
+      setIsSubmitting(true);
+      const userId = userData?.cubidData?.id;
+      if (typeof userId !== "number") {
+        throw new Error("Could not resolve your user id for top-up routing.");
+      }
+
       const supabase = createClient();
       await supabase
         .from("interac_transfer")
@@ -64,30 +80,66 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
         .from("act_transactions")
         .insert({
           transaction_category: "transfer",
-          created_by: userData?.cubidData.id,
+          created_by: userId,
           onramp_request_id: interac_transfer_id?.[0]?.id,
         })
         .select("*");
+
+      const tokenAmount = Number.parseFloat(amount);
+      const fiatAmount = calculateFiatAmount(tokenAmount, exchangeRate);
+
+      if (Number.isFinite(tokenAmount) && tokenAmount > 0) {
+        const buyResponse = await fetch("/api/pools/buy", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tokenAmount,
+            fiatAmount,
+            metadata: {
+              interacCode: refCode,
+              interacTransferId: interac_transfer_id?.[0]?.id ?? null,
+              accountingTransactionId: acc_transactions?.[0]?.id ?? null,
+            },
+          }),
+        });
+
+        const buyBody = (await buyResponse.json()) as { error?: string };
+        if (!buyResponse.ok) {
+          throw new Error(
+            buyBody.error ??
+              "Top-up request was recorded but BIA pool routing failed. Please select your BIA and retry."
+          );
+        }
+      }
+
       toast.success("Top up recorded successfully!");
       await insertSuccessNotification({
-        user_id: userData?.cubidData.id,
+        user_id: userId,
         notification: `${amount} topped up successfully into ${tokenLabel} Wallet`,
         additionalData: {
           trx_entry_id: acc_transactions?.[0]?.id,
         },
       });
       await adminInsertNotification({
-        user_id: userData?.cubidData.id,
+        user_id: String(userId),
         notification: `Sent ${amount} to ${tokenLabel.toUpperCase()} wallet needs to be verified`,
       });
       setRefCode(generateReferenceCode());
       setStep("final");
     } catch (error) {
-      toast.error("Failed to record top up. Please try again.");
+      const message =
+        error instanceof Error ? error.message : "Failed to record top up. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const { exchangeRate } = useControlVariables();
+  const parsedAmount = Number.parseFloat(amount);
+  const amountInCad = calculateFiatAmount(parsedAmount, exchangeRate);
 
   return (
     <div className="p-4 pb-0 space-y-6">
@@ -107,7 +159,7 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
               <Button onClick={handleNext}>Next</Button>
             </div>
           </div>
-          {Boolean(amount) && <div className="mb-4">{amount * exchangeRate} CAD</div>}
+          {Boolean(amount) && <div className="mb-4">{amountInCad} CAD</div>}
         </div>
       )}
 
@@ -118,7 +170,7 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
             <strong>Amount:</strong> {amount}
           </p>
           <p>
-            <strong>Amount in CAD:</strong> {amount * exchangeRate}
+            <strong>Amount in CAD:</strong> {amountInCad}
           </p>
           <p>
             <strong>Reference Code:</strong> {refCode}
@@ -130,13 +182,15 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
             Make sure you have a confirmation from your bank that the money has been sent before finalizing here.
           </p>
           <div className="flex gap-4">
-            <Button variant="outline" onClick={handleBack}>
+            <Button variant="outline" onClick={handleBack} disabled={isSubmitting}>
               Back
             </Button>
-            <Button variant="outline" onClick={handleCancel}>
+            <Button variant="outline" onClick={handleCancel} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleConfirm}>I have sent it</Button>
+            <Button onClick={handleConfirm} disabled={isSubmitting}>
+              {isSubmitting ? "Recording..." : "I have sent it"}
+            </Button>
           </div>
         </div>
       )}

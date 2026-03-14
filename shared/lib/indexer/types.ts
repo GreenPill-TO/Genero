@@ -1,5 +1,27 @@
 export type IndexerRunStatus = "idle" | "running" | "success" | "error" | "skipped";
 
+export type BiaScopeSummary = {
+  activeBias: number;
+  mappedPools: number;
+  unmappedPools: number;
+  staleMappings: number;
+  componentMismatches: number;
+  lastActivityByBia: Array<{
+    biaId: string;
+    biaCode: string;
+    biaName: string;
+    lastIndexedBlock: number | null;
+    indexedEventCount: number;
+  }>;
+};
+
+export type VoucherSummary = {
+  trackedVoucherTokens: number;
+  walletsWithVoucherBalances: number;
+  merchantCreditRows: number;
+  lastVoucherBlock: number | null;
+};
+
 export type IndexerTouchResponse = {
   scopeKey: string;
   started: boolean;
@@ -20,6 +42,15 @@ export type IndexerTouchResponse = {
     activePools: number;
     trackedAddresses: number;
   };
+  bia?: {
+    mappedPools: number;
+    unmappedPools: number;
+    staleMappings: number;
+    componentMismatches: number;
+    rollupRows: number;
+    riskSignals: number;
+  };
+  voucher?: VoucherSummary;
 };
 
 export type IndexerScopeStatus = {
@@ -43,4 +74,6 @@ export type IndexerScopeStatus = {
   }>;
   activePoolCount: number;
   activeTokenCount: number;
+  biaSummary: BiaScopeSummary;
+  voucherSummary: VoucherSummary;
 };

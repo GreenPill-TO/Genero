@@ -4,7 +4,9 @@ import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const useAuthMock = vi.hoisted(() => vi.fn());
+const useControlPlaneAccessMock = vi.hoisted(() => vi.fn());
 const replaceMock = vi.hoisted(() => vi.fn());
+const fetchMock = vi.hoisted(() => vi.fn());
 const selectResponses = vi.hoisted(() => ({
   interac_transfer: { data: [], error: null as any },
   off_ramp_req: { data: [], error: null as any },
@@ -35,6 +37,10 @@ vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock("@shared/api/hooks/useControlPlaneAccess", () => ({
+  useControlPlaneAccess: () => useControlPlaneAccessMock(),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock }),
 }));
@@ -54,8 +60,15 @@ vi.mock("react-toastify", () => ({
 
 import AdminDashboardPage from "./page";
 
+const createFetchResponse = (body: unknown, ok = true, status = 200) => ({
+  ok,
+  status,
+  json: vi.fn(async () => body),
+});
+
 describe("AdminDashboardPage", () => {
   beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock);
     useAuthMock.mockReturnValue({
       userData: {
         cubidData: {
@@ -65,7 +78,28 @@ describe("AdminDashboardPage", () => {
       },
       isLoading: false,
     });
+    useControlPlaneAccessMock.mockReturnValue({
+      data: {
+        canAccessAdminDashboard: true,
+      },
+      error: null,
+      isLoading: false,
+    });
     replaceMock.mockReset();
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+
+      if (url.includes("/api/admin/ramp-requests")) {
+        return createFetchResponse({
+          onRampRequests: selectResponses.interac_transfer.data,
+          offRampRequests: selectResponses.off_ramp_req.data,
+          statuses: selectResponses.ref_request_statuses.data,
+        });
+      }
+
+      return createFetchResponse({});
+    });
     mockFrom.mockClear();
     updateCalls.length = 0;
     const responses = getResponses();
@@ -77,10 +111,17 @@ describe("AdminDashboardPage", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("redirects users without admin access", () => {
-    useAuthMock.mockReturnValue({ userData: { cubidData: { is_admin: false } }, isLoading: false });
+    useControlPlaneAccessMock.mockReturnValue({
+      data: {
+        canAccessAdminDashboard: false,
+      },
+      error: null,
+      isLoading: false,
+    });
 
     render(<AdminDashboardPage />);
 

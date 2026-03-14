@@ -3,16 +3,31 @@ import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { useModal } from "@shared/contexts/ModalContext";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { useSendMoney } from "@shared/hooks/useSendMoney";
+import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import {
-  TopUpModal,
   OffRampModal,
   CharitySelectModal,
   CharityContributionsModal,
   ThemeSelectModal,
+  BiaPreferencesModal,
+  VoucherRoutingPreferencesModal,
+  FutureAppFeaturesModal,
 } from "@tcoin/wallet/components/modals";
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
-import { LuCreditCard, LuDollarSign, LuHeart, LuPalette, LuShield, LuUser } from "react-icons/lu";
-import { hasAdminAccess } from "@shared/utils/access";
+import {
+  LuBuilding2,
+  LuClipboardList,
+  LuDollarSign,
+  LuFlaskConical,
+  LuHeart,
+  LuMapPin,
+  LuPalette,
+  LuShield,
+  LuShuffle,
+  LuUser,
+} from "react-icons/lu";
+import { useControlPlaneAccess } from "@shared/api/hooks/useControlPlaneAccess";
 import { useRouter } from "next/navigation";
 
 const DEFAULT_CHARITY_DATA = {
@@ -24,9 +39,27 @@ const DEFAULT_CHARITY_DATA = {
 export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
+  const { senderWallet } = useSendMoney({
+    senderId: userData?.cubidData?.id ?? 0,
+    receiverId: null,
+  });
+  const { balance: rawBalance } = useTokenBalance(senderWallet ?? null);
+  const userBalance = Number.parseFloat(rawBalance) || 0;
   const activeProfile = userData?.cubidData?.activeProfile;
   const router = useRouter();
+  const controlPlaneAccess = useControlPlaneAccess("tcoin");
   const [selectedCharity, setSelectedCharity] = useState("None");
+  const [biaOptions, setBiaOptions] = useState<Array<{ id: string; code: string; name: string }>>([]);
+  const [primaryBiaId, setPrimaryBiaId] = useState<string>("");
+  const [secondaryBiaIds, setSecondaryBiaIds] = useState<string[]>([]);
+  const [isSavingBiaSelection, setIsSavingBiaSelection] = useState(false);
+  const [voucherPreferenceForm, setVoucherPreferenceForm] = useState({
+    merchantStoreId: "",
+    tokenAddress: "",
+    trustStatus: "default",
+  });
+  const [isSavingVoucherPreference, setIsSavingVoucherPreference] = useState(false);
+  const [merchantActionLabel, setMerchantActionLabel] = useState("Sign up as Merchant");
   const charityData = useMemo(() => DEFAULT_CHARITY_DATA, []);
 
   useEffect(() => {
@@ -36,19 +69,142 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     }
   }, [activeProfile?.charityPreferences?.charity]);
 
-  const openTopUpModal = () => {
-    openModal({
-      content: <TopUpModal closeModal={closeModal} tokenLabel={tokenLabel} />,
-      title: "Top Up with Interac eTransfer",
-      description: `Send an Interac eTransfer to top up your ${tokenLabel.toUpperCase()} balance.`,
+  useEffect(() => {
+    const loadBiaSelection = async () => {
+      try {
+        const response = await fetch("/api/bias/list?citySlug=tcoin", {
+          credentials: "include",
+        });
+        const body = await response.json();
+        if (!response.ok) return;
+
+        const options = Array.isArray(body?.bias)
+          ? body.bias
+              .filter((row: any) => typeof row?.id === "string")
+              .map((row: any) => ({
+                id: String(row.id),
+                code: typeof row.code === "string" ? row.code : "BIA",
+                name: typeof row.name === "string" ? row.name : row.id,
+              }))
+          : [];
+        setBiaOptions(options);
+
+        if (body?.activeAffiliation?.biaId) {
+          setPrimaryBiaId(String(body.activeAffiliation.biaId));
+        } else if (options.length > 0) {
+          setPrimaryBiaId(options[0].id);
+        }
+
+        const secondaries = Array.isArray(body?.secondaryAffiliations)
+          ? body.secondaryAffiliations
+              .map((row: any) => (typeof row?.biaId === "string" ? row.biaId : null))
+              .filter((row: string | null): row is string => row != null)
+          : [];
+        setSecondaryBiaIds(secondaries);
+      } catch {
+        setBiaOptions([]);
+      }
+    };
+
+    void loadBiaSelection();
+  }, []);
+
+  useEffect(() => {
+    const loadMerchantActionState = async () => {
+      try {
+        const response = await fetch("/api/merchant/application/status?citySlug=tcoin", {
+          credentials: "include",
+        });
+        const body = await response.json();
+        if (!response.ok) return;
+        const state = typeof body?.state === "string" ? body.state : "none";
+
+        if (state === "none") {
+          setMerchantActionLabel("Sign up as Merchant");
+          return;
+        }
+
+        if (state === "draft") {
+          setMerchantActionLabel("Continue Merchant Application");
+          return;
+        }
+
+        setMerchantActionLabel("Open Merchant Dashboard");
+      } catch {
+        // Keep default CTA label when status lookup fails.
+      }
+    };
+
+    void loadMerchantActionState();
+  }, []);
+
+  const toggleSecondaryBia = (biaId: string) => {
+    setSecondaryBiaIds((prev) => {
+      if (prev.includes(biaId)) {
+        return prev.filter((value) => value !== biaId);
+      }
+      return [...prev, biaId];
     });
+  };
+
+  const saveBiaSelection = async () => {
+    if (!primaryBiaId) {
+      return;
+    }
+
+    setIsSavingBiaSelection(true);
+    try {
+      const response = await fetch("/api/bias/select", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          biaId: primaryBiaId,
+          secondaryBiaIds: secondaryBiaIds.filter((biaId) => biaId !== primaryBiaId),
+          source: "user_selected",
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(typeof body?.error === "string" ? body.error : "Failed to save BIA selection.");
+      }
+    } catch (error) {
+      console.error("Failed to save BIA selection", error);
+    } finally {
+      setIsSavingBiaSelection(false);
+    }
+  };
+
+  const saveVoucherPreference = async () => {
+    setIsSavingVoucherPreference(true);
+    try {
+      await fetch("/api/vouchers/preferences", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          citySlug: "tcoin",
+          merchantStoreId:
+            voucherPreferenceForm.merchantStoreId.trim() === ""
+              ? null
+              : Number.parseInt(voucherPreferenceForm.merchantStoreId, 10),
+          tokenAddress: voucherPreferenceForm.tokenAddress.trim() || null,
+          trustStatus: voucherPreferenceForm.trustStatus,
+        }),
+      });
+    } catch (error) {
+      console.error("Failed to save voucher preference", error);
+    } finally {
+      setIsSavingVoucherPreference(false);
+    }
   };
 
   const openOffRampModal = () => {
     openModal({
-      content: <OffRampModal closeModal={closeModal} />,
+      content: <OffRampModal closeModal={closeModal} userBalance={userBalance} />,
       title: "Convert and Off-ramp",
-      description: "Convert your TCOIN to CAD and transfer to your bank account.",
+      description: `Convert your ${tokenLabel.toUpperCase()} to CAD and transfer to your bank account.`,
     });
   };
 
@@ -100,10 +256,64 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     });
   };
 
-  const isAdmin = hasAdminAccess(userData?.cubidData?.is_admin ?? userData?.user?.is_admin);
+  const openBiaPreferencesModal = () => {
+    openModal({
+      content: (
+        <BiaPreferencesModal
+          closeModal={closeModal}
+          biaOptions={biaOptions}
+          primaryBiaId={primaryBiaId}
+          secondaryBiaIds={secondaryBiaIds}
+          setPrimaryBiaId={setPrimaryBiaId}
+          toggleSecondaryBia={toggleSecondaryBia}
+          onSave={saveBiaSelection}
+          isSaving={isSavingBiaSelection}
+        />
+      ),
+      title: "BIA Preferences",
+      description: "Choose your primary and secondary BIAs to personalize neighbourhood-related routing and discovery.",
+    });
+  };
+
+  const openVoucherRoutingPreferencesModal = () => {
+    openModal({
+      content: (
+        <VoucherRoutingPreferencesModal
+          closeModal={closeModal}
+          voucherPreferenceForm={voucherPreferenceForm}
+          setVoucherPreferenceForm={setVoucherPreferenceForm}
+          onSave={saveVoucherPreference}
+          isSaving={isSavingVoucherPreference}
+        />
+      ),
+      title: "Voucher Routing Preferences",
+      description: "Control trust/blocked/default routing behavior for merchant or token voucher paths.",
+    });
+  };
+
+  const openFutureAppFeaturesModal = () => {
+    openModal({
+      content: <FutureAppFeaturesModal />,
+      title: "Future app features",
+      description: "Preview experimental dashboard visualizations using sample data.",
+      elSize: "4xl",
+      isResponsive: true,
+    });
+  };
+
+  const canAccessCityManager = controlPlaneAccess.data?.canAccessCityManager === true;
+  const canAccessAdminDashboard = controlPlaneAccess.data?.canAccessAdminDashboard === true;
 
   const handleOpenAdmin = () => {
     router.push("/admin");
+  };
+
+  const handleOpenMerchant = () => {
+    router.push("/merchant");
+  };
+
+  const handleOpenCityAdmin = () => {
+    router.push("/city-admin");
   };
 
   return (
@@ -113,9 +323,6 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           <CardTitle>More</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Button type="button" className="w-full justify-start" onClick={openTopUpModal}>
-            <LuCreditCard className="mr-2 h-4 w-4" /> Top Up with Interac eTransfer
-          </Button>
           <Button type="button" className="w-full justify-start" onClick={openOffRampModal}>
             <LuDollarSign className="mr-2 h-4 w-4" /> Convert to CAD and Cash Out
           </Button>
@@ -128,7 +335,24 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           <Button type="button" className="w-full justify-start" onClick={openThemeModal}>
             <LuPalette className="mr-2 h-4 w-4" /> Select Theme
           </Button>
-          {isAdmin && (
+          <Button type="button" className="w-full justify-start" onClick={openBiaPreferencesModal}>
+            <LuMapPin className="mr-2 h-4 w-4" /> BIA Preferences
+          </Button>
+          <Button type="button" className="w-full justify-start" onClick={openVoucherRoutingPreferencesModal}>
+            <LuShuffle className="mr-2 h-4 w-4" /> Voucher Routing Preferences
+          </Button>
+          <Button type="button" className="w-full justify-start" onClick={openFutureAppFeaturesModal}>
+            <LuFlaskConical className="mr-2 h-4 w-4" /> Future app features
+          </Button>
+          <Button type="button" className="w-full justify-start" onClick={handleOpenMerchant}>
+            <LuBuilding2 className="mr-2 h-4 w-4" /> {merchantActionLabel}
+          </Button>
+          {canAccessCityManager && (
+            <Button type="button" className="w-full justify-start" onClick={handleOpenCityAdmin}>
+              <LuClipboardList className="mr-2 h-4 w-4" /> Open City Admin
+            </Button>
+          )}
+          {canAccessAdminDashboard && (
             <Button type="button" className="w-full justify-start" onClick={handleOpenAdmin}>
               <LuShield className="mr-2 h-4 w-4" /> Open Admin Dashboard
             </Button>

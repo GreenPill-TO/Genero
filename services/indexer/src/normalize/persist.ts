@@ -162,7 +162,7 @@ export async function persistNormalizedEvents(options: {
           tx_hash: event.txHash,
           block_number: event.blockNumber,
           log_index: event.logIndex,
-          minter_address: pickAddress(payload, ["tokenMinter", "_tokenMinter", "minter"]),
+          minter_address: pickAddress(payload, ["tokenMinter", "_tokenMinter", "minter", "_minter"]),
           recipient_address: pickAddress(payload, ["to", "_beneficiary", "beneficiary"]),
           contract_address: event.contractAddress,
           mint_value: toNumericString(payload.value ?? payload._value),
@@ -175,7 +175,7 @@ export async function persistNormalizedEvents(options: {
           tx_hash: event.txHash,
           block_number: event.blockNumber,
           log_index: event.logIndex,
-          burner_address: pickAddress(payload, ["tokenBurner", "_tokenBurner", "burner"]),
+          burner_address: pickAddress(payload, ["tokenBurner", "_tokenBurner", "burner", "_burner"]),
           contract_address: event.contractAddress,
           burn_value: toNumericString(payload.value ?? payload._value),
         });

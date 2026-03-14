@@ -37,9 +37,8 @@ describe("AccountCard", () => {
     render(
       <AccountCard
         balance={10}
-        openModal={vi.fn()}
-        closeModal={vi.fn()}
         senderWallet="0xabc123"
+        onOpenTransactionHistory={vi.fn()}
       />
     );
 
@@ -50,4 +49,3 @@ describe("AccountCard", () => {
     );
   });
 });
-

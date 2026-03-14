@@ -14,6 +14,11 @@ This document covers the imported contracts in `contracts/foundry/src/torontocoi
 - The intended architecture is sound: `Orchestrator` coordinates redemptions between `TCOIN`, `TTC`, and `CAD`, and `Voting` proposes policy updates.
 - As checked into this repo today, the system is **not deployable** due to dependency/import issues plus multiple critical logic bugs.
 
+### BIA v1 Release Alignment Note
+- P0/P1 fixes in this document remain important for making the TorontoCoin contract suite deployable and production-safe.
+- For the current BIA v1 rollout (off-chain BIA metadata/controls + Sarafu pool mechanics), these P0/P1 fixes are **not** a hard release gate.
+- This means BIA v1 can ship independently while TorontoCoin contract hardening proceeds in parallel.
+
 ### Build and Dependency Status
 - `forge build` currently fails because OpenZeppelin dependencies are not installed/remapped in `contracts/foundry`.
 - Required packages include both:
@@ -48,6 +53,120 @@ flowchart TD
     V -->|"approved params"| O
     O -->|"apply policy + update TCOIN demurrage/rebase settings"| T
 ```
+
+## Contract Interfaces
+
+### `TCOIN.sol` (`contract TCOIN`)
+- Type: UUPS-upgradeable ERC20 (`Initializable`, `ERC20Upgradeable`, `OwnableUpgradeable`, `UUPSUpgradeable`).
+- Initialization and upgrade controls:
+- `initialize()` sets token metadata and rebase defaults.
+- `_authorizeUpgrade(address)` is owner-gated (`onlyOwner`).
+- Supply and balance surface:
+- `totalSupply()` returns the custom `totalTCOINSupply` tracker (not the base ERC20 total).
+- `balanceOf(address)` overrides ERC20 balance reads.
+- Mint/burn and transfer surface:
+- `mint(address to, uint256 amount)` is restricted to whitelisted stores.
+- `burn(address from, uint256 amount)` is restricted to whitelisted stores.
+- `transfer(address recipient, uint256 amount)` overrides ERC20 transfer behavior.
+- Monetary policy surface:
+- `rebase()` applies demurrage after `REBASE_PERIOD`.
+- `updateDemurrageRate(uint256)` and `updateRebasePeriod(uint256)` are owner-only.
+- Orchestration and whitelist surface:
+- `setOrchestrator(address)` is owner-only.
+- `whitelistStore(address)` and `removeStoreFromWhitelist(address)` are orchestrator-only.
+- Read-only metadata and accounting getters:
+- `getTotalRawSupply()`, `getTotalTCOINSupply()`, `getDemurrageRate()`, `getRebasePeriod()`.
+
+### `TTCCOIN.sol` (`contract TTC`)
+- Type: ERC20 with role-based minting and pause controls (`ERC20`, `AccessControl`, `Pausable`).
+- Role model:
+- `OWNER_ROLE` administers pausing and minter-role assignment.
+- `MINTER_ROLE` can mint.
+- Constructor grants both roles to deployer and configures role admins.
+- Token operations:
+- `mint(address to, uint256 amount)` requires `MINTER_ROLE` and contract not paused.
+- `burn(uint256 amount)` burns caller tokens while not paused.
+- Admin controls:
+- `pause()` and `unpause()` require `OWNER_ROLE`.
+- Supply/accounting getters:
+- `getTotalMinted()` and `getTotalBurned()`.
+- Inherited ERC20 interface remains available (`transfer`, `approve`, `transferFrom`, `allowance`, etc.).
+
+### `CADCOIN.sol` (`contract CAD`)
+- Type: ERC20 with role-based minting and pause controls (`ERC20`, `AccessControl`, `Pausable`).
+- Role model:
+- `OWNER_ROLE` controls pause/unpause.
+- `MINTER_ROLE` controls minting.
+- Constructor assigns both roles to deployer.
+- Token operations:
+- `mint(address to, uint256 amount)` requires `MINTER_ROLE` and contract not paused.
+- `burn(uint256 amount)` burns caller tokens while not paused.
+- Admin controls:
+- `pause()` and `unpause()` require `OWNER_ROLE`.
+- Supply/accounting getters:
+- `getTotalMinted()` and `getTotalBurned()`.
+- Inherited ERC20 interface remains available (`transfer`, `approve`, `transferFrom`, `allowance`, etc.).
+
+### `Orchestration.sol` (`contract Orchestrator`)
+- Type: UUPS-upgradeable coordinator (`Initializable`, `OwnableUpgradeable`, `UUPSUpgradeable`) that composes `TCOIN`, `TTC`, `CAD`, and `Voting`.
+- Initialization and upgrade controls:
+- `initialize(...)` wires token/voting addresses and initial policy parameters.
+- `_authorizeUpgrade(address)` is owner-gated (`onlyOwner`).
+- Address wiring/admin setters (owner-only):
+- `setTcoinAddress(address)`, `setTtcAddress(address)`, `setCadAddress(address)`.
+- Governance sync surface:
+- `updateValuesAfterVoting()` pulls policy values from `Voting`.
+- Policy/state getters:
+- `getPegValue()`, `getStewardCount()`, `getRedemptionRateUserTTC()`, `getRedemptionRateStoreTTC()`, `getRedemptionRateUserCAD()`, `getRedemptionRateStoreCAD()`, `getMinimumReserveRatio()`, `getMaximumReserveRatio()`, `getDemurrageRate()`, `getReserveRatio()`.
+- Charity and steward management:
+- `addCharity(uint256 id, string name, address charity)` (owner-only).
+- `isCharity(address)` view helper.
+- `nominateSteward(uint256 stewardId, string name, address stewardAddress)`.
+- `isSteward(address)` view helper.
+- Monetary policy and reserve ops:
+- `calculateReserveRatio()` view helper.
+- `rebaseTCOIN()`, `updateDemurrageRate(uint256)`, `updateRebasePeriod(uint256)` (owner-only wrappers into `TCOIN`).
+- Redemption entrypoints (user/store, TTC/CAD, with and without explicit charity id):
+- `redeemTCOINTTCCOIN(uint256, uint256)`.
+- `redeemTCOINFCADCOIN(uint256, uint256)`.
+- `redeemTCOINForUserTTCCOIN(uint256)` and `redeemTCOINForUserTTCCOIN(uint256, uint256)`.
+- `redeemTCOINForStoreTTCCOIN(uint256)` and `redeemTCOINForStoreTTCCOIN(uint256, uint256)`.
+- `redeemTCOINForUserCADCOIN(uint256)` and `redeemTCOINForUserCADCOIN(uint256, uint256)`.
+- `redeemTCOINForStoreCADCOIN(uint256)` and `redeemTCOINForStoreCADCOIN(uint256, uint256)`.
+- Charity minting flow:
+- `mintTCOINForCharity(uint256)` allows a charity to mint up to its accrued allowance.
+
+### `Voting.sol` (`contract Voting`)
+- Type: owner-initialized governance module (`Initializable`, `OwnableUpgradeable`) with steward-gated voting via `Orchestrator.isSteward`.
+- Initialization:
+- `initialize(address orchestrator)` snapshots initial governance parameters from `Orchestrator`.
+- Parameter getters:
+- `getPegValue()`, `getRedemptionRateUserTTC()`, `getRedemptionRateStoreTTC()`, `getRedemptionRateUserCAD()`, `getRedemptionRateStoreCAD()`, `getMinimumReserveRatio()`, `getMaximumReserveRatio()`, `getDemurrageRate()`, `getReserveRatio()`.
+- Voting entrypoints:
+- `voteToUpdatePegValue(uint256 proposedPegValue)` for peg selection.
+- `voteToUpdateValues(...)` for multi-parameter increment/decrement/leave voting via `VoteOption`.
+- Exposed governance state:
+- `orchestrator` (public reference), `pegValue`, parameter fields, and mappings/arrays (`pegValueVoteCounts`, `hasVoted`, `stewardVotes`, `proposedPegValues`, `votes`, `stewardVotesAll`).
+
+### `PlainERC20.sol` (`contract MyToken`)
+- Type: generic template token (`ERC20`, `ERC20Burnable`, `ERC20Pausable`, `AccessControl`, `ReentrancyGuard`).
+- Constructor interface:
+- `constructor(string name, string symbol, address admin)` assigns `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE`, and `PAUSER_ROLE` to `admin`.
+- Role-controlled methods:
+- `mint(address to, uint256 amount)` requires `MINTER_ROLE`.
+- `pause()` and `unpause()` require `PAUSER_ROLE`.
+- Transfer hook:
+- `_beforeTokenTransfer(address from, address to, uint256 amount)` enforces pause checks.
+- Inherited interfaces include standard ERC20 + burnable surface (`transfer`, `approve`, `transferFrom`, `burn`, `burnFrom`, etc.).
+
+### `sampleERC20.sol` (`contract TCOIN` sample/duplicate)
+- Type: alternate/sample copy of `TCOIN` with the same broad surface (upgradeable ERC20 + orchestrator-controlled store whitelist + rebase/mint/burn getters).
+- Public/external interface mirrors the core shape of `TCOIN.sol`:
+- Lifecycle/admin: `initialize()`, `setOrchestrator(address)`, `updateDemurrageRate(uint256)`, `updateRebasePeriod(uint256)`, `rebase()`.
+- Whitelist: `whitelistStore(address)`, `removeStoreFromWhitelist(address)`.
+- Token/accounting: `transfer(address,uint256)`, `mint(address,uint256)`, `burn(address,uint256)`, `totalSupply()`, `balanceOf(address)`.
+- Getters: `getTotalRawSupply()`, `getTotalTCOINSupply()`, `getDemurrageRate()`, `getRebasePeriod()`.
+- Note: this file appears to be a non-production duplicate and should not be treated as canonical over `TCOIN.sol`.
 
 ## Patch List to Make Deployable End-to-End
 

@@ -239,7 +239,7 @@ export function ReceiveCard({
   const hasAmount = cleanedAmount !== "" && cleanedAmount !== "0.00";
   const qrCaption = hasAmount
     ? `Receive ${cleanedAmount} ${uppercaseToken}`
-    : `Receive any amount ${uppercaseToken}`;
+    : "Receive any amount";
 
   const formatContactName = (contact: Hypodata) =>
     contact.full_name?.trim() || contact.username?.trim() || "Unknown";
