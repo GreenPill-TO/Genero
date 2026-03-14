@@ -38,12 +38,14 @@ app/
     [citycoin apps]/  # Each citycoin will have one or more dedicated apps, aka wallets.
 docs/              # Project documentation and technical deep-dives
 shared/            # Reusable hooks, components and utilities
+  lib/edge/        # Typed browser clients and app-scope helpers for Supabase Edge Functions
 supabase/
   migrations/      # Versioned SQL migrations synced with Supabase
   functions/       # Supabase Edge Functions plus shared Deno helpers
+    _shared/       # Shared auth, scoping, RBAC, validation, and domain helpers
 ```
 
-API routes for Twilio OTP verification are located under `app/api`.
+API routes for Twilio OTP verification and temporary compatibility shims are located under `app/api`.
 
 ## Environment Variables
 

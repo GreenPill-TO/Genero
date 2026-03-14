@@ -34,6 +34,8 @@
 - **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
   - Protected wallet control-plane routes now resolve app-scoped access server-side from `public.roles` (`admin`/`operator`) against the active `ref_app_instances` record, and UI affordances are keyed from that same API contract.
   - Wallet user-managed settings surfaces (`/welcome`, Edit Profile, Theme, Charity, BIA preferences) now use the shared user-settings edge function rather than bespoke Next API handlers or direct browser table writes.
+  - App-scoped wallet APIs are being moved behind Supabase edge functions under `supabase/functions/*`, with shared auth/scope/RBAC helpers in `supabase/functions/_shared` and temporary Next route compatibility shims left in place for non-migrated consumers.
+  - New shared browser clients in `shared/lib/edge/*` send `appSlug`, `citySlug`, and `environment` to those edge functions, which resolve the canonical `ref_app_instances` row before any app-scoped query or mutation runs.
   - Client control-plane access caching is now keyed by authenticated user identity as well as city slug so role-derived UI state cannot leak across account switches.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
   - **App Registry**: `ref_apps`, `ref_citycoins`, and `ref_app_instances` tables track each deployment pairing with unique slugs;
@@ -146,3 +148,5 @@
 - The wallet layout now always mounts the Cubid SDK `Provider` and `WalletCubidProvider`, even when the older `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS` flag is unset, so inline Cubid verification widgets on `/welcome` inherit the wagmi context they require.
 - The linked remote Supabase project now seeds `Daily Bread Food Bank`, `Native Women's Resource Centre of Toronto`, and `Parkdale Community Food Bank` into `public.charities`, which unblocks the required charity step in wallet onboarding and the direct-read sparechange charity modal.
 - Step 5 of wallet onboarding now exposes a development-only/local-only `Skip` action when `NEXT_PUBLIC_APP_ENVIRONMENT` is `development` or `local`; the edge function mirrors that rule so wallet setup can be bypassed only in those environments.
+- Wallet screens that previously fetched app-scoped Next APIs directly now call typed edge clients for control-plane access, contact requests, merchant application status/steps, BIA catalogues, store operations, governance actions, redemption flows, and voucher preference writes.
+- Canonical edge-function implementations now exist for `bia-service`, `voucher-preferences`, `merchant-applications`, `store-operations`, `redemptions`, `control-plane`, `governance`, and `user-requests`; `onramp` has a placeholder entrypoint and continues to rely on the existing Next shim in this build.

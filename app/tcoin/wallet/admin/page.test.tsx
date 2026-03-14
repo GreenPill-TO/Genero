@@ -15,6 +15,18 @@ const selectResponses = vi.hoisted(() => ({
 const updateCalls = vi.hoisted(
   () => [] as Array<{ table: string; payload: Record<string, unknown> }>
 );
+const edgeMocks = vi.hoisted(() => ({
+  getBiaList: vi.fn(async () => ({ bias: [], controls: [] })),
+  getBiaMappings: vi.fn(async () => ({ health: null })),
+  getBiaControls: vi.fn(async () => ({ controls: [] })),
+  createBia: vi.fn(async () => ({ bia: {} })),
+  saveBiaMappings: vi.fn(async () => ({ mappings: [] })),
+  saveBiaControls: vi.fn(async () => ({ controls: {} })),
+  getRedemptionRequests: vi.fn(async () => ({ requests: [] })),
+  approveRedemptionRequest: vi.fn(async () => ({ request: {} })),
+  settleRedemptionRequest: vi.fn(async () => ({ request: {}, settlement: {} })),
+  getGovernanceActions: vi.fn(async () => ({ actions: [] })),
+}));
 
 const mockFrom = vi.hoisted(() =>
   vi.fn((table: string) => ({
@@ -56,6 +68,15 @@ vi.mock("react-toastify", () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}));
+vi.mock("@shared/lib/edge/biaClient", () => edgeMocks);
+vi.mock("@shared/lib/edge/redemptionsClient", () => ({
+  getRedemptionRequests: edgeMocks.getRedemptionRequests,
+  approveRedemptionRequest: edgeMocks.approveRedemptionRequest,
+  settleRedemptionRequest: edgeMocks.settleRedemptionRequest,
+}));
+vi.mock("@shared/lib/edge/governanceClient", () => ({
+  getGovernanceActions: edgeMocks.getGovernanceActions,
 }));
 
 import AdminDashboardPage from "./page";
@@ -102,6 +123,11 @@ describe("AdminDashboardPage", () => {
     });
     mockFrom.mockClear();
     updateCalls.length = 0;
+    edgeMocks.getBiaList.mockResolvedValue({ bias: [], controls: [] });
+    edgeMocks.getBiaMappings.mockResolvedValue({ health: null });
+    edgeMocks.getBiaControls.mockResolvedValue({ controls: [] });
+    edgeMocks.getRedemptionRequests.mockResolvedValue({ requests: [] });
+    edgeMocks.getGovernanceActions.mockResolvedValue({ actions: [] });
     const responses = getResponses();
     responses.interac_transfer = { data: [], error: null };
     responses.off_ramp_req = { data: [], error: null };

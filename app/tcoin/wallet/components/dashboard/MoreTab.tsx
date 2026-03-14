@@ -30,6 +30,8 @@ import {
 } from "react-icons/lu";
 import { useControlPlaneAccess } from "@shared/api/hooks/useControlPlaneAccess";
 import { useRouter } from "next/navigation";
+import { getMerchantApplicationStatus } from "@shared/lib/edge/merchantApplicationsClient";
+import { updateVoucherPreferences } from "@shared/lib/edge/voucherPreferencesClient";
 
 const DEFAULT_CHARITY_DATA = {
   personalContribution: 50,
@@ -61,11 +63,7 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   useEffect(() => {
     const loadMerchantActionState = async () => {
       try {
-        const response = await fetch("/api/merchant/application/status?citySlug=tcoin", {
-          credentials: "include",
-        });
-        const body = await response.json();
-        if (!response.ok) return;
+        const body = await getMerchantApplicationStatus({ citySlug: "tcoin" });
         const state = typeof body?.state === "string" ? body.state : "none";
 
         if (state === "none") {
@@ -90,20 +88,14 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   const saveVoucherPreference = async () => {
     setIsSavingVoucherPreference(true);
     try {
-      await fetch("/api/vouchers/preferences", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          citySlug: "tcoin",
-          merchantStoreId:
-            voucherPreferenceForm.merchantStoreId.trim() === ""
-              ? null
-              : Number.parseInt(voucherPreferenceForm.merchantStoreId, 10),
-          tokenAddress: voucherPreferenceForm.tokenAddress.trim() || null,
-          trustStatus: voucherPreferenceForm.trustStatus,
-        }),
-      });
+      await updateVoucherPreferences({
+        merchantStoreId:
+          voucherPreferenceForm.merchantStoreId.trim() === ""
+            ? null
+            : Number.parseInt(voucherPreferenceForm.merchantStoreId, 10),
+        tokenAddress: voucherPreferenceForm.tokenAddress.trim() || null,
+        trustStatus: voucherPreferenceForm.trustStatus,
+      }, { citySlug: "tcoin" });
     } catch (error) {
       console.error("Failed to save voucher preference", error);
     } finally {

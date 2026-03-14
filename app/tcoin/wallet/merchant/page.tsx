@@ -17,6 +17,14 @@ import {
 } from "@shared/components/ui/Select";
 import { Textarea } from "@shared/components/ui/TextArea";
 import type { MerchantApplicationStatusResponse } from "@shared/lib/merchantSignup/types";
+import { getBiaList } from "@shared/lib/edge/biaClient";
+import {
+  getMerchantApplicationStatus,
+  restartMerchantApplication,
+  saveMerchantApplicationStep,
+  startMerchantApplication,
+  submitMerchantApplication,
+} from "@shared/lib/edge/merchantApplicationsClient";
 import { createClient } from "@shared/lib/supabase/client";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
 import { useRouter } from "next/navigation";
@@ -187,9 +195,7 @@ export default function MerchantDashboardPage() {
   const loadStatus = useCallback(async () => {
     setIsLoadingStatus(true);
     try {
-      const next = await fetchJson<MerchantApplicationStatusResponse>(
-        `/api/merchant/application/status?citySlug=${CITY_SLUG}`
-      );
+      const next = (await getMerchantApplicationStatus({ citySlug: CITY_SLUG })) as MerchantApplicationStatusResponse;
       setStatus(next);
       if (next.signupStep && Number.isFinite(next.signupStep)) {
         setWizardStep(Math.max(1, Math.min(5, Number(next.signupStep))));
@@ -214,7 +220,9 @@ export default function MerchantDashboardPage() {
         return;
       }
       try {
-        const response = await fetchJson<{ bias?: BiaRecord[] }>(`/api/bias/list?citySlug=${CITY_SLUG}`);
+        const response = (await getBiaList({
+          appContext: { citySlug: CITY_SLUG },
+        })) as { bias?: BiaRecord[] };
         setBiaOptions(Array.isArray(response.bias) ? response.bias : []);
       } catch {
         setBiaOptions([]);
@@ -226,10 +234,7 @@ export default function MerchantDashboardPage() {
 
   const startApplication = async (forceNew: boolean) => {
     try {
-      const response = await fetchJson<{ signupStep?: number }>("/api/merchant/application/start", {
-        method: "POST",
-        body: JSON.stringify({ citySlug: CITY_SLUG, forceNew }),
-      });
+      const response = (await startMerchantApplication({ forceNew }, { citySlug: CITY_SLUG })) as { signupStep?: number };
       await loadStatus();
       setShowWizard(true);
       setWizardStep(response.signupStep && Number.isFinite(response.signupStep) ? Number(response.signupStep) : 1);
@@ -241,10 +246,7 @@ export default function MerchantDashboardPage() {
 
   const restartApplication = async () => {
     try {
-      const response = await fetchJson<{ signupStep?: number }>("/api/merchant/application/restart", {
-        method: "POST",
-        body: JSON.stringify({ citySlug: CITY_SLUG }),
-      });
+      const response = (await restartMerchantApplication({}, { citySlug: CITY_SLUG })) as { signupStep?: number };
       await loadStatus();
       setShowWizard(true);
       setWizardStep(response.signupStep && Number.isFinite(response.signupStep) ? Number(response.signupStep) : 1);
@@ -484,15 +486,14 @@ export default function MerchantDashboardPage() {
 
     setIsSavingStep(true);
     try {
-      await fetchJson("/api/merchant/application/step", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: CITY_SLUG,
+      await saveMerchantApplicationStep(
+        {
           storeId,
           step: wizardStep,
           payload: currentStepPayload,
-        }),
-      });
+        },
+        { citySlug: CITY_SLUG }
+      );
       await loadStatus();
       return true;
     } catch (saveError) {
@@ -520,10 +521,7 @@ export default function MerchantDashboardPage() {
       const ok = await saveCurrentStep();
       if (!ok) return;
 
-      await fetchJson("/api/merchant/application/submit", {
-        method: "POST",
-        body: JSON.stringify({ citySlug: CITY_SLUG, storeId }),
-      });
+      await submitMerchantApplication({ storeId }, { citySlug: CITY_SLUG });
       await loadStatus();
       setShowWizard(false);
       toast.success("Merchant application submitted for city-manager review.");

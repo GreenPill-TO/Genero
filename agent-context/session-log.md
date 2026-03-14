@@ -1,3 +1,57 @@
+## v1.25
+### Timestamp
+- 2026-03-14 03:10:00 EDT
+
+### Objective
+- Refactor the wallet’s remaining app-scoped operational APIs toward Supabase edge functions that resolve scope through `public.ref_app_instances`, and move the wallet’s live consumers onto typed edge clients where the new services are available.
+
+### What Changed
+- Added a new shared browser edge-client layer under `shared/lib/edge/`, including app-scope resolution, a generic edge invoker, and typed domain clients for BIA, merchant applications, store operations, redemptions, governance, control-plane access, voucher preferences, user requests, and onramp placeholders.
+- Added shared Deno-safe edge helpers in `supabase/functions/_shared/validation.ts`, `supabase/functions/_shared/rbac.ts`, `supabase/functions/_shared/merchantApplications.ts`, `supabase/functions/_shared/storeOperations.ts`, and `supabase/functions/_shared/redemptions.ts`.
+- Added canonical Supabase edge-function entrypoints for `bia-service`, `voucher-preferences`, `merchant-applications`, `store-operations`, `redemptions`, `control-plane`, `governance`, and `user-requests`; added an `onramp` placeholder entrypoint while the wallet continues to use the existing Next shim for buy-flow transport in this build.
+- Updated wallet consumers to use the new edge clients for control-plane access, contact submissions, merchant application status/start/restart/step/submit flows, merchant dashboard BIA/governance/redemption/store operations, city-manager approvals, voucher preference writes, and off-ramp redemption creation.
+- Updated the admin dashboard’s BIA, governance, and redemption control-plane actions to use the new edge clients while leaving voucher compatibility, merchant liquidity, ramp-request legacy tables, and onramp admin retry on their existing shims.
+- Added targeted tests for the new app-scope helper and updated wallet tests that would otherwise hit live network during the new client-based flows.
+
+### Verification
+- `npx vitest run shared/lib/edge/appScope.test.ts app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/city-manager/page.test.tsx`
+- `npx tsc --noEmit`
+  - still fails on pre-existing repo issues outside this refactor
+  - filtering the output to the files changed in this session produced no hits
+
+### Files Edited
+- `shared/lib/edge/*`
+- `supabase/functions/_shared/validation.ts`
+- `supabase/functions/_shared/rbac.ts`
+- `supabase/functions/_shared/merchantApplications.ts`
+- `supabase/functions/_shared/storeOperations.ts`
+- `supabase/functions/_shared/redemptions.ts`
+- `supabase/functions/bia-service/index.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/functions/merchant-applications/index.ts`
+- `supabase/functions/store-operations/index.ts`
+- `supabase/functions/redemptions/index.ts`
+- `supabase/functions/control-plane/index.ts`
+- `supabase/functions/governance/index.ts`
+- `supabase/functions/user-requests/index.ts`
+- `supabase/functions/onramp/index.ts`
+- `shared/api/hooks/useControlPlaneAccess.ts`
+- `app/tcoin/wallet/contact/page.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/tcoin/wallet/merchant/LiveMerchantDashboard.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/admin/page.test.tsx`
+- `shared/lib/edge/appScope.test.ts`
+- `agent-context/technical-spec.md`
+- `agent-context/functional-spec.md`
+- `agent-context/session-log.md`
+- `README.md`
+- `AGENTS.md`
+
 ## v1.24
 ### Timestamp
 - 2026-03-14 02:24:00 EDT

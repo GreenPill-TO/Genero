@@ -46,6 +46,8 @@ supabase/
 ├─ sql-schema.sql        # latest sql schema (github action runs db pull on PR)
 ├─ migrations/           # Agent-generated incremental SQL patches (file name starts with session version referencing session-log.md)
 └─ functions/            # Supabase Edge Functions and shared Deno-safe helpers
+   ├─ _shared/           # Shared auth, app scoping, RBAC, validation and domain helpers
+   └─ */                 # Domain edge functions (for example user-settings, bia-service, store-operations)
 test/
 README.md                # intro to the project and this repo
 AGENTS.md                # this file

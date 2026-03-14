@@ -3,6 +3,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlPlaneAccess } from "@shared/api/hooks/useControlPlaneAccess";
+import {
+  createBia,
+  getBiaControls,
+  getBiaList,
+  getBiaMappings,
+  saveBiaControls,
+  saveBiaMappings,
+} from "@shared/lib/edge/biaClient";
+import { getGovernanceActions } from "@shared/lib/edge/governanceClient";
+import {
+  approveRedemptionRequest,
+  getRedemptionRequests,
+  settleRedemptionRequest,
+} from "@shared/lib/edge/redemptionsClient";
 import { useRouter } from "next/navigation";
 import { createClient } from "@shared/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
@@ -562,24 +576,28 @@ export default function AdminDashboardPage() {
         voucherMerchants,
         onrampAdminList,
       ] = await Promise.all([
-        fetchJson<{ bias?: BiaRecord[]; controls?: BiaControlRecord[] }>(
-          "/api/bias/list?citySlug=tcoin&includeMappings=true"
-        ),
-        fetchJson<{
+        getBiaList({
+          includeMappings: true,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ bias?: BiaRecord[]; controls?: BiaControlRecord[] }>,
+        getBiaMappings({
+          chainId: 42220,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{
           health?: {
             mappedPools: number;
             discoveredPools: number;
             unmappedPools: number;
             staleMappings: number;
           } | null;
-        }>("/api/bias/mappings?citySlug=tcoin&chainId=42220"),
-        fetchJson<{ controls?: BiaControlRecord[] }>("/api/bias/controls?citySlug=tcoin"),
-        fetchJson<{ requests?: RedemptionRequestRecord[] }>(
-          "/api/redemptions/list?citySlug=tcoin&limit=100"
-        ),
-        fetchJson<{ actions?: GovernanceActionRecord[] }>(
-          "/api/governance/actions?citySlug=tcoin&limit=50"
-        ),
+        }>,
+        getBiaControls({ citySlug: "tcoin" }) as Promise<{ controls?: BiaControlRecord[] }>,
+        getRedemptionRequests({ limit: 100, appContext: { citySlug: "tcoin" } }) as Promise<{
+          requests?: RedemptionRequestRecord[];
+        }>,
+        getGovernanceActions({ limit: 50, appContext: { citySlug: "tcoin" } }) as Promise<{
+          actions?: GovernanceActionRecord[];
+        }>,
         fetchJson<{ rules?: VoucherCompatibilityRule[] }>(
           "/api/vouchers/compatibility?citySlug=tcoin&chainId=42220"
         ),
@@ -688,16 +706,15 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      await fetchJson("/api/bias/create", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await createBia(
+        {
           code,
           name,
           centerLat,
           centerLng,
-        }),
-      });
+        },
+        { citySlug: "tcoin" }
+      );
       toast.success(`Created BIA ${code}.`);
       setBiaCreateForm({ code: "", name: "", centerLat: "", centerLng: "" });
       await loadControlPlaneData();
@@ -724,10 +741,8 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      await fetchJson("/api/bias/mappings", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await saveBiaMappings(
+        {
           biaId: mappingForm.biaId,
           chainId,
           poolAddress: mappingForm.poolAddress.trim(),
@@ -737,8 +752,9 @@ export default function AdminDashboardPage() {
           feeAddress: mappingForm.feeAddress.trim() || null,
           mappingStatus: "active",
           forceTouch: mappingForm.forceTouch,
-        }),
-      });
+        },
+        { citySlug: "tcoin" }
+      );
       toast.success("Pool mapping saved.");
       await loadControlPlaneData();
     } catch (error) {
@@ -773,18 +789,17 @@ export default function AdminDashboardPage() {
         throw new Error("maxDailyRedemption and maxTxAmount must be numeric when provided.");
       }
 
-      await fetchJson("/api/bias/controls", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await saveBiaControls(
+        {
           biaId: controlsForm.biaId,
           maxDailyRedemption: maxDaily,
           maxTxAmount: maxTx,
           queueOnlyMode: controlsForm.queueOnlyMode,
           isFrozen: controlsForm.isFrozen,
           reason: controlsForm.reason.trim() || "Controls updated from admin UI",
-        }),
-      });
+        },
+        { citySlug: "tcoin" }
+      );
 
       toast.success("BIA controls updated.");
       await loadControlPlaneData();
@@ -846,17 +861,15 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      await fetchJson(`/api/redemptions/${requestId}/approve`, {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await approveRedemptionRequest(
+        String(requestId),
+        {
           approve,
           rejectionReason: approve ? null : "Rejected in admin dashboard",
-          reason: approve
-            ? "Approved from admin dashboard"
-            : "Rejected from admin dashboard",
-        }),
-      });
+          reason: approve ? "Approved from admin dashboard" : "Rejected from admin dashboard",
+        },
+        { citySlug: "tcoin" }
+      );
       toast.success(approve ? "Redemption approved." : "Redemption rejected.");
       await loadControlPlaneData();
     } catch (error) {
@@ -890,20 +903,18 @@ export default function AdminDashboardPage() {
         throw new Error("Settlement amount must be a positive number.");
       }
 
-      await fetchJson(`/api/redemptions/${request.id}/settle`, {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await settleRedemptionRequest(
+        String(request.id),
+        {
           settlementAmount: parsedAmount,
           settlementAsset: draft.settlementAsset || request.settlement_asset || "CAD",
           txHash: draft.txHash.trim() || null,
           notes: draft.notes.trim() || null,
           failed,
-          reason: failed
-            ? "Marked as settlement failure from admin dashboard"
-            : "Settled from admin dashboard",
-        }),
-      });
+          reason: failed ? "Marked as settlement failure from admin dashboard" : "Settled from admin dashboard",
+        },
+        { citySlug: "tcoin" }
+      );
       toast.success(failed ? "Redemption marked as failed." : "Redemption settled.");
       await loadControlPlaneData();
     } catch (error) {

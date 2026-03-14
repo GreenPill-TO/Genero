@@ -1,0 +1,20 @@
+export type OnrampCheckoutSessionSummary = {
+  id: string;
+  userId: number;
+  provider: string;
+  fiatAmount: string;
+  fiatCurrency: string;
+  status: string;
+  statusReason: string | null;
+  depositAddress: string;
+  recipientWallet: string;
+  incomingUsdcTxHash: string | null;
+  mintTxHash: string | null;
+  tcoinOutAmount: string | null;
+  latestAttemptNo: number | null;
+  latestAttemptMode: string | null;
+  latestAttemptState: string | null;
+  latestAttemptError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};

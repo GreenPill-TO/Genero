@@ -16,6 +16,10 @@ import {
 } from "@shared/components/ui/Select";
 import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui/alert";
 import { Badge } from "@shared/components/ui/badge";
+import { getBiaList } from "@shared/lib/edge/biaClient";
+import { getGovernanceActions } from "@shared/lib/edge/governanceClient";
+import { createRedemptionRequest, getRedemptionRequests } from "@shared/lib/edge/redemptionsClient";
+import { assignStoreBia, saveStoreProfile } from "@shared/lib/edge/storeOperationsClient";
 import { toast } from "react-toastify";
 
 const CITY_SLUG = "tcoin";
@@ -254,15 +258,16 @@ export function LiveMerchantDashboard() {
 
     try {
       const [biaResponse, redemptionResponse, governanceResponse, voucherMerchantsResponse] = await Promise.all([
-        fetchJson<{ activeAffiliation?: { biaId?: string }; bias?: BiaRecord[] }>(
-          `/api/bias/list?citySlug=${CITY_SLUG}`
-        ),
-        fetchJson<{ requests?: RedemptionRequestRecord[] }>(
-          `/api/redemptions/list?citySlug=${CITY_SLUG}&limit=75`
-        ),
-        fetchJson<{ actions?: GovernanceActionRecord[] }>(
-          `/api/governance/actions?citySlug=${CITY_SLUG}&limit=20`
-        ),
+        getBiaList({ appContext: { citySlug: CITY_SLUG } }) as Promise<{
+          activeAffiliation?: { biaId?: string };
+          bias?: BiaRecord[];
+        }>,
+        getRedemptionRequests({ limit: 75, appContext: { citySlug: CITY_SLUG } }) as Promise<{
+          requests?: RedemptionRequestRecord[];
+        }>,
+        getGovernanceActions({ limit: 20, appContext: { citySlug: CITY_SLUG } }) as Promise<{
+          actions?: GovernanceActionRecord[];
+        }>,
         fetchJson<{ merchants?: MerchantVoucherLiquidity[] }>(
           `/api/vouchers/merchants?citySlug=${CITY_SLUG}&chainId=42220&scope=city`
         ),
@@ -307,24 +312,20 @@ export function LiveMerchantDashboard() {
         throw new Error("Latitude and longitude must be numeric values.");
       }
 
-      const response = await fetchJson<{ store?: { store_id?: number }; affiliation?: { bia_id?: string } }>(
-        "/api/stores",
+      const response = (await saveStoreProfile(
         {
-          method: "POST",
-          body: JSON.stringify({
-            citySlug: CITY_SLUG,
-            storeId: Number.isFinite(parsedStoreId) && parsedStoreId > 0 ? parsedStoreId : undefined,
-            displayName: storeForm.displayName.trim() || undefined,
-            walletAddress: storeForm.walletAddress.trim() || undefined,
-            addressText: storeForm.addressText.trim() || undefined,
-            lat: Number.isFinite(parsedLat) ? parsedLat : undefined,
-            lng: Number.isFinite(parsedLng) ? parsedLng : undefined,
-            biaId: storeForm.biaId || undefined,
-            source: "merchant_selected",
-            status: "active",
-          }),
-        }
-      );
+          storeId: Number.isFinite(parsedStoreId) && parsedStoreId > 0 ? parsedStoreId : undefined,
+          displayName: storeForm.displayName.trim() || undefined,
+          walletAddress: storeForm.walletAddress.trim() || undefined,
+          addressText: storeForm.addressText.trim() || undefined,
+          lat: Number.isFinite(parsedLat) ? parsedLat : undefined,
+          lng: Number.isFinite(parsedLng) ? parsedLng : undefined,
+          biaId: storeForm.biaId || undefined,
+          source: "merchant_selected",
+          status: "active",
+        },
+        { citySlug: CITY_SLUG }
+      )) as { store?: { store_id?: number }; affiliation?: { bia_id?: string } };
 
       const nextStoreId = Number(response.store?.store_id ?? parsedStoreId);
       if (Number.isFinite(nextStoreId) && nextStoreId > 0) {
@@ -363,14 +364,14 @@ export function LiveMerchantDashboard() {
     markSaving(key);
 
     try {
-      await fetchJson(`/api/stores/${parsedStoreId}/bia`, {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: CITY_SLUG,
+      await assignStoreBia(
+        parsedStoreId,
+        {
           biaId: storeForm.biaId,
           source: "merchant_selected",
-        }),
-      });
+        },
+        { citySlug: CITY_SLUG }
+      );
       toast.success("Store BIA assignment updated.");
       await loadData();
     } catch (assignErr) {
@@ -404,10 +405,8 @@ export function LiveMerchantDashboard() {
     markSaving(key);
 
     try {
-      await fetchJson("/api/redemptions/request", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: CITY_SLUG,
+      await createRedemptionRequest(
+        {
           storeId: parsedStoreId,
           chainId: 42220,
           tokenAmount,
@@ -417,8 +416,9 @@ export function LiveMerchantDashboard() {
             merchantNotes: redemptionForm.notes.trim() || null,
             source: "merchant_dashboard",
           },
-        }),
-      });
+        },
+        { citySlug: CITY_SLUG }
+      );
 
       toast.success("Redemption request submitted.");
       setRedemptionForm({

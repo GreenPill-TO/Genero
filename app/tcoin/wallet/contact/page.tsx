@@ -6,6 +6,7 @@ import { Textarea } from "@shared/components/ui/TextArea";
 import { Button } from "@shared/components/ui/Button";
 import { LandingHeader } from "@tcoin/wallet/components/landing-header";
 import { Footer } from "@tcoin/wallet/components/footer";
+import { createUserRequest } from "@shared/lib/edge/userRequestsClient";
 
 export default function ContactPage() {
   const [name, setName] = useState("");
@@ -21,24 +22,14 @@ export default function ContactPage() {
     setSubmitError(null);
 
     try {
-      const res = await fetch("/api/user_requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, message }),
-      });
-
-      if (!res.ok) {
-        const errorBody = await res.json().catch(() => null);
-        setSubmitError(errorBody?.message ?? "Unable to send your message right now. Please try again.");
-        return;
-      }
+      await createUserRequest({ name, email, message });
 
       setSubmitted(true);
       setName("");
       setEmail("");
       setMessage("");
-    } catch {
-      setSubmitError("Unable to send your message right now. Please try again.");
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to send your message right now. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

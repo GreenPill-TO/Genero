@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
+import { createRedemptionRequest } from "@shared/lib/edge/redemptionsClient";
 
 interface OffRampProps {
   closeModal: () => void;
@@ -210,12 +211,8 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
         const storeId = Number(storeEmployeeRow?.store_id ?? 0);
         if (Number.isFinite(storeId) && storeId > 0) {
-          const redemptionResponse = await fetch("/api/redemptions/request", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+          await createRedemptionRequest(
+            {
               storeId,
               tokenAmount: donationAmount,
               settlementAsset: "CAD",
@@ -225,16 +222,9 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
                 offRampRequestUuid: offRampRequestId,
                 transactionId,
               },
-            }),
-          });
-
-          if (!redemptionResponse.ok) {
-            const body = await redemptionResponse.json();
-            const message =
-              body?.error ??
-              "Off-ramp burn succeeded, but BIA redemption request creation failed.";
-            throw new Error(message);
-          }
+            },
+            { citySlug: "tcoin" }
+          );
         }
       }
 

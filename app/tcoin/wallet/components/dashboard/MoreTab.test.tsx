@@ -52,6 +52,8 @@ const useControlPlaneAccessMock = vi.hoisted(() =>
     },
   }))
 );
+const getMerchantApplicationStatusMock = vi.hoisted(() => vi.fn(async () => ({ state: "none" })));
+const updateVoucherPreferencesMock = vi.hoisted(() => vi.fn(async () => ({ preference: {} })));
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
@@ -59,6 +61,12 @@ vi.mock("@shared/api/hooks/useAuth", () => ({
 
 vi.mock("@shared/api/hooks/useControlPlaneAccess", () => ({
   useControlPlaneAccess: () => useControlPlaneAccessMock(),
+}));
+vi.mock("@shared/lib/edge/merchantApplicationsClient", () => ({
+  getMerchantApplicationStatus: getMerchantApplicationStatusMock,
+}));
+vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
+  updateVoucherPreferences: updateVoucherPreferencesMock,
 }));
 vi.mock("@shared/hooks/useUserSettings", () => ({
   useUserSettings: () => ({
@@ -147,6 +155,10 @@ describe("MoreTab", () => {
     openModal.mockReset();
     closeModal.mockReset();
     pushMock.mockReset();
+    getMerchantApplicationStatusMock.mockReset();
+    getMerchantApplicationStatusMock.mockResolvedValue({ state: "none" });
+    updateVoucherPreferencesMock.mockReset();
+    updateVoucherPreferencesMock.mockResolvedValue({ preference: {} });
   });
 
   it("does not render buy/top-up actions in the More tab", () => {

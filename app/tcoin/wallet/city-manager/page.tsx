@@ -13,32 +13,13 @@ import type { CityManagerStoreApplicationRecord, StoreLifecycleStatus } from "@s
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import {
+  approveCityManagerStore,
+  getCityManagerStores,
+  rejectCityManagerStore,
+} from "@shared/lib/edge/storeOperationsClient";
 
 const CITY_SLUG = "tcoin";
-
-async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, {
-    credentials: "include",
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-
-  let body: any = null;
-  try {
-    body = await response.json();
-  } catch {
-    body = null;
-  }
-
-  if (!response.ok) {
-    throw new Error(typeof body?.error === "string" ? body.error : `Request failed (${response.status})`);
-  }
-
-  return body as T;
-}
 
 const statusLabel: Record<string, string> = {
   draft: "Draft",
@@ -71,9 +52,11 @@ export default function CityManagerPage() {
     setIsLoadingStores(true);
     setLoadError(null);
     try {
-      const body = await fetchJson<{ stores?: CityManagerStoreApplicationRecord[] }>(
-        `/api/city-manager/stores?citySlug=${CITY_SLUG}&status=${statusFilter}&limit=100`
-      );
+      const body = await getCityManagerStores({
+        status: statusFilter,
+        limit: 100,
+        appContext: { citySlug: CITY_SLUG },
+      });
       setStores(Array.isArray(body.stores) ? body.stores : []);
     } catch (requestError) {
       setLoadError(requestError instanceof Error ? requestError.message : "Failed to load city-manager store list.");
@@ -102,10 +85,7 @@ export default function CityManagerPage() {
   const approveStore = async (storeId: number) => {
     setIsMutating((prev) => ({ ...prev, [storeId]: true }));
     try {
-      await fetchJson(`/api/city-manager/stores/${storeId}/approve`, {
-        method: "POST",
-        body: JSON.stringify({ citySlug: CITY_SLUG }),
-      });
+      await approveCityManagerStore(storeId, {}, { citySlug: CITY_SLUG });
       toast.success(`Store ${storeId} approved.`);
       await loadStores();
     } catch (approveError) {
@@ -124,10 +104,7 @@ export default function CityManagerPage() {
 
     setIsMutating((prev) => ({ ...prev, [storeId]: true }));
     try {
-      await fetchJson(`/api/city-manager/stores/${storeId}/reject`, {
-        method: "POST",
-        body: JSON.stringify({ citySlug: CITY_SLUG, reason }),
-      });
+      await rejectCityManagerStore(storeId, { reason }, { citySlug: CITY_SLUG });
       toast.success(`Store ${storeId} rejected.`);
       await loadStores();
     } catch (rejectError) {
