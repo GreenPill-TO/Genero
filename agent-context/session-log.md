@@ -1,3 +1,22 @@
+## v1.67
+### Timestamp
+- 2026-03-14 14:03:00 EDT
+
+### Objective
+- Fix the remaining GitHub Actions network-resolution issue in branch-targeted Supabase PR validation after the new two-remote workflow was pushed.
+
+### What Changed
+- Updated `.github/workflows/pr-migrations.yml` to run the Supabase dry-run validation with `--dns-resolver https`, avoiding the failing native runner DNS/IPv6 path when connecting to the remote database host.
+- Kept the DEV/PROD branch-targeted validation logic and secret usage unchanged.
+
+### Verification
+- `gh run view 23093082436 --log-failed`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `agent-context/session-log.md`
+
 ## v1.66
 ### Timestamp
 - 2026-03-14 13:59:00 EDT
