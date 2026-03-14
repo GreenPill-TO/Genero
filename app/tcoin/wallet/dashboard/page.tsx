@@ -11,12 +11,16 @@ import {
 } from "@tcoin/wallet/components/dashboard";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
 import { ErrorBoundary } from "@shared/components/ErrorBoundary";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { Hypodata } from "@tcoin/wallet/components/dashboard";
 
+const VALID_TAB_KEYS = new Set(["home", "receive", "send", "contacts", "more", "history"]);
+
 export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
+  const searchParams = useSearchParams();
+  const requestedTab = (searchParams.get("tab") ?? "home").toLowerCase();
   const [activeTab, setActiveTab] = useState("home");
   const [sendRecipient, setSendRecipient] = useState<Hypodata | null>(null);
   const [requestRecipient, setRequestRecipient] = useState<Hypodata | null>(null);
@@ -103,10 +107,10 @@ export default function Dashboard() {
   }, [requestRecipient, receiveQrVisible]);
 
   useEffect(() => {
-    if (Boolean(userData?.cubidData?.full_name)) {
-      router.replace("/dashboard");
+    if (VALID_TAB_KEYS.has(requestedTab) && requestedTab !== activeTab) {
+      setActiveTab(requestedTab);
     }
-  }, [userData, router]);
+  }, [requestedTab, activeTab]);
 
   if (error) {
     return <div className={mainClass}>Error loading data: {error.message}</div>;
@@ -116,6 +120,11 @@ export default function Dashboard() {
 
   const handleTabChange = (next: string) => {
     setActiveTab(next);
+    if (next === "home") {
+      router.push("/dashboard");
+    } else {
+      router.push(`/dashboard?tab=${encodeURIComponent(next)}`);
+    }
     if (next === "receive") {
       setReceiveQrVisible(true);
     }

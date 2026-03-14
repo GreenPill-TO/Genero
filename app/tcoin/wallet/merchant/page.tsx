@@ -18,6 +18,8 @@ import {
 import { Textarea } from "@shared/components/ui/TextArea";
 import type { MerchantApplicationStatusResponse } from "@shared/lib/merchantSignup/types";
 import { createClient } from "@shared/lib/supabase/client";
+import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { LiveMerchantDashboard } from "./LiveMerchantDashboard";
 
@@ -92,6 +94,7 @@ async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promi
 
 export default function MerchantDashboardPage() {
   const { isLoadingUser, error } = useAuth();
+  const router = useRouter();
 
   const [status, setStatus] = useState<MerchantApplicationStatusResponse | null>(null);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
@@ -126,6 +129,15 @@ export default function MerchantDashboardPage() {
   const isLive = appState === "live";
 
   const storeId = status?.storeId ?? null;
+  const mainClass = "font-sans pb-24 p-4 sm:p-8 lg:pb-8 lg:pl-28 bg-background text-foreground min-h-screen";
+
+  const handleTabChange = (next: string) => {
+    if (next === "home") {
+      router.push("/dashboard");
+      return;
+    }
+    router.push(`/dashboard?tab=${encodeURIComponent(next)}`);
+  };
 
   const syncFormFromStatus = useCallback((nextStatus: MerchantApplicationStatusResponse) => {
     const app = nextStatus.application;
@@ -523,26 +535,43 @@ export default function MerchantDashboardPage() {
   };
 
   if (error) {
-    return <div className="p-6 text-sm">Error loading user data: {error.message}</div>;
+    return (
+      <div className={mainClass}>
+        <div className="text-sm">Error loading user data: {error.message}</div>
+        <DashboardFooter active="more" onChange={handleTabChange} />
+      </div>
+    );
   }
 
   if (isLoadingUser || isLoadingStatus) {
-    return <div className="p-6 text-sm">Loading merchant workspace…</div>;
+    return (
+      <div className={mainClass}>
+        <div className="text-sm">Loading merchant workspace…</div>
+        <DashboardFooter active="more" onChange={handleTabChange} />
+      </div>
+    );
   }
 
   if (isLive) {
-    return <LiveMerchantDashboard />;
+    return (
+      <div className={mainClass}>
+        <LiveMerchantDashboard />
+        <DashboardFooter active="more" onChange={handleTabChange} />
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Merchant Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Apply to become a live merchant store in your city.</p>
+    <div className={mainClass}>
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">Merchant Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Apply to become a live merchant store in your city.</p>
+          </div>
+          <Badge variant="outline">Status: {lifecycleLabel[appState] ?? appState}</Badge>
         </div>
-        <Badge variant="outline">Status: {lifecycleLabel[appState] ?? appState}</Badge>
-      </div>
+ 
 
       {appState === "none" && (
         <Card>
@@ -868,6 +897,8 @@ export default function MerchantDashboardPage() {
           </CardContent>
         </Card>
       )}
+      </div>
+      <DashboardFooter active="more" onChange={handleTabChange} />
     </div>
   );
 }
