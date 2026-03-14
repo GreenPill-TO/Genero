@@ -20,23 +20,25 @@ alwaysApply: true
 ---
 
 ## 1 Repository Structure
-Source files are organized under the `app/` directory while context files for agents are organized under agent-context/ with the following layout:
+Source files are organized under the `app/` directory. Agent workflow artefacts remain under `agent-context/`, while the current engineering specs and root architecture notes live under `docs/engineering/`:
 ```
 .github/workflows/       # PR template + CI workflows for build, lint, supabase, secret scanning
-agent-context/           # designs, logs and other context files for developers and agents
-├─ session-log.md        # Mandator - Append-only per session, new entries at top of file, v ↑ per edit
-├─ technical-spec.md     # Latest technical spec
-├─ functional-spec.md    # Latest functional spec
+agent-context/           # logs and recurring agent workflow context
+├─ session-log.md        # Mandatory - append-only per session, new entries at top of file, v ↑ per edit
 ├─ db-workflow.md        # CI/CD overview for database changes
 ├─ app-context.md        # Problem, approach, value prop
 ├─ style-guide.md        # Style for the wallet app
 └─ workflow.md           # Repetitive per-session checklist
+docs/
+├─ engineering/          # Current technical + functional specs and root architecture notes
+│  ├─ technical-spec.md  # Latest technical spec
+│  ├─ functional-spec.md # Latest functional spec
+│  └─ *.md               # Architecture notes, PRDs, runbooks, and implementation references
 app/                     # app router
 └─ tcoin/                # This project is first going live in Toronto with TCOIN (Toronto Coin)
   ├─ sparechange         # One of the two TCOIN apps in this repo: For tipping to panhandlers
   └─ wallet              # One of the two TCOIN apps in this repo: For general transfers
 components/              # shared components
-docs/                    # technical notes and architecture documentation
 hooks/                   # custom React hooks
 lib/
 public/                  # static assets to be served
@@ -99,6 +101,7 @@ AGENTS.md                # this file
 | Phase | File | Detail |
 |-------|------|--------|
 | **Every session** | `workflow.md` | Mandatory checklist (log, spec update(s), code, summary). |
+| **Current product specs** | `docs/engineering/*.md` | Maintain the latest technical and functional specs plus related architecture notes here. |
 | **Artefact maintenance** | Scripts inside `scripts/` | `env-sync.ts`, `spec-lint.ts`, etc. |
 | **CI Triggers** | Pushes to main and all PRs run forge test, forge coverage, pnpm lint, and hardhat size-contracts. |
 

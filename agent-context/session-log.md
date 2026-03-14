@@ -1,3 +1,42 @@
+## v1.26
+### Timestamp
+- 2026-03-14 04:05:00 EDT
+
+### Objective
+- Move the current technical and functional specs plus root-level architecture notes into `docs/engineering`, then update the repo instructions so future edge-function work follows the new documentation layout.
+
+### What Changed
+- Moved `technical-spec.md` and `functional-spec.md` from `agent-context/` into `docs/engineering/`.
+- Moved the root-level architecture notes and runbooks from `docs/` into `docs/engineering/`, leaving subfolders such as `docs/20260310-neighbourhood-pools/` and `docs/torontocoin/` in place.
+- Updated `README.md` and `AGENTS.md` so the repository structure now treats `docs/engineering/` as the source of truth for current engineering specs and root architecture documents.
+- Updated `agent-context/workflow.md` so the per-session checklist points at the moved spec files.
+- Fixed the moved smart-contract documents' internal references so they now point at `docs/engineering/` instead of the old `docs/` root.
+
+### Verification
+- `find docs -maxdepth 2 -type f | sort`
+- `rg -n "agent-context/(technical-spec|functional-spec)" README.md AGENTS.md agent-context/workflow.md`
+  - no matches after the move
+
+### Files Edited
+- `README.md`
+- `AGENTS.md`
+- `agent-context/workflow.md`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/bia-pools-indexer-architecture.md`
+- `docs/engineering/bia-pools-runbook.md`
+- `docs/engineering/buy-tcoin-checkout-orchestrator-architecture.md`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `docs/engineering/indexer-architecture.md`
+- `docs/engineering/merchant-signup-city-manager-architecture.md`
+- `docs/engineering/mintTcoinWithUSDC-architecture.md`
+- `docs/engineering/tcoin-smart-contract-architecture.md`
+- `docs/engineering/tcoin-smart-contract-design-specs.md`
+- `docs/engineering/tcoin-smart-contract-prd.md`
+- `docs/engineering/torontocoin-contracts-current-state.md`
+- `docs/engineering/webauthn-passkey-storage.md`
+
 ## v1.25
 ### Timestamp
 - 2026-03-14 03:10:00 EDT

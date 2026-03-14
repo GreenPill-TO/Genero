@@ -36,7 +36,9 @@ Open `http://localhost:3000` in your browser. Next.js will serve the app configu
 app/
   [citycoins]/     # Starting with Toronto's TCOIN, this monorepo allows for multiple cities, each with their own local currency
     [citycoin apps]/  # Each citycoin will have one or more dedicated apps, aka wallets.
-docs/              # Project documentation and technical deep-dives
+agent-context/     # Session workflow, logs, app context, and agent operating notes
+docs/
+  engineering/     # Engineering specs and root-level architecture notes
 shared/            # Reusable hooks, components and utilities
   lib/edge/        # Typed browser clients and app-scope helpers for Supabase Edge Functions
 supabase/
@@ -46,6 +48,8 @@ supabase/
 ```
 
 API routes for Twilio OTP verification and temporary compatibility shims are located under `app/api`.
+
+The current implementation specs live in `docs/engineering/technical-spec.md` and `docs/engineering/functional-spec.md`. Session-by-session change history remains in `agent-context/session-log.md`.
 
 ## Environment Variables
 
