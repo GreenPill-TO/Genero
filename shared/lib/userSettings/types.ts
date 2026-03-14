@@ -1,0 +1,90 @@
+export type UserSettingsTheme = "system" | "light" | "dark";
+export type UserSignupState = "none" | "draft" | "completed";
+export type UserSignupStep = 1 | 2 | 3 | 4 | 5 | 6;
+
+export type UserSettingsAppContext = {
+  appSlug: string;
+  citySlug: string;
+  environment: string;
+};
+
+export type UserSettingsCharityOption = {
+  id: string;
+  name: string;
+  value: string | null;
+};
+
+export type UserSettingsBiaOption = {
+  id: string;
+  code: string;
+  name: string;
+};
+
+export type UserSettingsUser = {
+  id: number;
+  cubidId: string;
+  email: string | null;
+  phone: string | null;
+  fullName: string | null;
+  firstName: string;
+  lastName: string;
+  nickname: string | null;
+  username: string | null;
+  country: string | null;
+  profileImageUrl: string | null;
+  hasCompletedIntro: boolean;
+  isNewUser: boolean | null;
+};
+
+export type UserSettingsPreferences = {
+  theme: UserSettingsTheme;
+  charity: string | null;
+  selectedCause: string | null;
+  primaryBiaId: string | null;
+  secondaryBiaIds: string[];
+};
+
+export type UserSettingsOptions = {
+  charities: UserSettingsCharityOption[];
+  bias: UserSettingsBiaOption[];
+};
+
+export type UserSettingsSignup = {
+  state: UserSignupState;
+  currentStep: UserSignupStep | null;
+  completedSteps: UserSignupStep[];
+  walletReady: boolean;
+  phoneVerified: boolean;
+};
+
+export type UserSettingsBootstrap = {
+  user: UserSettingsUser;
+  app: UserSettingsAppContext & {
+    appInstanceId: number;
+  };
+  preferences: UserSettingsPreferences;
+  signup: UserSettingsSignup;
+  options: UserSettingsOptions;
+};
+
+export type UpdateUserProfileInput = {
+  firstName?: string;
+  lastName?: string;
+  nickname?: string | null;
+  username?: string | null;
+  country?: string | null;
+  profileImageUrl?: string | null;
+};
+
+export type UpdateUserPreferencesInput = {
+  theme?: UserSettingsTheme;
+  charity?: string | null;
+  selectedCause?: string | null;
+  primaryBiaId?: string | null;
+  secondaryBiaIds?: string[];
+};
+
+export type SaveUserSignupStepInput = {
+  step: UserSignupStep;
+  payload?: Record<string, unknown>;
+};

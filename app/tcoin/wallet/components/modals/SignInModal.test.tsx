@@ -82,7 +82,7 @@ describe("SignInModal", () => {
       await verifySuccess?.();
     });
 
-    expect(push).toHaveBeenCalledWith("/dashboard");
+    expect(push).toHaveBeenCalledWith("/welcome");
     expect(closeModal).toHaveBeenCalled();
 
     act(() => {
@@ -97,7 +97,7 @@ describe("SignInModal", () => {
     document.body.appendChild(container);
     const root = createRoot(container);
 
-    fetchUserByContactMock.mockResolvedValue({ user: { id: 42 }, error: null });
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42, has_completed_intro: true }, error: null });
 
     act(() => {
       root.render(
@@ -110,6 +110,33 @@ describe("SignInModal", () => {
     });
 
     expect(push).toHaveBeenCalledWith("/dashboard");
+    expect(closeModal).toHaveBeenCalled();
+
+    act(() => {
+      root.unmount();
+    });
+    document.body.removeChild(container);
+  });
+
+  it("routes incomplete existing users back to welcome", async () => {
+    const closeModal = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42, has_completed_intro: false }, error: null });
+
+    act(() => {
+      root.render(
+        <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />
+      );
+    });
+
+    await act(async () => {
+      await verifySuccess?.();
+    });
+
+    expect(push).toHaveBeenCalledWith("/welcome");
     expect(closeModal).toHaveBeenCalled();
 
     act(() => {

@@ -434,6 +434,7 @@ export const createNewUser = async (authMethod: "phone" | "email", fullContact: 
         [authMethod === "phone" ? "phone" : "email"]: fullContact,
         cubid_id: uuid,
         has_completed_intro: false,
+        is_new_user: true,
       },
     ])
     .single();

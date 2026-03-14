@@ -4,15 +4,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import Select, { type StylesConfig } from "react-select";
 import countryList from "react-select-country-list";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@shared/api/hooks/useAuth";
-import { updateCubidDataInSupabase } from "@shared/api/services/supabaseService";
+import { useUserSettings } from "@shared/hooks/useUserSettings";
+import { useUpdateUserProfileMutation } from "@shared/hooks/useUserSettingsMutations";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Label } from "@shared/components/ui/Label";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
-import { createClient } from "@shared/lib/supabase/client";
+import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
 import { dialCodes } from "@shared/utils/countryDialCodes";
 import { toast } from "react-toastify";
 import { LuUser } from "react-icons/lu";
@@ -29,9 +28,9 @@ type CountryOption = {
 type FormValues = {
   firstName: string;
   lastName: string;
+  username: string;
   nickname: string;
   country: CountryOption | null;
-  phone: string;
 };
 
 const buildCountryOptions = (): CountryOption[] => {
@@ -73,13 +72,13 @@ const getInitialCountryOption = (country: string | null | undefined, options: Co
 };
 
 const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
-  const { userData } = useAuth();
-  const queryClient = useQueryClient();
+  const { bootstrap } = useUserSettings();
+  const updateProfile = useUpdateUserProfileMutation();
 
   useEscapeKey(closeModal);
 
-  const profile = userData?.cubidData;
-  const [initialFirstName, initialLastName] = useMemo(() => splitFullName(profile?.full_name), [profile?.full_name]);
+  const profile = bootstrap?.user;
+  const [initialFirstName, initialLastName] = useMemo(() => splitFullName(profile?.fullName), [profile?.fullName]);
   const countryOptions = useMemo(() => buildCountryOptions(), []);
   const initialCountryOption = useMemo(
     () => getInitialCountryOption(profile?.country, countryOptions),
@@ -87,7 +86,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   );
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(() => {
-    const source = typeof profile?.profile_image_url === "string" ? profile.profile_image_url.trim() : "";
+    const source = typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl.trim() : "";
     return source ? source : null;
   });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -102,9 +101,9 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     defaultValues: {
       firstName: initialFirstName,
       lastName: initialLastName,
+      username: profile?.username ?? "",
       nickname: profile?.nickname ?? "",
       country: initialCountryOption,
-      phone: profile?.phone ?? "",
     },
   });
 
@@ -112,19 +111,19 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     reset({
       firstName: initialFirstName,
       lastName: initialLastName,
+      username: profile?.username ?? "",
       nickname: profile?.nickname ?? "",
       country: initialCountryOption,
-      phone: profile?.phone ?? "",
     });
-  }, [initialFirstName, initialLastName, initialCountryOption, profile?.nickname, profile?.phone, reset]);
+  }, [initialFirstName, initialLastName, initialCountryOption, profile?.nickname, profile?.username, reset]);
 
   useEffect(() => {
     if (avatarFile) {
       return;
     }
-    const source = typeof profile?.profile_image_url === "string" ? profile.profile_image_url.trim() : "";
+    const source = typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl.trim() : "";
     setAvatarPreview(source ? source : null);
-  }, [profile?.profile_image_url, avatarFile]);
+  }, [profile?.profileImageUrl, avatarFile]);
 
   useEffect(() => {
     return () => {
@@ -144,7 +143,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       setAvatarPreview(previewUrl);
       setAvatarFile(file);
     } else {
-      setAvatarPreview(typeof profile?.profile_image_url === "string" ? profile.profile_image_url : null);
+      setAvatarPreview(typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl : null);
       setAvatarFile(null);
     }
   };
@@ -164,53 +163,31 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   );
 
   const onSubmit = async (values: FormValues) => {
-    const cubidId = userData?.user?.cubid_id ?? profile?.cubid_id;
-    if (!cubidId) {
+    if (!bootstrap?.user.id) {
       toast.error("We could not determine your account. Please try signing in again.");
       return;
     }
 
     try {
-      let profileImageUrl = typeof profile?.profile_image_url === "string" ? profile.profile_image_url : null;
+      let profileImageUrl = typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl : null;
       if (avatarFile) {
-        const supabase = createClient();
-        const fileExt = avatarFile.name.split(".").pop() ?? "png";
-        const recordId = profile?.id ?? userData?.user?.id ?? "profile";
-        const fileName = `${recordId}.${fileExt}`;
-        const filePath = `profile_pictures/${fileName}`;
-        const { error: uploadError } = await supabase.storage.from("profile_pictures").upload(filePath, avatarFile, {
-          cacheControl: "3600",
-          upsert: true,
-        });
-        if (uploadError) {
-          throw new Error(uploadError.message);
-        }
-        const { data } = supabase.storage.from("profile_pictures").getPublicUrl(filePath);
-        profileImageUrl = data?.publicUrl ?? profileImageUrl;
+        profileImageUrl = await uploadProfilePicture(bootstrap.user.id, avatarFile);
       }
 
       const firstName = values.firstName.trim();
       const lastName = values.lastName.trim();
-      const fullName = [firstName, lastName].filter(Boolean).join(" ");
       const countryValue = values.country?.label ?? values.country?.value ?? "";
       const nickname = values.nickname.trim();
-      const phone = values.phone.trim();
+      const username = values.username.trim().toLowerCase();
 
-      const { error } = await updateCubidDataInSupabase(cubidId, {
-        user: {
-          full_name: fullName,
-          nickname: nickname || null,
-          country: countryValue || null,
-          phone: phone || null,
-          profile_image_url: profileImageUrl,
-        },
+      await updateProfile.mutateAsync({
+        firstName,
+        lastName,
+        username: username || null,
+        nickname: nickname || null,
+        country: countryValue || null,
+        profileImageUrl,
       });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      await queryClient.invalidateQueries({ queryKey: ["user-data"] });
       toast.success("Profile updated successfully.");
       closeModal();
     } catch (error) {
@@ -219,8 +196,12 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     }
   };
 
+  if (!bootstrap) {
+    return <div className="text-sm text-muted-foreground">Loading profile…</div>;
+  }
+
   const username = profile?.username ? `@${profile.username}` : undefined;
-  const email = profile?.email ?? userData?.user?.email ?? "";
+  const email = profile?.email ?? "";
 
   return (
     <div className="space-y-6">
@@ -269,6 +250,26 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
         </div>
 
         <div>
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            autoComplete="off"
+            {...register("username", {
+              required: "Username is required",
+              maxLength: {
+                value: 32,
+                message: "Username must be 32 characters or fewer.",
+              },
+              pattern: {
+                value: /^[a-z0-9._-]+$/,
+                message: "Use only lowercase letters, numbers, dots, underscores or hyphens.",
+              },
+            })}
+          />
+          {errors.username && <p className="mt-1 text-sm text-red-500">{errors.username.message}</p>}
+        </div>
+
+        <div>
           <Label htmlFor="nickname">Preferred name</Label>
           <Input id="nickname" {...register("nickname")} placeholder="What should we call you?" />
         </div>
@@ -297,15 +298,16 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
 
         <div>
           <Label htmlFor="phone">Phone number</Label>
-          <Input id="phone" type="tel" placeholder="Include your country code" {...register("phone")} />
+          <Input id="phone" type="tel" value={bootstrap.user.phone ?? ""} readOnly disabled />
+          <p className="mt-1 text-xs text-muted-foreground">Phone updates stay in the verified onboarding flow.</p>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={closeModal} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save Changes"}
+          <Button type="submit" disabled={isSubmitting || updateProfile.isPending}>
+            {isSubmitting || updateProfile.isPending ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </form>

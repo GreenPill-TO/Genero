@@ -1,5 +1,7 @@
 import React from "react";
 import { Button } from "@shared/components/ui/Button";
+import { useUpdateUserPreferencesMutation } from "@shared/hooks/useUserSettingsMutations";
+import { useUserSettings } from "@shared/hooks/useUserSettings";
 
 type BiaOption = {
   id: string;
@@ -9,26 +11,32 @@ type BiaOption = {
 
 type BiaPreferencesModalProps = {
   closeModal: () => void;
-  biaOptions: BiaOption[];
-  primaryBiaId: string;
-  secondaryBiaIds: string[];
-  setPrimaryBiaId: (biaId: string) => void;
-  toggleSecondaryBia: (biaId: string) => void;
-  onSave: () => Promise<void> | void;
-  isSaving: boolean;
 };
 
-export function BiaPreferencesModal({
-  closeModal,
-  biaOptions,
-  primaryBiaId,
-  secondaryBiaIds,
-  setPrimaryBiaId,
-  toggleSecondaryBia,
-  onSave,
-  isSaving,
-}: BiaPreferencesModalProps) {
+export function BiaPreferencesModal({ closeModal }: BiaPreferencesModalProps) {
+  const { bootstrap } = useUserSettings();
+  const savePreferences = useUpdateUserPreferencesMutation();
+  const biaOptions: BiaOption[] = bootstrap?.options.bias ?? [];
+  const [primaryBiaId, setPrimaryBiaId] = React.useState<string>(bootstrap?.preferences.primaryBiaId ?? "");
+  const [secondaryBiaIds, setSecondaryBiaIds] = React.useState<string[]>(bootstrap?.preferences.secondaryBiaIds ?? []);
   const hasOptions = biaOptions.length > 0;
+
+  React.useEffect(() => {
+    setPrimaryBiaId(bootstrap?.preferences.primaryBiaId ?? "");
+    setSecondaryBiaIds(bootstrap?.preferences.secondaryBiaIds ?? []);
+  }, [bootstrap?.preferences.primaryBiaId, bootstrap?.preferences.secondaryBiaIds]);
+
+  const toggleSecondaryBia = (biaId: string) => {
+    setSecondaryBiaIds((prev) => (prev.includes(biaId) ? prev.filter((value) => value !== biaId) : [...prev, biaId]));
+  };
+
+  const onSave = async () => {
+    await savePreferences.mutateAsync({
+      primaryBiaId: primaryBiaId || null,
+      secondaryBiaIds: secondaryBiaIds.filter((biaId) => biaId !== primaryBiaId),
+    });
+    closeModal();
+  };
 
   return (
     <div className="space-y-4">
@@ -92,8 +100,12 @@ export function BiaPreferencesModal({
         <Button type="button" variant="outline" onClick={closeModal}>
           Close
         </Button>
-        <Button type="button" onClick={() => void onSave()} disabled={isSaving || !hasOptions || !primaryBiaId}>
-          {isSaving ? "Saving BIA Selection…" : "Save BIA Selection"}
+        <Button
+          type="button"
+          onClick={() => void onSave()}
+          disabled={savePreferences.isPending || !hasOptions || !primaryBiaId}
+        >
+          {savePreferences.isPending ? "Saving BIA Selection…" : "Save BIA Selection"}
         </Button>
       </div>
     </div>

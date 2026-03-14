@@ -23,10 +23,7 @@ import 'cubid-wallet/dist/styles.css'
 import 'cubid-sdk/dist/index.css'
 
 const queryClient = new QueryClient();
-const enableCubidWalletProviders =
-  (process.env.NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS ?? "false")
-    .trim()
-    .toLowerCase() === "true";
+const themeCacheKey = `theme_cache:${(process.env.NEXT_PUBLIC_APP_NAME ?? "wallet").trim().toLowerCase()}:${(process.env.NEXT_PUBLIC_CITYCOIN ?? "tcoin").trim().toLowerCase()}:${((process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase() || "default")}`;
 
 export default function RootLayout({
   children,
@@ -40,7 +37,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" />
         <Script id="theme-bootstrap" strategy="beforeInteractive">
-          {`(function(){try{var stored=window.localStorage.getItem('theme');var userSet=window.localStorage.getItem('theme_user_set')==='1';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var shouldUseDark=userSet&&(stored==='dark'||stored==='light')?stored==='dark':prefersDark;if(shouldUseDark){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`}
+          {`(function(){try{var key=${JSON.stringify(themeCacheKey)};var stored=window.localStorage.getItem(key);if(stored==null){var legacy=window.localStorage.getItem('theme');var legacyUserSet=window.localStorage.getItem('theme_user_set')==='1';if(legacyUserSet&&(legacy==='light'||legacy==='dark')){stored=legacy;window.localStorage.setItem(key, legacy);}}var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var shouldUseDark=stored==='dark'||(stored!=='light'&&prefersDark);if(shouldUseDark){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`}
         </Script>
       </head>
       <body style={{ fontFamily: "'Special Elite', system-ui" }}>
@@ -57,27 +54,17 @@ export default function RootLayout({
         `}</style>
         <QueryClientProvider client={queryClient}>
           <WalletConnectErrorGuard />
-          {enableCubidWalletProviders ? (
-            <Provider>
-              <WalletCubidProvider>
-                <ReactQueryProvider>
-                  <DarkModeProvider>
-                    <ModalProvider>
-                      <ContentLayout>{children}</ContentLayout>
-                    </ModalProvider>
-                  </DarkModeProvider>
-                </ReactQueryProvider>
-              </WalletCubidProvider>
-            </Provider>
-          ) : (
-            <ReactQueryProvider>
-              <DarkModeProvider>
-                <ModalProvider>
-                  <ContentLayout>{children}</ContentLayout>
-                </ModalProvider>
-              </DarkModeProvider>
-            </ReactQueryProvider>
-          )}
+          <Provider>
+            <WalletCubidProvider>
+              <ReactQueryProvider>
+                <DarkModeProvider>
+                  <ModalProvider>
+                    <ContentLayout>{children}</ContentLayout>
+                  </ModalProvider>
+                </DarkModeProvider>
+              </ReactQueryProvider>
+            </WalletCubidProvider>
+          </Provider>
         </QueryClientProvider>
       </body>
     </html>

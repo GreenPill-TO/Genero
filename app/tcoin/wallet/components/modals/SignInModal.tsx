@@ -73,10 +73,10 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const verifyCodeMut = useVerifyPasscodeMutation({
     onSuccessCallback: async () => {
       toast.success("Passcode verified successfully!");
-      const didCompleteAuth = await handlePostAuthentication(fullContact);
-      if (!didCompleteAuth) return;
+      const destination = await handlePostAuthentication(fullContact);
+      if (!destination) return;
       closeModal();
-      router.push("/dashboard");
+      router.push(destination);
     },
     onErrorCallback: (err) => {
       toast.error(err.message);
@@ -99,16 +99,17 @@ function SignInModal({ closeModal }: SignInModalProps) {
     [authMethod, contact, passcode, verifyCodeMut]
   );
 
-  const handlePostAuthentication = async (fullContact: string): Promise<boolean> => {
+  const handlePostAuthentication = async (fullContact: string): Promise<string | null> => {
     const { user, error } = await fetchUserByContact(authMethod, fullContact);
 
     if (error || !user) {
       const uuid = await createCubidUser(fullContact, authMethod);
       const { error: insertError } = await createNewUser(authMethod, fullContact, uuid);
-      if (insertError) return false;
+      if (insertError) return null;
+      return "/welcome";
     }
 
-    return true;
+    return user.has_completed_intro ? "/dashboard" : "/welcome";
   };
 
   const handleAuthMethodChange = (method: "phone" | "email") => {

@@ -60,6 +60,23 @@ vi.mock("@shared/api/hooks/useAuth", () => ({
 vi.mock("@shared/api/hooks/useControlPlaneAccess", () => ({
   useControlPlaneAccess: () => useControlPlaneAccessMock(),
 }));
+vi.mock("@shared/hooks/useUserSettings", () => ({
+  useUserSettings: () => ({
+    bootstrap: {
+      preferences: {
+        charity: "Food Bank",
+        selectedCause: "Food Bank",
+        theme: "system",
+        primaryBiaId: "1",
+        secondaryBiaIds: [],
+      },
+      options: {
+        charities: [{ id: "1", name: "Food Bank", value: "Food Bank" }],
+        bias: [{ id: "1", code: "DTA", name: "Downtown" }],
+      },
+    },
+  }),
+}));
 
 const pushMock = vi.hoisted(() => vi.fn());
 
@@ -83,10 +100,9 @@ vi.mock("@tcoin/wallet/components/modals", () => ({
       offramp
     </button>
   ),
-  CharitySelectModal: ({ setSelectedCharity }: any) => (
+  CharitySelectModal: () => (
     <button
       data-testid="charity-select"
-      onClick={() => setSelectedCharity("New Charity")}
     >
       select
     </button>

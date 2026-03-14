@@ -40,6 +40,7 @@ docs/              # Project documentation and technical deep-dives
 shared/            # Reusable hooks, components and utilities
 supabase/
   migrations/      # Versioned SQL migrations synced with Supabase
+  functions/       # Supabase Edge Functions plus shared Deno helpers
 ```
 
 API routes for Twilio OTP verification are located under `app/api`.

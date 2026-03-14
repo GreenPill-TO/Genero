@@ -6,6 +6,26 @@ import { act } from "react-dom/test-utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CharitySelectModal } from "./CharitySelectModal";
 
+vi.mock("@shared/hooks/useUserSettings", () => ({
+  useUserSettings: () => ({
+    bootstrap: {
+      preferences: {
+        charity: "The FoodBank",
+      },
+      options: {
+        charities: [{ id: "1", name: "The FoodBank", value: "The FoodBank" }],
+      },
+    },
+  }),
+}));
+
+vi.mock("@shared/hooks/useUserSettingsMutations", () => ({
+  useUpdateUserPreferencesMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}));
+
 describe("CharitySelectModal", () => {
   it("calls closeModal on Escape key press", () => {
     const closeModal = vi.fn();
@@ -40,4 +60,3 @@ describe("CharitySelectModal", () => {
     document.body.removeChild(container);
   });
 });
-
