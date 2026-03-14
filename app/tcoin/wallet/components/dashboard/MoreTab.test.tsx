@@ -198,6 +198,12 @@ describe("MoreTab", () => {
 
     render(<MoreTab />);
 
+    const cityAdminButton = screen.getByRole("button", { name: /Open City Admin/i });
+    expect(cityAdminButton).toBeTruthy();
+
+    fireEvent.click(cityAdminButton);
+    expect(pushMock).toHaveBeenCalledWith("/city-admin");
+
     const adminButton = screen.getByRole("button", { name: /Open Admin Dashboard/i });
     expect(adminButton).toBeTruthy();
 

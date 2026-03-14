@@ -1905,3 +1905,29 @@
 ### Files Edited
 - `supabase/seed.sql`
 - `agent-context/session-log.md`
+
+## v1.54
+### Timestamp
+- 2026-03-13 22:25:06 EDT
+
+### Objective
+- Add explicit City Admin access from the wallet More tab.
+
+### What Changed
+- Updated More tab admin controls to include a dedicated button:
+- `Open City Admin`.
+- Routed button to new wallet route alias:
+- `/city-admin`.
+- Added new route:
+- `app/tcoin/wallet/city-admin/page.tsx` which redirects to existing city manager workspace (`/city-manager`).
+- Updated More tab tests to assert city-admin button visibility for admin users and route navigation behavior.
+
+### Verification
+- Ran `pnpm test app/tcoin/wallet/components/dashboard/MoreTab.test.tsx` (pass, 10 tests).
+- Ran `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/city-admin/page.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/city-admin/page.tsx`
+- `agent-context/session-log.md`

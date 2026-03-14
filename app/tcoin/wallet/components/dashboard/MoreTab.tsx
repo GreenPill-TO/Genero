@@ -310,8 +310,8 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
     router.push("/merchant");
   };
 
-  const handleOpenCityManager = () => {
-    router.push("/city-manager");
+  const handleOpenCityAdmin = () => {
+    router.push("/city-admin");
   };
 
   return (
@@ -346,8 +346,8 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
             <LuBuilding2 className="mr-2 h-4 w-4" /> {merchantActionLabel}
           </Button>
           {isAdmin && (
-            <Button type="button" className="w-full justify-start" onClick={handleOpenCityManager}>
-              <LuClipboardList className="mr-2 h-4 w-4" /> Open City Manager
+            <Button type="button" className="w-full justify-start" onClick={handleOpenCityAdmin}>
+              <LuClipboardList className="mr-2 h-4 w-4" /> Open City Admin
             </Button>
           )}
           {isAdmin && (
