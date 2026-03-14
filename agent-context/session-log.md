@@ -1690,3 +1690,24 @@
 - `app/tcoin/wallet/city-manager/page.tsx`
 - `.env.local.example`
 - `agent-context/session-log.md`
+
+## v1.45
+### Timestamp
+- 2026-03-13 20:28:59 EDT
+
+### Objective
+- Apply the new merchant-signup migration to the linked Supabase DB, document the architecture in `/docs`, and prepare a follow-up commit.
+
+### What Changed
+- Applied linked DB migration with `supabase db push --linked`:
+- `20260313161000_v0.99_merchant_signup_city_manager.sql`.
+- Added architecture write-up for the implemented merchant signup + city-manager solution:
+- `docs/merchant-signup-city-manager-architecture.md`.
+- Updated session log with this follow-up execution record.
+
+### Verification
+- `supabase db push --linked` completed with migration applied.
+
+### Files Edited
+- `docs/merchant-signup-city-manager-architecture.md`
+- `agent-context/session-log.md`
