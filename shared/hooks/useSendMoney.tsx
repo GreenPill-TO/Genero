@@ -99,12 +99,21 @@ const decodeUserShare = async (jsonData: any): Promise<string> => {
 };
 
 async function resolveTokenRuntimeConfig() {
-        const activeContracts = await getActiveCityContracts();
-        return {
-                tokenAddress: activeContracts.contracts.TCOIN,
-                rpcUrl: getRpcUrlForChainId(activeContracts.chainId),
-                chainId: activeContracts.chainId,
-        };
+        try {
+                const activeContracts = await getActiveCityContracts();
+                return {
+                        tokenAddress: activeContracts.contracts.TCOIN,
+                        rpcUrl: getRpcUrlForChainId(activeContracts.chainId),
+                        chainId: activeContracts.chainId,
+                };
+        } catch (error) {
+                console.warn('Falling back to default TCOIN runtime config.', error);
+                return {
+                        tokenAddress: '0x298a698031e2fd7d8f0c830f3fd887601b40058c',
+                        rpcUrl: getRpcUrlForChainId(42220),
+                        chainId: 42220,
+                };
+        }
 }
 
 export const __internal = {

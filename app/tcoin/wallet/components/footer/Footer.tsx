@@ -4,9 +4,21 @@ import React from "react";
 import { cn } from "@shared/utils/classnames";
 import Link from "next/link";
 import useDarkMode from "@shared/hooks/useDarkMode";
+import { useUpdateUserPreferencesMutation } from "@shared/hooks/useUserSettingsMutations";
+import { useUserSettings } from "@shared/hooks/useUserSettings";
 
 export function Footer() {
-  const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const { bootstrap } = useUserSettings();
+  const { isDarkMode, setThemeOverride } = useDarkMode();
+  const themeMutation = useUpdateUserPreferencesMutation();
+
+  const handleToggleTheme = async () => {
+    const nextTheme = isDarkMode ? "light" : "dark";
+    setThemeOverride(nextTheme);
+    if (bootstrap) {
+      await themeMutation.mutateAsync({ theme: nextTheme });
+    }
+  };
 
   return (
     <footer className={cn("py-6 w-full", "bg-background", "text-foreground")}>
@@ -17,7 +29,7 @@ export function Footer() {
             <h5>&copy; 2026 Toronto Coin. All rights reserved.</h5>
           </div>
           <div className="space-x-4 text-base [@media(max-width:767px)_and_(orientation:portrait)]:flex [@media(max-width:767px)_and_(orientation:portrait)]:flex-col [@media(max-width:767px)_and_(orientation:portrait)]:space-x-0 [@media(max-width:767px)_and_(orientation:portrait)]:space-y-1 [@media(max-width:767px)_and_(orientation:portrait)]:text-right">
-            <button type="button" className="link-btn underline hover:underline" onClick={toggleDarkMode}>
+            <button type="button" className="link-btn underline hover:underline" onClick={() => void handleToggleTheme()}>
               {isDarkMode ? "Light Mode" : "Dark Mode"}
             </button>
             <Link href="/resources">Resources</Link>

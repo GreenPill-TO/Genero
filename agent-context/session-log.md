@@ -1,4 +1,304 @@
-## v1.20
+## v1.68
+### Timestamp
+- 2026-03-14 15:18:00 EDT
+
+### Objective
+- Switch the two-remote Supabase CI workflows from the unusable direct IPv6 connection strings to the new session-pooler secrets and update the repo documentation accordingly.
+
+### What Changed
+- Updated `.github/workflows/pr-migrations.yml` so branch-targeted DEV/PROD migration validation now reads `SUPABASE_SESSION_POOLER_DEV` / `SUPABASE_SESSION_POOLER_PROD`.
+- Updated `.github/workflows/db-pull-env.yml` so remote drift generation also uses the DEV/PROD session-pooler secrets instead of the direct connection strings.
+- Updated the database workflow and technical spec artefacts to describe the session-pooler based CI connectivity model.
+
+### Verification
+- `gh secret list -R GreenPill-TO/Genero`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `.github/workflows/db-pull-env.yml`
+- `agent-context/db-workflow.md`
+- `agent-context/technical-spec.md`
+- `agent-context/session-log.md`
+
+## v1.67
+### Timestamp
+- 2026-03-14 14:03:00 EDT
+
+### Objective
+- Fix the remaining GitHub Actions network-resolution issue in branch-targeted Supabase PR validation after the new two-remote workflow was pushed.
+
+### What Changed
+- Updated `.github/workflows/pr-migrations.yml` to run the Supabase dry-run validation with `--dns-resolver https`, avoiding the failing native runner DNS/IPv6 path when connecting to the remote database host.
+- Kept the DEV/PROD branch-targeted validation logic and secret usage unchanged.
+
+### Verification
+- `gh run view 23093082436 --log-failed`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `agent-context/session-log.md`
+
+## v1.66
+### Timestamp
+- 2026-03-14 13:59:00 EDT
+
+### Objective
+- Fix the follow-up Supabase PR validation workflow compatibility issue uncovered after pushing the new two-remote CI configuration.
+
+### What Changed
+- Removed the unsupported `--yes` flag from `.github/workflows/pr-migrations.yml` because the repository's current Supabase CLI version accepts `--dry-run` on `db push` but rejects `--yes`.
+- Kept the branch-targeted DEV/PROD dry-run validation model unchanged.
+
+### Verification
+- `gh run view 23093059175 --log-failed`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `agent-context/session-log.md`
+
+## v1.65
+### Timestamp
+- 2026-03-14 13:55:00 EDT
+
+### Objective
+- Replace the obsolete PREVIEW-database CI assumptions with a two-remote workflow that targets DEV for PRs into `dev` and PROD for PRs into `main`, using the new direct-connection secrets safely.
+
+### What Changed
+- Reworked `.github/workflows/pr-migrations.yml` into a non-destructive PR validation workflow that selects DEV or PROD from `github.base_ref` and runs `supabase db push --dry-run --db-url ...` against the matching remote.
+- Removed PREVIEW-specific reset/apply logic from PR CI so shared remote databases are no longer reset during pull-request validation.
+- Updated `.github/workflows/db-pull-env.yml` to support only DEV and PROD, source database URLs from `SUPABASE_DIRECT_CONNECTION_STRING_DEV` / `SUPABASE_DIRECT_CONNECTION_STRING_PROD`, and open drift PRs back to `dev` or `main` based on the selected environment.
+- Updated the database workflow and technical spec artefacts so repository documentation now matches the two-remote CI/CD model.
+
+### Verification
+- `supabase db push --help`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `.github/workflows/db-pull-env.yml`
+- `agent-context/db-workflow.md`
+- `agent-context/technical-spec.md`
+- `agent-context/session-log.md`
+
+## v1.64
+### Timestamp
+- 2026-03-14 14:30:00 EDT
+
+### Objective
+- Address the inline review comments and failing CI on PR #56 covering app-context environment resolution, profile-picture storage security, CORS, theme hook stability, username uniqueness, and the remaining test/workflow failures.
+
+### What Changed
+- Fixed `supabase/functions/_shared/appContext.ts` so resolved app context now returns the environment from the matched `ref_app_instances` row when callers omit the environment header/body.
+- Tightened `supabase/functions/_shared/userSettings.ts` username uniqueness checks to use exact normalized matching instead of wildcard-based `ilike`.
+- Reworked the user-settings edge-function CORS helper to reflect only allowed frontend origins, documented `USER_SETTINGS_ALLOWED_ORIGINS`, and threaded request-aware headers through the shared JSON response helper.
+- Replaced the broad `profile_pictures` storage write policies with auth-owner and `users/<auth.uid>/...` path constraints, then updated the shared profile-picture uploader and sparechange profile modal to write through the same authenticated prefix.
+- Stabilized dark-mode theme migration/listener logic in `shared/providers/dark-mode-provider.tsx` and `shared/hooks/useDarkMode.tsx` to avoid effect churn and stale listener closures.
+- Fixed the wallet welcome test description to match the step it actually covers.
+- Fixed CI by mocking `server-only` in Vitest setup, adding a fallback runtime config path in `shared/hooks/useSendMoney.tsx`, and removing the unsupported `--force` flag from the preview Supabase reset workflow.
+- Renumbered the duplicate session-log headers so each recorded session now has a unique version tag.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx shared/hooks/useSendMoney.test.ts app/api/indexer/status/route.test.ts`
+- `pnpm exec eslint shared/providers/dark-mode-provider.tsx shared/hooks/useDarkMode.tsx shared/hooks/useSendMoney.tsx shared/lib/supabase/profilePictures.ts app/tcoin/sparechange/components/modals/UserProfileModal.tsx app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `.env.local.example`
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+- `app/tcoin/sparechange/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `shared/hooks/useDarkMode.tsx`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/lib/supabase/profilePictures.ts`
+- `shared/providers/dark-mode-provider.tsx`
+- `supabase/functions/_shared/appContext.ts`
+- `supabase/functions/_shared/cors.ts`
+- `supabase/functions/_shared/responses.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/migrations/20260314024500_v1.02_profile_pictures_bucket.sql`
+- `vitest.setup.ts`
+
+## v1.63
+### Timestamp
+- 2026-03-14 02:24:00 EDT
+
+### Objective
+- Add a dedicated profile-picture step to wallet onboarding, provision the backing Supabase Storage bucket by migration, and reuse the same upload path in Edit Profile.
+
+### What Changed
+- Added `shared/lib/supabase/profilePictures.ts` as the shared browser upload helper for user avatars, targeting the `profile_pictures` bucket and a stable `users/{userId}/avatar.{ext}` object path.
+- Added `supabase/migrations/20260314024500_v1.02_profile_pictures_bucket.sql` to provision the public `profile_pictures` bucket plus authenticated insert/update/delete policies.
+- Refactored wallet onboarding in `app/tcoin/wallet/welcome/page.tsx` from five visible steps to six, inserting a new profile-picture step between user details and community settings.
+- Updated the user-settings edge function in `supabase/functions/_shared/userSettings.ts` so resumable signup metadata now tracks six steps, persists onboarding avatar URLs at step 3, shifts community settings to step 4 and wallet setup to step 5, and clears `profile_image_url` on incomplete-signup reset.
+- Updated `app/tcoin/wallet/components/modals/UserProfileModal.tsx` to upload via the same shared helper as onboarding before saving `profileImageUrl` through the unified user-settings mutation.
+- Expanded modal and welcome tests to cover the shared upload path and the shifted development skip step.
+
+### Verification
+- `npx vitest run app/tcoin/wallet/welcome/page.test.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `shared/lib/supabase/profilePictures.ts`
+- `supabase/migrations/20260314024500_v1.02_profile_pictures_bucket.sql`
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `agent-context/technical-spec.md`
+- `agent-context/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.62
+### Timestamp
+- 2026-03-14 02:14:00 EDT
+
+### Objective
+- Unblock local and development wallet onboarding when wallet creation cannot run on the current host by adding a scoped wallet-skip path.
+
+### What Changed
+- Added a `Skip` button to wallet onboarding step 5 in `app/tcoin/wallet/welcome/page.tsx`, shown only when `NEXT_PUBLIC_APP_ENVIRONMENT` is `development` or `local`.
+- Updated the edge-function signup logic in `supabase/functions/_shared/userSettings.ts` so wallet setup accepts `skipWalletSetup: true` only in `development` or `local`, and the same environments may complete signup without `walletReady`.
+- Added a focused welcome-page test covering the development-only skip button.
+- Updated the functional and technical specs to document the scoped wallet-skip behaviour.
+
+### Verification
+- `npx vitest run app/tcoin/wallet/welcome/page.test.tsx`
+- Live browser smoke test on `/welcome` with the signed-in test account:
+- wallet setup now shows `Skip` in the linked `development` app environment
+- clicking `Skip` advances to the final welcome step
+- finishing signup succeeds and routes to `/dashboard`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `supabase/functions/_shared/userSettings.ts`
+- `agent-context/technical-spec.md`
+- `agent-context/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.61
+### Timestamp
+- 2026-03-14 02:02:00 EDT
+
+### Objective
+- Restore a shared charity catalogue so the new user-settings bootstrap can populate wallet onboarding/settings and apply the fix to the linked Supabase database.
+
+### What Changed
+- Added `supabase/migrations/20260314015500_v1.01_charities_catalog.sql` to create `public.charities` with deterministic seed rows, authenticated read access, and a documented `-- DOWN` section.
+- Seeded three initial charities for the shared settings flows:
+- `Daily Bread Food Bank`
+- `Native Women's Resource Centre of Toronto`
+- `Parkdale Community Food Bank`
+- Applied the new migration to the linked Supabase project with `supabase db push --linked`.
+- Updated the functional and technical specs to record the shared charity catalogue and its role in wallet/sparechange settings.
+
+### Verification
+- `supabase migration list`
+- `supabase db push --linked`
+- Browser smoke test on the signed-in wallet flow after the migration:
+- `/welcome` resume state now reloads step 3 with seeded charity options present
+- step 3 saves successfully and advances to step 4
+- step 4 wallet creation remains blocked on `http://127.0.0.1:3001` by the Cubid/WebAuthn error `SecurityError: This is an invalid domain`
+
+### Files Edited
+- `supabase/migrations/20260314015500_v1.01_charities_catalog.sql`
+- `agent-context/technical-spec.md`
+- `agent-context/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.60
+### Timestamp
+- 2026-03-14 01:41:24 EDT
+
+### Objective
+- Unblock the authenticated wallet `/welcome` signup flow by restoring the Cubid/wagmi provider context required by the inline phone-verification widget on step 2.
+
+### What Changed
+- Removed the wallet-only provider gate from `app/tcoin/wallet/layout.tsx` so the route tree now always mounts the Cubid SDK `Provider` and `WalletCubidProvider`, matching the sparechange/contracts layouts.
+- Kept the existing wallet query, dark-mode, modal, and theme-bootstrap structure intact while moving `/welcome` and the rest of the wallet app back under the required wagmi context.
+- Updated the technical spec to record that inline Cubid verification on `/welcome` depends on the always-mounted provider stack rather than the legacy `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS` flag.
+
+### Verification
+- Browser smoke test on the signed-in wallet flow after the layout patch:
+- `/welcome` bootstrap still succeeds
+- `Start setup` still succeeds
+- step 1 still saves
+- step 2 no longer crashes with `WagmiProviderNotFoundError`
+
+### Files Edited
+- `app/tcoin/wallet/layout.tsx`
+- `agent-context/technical-spec.md`
+- `agent-context/session-log.md`
+
+## v1.59
+### Timestamp
+- 2026-03-14 00:45:00 EDT
+
+### Objective
+- Refactor wallet user settings and onboarding around a shared Supabase edge-function contract, then thin the wallet UI down to hook-driven settings screens and a resumable `/welcome` flow.
+
+### What Changed
+- Added a new generic user-settings contract in `shared/lib/userSettings/*` for app-scoped bootstrap data, profile updates, preference updates, theme persistence, and resumable signup actions.
+- Added `shared/hooks/useUserSettings` and `shared/hooks/useUserSettingsMutations` so wallet UI surfaces now consume one React Query bootstrap payload and one mutation layer instead of writing to Supabase tables directly.
+- Added a new Supabase edge function under `supabase/functions/user-settings/` with shared Deno helpers for authenticated user resolution, app-instance resolution, normalized bootstrap assembly, profile writes, app-scoped preference writes, and resumable signup start/step/reset/complete handling.
+- Replaced the wallet `/welcome` page with a thin multi-step signup shell that loads one bootstrap payload, offers start vs resume/reset entry states, saves welcome/profile/settings/wallet readiness step-by-step, and routes completed users to `/dashboard`.
+- Refactored wallet Edit Profile, Select Theme, BIA Preferences, Charity Select, More-tab settings wiring, footer/theme toggles, and sign-in post-auth routing to use the shared user-settings hooks instead of local/direct writes.
+- Moved theme handling to an app-scoped cached/server-backed model keyed by app slug, city slug, and environment, with legacy local theme migration handled after authenticated bootstrap.
+
+### Verification
+- `pnpm test -- app/tcoin/wallet/components/footer/Footer.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/components/modals/SignInModal.test.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/components/modals/CharitySelectModal.test.tsx`
+- `npx tsc --noEmit`
+- The targeted wallet tests passed.
+- Repository-wide failures remained outside this refactor:
+- `shared/hooks/useSendMoney.test.ts`
+- `app/api/indexer/status/route.test.ts`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `app/tcoin/wallet/components/modals/ThemeSelectModal.tsx`
+- `app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx`
+- `app/tcoin/wallet/components/modals/CharitySelectModal.tsx`
+- `app/tcoin/wallet/components/modals/CharitySelectModal.test.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/footer/Footer.tsx`
+- `app/tcoin/wallet/components/footer/Footer.test.tsx`
+- `app/tcoin/wallet/components/navbar/ThemeToggleButton.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `shared/hooks/useDarkMode.tsx`
+- `shared/providers/dark-mode-provider.tsx`
+- `shared/api/services/supabaseService.ts`
+- `shared/hooks/useUserSettings.ts`
+- `shared/hooks/useUserSettingsMutations.ts`
+- `shared/lib/userSettings/types.ts`
+- `shared/lib/userSettings/context.ts`
+- `shared/lib/userSettings/theme.ts`
+- `shared/lib/userSettings/client.ts`
+- `supabase/functions/_shared/cors.ts`
+- `supabase/functions/_shared/responses.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/_shared/appContext.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/user-settings/index.ts`
+- `tsconfig.json`
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+- `agent-context/functional-spec.md`
+- `README.md`
+- `AGENTS.md`
+
+## v1.58
 ### Timestamp
 - 2026-03-14 02:20:00 EDT
 
@@ -30,7 +330,7 @@
 - `shared/api/hooks/useControlPlaneAccess.test.ts`
 - `.env.local.example`
 
-## v1.19
+## v1.57
 ### Timestamp
 - 2026-03-13 23:38:00 EDT
 
@@ -46,7 +346,7 @@
 - `agent-context/session-log.md`
 - `agent-context/technical-spec.md`
 
-## v1.18
+## v1.56
 ### Timestamp
 - 2026-03-13 23:33:00 EDT
 

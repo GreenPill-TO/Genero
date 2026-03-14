@@ -1,3 +1,7 @@
+import { vi } from "vitest";
+
+vi.mock("server-only", () => ({}), { virtual: true });
+
 const indexedDbStub =
   (globalThis as any).indexedDB ??
   ({

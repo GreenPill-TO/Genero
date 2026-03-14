@@ -44,7 +44,8 @@ scripts/                 # helper scripts for env:sync, lint, etc
 styles/                  # global styles
 supabase/
 ├─ sql-schema.sql        # latest sql schema (github action runs db pull on PR)
-└─ migrations/           # Agent-generated incremental SQL patches (file name starts with session version referencing session-log.md)
+├─ migrations/           # Agent-generated incremental SQL patches (file name starts with session version referencing session-log.md)
+└─ functions/            # Supabase Edge Functions and shared Deno-safe helpers
 test/
 README.md                # intro to the project and this repo
 AGENTS.md                # this file

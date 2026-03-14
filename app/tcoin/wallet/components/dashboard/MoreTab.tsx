@@ -3,6 +3,7 @@ import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { useModal } from "@shared/contexts/ModalContext";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { useUserSettings } from "@shared/hooks/useUserSettings";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import {
@@ -39,20 +40,15 @@ const DEFAULT_CHARITY_DATA = {
 export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
+  const { bootstrap } = useUserSettings();
   const { senderWallet } = useSendMoney({
     senderId: userData?.cubidData?.id ?? 0,
     receiverId: null,
   });
   const { balance: rawBalance } = useTokenBalance(senderWallet ?? null);
   const userBalance = Number.parseFloat(rawBalance) || 0;
-  const activeProfile = userData?.cubidData?.activeProfile;
   const router = useRouter();
   const controlPlaneAccess = useControlPlaneAccess("tcoin");
-  const [selectedCharity, setSelectedCharity] = useState("None");
-  const [biaOptions, setBiaOptions] = useState<Array<{ id: string; code: string; name: string }>>([]);
-  const [primaryBiaId, setPrimaryBiaId] = useState<string>("");
-  const [secondaryBiaIds, setSecondaryBiaIds] = useState<string[]>([]);
-  const [isSavingBiaSelection, setIsSavingBiaSelection] = useState(false);
   const [voucherPreferenceForm, setVoucherPreferenceForm] = useState({
     merchantStoreId: "",
     tokenAddress: "",
@@ -61,53 +57,6 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   const [isSavingVoucherPreference, setIsSavingVoucherPreference] = useState(false);
   const [merchantActionLabel, setMerchantActionLabel] = useState("Sign up as Merchant");
   const charityData = useMemo(() => DEFAULT_CHARITY_DATA, []);
-
-  useEffect(() => {
-    const charityName = activeProfile?.charityPreferences?.charity;
-    if (typeof charityName === "string" && charityName.trim() !== "") {
-      setSelectedCharity(charityName);
-    }
-  }, [activeProfile?.charityPreferences?.charity]);
-
-  useEffect(() => {
-    const loadBiaSelection = async () => {
-      try {
-        const response = await fetch("/api/bias/list?citySlug=tcoin", {
-          credentials: "include",
-        });
-        const body = await response.json();
-        if (!response.ok) return;
-
-        const options = Array.isArray(body?.bias)
-          ? body.bias
-              .filter((row: any) => typeof row?.id === "string")
-              .map((row: any) => ({
-                id: String(row.id),
-                code: typeof row.code === "string" ? row.code : "BIA",
-                name: typeof row.name === "string" ? row.name : row.id,
-              }))
-          : [];
-        setBiaOptions(options);
-
-        if (body?.activeAffiliation?.biaId) {
-          setPrimaryBiaId(String(body.activeAffiliation.biaId));
-        } else if (options.length > 0) {
-          setPrimaryBiaId(options[0].id);
-        }
-
-        const secondaries = Array.isArray(body?.secondaryAffiliations)
-          ? body.secondaryAffiliations
-              .map((row: any) => (typeof row?.biaId === "string" ? row.biaId : null))
-              .filter((row: string | null): row is string => row != null)
-          : [];
-        setSecondaryBiaIds(secondaries);
-      } catch {
-        setBiaOptions([]);
-      }
-    };
-
-    void loadBiaSelection();
-  }, []);
 
   useEffect(() => {
     const loadMerchantActionState = async () => {
@@ -137,44 +86,6 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
 
     void loadMerchantActionState();
   }, []);
-
-  const toggleSecondaryBia = (biaId: string) => {
-    setSecondaryBiaIds((prev) => {
-      if (prev.includes(biaId)) {
-        return prev.filter((value) => value !== biaId);
-      }
-      return [...prev, biaId];
-    });
-  };
-
-  const saveBiaSelection = async () => {
-    if (!primaryBiaId) {
-      return;
-    }
-
-    setIsSavingBiaSelection(true);
-    try {
-      const response = await fetch("/api/bias/select", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          citySlug: "tcoin",
-          biaId: primaryBiaId,
-          secondaryBiaIds: secondaryBiaIds.filter((biaId) => biaId !== primaryBiaId),
-          source: "user_selected",
-        }),
-      });
-      const body = await response.json();
-      if (!response.ok) {
-        throw new Error(typeof body?.error === "string" ? body.error : "Failed to save BIA selection.");
-      }
-    } catch (error) {
-      console.error("Failed to save BIA selection", error);
-    } finally {
-      setIsSavingBiaSelection(false);
-    }
-  };
 
   const saveVoucherPreference = async () => {
     setIsSavingVoucherPreference(true);
@@ -210,15 +121,7 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
 
   const openCharitySelectModal = () => {
     openModal({
-      content: (
-        <CharitySelectModal
-          closeModal={closeModal}
-          selectedCharity={selectedCharity}
-          setSelectedCharity={(value: string) => {
-            setSelectedCharity(value);
-          }}
-        />
-      ),
+      content: <CharitySelectModal closeModal={closeModal} />,
       title: "Change Default Charity",
       description: "Select a new default charity for your contributions.",
     });
@@ -229,7 +132,7 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
       content: (
         <CharityContributionsModal
           closeModal={closeModal}
-          selectedCharity={selectedCharity}
+          selectedCharity={bootstrap?.preferences.charity ?? "None"}
           charityData={charityData}
           onChangeCharity={openCharitySelectModal}
         />
@@ -258,18 +161,7 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
 
   const openBiaPreferencesModal = () => {
     openModal({
-      content: (
-        <BiaPreferencesModal
-          closeModal={closeModal}
-          biaOptions={biaOptions}
-          primaryBiaId={primaryBiaId}
-          secondaryBiaIds={secondaryBiaIds}
-          setPrimaryBiaId={setPrimaryBiaId}
-          toggleSecondaryBia={toggleSecondaryBia}
-          onSave={saveBiaSelection}
-          isSaving={isSavingBiaSelection}
-        />
-      ),
+      content: <BiaPreferencesModal closeModal={closeModal} />,
       title: "BIA Preferences",
       description: "Choose your primary and secondary BIAs to personalize neighbourhood-related routing and discovery.",
     });

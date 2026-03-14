@@ -55,6 +55,12 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Incoming payment request modals use the pink primary button for Pay and a white button for Ignore.
 - Receive tab surfaces "Payment requests I have sent" with delete buttons that deactivate the underlying requests.
 - Newly created users land on `/welcome`, which suggests a unique username, indicates when Continue is blocked, and confirms phone verification inline.
+- Wallet user-managed settings are now backed by one shared app-scoped user-settings service, so `/welcome`, Edit Profile, theme selection, charity selection, and BIA preferences all read from the same normalized bootstrap payload and save through the same contract.
+- Wallet onboarding is now resumable: first-time users see a welcome screen, returning incomplete users can resume or reset their draft, and the step order is Welcome → User details → Profile picture → Community settings → Wallet setup → Final welcome.
+- Theme selection is stored per app instance and follows the user across devices, while still using a local cached value for first paint before authenticated bootstrap completes.
+- Charity selection is backed by a shared Supabase catalogue so wallet onboarding and settings modals always offer seeded local charity options instead of failing closed when the app profile lacks prior charity data.
+- In development and local environments only, wallet onboarding step 5 exposes a Skip action so engineers can bypass wallet creation when WebAuthn or Cubid origin requirements are not available on the current host.
+- Wallet profile pictures are uploaded into a dedicated Supabase Storage bucket and the onboarding photo step plus Edit Profile now use the same storage path and public URL generation.
 
 ### 2. SpareChange
 
@@ -69,6 +75,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - **Wallet onboarding**: SMS verification → wallet creation via Cubid → funding wallet.
 - **Wallet onboarding** now persists passkey credential identifiers and app/device context with encrypted custody shares so returning users can recover keys against the correct credential.
 - **Wallet recovery compatibility**: if app-scoped passkey shares are missing for legacy records, send-money falls back to legacy cross-app shares and then to the most recently used credentialed share.
+- **Wallet settings management**: authenticated wallet users can update profile details, theme, charity, and BIA preferences through one shared app-scoped settings layer instead of separate ad hoc flows.
 - **Payments**: Scan QR → specify amount or tip % → confirm and sign.
 - **SpareChange**: Scan public QR → donate → automatic charity attribution.
 

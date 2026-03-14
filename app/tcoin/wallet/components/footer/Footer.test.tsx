@@ -5,16 +5,29 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Footer } from "./Footer";
 
 vi.mock("next/link", () => ({ default: (props: any) => <a {...props} /> }));
-const mockToggleDarkMode = vi.fn();
-const mockUseDarkMode = vi.fn(() => ({ isDarkMode: false, toggleDarkMode: mockToggleDarkMode }));
+const mockMutateAsync = vi.fn();
+const mockSetThemeOverride = vi.fn();
+const mockUseDarkMode = vi.fn(() => ({ isDarkMode: false, setThemeOverride: mockSetThemeOverride }));
 vi.mock("@shared/hooks/useDarkMode", () => ({ default: () => mockUseDarkMode() }));
+vi.mock("@shared/hooks/useUserSettings", () => ({
+  useUserSettings: () => ({
+    bootstrap: null,
+  }),
+}));
+vi.mock("@shared/hooks/useUserSettingsMutations", () => ({
+  useUpdateUserPreferencesMutation: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
+  }),
+}));
 
 describe("Footer", () => {
   afterEach(() => {
     cleanup();
-    mockToggleDarkMode.mockReset();
+    mockSetThemeOverride.mockReset();
+    mockMutateAsync.mockReset();
     mockUseDarkMode.mockReset();
-    mockUseDarkMode.mockReturnValue({ isDarkMode: false, toggleDarkMode: mockToggleDarkMode });
+    mockUseDarkMode.mockReturnValue({ isDarkMode: false, setThemeOverride: mockSetThemeOverride });
   });
   it("includes ecosystem link", () => {
     const { getByText } = render(<Footer />);
@@ -43,7 +56,7 @@ describe("Footer", () => {
   });
 
   it("shows light mode switch text when theme is dark", () => {
-    mockUseDarkMode.mockReturnValue({ isDarkMode: true, toggleDarkMode: mockToggleDarkMode });
+    mockUseDarkMode.mockReturnValue({ isDarkMode: true, setThemeOverride: mockSetThemeOverride });
     render(<Footer />);
     expect(screen.getByText("Light Mode")).toBeTruthy();
   });

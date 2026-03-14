@@ -1,713 +1,906 @@
 // @ts-nocheck
 "use client";
-import React, { useEffect, useCallback, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
-import { createClient } from "@shared/lib/supabase/client";
-import { useAuth } from "@shared/api/hooks/useAuth";
-import {
-    getActiveAppInstance,
-    normaliseDeviceInfo,
-    serialiseUserShare,
-    updateCubidDataInSupabase,
-} from "@shared/api/services/supabaseService";
-import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
-import { Button } from "@shared/components/ui/Button";
-import { TCOIN_WELCOME_VIDEO_URL } from "@shared/lib/supabase/assets";
-import { cn } from "@shared/utils/classnames";
-import { useForm, Controller } from "react-hook-form";
 
-// Imports for country and phone input
+import React, { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import Select from "react-select";
 import countryList from "react-select-country-list";
-import useDarkMode from "@shared/hooks/useDarkMode";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
+import { useAuth } from "@shared/api/hooks/useAuth";
+import {
+  getActiveAppInstance,
+  normaliseDeviceInfo,
+  serialiseUserShare,
+} from "@shared/api/services/supabaseService";
+import { useCompleteUserSignupMutation, useResetUserSignupMutation, useSaveUserSignupStepMutation, useStartUserSignupMutation } from "@shared/hooks/useUserSettingsMutations";
+import { useUserSettings } from "@shared/hooks/useUserSettings";
+import useDarkMode from "@shared/hooks/useDarkMode";
+import { useModal } from "@shared/contexts/ModalContext";
+import { createClient } from "@shared/lib/supabase/client";
+import { TCOIN_WELCOME_VIDEO_URL } from "@shared/lib/supabase/assets";
 import { dialCodes } from "@shared/utils/countryDialCodes";
+import { cn } from "@shared/utils/classnames";
+import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
+import { Button } from "@shared/components/ui/Button";
+import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
+import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
+import { LuUser } from "react-icons/lu";
 
+const WalletComponent = dynamic(() => import("cubid-wallet").then((mod) => mod.WalletComponent), { ssr: false });
+const CubidWidget = dynamic(() => import("cubid-sdk").then((mod) => mod.CubidWidget), { ssr: false });
 
-// Dynamically import external components so they only render on the client
-const WalletComponent = dynamic(
-    () => import("cubid-wallet").then((mod) => mod.WalletComponent),
-    { ssr: false }
-);
-const CubidWidget = dynamic(
-    () => import("cubid-sdk").then((mod) => mod.CubidWidget),
-    { ssr: false }
-);
+type CountryOption = {
+  value: string;
+  label: string;
+};
 
+type UserDetailsFormValues = {
+  firstName: string;
+  lastName: string;
+  nickname: string;
+  username: string;
+  country: CountryOption | null;
+};
 
-export default function NewWelcomePage() {
-    const router = useRouter();
-    const { userData, authData } = useAuth();
+type CommunitySettingsForm = {
+  charity: string;
+  selectedCause: string;
+  primaryBiaId: string;
+  secondaryBiaIds: string[];
+};
 
-    // Multi-step: 1 = user details form, 2 = wallet connection, 3 = video demo
-    const [step, setStep] = useState(1);
-    const [wallets, setWallets] = useState([]);
-    const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-    const [hasSuggestedUsername, setHasSuggestedUsername] = useState(false);
-    const [usernameStatus, setUsernameStatus] = useState("idle");
-    const [deviceLabel, setDeviceLabel] = useState<string>("");
-
-    // Helper to generate a smart device label
-    const getDeviceMetadata = (customLabel?: string) => {
-        if (typeof navigator === "undefined") {
-            return null;
-        }
-
-        const platform = navigator.userAgentData?.platform ?? navigator.platform ?? "Unknown platform";
-        
-        // Generate a friendly default label if not provided
-        let autoLabel = platform;
-        if (navigator.userAgentData?.brands) {
-            const brandLabel = navigator.userAgentData.brands
-                .map((b) => b.brand)
-                .filter(Boolean)
-                .join(", ");
-            if (brandLabel) {
-                autoLabel = `${brandLabel} on ${platform}`;
-            }
-        } else {
-            // Fallback to a truncated user agent for better readability
-            const ua = navigator.userAgent;
-            if (ua.length > 50) {
-                autoLabel = `${platform} - ${ua.substring(0, 47)}...`;
-            } else {
-                autoLabel = `${platform} - ${ua}`;
-            }
-        }
-
-        return normaliseDeviceInfo({
-            userAgent: navigator.userAgent,
-            platform,
-            label: customLabel || autoLabel,
-        });
+const buildCountryOptions = (): CountryOption[] => {
+  const data = countryList().getData();
+  return data.map((option) => {
+    const dialCode = dialCodes[option.value as keyof typeof dialCodes];
+    return {
+      value: option.value,
+      label: dialCode ? `${option.label} (${dialCode})` : option.label,
     };
+  });
+};
 
-    // Prepare country options using react-select-country-list and augment each with its dial code
-    const customCountryOptions = useMemo(() => {
-        const data = countryList().getData();
-        return data.map((option) => ({
-            ...option,
-            label: `${option.label} (${dialCodes[option.value] || ""})`
-        }));
-    }, [])
-
-    const { isDarkMode } = useDarkMode()
-
-    // Initialize react-hook-form with our new fields.
-    const {
-        register,
-        handleSubmit,
-        watch,
-        setValue,
-        setError,
-        clearErrors,
-        control,
-        formState: { errors, isValid, isSubmitting }
-    } = useForm({
-        mode: "onBlur",
-        defaultValues: {
-            firstName: "",
-            lastName: "",
-            nickname: "",
-            username: "",
-            country: "",
-            phone: ""
-        }
-    });
-
-    // Persist form data if desired.
-    const formData = watch();
-    const usernameValue = watch("username") || "";
-    const originalUsername = userData?.cubidData?.username?.trim() || "";
-    const currentUsername = originalUsername.toLowerCase();
-    const isUsernameReady = usernameStatus === "available" || usernameStatus === "current";
-    const disableContinue = !isValid || isSubmitting || !isUsernameReady || usernameStatus === "checking";
-    const usernameFeedback = (() => {
-        switch (usernameStatus) {
-            case "available":
-                return { message: "Great choice! This username is available.", className: "text-green-600" };
-            case "current":
-                return { message: "This is your current username.", className: "text-gray-500" };
-            case "checking":
-                return { message: "Checking availability…", className: "text-gray-500" };
-            default:
-                return { message: "Choose a unique username to share with friends.", className: "text-gray-500" };
-        }
-    })();
-    const continueHelper = (() => {
-        switch (usernameStatus) {
-            case "checking":
-                return { message: "Checking username availability…", className: "text-gray-500" };
-            case "taken":
-                return { message: "That username is taken. Choose another to continue.", className: "text-red-500" };
-            case "error":
-                return {
-                    message: "We couldn't confirm that username. Please try again.",
-                    className: "text-red-500",
-                };
-            case "invalid":
-                return {
-                    message: "Usernames must be at least 3 characters.",
-                    className: "text-red-500",
-                };
-            default:
-                return null;
-        }
-    })();
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            const storedData = window.localStorage.getItem("newWelcomeData");
-            if (storedData) {
-                const parsed = JSON.parse(storedData);
-                if (parsed.firstName) setValue("firstName", parsed.firstName);
-                if (parsed.lastName) setValue("lastName", parsed.lastName);
-                if (parsed.nickname) setValue("nickname", parsed.nickname);
-                if (parsed.username) {
-                    setValue("username", parsed.username);
-                    setHasSuggestedUsername(true);
-                }
-                if (parsed.country) setValue("country", parsed.country);
-                if (parsed.phone) setValue("phone", parsed.phone);
-            }
-        }
-    }, [setValue]);
-
-    useEffect(() => {
-        if (Boolean(userData?.cubidData?.full_name)) {
-            router.replace('/dashboard')
-        }
-    }, [userData, router])
-
-    useEffect(() => {
-        if (!originalUsername || usernameValue) {
-            return;
-        }
-        setValue("username", originalUsername.toLowerCase());
-        setHasSuggestedUsername(true);
-    }, [originalUsername, usernameValue, setValue]);
-
-    useEffect(() => {
-        if (userData?.cubidData?.phone) {
-            setIsPhoneVerified(true);
-        }
-    }, [userData?.cubidData?.phone]);
-
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            window.localStorage.setItem("newWelcomeData", JSON.stringify(formData));
-        }
-    }, [formData]);
-
-    useEffect(() => {
-        if (hasSuggestedUsername) {
-            return;
-        }
-        if (usernameValue) {
-            setHasSuggestedUsername(true);
-            return;
-        }
-        const email = authData?.user?.email?.trim();
-        if (!email) {
-            return;
-        }
-        const candidate = email.split("@")[0]?.toLowerCase().replace(/[^a-z0-9._-]/g, "");
-        if (!candidate) {
-            setHasSuggestedUsername(true);
-            return;
-        }
-        let isActive = true;
-        const checkAvailability = async () => {
-            try {
-                const supabase = createClient();
-                const { count, error } = await supabase
-                    .from("users")
-                    .select("id", { count: "exact", head: true })
-                    .ilike("username", candidate);
-                if (!isActive) {
-                    return;
-                }
-                if (!error && (count ?? 0) === 0) {
-                    setValue("username", candidate);
-                }
-            } catch (err) {
-                console.error("Failed to suggest username", err);
-            } finally {
-                if (isActive) {
-                    setHasSuggestedUsername(true);
-                }
-            }
-        };
-        void checkAvailability();
-        return () => {
-            isActive = false;
-        };
-    }, [authData?.user?.email, hasSuggestedUsername, setValue, usernameValue]);
-
-    useEffect(() => {
-        if (!usernameValue) {
-            setUsernameStatus("idle");
-            clearErrors("username");
-            return;
-        }
-        const sanitised = usernameValue.toLowerCase().replace(/[^a-z0-9._-]/g, "");
-        if (sanitised !== usernameValue) {
-            setValue("username", sanitised, { shouldValidate: true, shouldDirty: true });
-            return;
-        }
-        if (currentUsername && sanitised === currentUsername) {
-            setUsernameStatus("current");
-            clearErrors("username");
-            return;
-        }
-        if (sanitised.length < 3) {
-            setUsernameStatus("invalid");
-            setError("username", {
-                type: "manual",
-                message: "Usernames must be at least 3 characters.",
-            });
-            return;
-        }
-        setUsernameStatus("checking");
-        clearErrors("username");
-        let isActive = true;
-        const timeout = setTimeout(async () => {
-            try {
-                const supabase = createClient();
-                const { count, error } = await supabase
-                    .from("users")
-                    .select("id", { count: "exact", head: true })
-                    .ilike("username", sanitised);
-                if (!isActive) {
-                    return;
-                }
-                if (error) {
-                    throw error;
-                }
-                if ((count ?? 0) === 0) {
-                    setUsernameStatus("available");
-                    clearErrors("username");
-                } else {
-                    setUsernameStatus("taken");
-                    setError("username", {
-                        type: "manual",
-                        message: "That username is already in use.",
-                    });
-                }
-            } catch (err) {
-                if (!isActive) {
-                    return;
-                }
-                console.error("Failed to check username availability", err);
-                setUsernameStatus("error");
-                setError("username", {
-                    type: "manual",
-                    message: "Unable to confirm username availability. Please try again.",
-                });
-            }
-        }, 400);
-        return () => {
-            isActive = false;
-            clearTimeout(timeout);
-        };
-    }, [clearErrors, currentUsername, setError, setValue, usernameValue]);
-
-    const upsertWalletKey = async (userId, payload = {}) => {
-        const supabase = createClient();
-        const namespace = payload.namespace || "EVM";
-        const { data: keyData, error } = await supabase
-            .from("wallet_keys")
-            .upsert(
-                {
-                    user_id: userId,
-                    namespace,
-                    ...payload,
-                    updated_at: new Date().toISOString(),
-                },
-                { onConflict: "user_id,namespace" }
-            )
-            .select("id")
-            .single();
-
-        if (error) {
-            throw error;
-        }
-
-        return keyData.id;
-    };
-
-    const insertOrUpdateDataInWallet = async (userId, data) => {
-        const supabase = createClient();
-        const walletKeyId =
-            data.wallet_key_id ??
-            (await upsertWalletKey(userId, {
-                namespace: data.namespace || "EVM",
-                ...(typeof data.app_share === "string" ? { app_share: data.app_share } : {}),
-            }));
-
-        const walletPayload = {
-            ...data,
-            wallet_key_id: walletKeyId,
-        };
-        delete walletPayload.app_share;
-
-        const { data: walletData } = await supabase
-            .from("wallet_list")
-            .select("id")
-            .match({ user_id: userId, namespace: walletPayload.namespace || "EVM" })
-            .order("created_at", { ascending: false })
-            .limit(1);
-
-        if (walletData?.[0]) {
-            await supabase
-                .from("wallet_list")
-                .update(walletPayload)
-                .match({ id: walletData[0].id });
-        } else {
-            await supabase.from("wallet_list").insert({
-                user_id: userId,
-                namespace: walletPayload.namespace || "EVM",
-                ...walletPayload,
-            });
-        }
-
-        return walletKeyId;
-    };
-
-    // Step 1: Submit the form and update the user’s data.
-    const onSubmit = useCallback(
-        async (data) => {
-            if (!(usernameStatus === "available" || usernameStatus === "current")) {
-                toast.error("Please choose an available username before continuing.");
-                return;
-            }
-            try {
-                if (!userData?.user?.cubid_id) {
-                    console.error("No cubid_id found. Ensure user is authenticated properly.");
-                    toast.error("We could not confirm your account. Please try signing in again.");
-                    return;
-                }
-
-                const countryValue = (data.country?.label || data.country || "") as string;
-                const updatedData = {
-                    full_name: `${data.firstName} ${data.lastName}`.trim(),
-                    nickname: data.nickname || null,
-                    username: data.username?.toLowerCase() || null,
-                    country: countryValue || null,
-                    phone: data.phone || null,
-                };
-
-                const { error } = await updateCubidDataInSupabase(userData.user.cubid_id, {
-                    user: updatedData,
-                });
-                if (error) {
-                    console.error("Error updating Supabase:", error.message);
-                    toast.error("We couldn't save your details. Please try again.");
-                    return;
-                }
-                setStep(2);
-            } catch (err) {
-                console.error("Error submitting form:", err);
-                toast.error("We couldn't save your details. Please try again.");
-            }
-        },
-        [userData, usernameStatus]
-    );
-
-    const mainClass = cn("flex-grow flex flex-col items-center justify-center p-4");
-
-    if (step === 1) {
-        return (
-            <div className={mainClass}>
-                <Card className={`w-full text-black ${isDarkMode ? "text-white" : "text-black"} max-w-xl`}>
-                    <CardHeader className="text-2xl font-semibold text-center mb-6">
-                        <h1>Welcome</h1>
-                        <p className="text-sm text-gray-600 mt-1">Please fill in the details below</p>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit(onSubmit)}>
-                            {/* First Name */}
-                            <div className="mb-4">
-                                <label htmlFor="firstName" className="block font-medium text-sm mb-1">
-                                    First Name
-                                </label>
-                                <p className="text-xs text-gray-500 mb-2">Your legal first name(s)</p>
-                                <input
-                                    id="firstName"
-                                    type="text"
-                                    {...register("firstName", { required: "First name is required" })}
-                                    style={{ color: "black !important" }}
-                                    className={`w-full border border-gray-300 !bg-white p-2 rounded !text-black`}
-                                />
-                                {errors.firstName && (
-                                    <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>
-                                )}
-                            </div>
-
-                            {/* Last Name */}
-                            <div className="mb-4">
-                                <label htmlFor="lastName" className="block font-medium text-sm mb-1">
-                                    Last Name
-                                </label>
-                                <p className="text-xs text-gray-500 mb-2">Your legal last name or family name</p>
-                                <input
-                                    id="lastName"
-                                    type="text"
-                                    style={{ color: "black !important" }}
-                                    {...register("lastName", { required: "Last name is required" })}
-                                    className={`w-full border border-gray-300 p-2 !bg-white rounded  !text-black`}
-                                />
-                                {errors.lastName && (
-                                    <p className="text-red-500 text-xs mt-1">{errors.lastName.message}</p>
-                                )}
-                            </div>
-
-                            {/* Nickname (Optional) */}
-                            <div className="mb-4">
-                                <label htmlFor="nickname" className="block font-medium text-sm mb-1">
-                                    Nickname (optional)
-                                </label>
-                                <p className="text-xs text-gray-500 mb-2">
-                                    What should we call you? Lots of people go by different names from their given name
-                                </p>
-                                <input
-                                    id="nickname"
-                                    type="text"
-                                    style={{ color: "black !important" }}
-                                    {...register("nickname")}
-                                    className={`w-full border border-gray-300 !bg-white p-2 rounded !text-black`}
-                                />
-                            </div>
-
-                            {/* Username */}
-                            <div className="mb-4">
-                                <label htmlFor="username" className="block font-medium text-sm mb-1">
-                                    Username
-                                </label>
-                                <p className="text-xs text-gray-500 mb-2">
-                                    This will be your public handle so friends can find you.
-                                </p>
-                                <input
-                                    id="username"
-                                    type="text"
-                                    autoComplete="off"
-                                    {...register("username", {
-                                        required: "Username is required",
-                                        maxLength: {
-                                            value: 32,
-                                            message: "Usernames must be 32 characters or fewer.",
-                                        },
-                                        pattern: {
-                                            value: /^[a-z0-9._-]+$/,
-                                            message:
-                                                "Use only lowercase letters, numbers, dots, underscores or hyphens.",
-                                        },
-                                    })}
-                                    className={`w-full border border-gray-300 !bg-white p-2 rounded !text-black`}
-                                />
-                                {errors.username ? (
-                                    <p className="text-red-500 text-xs mt-1">{errors.username.message}</p>
-                                ) : (
-                                    <p className={`text-xs mt-1 ${usernameFeedback.className}`}>
-                                        {usernameFeedback.message}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Country Selector */}
-                            <div className="mb-4">
-                                <label htmlFor="country" className="block font-medium text-sm mb-1">
-                                    Country
-                                </label>
-                                <p className="text-xs text-gray-500 mb-2">In which country do you live?</p>
-                                <Controller
-                                    control={control}
-                                    name="country"
-                                    rules={{ required: "Country is required" }}
-                                    render={({ field }) => (
-                                        <Select
-                                            {...field}
-                                            options={[{
-                                                value: "CA",
-                                                label: "Canada (+1)"
-                                            }, ...customCountryOptions]}
-                                            className="!text-black"
-                                            placeholder="Select a country"
-                                        />
-                                    )}
-                                />
-                                {errors.country && (
-                                    <p className="text-red-500 text-xs mt-1">{errors.country.message}</p>
-                                )}
-                            </div>
-
-                            {/* Phone Input with Country Code */}
-                            <div className="mb-4">
-                                <label htmlFor="phone" className="block font-medium text-sm mb-1">
-                                    Phone
-                                </label>
-                                <div className="rounded border border-gray-200 bg-white/80 p-3">
-                                    <CubidWidget
-                                        stampToRender="phone"
-                                        uuid={userData?.user?.cubid_id}
-                                        page_id='37'
-                                        api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-                                        onStampChange={() => {
-                                            setIsPhoneVerified(true);
-                                        }}
-                                    />
-                                    <p className={`text-xs mt-2 ${isPhoneVerified ? "text-green-600" : "text-gray-500"}`}>
-                                        {isPhoneVerified
-                                            ? "Phone number verified! You're good to go."
-                                            : "Enter your phone number and verify it with the code we send."}
-                                    </p>
-                                </div>
-                                {errors.phone && (
-                                    <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
-                                )}
-                            </div>
-
-                            <CardFooter className="flex justify-end">
-                                <div className="flex flex-col items-end gap-2">
-                                    {continueHelper && (
-                                        <p className={`text-xs ${continueHelper.className}`}>
-                                            {continueHelper.message}
-                                        </p>
-                                    )}
-                                    <Button type="submit" className="ml-2" disabled={disableContinue}>
-                                        {isSubmitting ? "Saving..." : "Continue"}
-                                    </Button>
-                                </div>
-                            </CardFooter>
-                        </form>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    } else if (step === 2) {
-        return (
-            <div className={mainClass}>
-                <Card className="w-full max-w-xl">
-                    <CardHeader className="text-2xl font-semibold text-center mb-6">
-                        <h1>Connect Your Wallet</h1>
-                        <p className="text-sm text-gray-600 mt-1">Please connect your wallet to continue</p>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="mb-4">
-                            <label htmlFor="deviceLabel" className="block text-sm font-medium text-gray-700 mb-2">
-                                Device name (optional)
-                            </label>
-                            <input
-                                id="deviceLabel"
-                                type="text"
-                                value={deviceLabel}
-                                onChange={(e) => setDeviceLabel(e.target.value)}
-                                placeholder="e.g., My Laptop, Work Phone"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                                Give this device a friendly name to identify it later
-                            </p>
-                        </div>
-                        <div className="mt-6">
-                            <WalletComponent
-                                type="evm"
-                                user_id={userData?.user?.cubid_id}
-                                dapp_id="59"
-                                api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
-                                onEVMWallet={async (walletArray: any) => {
-                                    setWallets(walletArray);
-                                    const [walletDetails] = walletArray;
-                                    if (walletDetails) {
-                                        await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
-                                            public_key: walletDetails.address,
-                                            is_generated: walletDetails?.is_generated_via_lib,
-                                            namespace: "EVM",
-                                        })
-                                    }
-                                }}
-                                onUserShare={async (usershare: any) => {
-                                    const supabase = createClient();
-                                    const walletKeyId = await upsertWalletKey(userData?.cubidData?.id, {
-                                        namespace: "EVM",
-                                    });
-                                    const activeAppInstance = await getActiveAppInstance();
-                                    if (!activeAppInstance?.id) {
-                                        const appSlug = process.env.NEXT_PUBLIC_APP_NAME;
-                                        const citycoinSlug = process.env.NEXT_PUBLIC_CITYCOIN;
-                                        throw new Error(
-                                            `Unable to resolve active app instance for encrypted share storage (app: ${appSlug || "unknown"}, citycoin: ${citycoinSlug || "unknown"})`,
-                                        );
-                                    }
-                                    const serialisedShare = serialiseUserShare(usershare);
-                                    const deviceInfo = getDeviceMetadata(deviceLabel.trim() || undefined);
-                                    if (serialisedShare.credentialId) {
-                                        window.localStorage.setItem("tcoin_wallet_activeWalletCredentialId", serialisedShare.credentialId);
-                                    }
-
-                                    const { error: insertError } = await supabase.from("user_encrypted_share").insert({
-                                        user_share_encrypted: serialisedShare.userShareEncrypted,
-                                        user_id: userData?.cubidData?.id,
-                                        wallet_key_id: walletKeyId,
-                                        credential_id: serialisedShare.credentialId,
-                                        app_instance_id: activeAppInstance.id,
-                                        device_info: deviceInfo,
-                                        last_used_at: new Date().toISOString(),
-                                    });
-                                    
-                                    if (insertError) {
-                                        console.error('Failed to store encrypted share:', insertError);
-                                        throw new Error(`Failed to store encrypted wallet share: ${insertError.message}`);
-                                    }
-                                }}
-                                onAppShare={async (share) => {
-                                    if (share) {
-                                        setTimeout(async () => {
-                                            await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
-                                                app_share: share,
-                                                namespace: "EVM",
-                                            })
-                                        }, 1500)
-                                    }
-                                }}
-                            />
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex justify-end">
-                        <div className="flex flex-col items-end gap-2">
-                            {wallets.length === 0 && (
-                                <p className="text-xs text-gray-500">
-                                    Connect a wallet above to enable this step.
-                                </p>
-                            )}
-                            <Button onClick={() => setStep(3)} disabled={wallets.length === 0} className="ml-2">
-                                Continue
-                            </Button>
-                        </div>
-                    </CardFooter>
-                </Card>
-            </div>
-        );
-    } else if (step === 3) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-900">
-                <h2 className="text-2xl font-semibold text-white mb-4">How to Fund Your Account</h2>
-                {TCOIN_WELCOME_VIDEO_URL ? (
-                    <video
-                        src={TCOIN_WELCOME_VIDEO_URL}
-                        controls
-                        className="w-full max-w-2xl"
-                    />
-                ) : (
-                    <p className="text-sm text-gray-300 max-w-2xl text-center">
-                        Set NEXT_PUBLIC_TCOIN_WELCOME_VIDEO_URL to display the onboarding funding video.
-                    </p>
-                )}
-                <Button onClick={() => router.push("/dashboard")} className="mt-6">
-                    Continue to Dashboard
-                </Button>
-            </div>
-        );
-    }
+const getInitialCountryOption = (country: string | null | undefined, options: CountryOption[]): CountryOption | null => {
+  if (!country) {
     return null;
+  }
+
+  const normalised = country.trim().toLowerCase();
+  return (
+    options.find((option) => option.label.toLowerCase() === normalised || option.value.toLowerCase() === normalised) ?? null
+  );
+};
+
+const splitFullName = (fullName: string | null | undefined) => {
+  if (!fullName) {
+    return { firstName: "", lastName: "" };
+  }
+
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts.shift() ?? "",
+    lastName: parts.join(" "),
+  };
+};
+
+export default function WelcomePage() {
+  const router = useRouter();
+  const { userData, authData, isAuthenticated } = useAuth();
+  const { bootstrap, isLoading, refetch } = useUserSettings();
+  const { isDarkMode } = useDarkMode();
+  const { openModal, closeModal } = useModal();
+  const startSignup = useStartUserSignupMutation();
+  const saveSignupStep = useSaveUserSignupStepMutation();
+  const resetSignup = useResetUserSignupMutation();
+  const completeSignup = useCompleteUserSignupMutation();
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+  const [deviceLabel, setDeviceLabel] = useState("");
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [walletReadyLocal, setWalletReadyLocal] = useState(false);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
+  const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false);
+  const [communitySettings, setCommunitySettings] = useState<CommunitySettingsForm>({
+    charity: "",
+    selectedCause: "",
+    primaryBiaId: "",
+    secondaryBiaIds: [],
+  });
+  const countryOptions = useMemo(() => buildCountryOptions(), []);
+  const totalSteps = 6;
+  const canSkipWalletSetup = ["development", "local"].includes(
+    (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
+  );
+  const usernameValueFromBootstrap = bootstrap?.user.username ?? "";
+  const currentStep = bootstrap?.signup.currentStep ?? wizardStep;
+  const walletReady = bootstrap?.signup.walletReady === true || walletReadyLocal;
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<UserDetailsFormValues>({
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      nickname: "",
+      username: "",
+      country: null,
+    },
+  });
+
+  useEffect(() => {
+    if (bootstrap?.signup.state === "completed") {
+      router.replace("/dashboard");
+    }
+  }, [bootstrap?.signup.state, router]);
+
+  useEffect(() => {
+    if (!bootstrap) {
+      return;
+    }
+
+    const nameParts = splitFullName(bootstrap.user.fullName);
+    reset({
+      firstName: nameParts.firstName,
+      lastName: nameParts.lastName,
+      nickname: bootstrap.user.nickname ?? "",
+      username: bootstrap.user.username ?? "",
+      country: getInitialCountryOption(bootstrap.user.country, countryOptions),
+    });
+    setWizardStep(bootstrap.signup.currentStep ?? 1);
+    setPhoneVerified(bootstrap.signup.phoneVerified);
+    setCommunitySettings({
+      charity: bootstrap.preferences.charity ?? "",
+      selectedCause: bootstrap.preferences.selectedCause ?? bootstrap.preferences.charity ?? "",
+      primaryBiaId: bootstrap.preferences.primaryBiaId ?? "",
+      secondaryBiaIds: bootstrap.preferences.secondaryBiaIds ?? [],
+    });
+  }, [bootstrap, countryOptions, reset]);
+
+  useEffect(() => {
+    if (!showWizard && bootstrap?.signup.state === "draft") {
+      setWizardStep(bootstrap.signup.currentStep ?? 1);
+    }
+  }, [bootstrap?.signup.currentStep, bootstrap?.signup.state, showWizard]);
+
+  useEffect(() => {
+    if (authData?.user?.email && !watch("username") && !usernameValueFromBootstrap) {
+      const candidate = authData.user.email.split("@")[0]?.toLowerCase().replace(/[^a-z0-9._-]/g, "");
+      if (candidate) {
+        reset(
+          {
+            ...watch(),
+            username: candidate,
+          },
+          {
+            keepDirty: false,
+            keepTouched: true,
+          }
+        );
+      }
+    }
+  }, [authData?.user?.email, reset, usernameValueFromBootstrap, watch]);
+
+  useEffect(() => {
+    if (profilePictureFile) {
+      return;
+    }
+    const source = typeof bootstrap?.user.profileImageUrl === "string" ? bootstrap.user.profileImageUrl.trim() : "";
+    setProfilePicturePreview(source || null);
+  }, [bootstrap?.user.profileImageUrl, profilePictureFile]);
+
+  useEffect(() => {
+    return () => {
+      if (profilePicturePreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(profilePicturePreview);
+      }
+    };
+  }, [profilePicturePreview]);
+
+  const getDeviceMetadata = (customLabel?: string) => {
+    if (typeof navigator === "undefined") {
+      return null;
+    }
+
+    const platform = navigator.userAgentData?.platform ?? navigator.platform ?? "Unknown platform";
+    let autoLabel = platform;
+    if (navigator.userAgentData?.brands) {
+      const brandLabel = navigator.userAgentData.brands.map((brand) => brand.brand).filter(Boolean).join(", ");
+      if (brandLabel) {
+        autoLabel = `${brandLabel} on ${platform}`;
+      }
+    } else {
+      autoLabel = `${platform} - ${navigator.userAgent.slice(0, 48)}`;
+    }
+
+    return normaliseDeviceInfo({
+      userAgent: navigator.userAgent,
+      platform,
+      label: customLabel || autoLabel,
+    });
+  };
+
+  const upsertWalletKey = async (userId, payload = {}) => {
+    const supabase = createClient();
+    const namespace = payload.namespace || "EVM";
+    const { data: keyData, error } = await supabase
+      .from("wallet_keys")
+      .upsert(
+        {
+          user_id: userId,
+          namespace,
+          ...payload,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,namespace" }
+      )
+      .select("id")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return keyData.id;
+  };
+
+  const insertOrUpdateDataInWallet = async (userId, data) => {
+    const supabase = createClient();
+    const walletKeyId =
+      data.wallet_key_id ??
+      (await upsertWalletKey(userId, {
+        namespace: data.namespace || "EVM",
+        ...(typeof data.app_share === "string" ? { app_share: data.app_share } : {}),
+      }));
+
+    const walletPayload = {
+      ...data,
+      wallet_key_id: walletKeyId,
+    };
+    delete walletPayload.app_share;
+
+    const { data: walletData } = await supabase
+      .from("wallet_list")
+      .select("id")
+      .match({ user_id: userId, namespace: walletPayload.namespace || "EVM" })
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (walletData?.[0]) {
+      await supabase.from("wallet_list").update(walletPayload).match({ id: walletData[0].id });
+    } else {
+      await supabase.from("wallet_list").insert({
+        user_id: userId,
+        namespace: walletPayload.namespace || "EVM",
+        ...walletPayload,
+      });
+    }
+
+    return walletKeyId;
+  };
+
+  const goToNextStep = (nextBootstrap?: any) => {
+    const nextStep = nextBootstrap?.signup.currentStep ?? Math.min(totalSteps, wizardStep + 1);
+    setWizardStep(nextStep);
+  };
+
+  const handleStart = async () => {
+    try {
+      const next = await startSignup.mutateAsync();
+      setShowWizard(true);
+      setWizardStep(next.signup.currentStep ?? 1);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to start signup.");
+    }
+  };
+
+  const handleReset = async () => {
+    try {
+      const next = await resetSignup.mutateAsync();
+      setProfilePictureFile(null);
+      setProfilePicturePreview(null);
+      setShowWizard(true);
+      setWizardStep(next.signup.currentStep ?? 1);
+      toast.success("Signup reset.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to reset signup.");
+    }
+  };
+
+  const saveWelcomeStep = async () => {
+    try {
+      const next = await saveSignupStep.mutateAsync({
+        step: 1,
+        payload: { introAccepted: true },
+      });
+      goToNextStep(next);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save this step.");
+    }
+  };
+
+  const saveUserDetailsStep = async (values: UserDetailsFormValues) => {
+    try {
+      const next = await saveSignupStep.mutateAsync({
+        step: 2,
+        payload: {
+          firstName: values.firstName.trim(),
+          lastName: values.lastName.trim(),
+          nickname: values.nickname.trim() || null,
+          username: values.username.trim().toLowerCase(),
+          country: values.country?.label ?? values.country?.value ?? null,
+          phoneVerified,
+        },
+      });
+      goToNextStep(next);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save your details.");
+    }
+  };
+
+  const saveCommunitySettingsStep = async () => {
+    try {
+      const next = await saveSignupStep.mutateAsync({
+        step: 4,
+        payload: {
+          charity: communitySettings.charity,
+          selectedCause: communitySettings.selectedCause || communitySettings.charity,
+          primaryBiaId: communitySettings.primaryBiaId,
+          secondaryBiaIds: communitySettings.secondaryBiaIds.filter((biaId) => biaId !== communitySettings.primaryBiaId),
+        },
+      });
+      goToNextStep(next);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save community settings.");
+    }
+  };
+
+  const saveProfilePictureStep = async () => {
+    if (!bootstrap?.user.id) {
+      toast.error("We could not determine your account. Please try signing in again.");
+      return;
+    }
+
+    try {
+      setIsUploadingProfilePicture(true);
+      let profileImageUrl =
+        typeof bootstrap.user.profileImageUrl === "string" && bootstrap.user.profileImageUrl.trim()
+          ? bootstrap.user.profileImageUrl
+          : null;
+
+      if (profilePictureFile) {
+        profileImageUrl = await uploadProfilePicture(bootstrap.user.id, profilePictureFile);
+        setProfilePictureFile(null);
+        setProfilePicturePreview(profileImageUrl);
+      }
+
+      const next = await saveSignupStep.mutateAsync({
+        step: 3,
+        payload: {
+          profileImageUrl,
+        },
+      });
+      goToNextStep(next);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save your profile picture.");
+    } finally {
+      setIsUploadingProfilePicture(false);
+    }
+  };
+
+  const saveWalletStep = async (skipWalletSetup = false) => {
+    try {
+      const next = await saveSignupStep.mutateAsync({
+        step: 5,
+        payload: {
+          deviceLabel: deviceLabel.trim() || null,
+          skipWalletSetup,
+        },
+      });
+      goToNextStep(next);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : skipWalletSetup ? "Unable to skip wallet setup." : "Wallet setup is still incomplete.");
+    }
+  };
+
+  const finishSignup = async () => {
+    try {
+      await completeSignup.mutateAsync();
+      toast.success("Welcome to TCOIN.");
+      router.push("/dashboard");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to complete signup.");
+    }
+  };
+
+  const mainClass = cn("flex-grow flex flex-col items-center justify-center p-4");
+  const selectedCountry = watch("country");
+  const selectedPrimaryBiaId = communitySettings.primaryBiaId;
+
+  const openSignIn = () => {
+    openModal({
+      content: <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />,
+      elSize: "4xl",
+    });
+  };
+
+  if (isLoading && !bootstrap) {
+    return <div className={mainClass}>Loading welcome flow…</div>;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className={mainClass}>
+        <Card className={`w-full max-w-2xl ${isDarkMode ? "text-white" : "text-black"}`}>
+          <CardHeader className="text-center">
+            <h1 className="text-3xl font-semibold">Welcome to TCOIN</h1>
+            <p className="text-sm text-muted-foreground">Sign in to start or resume your wallet setup.</p>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <p>Your signup is saved step by step once you authenticate.</p>
+            <p>You will be able to add your user details, choose a profile picture, choose community settings, set up your wallet, and continue to the dashboard.</p>
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button onClick={openSignIn}>Authenticate</Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!bootstrap) {
+    return <div className={mainClass}>Unable to load your welcome flow.</div>;
+  }
+
+  const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (profilePicturePreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(profilePicturePreview);
+    }
+    if (file) {
+      setProfilePicturePreview(URL.createObjectURL(file));
+      setProfilePictureFile(file);
+      return;
+    }
+    const source = typeof bootstrap.user.profileImageUrl === "string" ? bootstrap.user.profileImageUrl.trim() : "";
+    setProfilePicturePreview(source || null);
+    setProfilePictureFile(null);
+  };
+
+  return (
+    <div className={mainClass}>
+      {!showWizard && bootstrap.signup.state === "none" ? (
+        <Card className={`w-full max-w-2xl ${isDarkMode ? "text-white" : "text-black"}`}>
+          <CardHeader className="text-center">
+            <h1 className="text-3xl font-semibold">Welcome to TCOIN</h1>
+            <p className="text-sm text-muted-foreground">Set up your profile, community defaults, and wallet in one flow.</p>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <p>Your setup is saved step by step, so you can come back later if you need to.</p>
+            <p>You will add your user details, choose a profile picture, choose your community settings, connect your wallet, and then head to the dashboard.</p>
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button onClick={() => void handleStart()} disabled={startSignup.isPending}>
+              {startSignup.isPending ? "Starting..." : "Start setup"}
+            </Button>
+          </CardFooter>
+        </Card>
+      ) : null}
+
+      {!showWizard && bootstrap.signup.state === "draft" ? (
+        <Card className={`w-full max-w-2xl ${isDarkMode ? "text-white" : "text-black"}`}>
+          <CardHeader className="text-center">
+            <h1 className="text-3xl font-semibold">Resume your signup</h1>
+            <p className="text-sm text-muted-foreground">You have a saved draft at step {currentStep} of {totalSteps}.</p>
+          </CardHeader>
+          <CardFooter className="justify-end gap-2">
+            <Button variant="outline" onClick={() => void handleReset()} disabled={resetSignup.isPending}>
+              {resetSignup.isPending ? "Resetting..." : "Reset"}
+            </Button>
+            <Button
+              onClick={() => {
+                setShowWizard(true);
+                setWizardStep(currentStep);
+              }}
+            >
+              Resume
+            </Button>
+          </CardFooter>
+        </Card>
+      ) : null}
+
+      {showWizard ? (
+        <Card className={`w-full max-w-3xl ${isDarkMode ? "text-white" : "text-black"}`}>
+          <CardHeader className="text-center">
+            <h1 className="text-3xl font-semibold">User Signup</h1>
+            <p className="text-sm text-muted-foreground">Step {wizardStep} of {totalSteps}</p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {wizardStep === 1 ? (
+              <div className="space-y-4 text-sm text-muted-foreground">
+                <p>TCOIN works best when your profile, community preferences, and wallet are all configured together.</p>
+                <p>This signup is resumable. If you leave part-way through, you will be able to resume from your saved step next time.</p>
+              </div>
+            ) : null}
+
+            {wizardStep === 2 ? (
+              <form className="space-y-4" onSubmit={handleSubmit(saveUserDetailsStep)}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="firstName" className="block text-sm font-medium mb-1">
+                      First name
+                    </label>
+                    <input
+                      id="firstName"
+                      className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                      {...register("firstName", { required: "First name is required" })}
+                    />
+                    {errors.firstName ? <p className="mt-1 text-xs text-red-500">{errors.firstName.message}</p> : null}
+                  </div>
+                  <div>
+                    <label htmlFor="lastName" className="block text-sm font-medium mb-1">
+                      Last name
+                    </label>
+                    <input
+                      id="lastName"
+                      className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                      {...register("lastName", { required: "Last name is required" })}
+                    />
+                    {errors.lastName ? <p className="mt-1 text-xs text-red-500">{errors.lastName.message}</p> : null}
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="nickname" className="block text-sm font-medium mb-1">
+                    Preferred name
+                  </label>
+                  <input
+                    id="nickname"
+                    className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                    {...register("nickname")}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="username" className="block text-sm font-medium mb-1">
+                    Username
+                  </label>
+                  <input
+                    id="username"
+                    className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                    {...register("username", {
+                      required: "Username is required",
+                      maxLength: {
+                        value: 32,
+                        message: "Username must be 32 characters or fewer.",
+                      },
+                      pattern: {
+                        value: /^[a-z0-9._-]+$/,
+                        message: "Use only lowercase letters, numbers, dots, underscores or hyphens.",
+                      },
+                    })}
+                  />
+                  {errors.username ? <p className="mt-1 text-xs text-red-500">{errors.username.message}</p> : null}
+                </div>
+                <div>
+                  <label htmlFor="country" className="block text-sm font-medium mb-1">
+                    Country
+                  </label>
+                  <Controller
+                    control={control}
+                    name="country"
+                    rules={{ required: "Country is required" }}
+                    render={({ field }) => (
+                      <Select
+                        {...field}
+                        options={countryOptions}
+                        placeholder="Select a country"
+                        className="text-black"
+                        value={field.value}
+                        onChange={(option) => field.onChange(option)}
+                      />
+                    )}
+                  />
+                  {errors.country ? <p className="mt-1 text-xs text-red-500">{errors.country.message}</p> : null}
+                </div>
+                <div className="rounded border border-gray-200 bg-white/80 p-3 text-black">
+                  <p className="mb-2 text-sm font-medium">Phone verification</p>
+                  {phoneVerified ? (
+                    <p className="text-sm text-green-600">Phone verified. You are good to continue.</p>
+                  ) : (
+                    <>
+                      <CubidWidget
+                        stampToRender="phone"
+                        uuid={userData?.user?.cubid_id}
+                        page_id="37"
+                        api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+                        onStampChange={() => setPhoneVerified(true)}
+                      />
+                      <p className="mt-2 text-xs text-gray-500">Enter your phone number and verify it with the code we send.</p>
+                    </>
+                  )}
+                </div>
+                <CardFooter className="justify-between px-0">
+                  <Button type="button" variant="outline" onClick={() => setWizardStep(1)}>
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={
+                      isSubmitting ||
+                      saveSignupStep.isPending ||
+                      !phoneVerified ||
+                      !watch("firstName") ||
+                      !watch("lastName") ||
+                      !watch("username") ||
+                      !selectedCountry
+                    }
+                  >
+                    {isSubmitting || saveSignupStep.isPending ? "Saving..." : "Continue"}
+                  </Button>
+                </CardFooter>
+              </form>
+            ) : null}
+
+            {wizardStep === 3 ? (
+              <div className="space-y-4">
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <Avatar className="h-24 w-24">
+                    {profilePicturePreview ? (
+                      <AvatarImage src={profilePicturePreview} alt="Profile picture preview" />
+                    ) : (
+                      <AvatarFallback>
+                        <LuUser />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Add a profile picture now, or continue and come back to it later from Edit Profile.
+                    </p>
+                    <input
+                      id="signupProfilePicture"
+                      name="signupProfilePicture"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProfilePictureChange}
+                      className="block w-full text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">Square images work best.</p>
+                  </div>
+                </div>
+                <CardFooter className="justify-between px-0">
+                  <Button type="button" variant="outline" onClick={() => setWizardStep(2)}>
+                    Back
+                  </Button>
+                  <Button type="button" onClick={() => void saveProfilePictureStep()} disabled={saveSignupStep.isPending || isUploadingProfilePicture}>
+                    {saveSignupStep.isPending || isUploadingProfilePicture ? "Saving..." : "Continue"}
+                  </Button>
+                </CardFooter>
+              </div>
+            ) : null}
+
+            {wizardStep === 4 ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Default charity</label>
+                  <select
+                    value={communitySettings.charity}
+                    onChange={(event) =>
+                      setCommunitySettings((prev) => ({
+                        ...prev,
+                        charity: event.target.value,
+                        selectedCause: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                  >
+                    <option value="">Select a charity</option>
+                    {bootstrap.options.charities.map((charity) => (
+                      <option key={charity.id} value={charity.name}>
+                        {charity.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Primary BIA</label>
+                  <select
+                    value={communitySettings.primaryBiaId}
+                    onChange={(event) =>
+                      setCommunitySettings((prev) => ({
+                        ...prev,
+                        primaryBiaId: event.target.value,
+                        secondaryBiaIds: prev.secondaryBiaIds.filter((biaId) => biaId !== event.target.value),
+                      }))
+                    }
+                    className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                  >
+                    <option value="">Select a BIA</option>
+                    {bootstrap.options.bias.map((bia) => (
+                      <option key={bia.id} value={bia.id}>
+                        {bia.code} · {bia.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-2">Secondary BIAs</p>
+                  <div className="space-y-2">
+                    {bootstrap.options.bias
+                      .filter((bia) => bia.id !== selectedPrimaryBiaId)
+                      .map((bia) => (
+                        <label key={bia.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={communitySettings.secondaryBiaIds.includes(bia.id)}
+                            onChange={() =>
+                              setCommunitySettings((prev) => ({
+                                ...prev,
+                                secondaryBiaIds: prev.secondaryBiaIds.includes(bia.id)
+                                  ? prev.secondaryBiaIds.filter((value) => value !== bia.id)
+                                  : [...prev.secondaryBiaIds, bia.id],
+                              }))
+                            }
+                          />
+                          <span>
+                            {bia.code} · {bia.name}
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                </div>
+                <CardFooter className="justify-between px-0">
+                  <Button type="button" variant="outline" onClick={() => setWizardStep(3)}>
+                    Back
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void saveCommunitySettingsStep()}
+                    disabled={saveSignupStep.isPending || !communitySettings.charity || !communitySettings.primaryBiaId}
+                  >
+                    {saveSignupStep.isPending ? "Saving..." : "Continue"}
+                  </Button>
+                </CardFooter>
+              </div>
+            ) : null}
+
+            {wizardStep === 5 ? (
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="deviceLabel" className="block text-sm font-medium mb-1">
+                    Device name (optional)
+                  </label>
+                  <input
+                    id="deviceLabel"
+                    value={deviceLabel}
+                    onChange={(event) => setDeviceLabel(event.target.value)}
+                    placeholder="e.g., Work laptop"
+                    className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                  />
+                </div>
+                {walletReady ? (
+                  <p className="text-sm text-green-600">Wallet already configured for this app. You can continue.</p>
+                ) : (
+                  <WalletComponent
+                    type="evm"
+                    user_id={userData?.user?.cubid_id}
+                    dapp_id="59"
+                    api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
+                    onEVMWallet={async (walletArray: any) => {
+                      const [walletDetails] = walletArray;
+                      if (walletDetails) {
+                        await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
+                          public_key: walletDetails.address,
+                          is_generated: walletDetails?.is_generated_via_lib,
+                          namespace: "EVM",
+                        });
+                      }
+                    }}
+                    onUserShare={async (usershare: any) => {
+                      const supabase = createClient();
+                      const walletKeyId = await upsertWalletKey(userData?.cubidData?.id, {
+                        namespace: "EVM",
+                      });
+                      const activeAppInstance = await getActiveAppInstance();
+                      if (!activeAppInstance?.id) {
+                        throw new Error("Unable to resolve active app instance for encrypted share storage.");
+                      }
+                      const serialisedShare = serialiseUserShare(usershare);
+                      const deviceInfo = getDeviceMetadata(deviceLabel.trim() || undefined);
+                      if (serialisedShare.credentialId) {
+                        window.localStorage.setItem("tcoin_wallet_activeWalletCredentialId", serialisedShare.credentialId);
+                      }
+
+                      const { error } = await supabase.from("user_encrypted_share").insert({
+                        user_share_encrypted: serialisedShare.userShareEncrypted,
+                        user_id: userData?.cubidData?.id,
+                        wallet_key_id: walletKeyId,
+                        credential_id: serialisedShare.credentialId,
+                        app_instance_id: activeAppInstance.id,
+                        device_info: deviceInfo,
+                        last_used_at: new Date().toISOString(),
+                      });
+
+                      if (error) {
+                        throw new Error(error.message);
+                      }
+
+                      setWalletReadyLocal(true);
+                      await refetch();
+                    }}
+                    onAppShare={async (share) => {
+                      if (share) {
+                        await insertOrUpdateDataInWallet(userData?.cubidData?.id, {
+                          app_share: share,
+                          namespace: "EVM",
+                        });
+                        setWalletReadyLocal(true);
+                        await refetch();
+                      }
+                    }}
+                  />
+                )}
+                <CardFooter className="justify-between px-0">
+                  <Button type="button" variant="outline" onClick={() => setWizardStep(4)}>
+                    Back
+                  </Button>
+                  <div className="flex gap-2">
+                    {canSkipWalletSetup ? (
+                      <Button type="button" variant="outline" onClick={() => void saveWalletStep(true)} disabled={saveSignupStep.isPending}>
+                        {saveSignupStep.isPending ? "Skipping..." : "Skip"}
+                      </Button>
+                    ) : null}
+                    <Button type="button" onClick={() => void saveWalletStep()} disabled={saveSignupStep.isPending || !walletReady}>
+                      {saveSignupStep.isPending ? "Saving..." : "Continue"}
+                    </Button>
+                  </div>
+                </CardFooter>
+              </div>
+            ) : null}
+
+            {wizardStep === 6 ? (
+              <div className="space-y-6">
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl font-semibold">You’re all set</h2>
+                  <p className="text-sm text-muted-foreground">Review the funding video below, then continue to your dashboard.</p>
+                </div>
+                {TCOIN_WELCOME_VIDEO_URL ? (
+                  <video src={TCOIN_WELCOME_VIDEO_URL} controls className="w-full rounded" />
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Set `NEXT_PUBLIC_TCOIN_WELCOME_VIDEO_URL` to display the onboarding funding video.
+                  </p>
+                )}
+                <CardFooter className="justify-between px-0">
+                  <Button type="button" variant="outline" onClick={() => setWizardStep(5)}>
+                    Back
+                  </Button>
+                  <Button type="button" onClick={() => void finishSignup()} disabled={completeSignup.isPending}>
+                    {completeSignup.isPending ? "Finishing..." : "Continue to Dashboard"}
+                  </Button>
+                </CardFooter>
+              </div>
+            ) : null}
+          </CardContent>
+          {wizardStep === 1 ? (
+            <CardFooter className="justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowWizard(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void saveWelcomeStep()} disabled={saveSignupStep.isPending}>
+                {saveSignupStep.isPending ? "Saving..." : "Continue"}
+              </Button>
+            </CardFooter>
+          ) : null}
+        </Card>
+      ) : null}
+    </div>
+  );
 }

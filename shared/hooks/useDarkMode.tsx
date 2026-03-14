@@ -1,31 +1,34 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@shared/components/ui/Button";
+import {
+  applyThemePreference,
+  migrateLegacyThemePreference,
+  readCachedThemePreference,
+  resolveSystemPrefersDark,
+  writeCachedThemePreference,
+} from "@shared/lib/userSettings/theme";
+import type { UserSettingsTheme } from "@shared/lib/userSettings/types";
 import { LuMoon, LuSun } from "react-icons/lu";
 
 export default function useDarkMode() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isFollowingSystem, setIsFollowingSystem] = useState(true);
+  const [themeMode, setThemeMode] = useState<UserSettingsTheme>("system");
+  const themeModeRef = useRef<UserSettingsTheme>("system");
 
-  const applyClass = (dark: boolean) => {
-    const root = document.documentElement;
-    if (dark) {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    setIsDarkMode(dark);
-  };
+  const applyMode = useCallback((mode: UserSettingsTheme) => {
+    const resolvedDark = applyThemePreference(mode);
+    themeModeRef.current = mode;
+    setThemeMode(mode);
+    setIsFollowingSystem(mode === "system");
+    setIsDarkMode(resolvedDark);
+  }, []);
 
   const setThemeOverride = (mode: "light" | "dark") => {
-    const next = mode === "dark";
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("theme", next ? "dark" : "light");
-      window.localStorage.setItem("theme_user_set", "1");
-    }
-    setIsFollowingSystem(false);
-    applyClass(next);
+    writeCachedThemePreference(mode);
+    applyMode(mode);
   };
 
   const toggleDarkMode = () => {
@@ -33,44 +36,44 @@ export default function useDarkMode() {
   };
 
   const clearThemeOverride = () => {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem("theme");
-    window.localStorage.removeItem("theme_user_set");
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    setIsFollowingSystem(true);
-    applyClass(mediaQuery.matches);
+    writeCachedThemePreference("system");
+    applyMode("system");
+  };
+
+  const syncThemePreference = (mode: UserSettingsTheme) => {
+    writeCachedThemePreference(mode);
+    applyMode(mode);
   };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const sync = () => {
-      const stored = window.localStorage.getItem("theme");
-      const userSetTheme = window.localStorage.getItem("theme_user_set") === "1";
 
-      if (userSetTheme && (stored === "dark" || stored === "light")) {
-        setIsFollowingSystem(false);
-        applyClass(stored === "dark");
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const cachedTheme = readCachedThemePreference() ?? migrateLegacyThemePreference() ?? "system";
+    applyMode(cachedTheme);
+
+    const listener = (e: MediaQueryListEvent) => {
+      if (themeModeRef.current !== "system") {
         return;
       }
 
       setIsFollowingSystem(true);
-      applyClass(mediaQuery.matches);
-    };
-
-    sync();
-    const listener = (e: MediaQueryListEvent) => {
-      const userSetTheme = window.localStorage.getItem("theme_user_set") === "1";
-      if (!userSetTheme) {
-        setIsFollowingSystem(true);
-        applyClass(e.matches);
-      }
+      setIsDarkMode(e.matches);
+      applyThemePreference("system");
     };
     mediaQuery.addEventListener("change", listener);
     return () => mediaQuery.removeEventListener("change", listener);
-  }, []);
+  }, [applyMode]);
 
-  return { isDarkMode, isFollowingSystem, toggleDarkMode, setThemeOverride, clearThemeOverride };
+  useEffect(() => {
+    if (themeMode !== "system") {
+      return;
+    }
+
+    setIsDarkMode(resolveSystemPrefersDark());
+  }, [themeMode]);
+
+  return { isDarkMode, isFollowingSystem, themeMode, toggleDarkMode, setThemeOverride, clearThemeOverride, syncThemePreference };
 }
 
 export function ThemeToggleButton() {
