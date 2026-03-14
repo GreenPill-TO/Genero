@@ -28,7 +28,7 @@ jobs:
           echo "Using PREVIEW host ${HOST} (password hidden)."
 
       - name: Reset PREVIEW DB to clean slate
-        run: supabase db reset --db-url "${{ steps.preview_url.outputs.DB_URL }}"
+        run: printf 'y\n' | supabase db reset --db-url "${{ steps.preview_url.outputs.DB_URL }}"
 
       - name: Apply PR migrations (up) to PREVIEW
         run: supabase db push --db-url "${{ steps.preview_url.outputs.DB_URL }}"
@@ -56,4 +56,4 @@ jobs:
           echo "DB_URL=postgresql://postgres:${ENC_PASS}@${HOST}:5432/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
 
       - name: Reset PREVIEW DB to DEV baseline
-        run: supabase db reset --db-url "${{ steps.preview_url.outputs.DB_URL }}"
+        run: printf 'y\n' | supabase db reset --db-url "${{ steps.preview_url.outputs.DB_URL }}"
