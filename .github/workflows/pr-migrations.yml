@@ -19,9 +19,9 @@ jobs:
         id: target
         env:
           BASE_REF: ${{ github.base_ref }}
-          DEV_DB_URL: ${{ secrets.SUPABASE_DIRECT_CONNECTION_STRING_DEV }}
+          DEV_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_DEV }}
           DEV_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_DEV }}
-          PROD_DB_URL: ${{ secrets.SUPABASE_DIRECT_CONNECTION_STRING_PROD }}
+          PROD_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_PROD }}
           PROD_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_PROD }}
         run: |
           set -e

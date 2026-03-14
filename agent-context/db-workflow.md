@@ -3,8 +3,8 @@
 ## How it flows
 
 - **Feature PR opened/updated**
-  → If the PR targets `dev`, CI runs a **dry-run migration validation against DEV** using the DEV direct connection string.
-  → If the PR targets `main`, CI runs a **dry-run migration validation against PROD** using the PROD direct connection string.
+  → If the PR targets `dev`, CI runs a **dry-run migration validation against DEV** using the DEV session-pooler connection string.
+  → If the PR targets `main`, CI runs a **dry-run migration validation against PROD** using the PROD session-pooler connection string.
   → These checks are non-destructive and do not reset shared remote databases.
 
 - **Push to `dev` branch**

@@ -29,8 +29,8 @@ jobs:
         id: makeurl
         env:
           INPUT_TARGET: ${{ github.event.inputs.target }}
-          DEV_DB_URL:   ${{ secrets.SUPABASE_DIRECT_CONNECTION_STRING_DEV }}
-          PROD_DB_URL:  ${{ secrets.SUPABASE_DIRECT_CONNECTION_STRING_PROD }}
+          DEV_DB_URL:   ${{ secrets.SUPABASE_SESSION_POOLER_DEV }}
+          PROD_DB_URL:  ${{ secrets.SUPABASE_SESSION_POOLER_PROD }}
         run: |
           set -e
           case "$INPUT_TARGET" in
@@ -43,7 +43,7 @@ jobs:
               echo "BASE_BRANCH=dev" >> "$GITHUB_OUTPUT"
               ;;
           esac
-          echo "Using direct connection string for $INPUT_TARGET (value hidden)"
+          echo "Using session pooler connection string for $INPUT_TARGET (value hidden)"
 
       - name: Generate drift migration
         id: diff

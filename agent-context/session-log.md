@@ -1,3 +1,26 @@
+## v1.68
+### Timestamp
+- 2026-03-14 15:18:00 EDT
+
+### Objective
+- Switch the two-remote Supabase CI workflows from the unusable direct IPv6 connection strings to the new session-pooler secrets and update the repo documentation accordingly.
+
+### What Changed
+- Updated `.github/workflows/pr-migrations.yml` so branch-targeted DEV/PROD migration validation now reads `SUPABASE_SESSION_POOLER_DEV` / `SUPABASE_SESSION_POOLER_PROD`.
+- Updated `.github/workflows/db-pull-env.yml` so remote drift generation also uses the DEV/PROD session-pooler secrets instead of the direct connection strings.
+- Updated the database workflow and technical spec artefacts to describe the session-pooler based CI connectivity model.
+
+### Verification
+- `gh secret list -R GreenPill-TO/Genero`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `.github/workflows/db-pull-env.yml`
+- `agent-context/db-workflow.md`
+- `agent-context/technical-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.67
 ### Timestamp
 - 2026-03-14 14:03:00 EDT
