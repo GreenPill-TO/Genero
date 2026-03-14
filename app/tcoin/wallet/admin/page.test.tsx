@@ -26,6 +26,12 @@ const edgeMocks = vi.hoisted(() => ({
   approveRedemptionRequest: vi.fn(async () => ({ request: {} })),
   settleRedemptionRequest: vi.fn(async () => ({ request: {}, settlement: {} })),
   getGovernanceActions: vi.fn(async () => ({ actions: [] })),
+  getOnrampAdminRequests: vi.fn(async () => ({ onRampRequests: [], offRampRequests: [], statuses: [] })),
+  getAdminOnrampSessions: vi.fn(async () => ({ sessions: [] })),
+  retryOnrampSession: vi.fn(async () => ({ sessionId: "session-1", result: { skipped: false, status: "mint_complete" } })),
+  getVoucherCompatibilityRules: vi.fn(async () => ({ rules: [] })),
+  getVoucherMerchants: vi.fn(async () => ({ merchants: [] })),
+  saveVoucherCompatibilityRule: vi.fn(async () => ({ rule: {} })),
 }));
 
 const mockFrom = vi.hoisted(() =>
@@ -78,6 +84,16 @@ vi.mock("@shared/lib/edge/redemptionsClient", () => ({
 vi.mock("@shared/lib/edge/governanceClient", () => ({
   getGovernanceActions: edgeMocks.getGovernanceActions,
 }));
+vi.mock("@shared/lib/edge/onrampClient", () => ({
+  getOnrampAdminRequests: edgeMocks.getOnrampAdminRequests,
+  getAdminOnrampSessions: edgeMocks.getAdminOnrampSessions,
+  retryOnrampSession: edgeMocks.retryOnrampSession,
+}));
+vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
+  getVoucherCompatibilityRules: edgeMocks.getVoucherCompatibilityRules,
+  getVoucherMerchants: edgeMocks.getVoucherMerchants,
+  saveVoucherCompatibilityRule: edgeMocks.saveVoucherCompatibilityRule,
+}));
 
 import AdminDashboardPage from "./page";
 
@@ -108,19 +124,7 @@ describe("AdminDashboardPage", () => {
     });
     replaceMock.mockReset();
     fetchMock.mockReset();
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : input.toString();
-
-      if (url.includes("/api/admin/ramp-requests")) {
-        return createFetchResponse({
-          onRampRequests: selectResponses.interac_transfer.data,
-          offRampRequests: selectResponses.off_ramp_req.data,
-          statuses: selectResponses.ref_request_statuses.data,
-        });
-      }
-
-      return createFetchResponse({});
-    });
+    fetchMock.mockImplementation(async () => createFetchResponse({}));
     mockFrom.mockClear();
     updateCalls.length = 0;
     edgeMocks.getBiaList.mockResolvedValue({ bias: [], controls: [] });
@@ -128,6 +132,14 @@ describe("AdminDashboardPage", () => {
     edgeMocks.getBiaControls.mockResolvedValue({ controls: [] });
     edgeMocks.getRedemptionRequests.mockResolvedValue({ requests: [] });
     edgeMocks.getGovernanceActions.mockResolvedValue({ actions: [] });
+    edgeMocks.getOnrampAdminRequests.mockImplementation(async () => ({
+      onRampRequests: selectResponses.interac_transfer.data,
+      offRampRequests: selectResponses.off_ramp_req.data,
+      statuses: selectResponses.ref_request_statuses.data,
+    }));
+    edgeMocks.getAdminOnrampSessions.mockResolvedValue({ sessions: [] });
+    edgeMocks.getVoucherCompatibilityRules.mockResolvedValue({ rules: [] });
+    edgeMocks.getVoucherMerchants.mockResolvedValue({ merchants: [] });
     const responses = getResponses();
     responses.interac_transfer = { data: [], error: null };
     responses.off_ramp_req = { data: [], error: null };

@@ -1,14 +1,22 @@
 import { invokeEdgeFunction } from "./core";
 import type { AppScopeInput } from "./types";
-import type { OnrampCheckoutSessionSummary } from "./onramp";
+import type {
+  CreateOnrampSessionRequest,
+  CreateOnrampSessionResponse,
+  LegacyRampAdminRequestsResponse,
+  OnrampAdminSessionsResponse,
+  OnrampStatusResponse,
+  OnrampTouchResponse,
+  RetryOnrampSessionResponse,
+} from "./onramp";
 
 export async function createOnrampSession(
-  payload: Record<string, unknown>,
+  payload: CreateOnrampSessionRequest,
   appContext?: AppScopeInput | null
-): Promise<Record<string, unknown>> {
-  return invokeEdgeFunction<Record<string, unknown>>("onramp", "/session", {
+): Promise<CreateOnrampSessionResponse> {
+  return invokeEdgeFunction<CreateOnrampSessionResponse>("onramp", "/session", {
     method: "POST",
-    body: payload,
+    body: payload as unknown as Record<string, unknown>,
     appContext,
   });
 }
@@ -16,8 +24,8 @@ export async function createOnrampSession(
 export async function getOnrampSession(
   sessionId: string,
   appContext?: AppScopeInput | null
-): Promise<{ session: Record<string, unknown> }> {
-  return invokeEdgeFunction<{ session: Record<string, unknown> }>("onramp", `/session/${sessionId}`, {
+): Promise<OnrampStatusResponse> {
+  return invokeEdgeFunction<OnrampStatusResponse>("onramp", `/session/${sessionId}`, {
     method: "GET",
     appContext,
   });
@@ -25,20 +33,20 @@ export async function getOnrampSession(
 
 export async function updateOnrampSession(
   sessionId: string,
-  payload: Record<string, unknown>,
+  payload: { action: "widget_opened" },
   appContext?: AppScopeInput | null
-): Promise<{ session: Record<string, unknown> }> {
-  return invokeEdgeFunction<{ session: Record<string, unknown> }>("onramp", `/session/${sessionId}`, {
+): Promise<OnrampStatusResponse> {
+  return invokeEdgeFunction<OnrampStatusResponse>("onramp", `/session/${sessionId}`, {
     method: "POST",
-    body: payload,
+    body: payload as unknown as Record<string, unknown>,
     appContext,
   });
 }
 
 export async function touchOnrampSessions(
   appContext?: AppScopeInput | null
-): Promise<Record<string, unknown>> {
-  return invokeEdgeFunction<Record<string, unknown>>("onramp", "/touch", {
+): Promise<OnrampTouchResponse> {
+  return invokeEdgeFunction<OnrampTouchResponse>("onramp", "/touch", {
     method: "POST",
     appContext,
   });
@@ -51,7 +59,7 @@ export async function getAdminOnrampSessions(
     userId?: number | null;
     appContext?: AppScopeInput | null;
   }
-): Promise<{ citySlug: string; appInstanceId: number; sessions: OnrampCheckoutSessionSummary[] }> {
+): Promise<OnrampAdminSessionsResponse> {
   const params = new URLSearchParams();
   if (typeof input?.limit === "number" && input.limit > 0) {
     params.set("limit", String(input.limit));
@@ -63,7 +71,7 @@ export async function getAdminOnrampSessions(
     params.set("userId", String(input.userId));
   }
 
-  return invokeEdgeFunction<{ citySlug: string; appInstanceId: number; sessions: OnrampCheckoutSessionSummary[] }>(
+  return invokeEdgeFunction<OnrampAdminSessionsResponse>(
     "onramp",
     `/admin/sessions${params.size > 0 ? `?${params.toString()}` : ""}`,
     {
@@ -77,10 +85,19 @@ export async function retryOnrampSession(
   sessionId: string,
   payload?: Record<string, unknown>,
   appContext?: AppScopeInput | null
-): Promise<Record<string, unknown>> {
-  return invokeEdgeFunction<Record<string, unknown>>("onramp", `/session/${sessionId}/retry`, {
+): Promise<RetryOnrampSessionResponse> {
+  return invokeEdgeFunction<RetryOnrampSessionResponse>("onramp", `/session/${sessionId}/retry`, {
     method: "POST",
     body: payload,
+    appContext,
+  });
+}
+
+export async function getOnrampAdminRequests(
+  appContext?: AppScopeInput | null
+): Promise<LegacyRampAdminRequestsResponse> {
+  return invokeEdgeFunction<LegacyRampAdminRequestsResponse>("onramp", "/admin/requests", {
+    method: "GET",
     appContext,
   });
 }

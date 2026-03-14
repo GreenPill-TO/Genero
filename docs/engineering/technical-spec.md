@@ -36,11 +36,17 @@
   - Wallet user-managed settings surfaces (`/welcome`, Edit Profile, Theme, Charity, BIA preferences) now use the shared user-settings edge function rather than bespoke Next API handlers or direct browser table writes.
   - App-scoped wallet APIs are being moved behind Supabase edge functions under `supabase/functions/*`, with shared auth/scope/RBAC helpers in `supabase/functions/_shared` and temporary Next route compatibility shims left in place for non-migrated consumers.
   - New shared browser clients in `shared/lib/edge/*` send `appSlug`, `citySlug`, and `environment` to those edge functions, which resolve the canonical `ref_app_instances` row before any app-scoped query or mutation runs.
+  - The canonical `onramp` edge function now owns checkout session creation, session status reads, widget-open tracking, user touch settlement, admin session listing, manual retry, and the legacy Interac admin request read-model that still feeds the wallet admin page.
+  - `public.wallet_list.public_key` is now the only canonical recipient-wallet source for Buy TCOIN checkout. The create-session contract returns explicit product states (`ready`, `needs_wallet`, `disabled`, `misconfigured`) instead of relying on fallback wallet fields or transport-level failures.
+  - App-facing BIA and voucher reads now sit on stable SQL read models: `public.v_bia_mappings_v1`, `public.v_bia_mapping_health_v1`, `public.v_voucher_liquidity_rows_v1`, and `public.get_voucher_merchants_v1(...)`. The `bia-service` and `voucher-preferences` edge functions read those contracts instead of shaping wallet/admin payloads directly from raw `indexer.*` tables.
+  - The `voucher-preferences` edge function now also serves voucher compatibility reads/writes and voucher merchant liquidity reads, allowing wallet admin, wallet home, and merchant dashboards to stop calling the old `/api/vouchers/compatibility` and `/api/vouchers/merchants` routes directly.
+  - Transitional Next routes under `app/api/onramp/*`, `app/api/vouchers/*`, `app/api/redemptions/*`, `app/api/merchant/application/*`, `app/api/stores*`, `app/api/city-manager/stores*`, `app/api/bias/*`, `app/api/control-plane/access`, `app/api/governance/actions`, and `app/api/user_requests` now act as compatibility shims that proxy to the canonical edge functions instead of owning duplicate domain logic.
   - Client control-plane access caching is now keyed by authenticated user identity as well as city slug so role-derived UI state cannot leak across account switches.
-- **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
+  - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
   - **App Registry**: `ref_apps`, `ref_citycoins`, and `ref_app_instances` tables track each deployment pairing with unique slugs;
     runtime helpers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
     queries.
+  - Edge app-context resolution is now strict: when multiple `ref_app_instances` rows match an app/city pair, callers must provide `environment` explicitly instead of silently falling through to the first row.
 
 ## Extensibility
 
@@ -130,6 +136,7 @@
 - Internal links use root-relative URLs and rewrites map them to the wallet app, eliminating `/tcoin/wallet` from page paths.
 - Sign-in modals replace the single passcode field with six auto-advancing inputs that accept pasted codes.
 - Wallet custody shares are normalised into `wallet_keys` (`user_id` + `namespace`) so multiple wallet addresses can reference one key via `wallet_key_id`; `wallet_list` no longer stores raw `app_share` directly.
+- `wallet_list` now carries the canonical EVM `public_key` for each wallet row, with a namespace-scoped uniqueness index so wallet-dependent app flows can rely on one stable recipient-wallet field.
 - `user_encrypted_share` rows are linked to the same `wallet_keys` record through `wallet_key_id`, enabling deterministic key reconstruction for wallets that share custody material.
 - `user_encrypted_share` now stores decoded `credential_id`, scoped `app_instance_id`, optional `device_info`, and lifecycle audit timestamps (`last_used_at`, `revoked_at`) so passkey lookups are app-aware and traceable.
 - Legacy `user_encrypted_share` backfills infer `app_instance_id` from the user's latest `app_user_profiles` row before falling back to the default wallet/tcoin app instance.
@@ -149,4 +156,4 @@
 - The linked remote Supabase project now seeds `Daily Bread Food Bank`, `Native Women's Resource Centre of Toronto`, and `Parkdale Community Food Bank` into `public.charities`, which unblocks the required charity step in wallet onboarding and the direct-read sparechange charity modal.
 - Step 5 of wallet onboarding now exposes a development-only/local-only `Skip` action when `NEXT_PUBLIC_APP_ENVIRONMENT` is `development` or `local`; the edge function mirrors that rule so wallet setup can be bypassed only in those environments.
 - Wallet screens that previously fetched app-scoped Next APIs directly now call typed edge clients for control-plane access, contact requests, merchant application status/steps, BIA catalogues, store operations, governance actions, redemption flows, and voucher preference writes.
-- Canonical edge-function implementations now exist for `bia-service`, `voucher-preferences`, `merchant-applications`, `store-operations`, `redemptions`, `control-plane`, `governance`, and `user-requests`; `onramp` has a placeholder entrypoint and continues to rely on the existing Next shim in this build.
+- Canonical edge-function implementations now exist for `bia-service`, `voucher-preferences`, `merchant-applications`, `store-operations`, `redemptions`, `control-plane`, `governance`, `user-requests`, and `onramp`; wallet buy flow now consumes the typed onramp contract directly.

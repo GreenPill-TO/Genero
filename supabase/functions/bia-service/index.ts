@@ -99,9 +99,9 @@ async function handleRequest(req: Request): Promise<Response> {
       if (includeMappings && canAdminister) {
         const [mappingResult, controlsResult] = await Promise.all([
           auth.serviceRole
-            .from("bia_pool_mappings")
+            .from("v_bia_mappings_v1")
             .select("*")
-            .in("bia_id", (biasResult.data ?? []).map((bia: any) => bia.id))
+            .eq("city_slug", appContext.citySlug)
             .order("updated_at", { ascending: false }),
           auth.serviceRole.from("bia_pool_controls").select("*"),
         ]);
@@ -146,9 +146,9 @@ async function handleRequest(req: Request): Promise<Response> {
       });
 
       const { data: mappings, error: mappingError } = await auth.serviceRole
-        .from("bia_pool_mappings")
-        .select("*, bia_registry!inner(city_slug,code,name)")
-        .eq("bia_registry.city_slug", appContext.citySlug)
+        .from("v_bia_mappings_v1")
+        .select("*")
+        .eq("city_slug", appContext.citySlug)
         .eq("chain_id", chainId)
         .order("updated_at", { ascending: false });
 
@@ -156,48 +156,31 @@ async function handleRequest(req: Request): Promise<Response> {
 
       let health = null;
       if (includeHealth) {
-        const [activeMappingsResult, activePoolsResult] = await Promise.all([
-          auth.serviceRole
-            .from("bia_pool_mappings")
-            .select("pool_address,validation_status,bia_id,bia_registry!inner(city_slug,code,name)")
-            .eq("bia_registry.city_slug", appContext.citySlug)
-            .eq("chain_id", chainId)
-            .eq("mapping_status", "active")
-            .is("effective_to", null),
-          auth.serviceRole
-            .schema("indexer")
-            .from("pool_links")
-            .select("pool_address")
-            .eq("city_slug", appContext.citySlug)
-            .eq("chain_id", chainId)
-            .eq("is_active", true),
-        ]);
+        const { data: healthRow, error: healthError } = await auth.serviceRole
+          .from("v_bia_mapping_health_v1")
+          .select("*")
+          .eq("city_slug", appContext.citySlug)
+          .eq("chain_id", chainId)
+          .limit(1)
+          .maybeSingle();
 
-        if (activeMappingsResult.error) throw new Error(`Failed to load active mappings: ${activeMappingsResult.error.message}`);
-        if (activePoolsResult.error) throw new Error(`Failed to load discovered pools: ${activePoolsResult.error.message}`);
-
-        const mappedPoolSet = new Set((activeMappingsResult.data ?? []).map((row: any) => String(row.pool_address).toLowerCase()));
-        const discoveredPoolSet = new Set((activePoolsResult.data ?? []).map((row: any) => String(row.pool_address).toLowerCase()));
-        let staleMappings = 0;
-        for (const row of activeMappingsResult.data ?? []) {
-          const status = String((row as any).validation_status ?? "unknown").toLowerCase();
-          if (status === "stale" || status === "mismatch") {
-            staleMappings += 1;
-          }
-        }
-        let unmappedPools = 0;
-        for (const poolAddress of Array.from(discoveredPoolSet)) {
-          if (!mappedPoolSet.has(poolAddress)) {
-            unmappedPools += 1;
-          }
+        if (healthError) {
+          throw new Error(`Failed to load mapping health: ${healthError.message}`);
         }
 
-        health = {
-          mappedPools: mappedPoolSet.size,
-          discoveredPools: discoveredPoolSet.size,
-          unmappedPools,
-          staleMappings,
-        };
+        health = healthRow
+          ? {
+              mappedPools: Number((healthRow as Record<string, unknown>).mapped_pools ?? 0),
+              discoveredPools: Number((healthRow as Record<string, unknown>).discovered_pools ?? 0),
+              unmappedPools: Number((healthRow as Record<string, unknown>).unmapped_pools ?? 0),
+              staleMappings: Number((healthRow as Record<string, unknown>).stale_mappings ?? 0),
+            }
+          : {
+              mappedPools: 0,
+              discoveredPools: 0,
+              unmappedPools: 0,
+              staleMappings: 0,
+            };
       }
 
       return jsonResponse({

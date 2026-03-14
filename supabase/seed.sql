@@ -56,7 +56,7 @@ SET app_id = EXCLUDED.app_id,
 -- ---------------------------------------------------------------------------
 INSERT INTO public.users (id, cubid_id, username, email, full_name, is_admin, auth_user_id, country, created_at, updated_at)
 VALUES
-  (1001, 'cubid-seed-1', 'alice', 'alice@example.com', 'Alice Merchant', true, 'seed-auth-user-1001', 'CA', now(), now()),
+  (1001, 'cubid-seed-1', 'alice', 'hubert.cormac@gmail.com', 'Alice Merchant', true, 'seed-auth-user-1001', 'CA', now(), now()),
   (1002, 'cubid-seed-2', 'bob', 'bob@example.com', 'Bob Shopper', false, 'seed-auth-user-1002', 'CA', now(), now()),
   (1003, 'cubid-seed-3', 'carol', 'carol@example.com', 'Carol Operator', true, 'seed-auth-user-1003', 'CA', now(), now()),
   (1004, 'cubid-seed-4', 'hubert-cormac', 'hubert.cormac@gmail.com', 'Hubert Cormac', true, 'seed-auth-user-1004', 'CA', now(), now())
@@ -112,20 +112,23 @@ INSERT INTO public.wallet_keys (id, user_id, namespace, app_share, created_at, u
 VALUES
   (3101, 1001, 'EVM', 'seed-app-share-1', now(), now()),
   (3102, 1002, 'EVM', 'seed-app-share-2', now(), now()),
-  (3103, 1003, 'EVM', 'seed-app-share-3', now(), now())
+  (3103, 1003, 'EVM', 'seed-app-share-3', now(), now()),
+  (3104, 1004, 'EVM', 'seed-app-share-4', now(), now())
 ON CONFLICT (id) DO UPDATE
 SET app_share = EXCLUDED.app_share,
     updated_at = now();
 
-INSERT INTO public.wallet_list (id, user_id, namespace, wallet_key_id)
+INSERT INTO public.wallet_list (id, user_id, namespace, wallet_key_id, public_key)
 VALUES
-  (3001, 1001, 'EVM', 3101),
-  (3002, 1002, 'EVM', 3102),
-  (3003, 1003, 'EVM', 3103)
+  (3001, 1001, 'EVM', 3101, '0x1111111111111111111111111111111111111001'),
+  (3002, 1002, 'EVM', 3102, '0x2222222222222222222222222222222222222002'),
+  (3003, 1003, 'EVM', 3103, '0x3333333333333333333333333333333333333003'),
+  (3004, 1004, 'EVM', 3104, '0x4444444444444444444444444444444444444004')
 ON CONFLICT (id) DO UPDATE
 SET user_id = EXCLUDED.user_id,
     namespace = EXCLUDED.namespace,
-    wallet_key_id = EXCLUDED.wallet_key_id;
+    wallet_key_id = EXCLUDED.wallet_key_id,
+    public_key = EXCLUDED.public_key;
 
 INSERT INTO public.user_encrypted_share (
   id,
@@ -137,7 +140,8 @@ INSERT INTO public.user_encrypted_share (
 VALUES
   (3201, 1001, 'EVM'::public.namespace, 'enc-share-1001', 3101),
   (3202, 1002, 'EVM'::public.namespace, 'enc-share-1002', 3102),
-  (3203, 1003, 'EVM'::public.namespace, 'enc-share-1003', 3103)
+  (3203, 1003, 'EVM'::public.namespace, 'enc-share-1003', 3103),
+  (3204, 1004, 'EVM'::public.namespace, 'enc-share-1004', 3104)
 ON CONFLICT (id) DO UPDATE
 SET encrypted_share = EXCLUDED.encrypted_share,
     wallet_key_id = EXCLUDED.wallet_key_id;

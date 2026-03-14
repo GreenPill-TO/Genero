@@ -62,7 +62,13 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Charity selection is backed by a shared Supabase catalogue so wallet onboarding and settings modals always offer seeded local charity options instead of failing closed when the app profile lacks prior charity data.
 - In development and local environments only, wallet onboarding step 5 exposes a Skip action so engineers can bypass wallet creation when WebAuthn or Cubid origin requirements are not available on the current host.
 - Wallet profile pictures are uploaded into a dedicated Supabase Storage bucket and the onboarding photo step plus Edit Profile now use the same storage path and public URL generation.
+- Buy TCOIN checkout now treats wallet readiness as an explicit product state: if `wallet_list.public_key` is missing, the user is told to finish wallet setup before checkout can start, rather than silently falling back to another wallet field.
 - Wallet pages that previously depended on `/api/control-plane/access`, `/api/user_requests`, `/api/merchant/application/*`, `/api/bias/*`, `/api/stores*`, `/api/city-manager/stores*`, `/api/redemptions/*`, and `/api/vouchers/preferences` now talk to typed edge clients instead; the old Next routes remain temporarily for compatibility with non-wallet or not-yet-migrated consumers.
+- Wallet buy-checkout now uses the canonical `onramp` edge function for session creation, checkout-status polling, widget-open tracking, and user-triggered settlement touches instead of the older `/api/onramp/*` transport.
+- Wallet admin, merchant, and home screens now read BIA mapping health and voucher merchant liquidity through stable app-facing read models instead of depending on raw indexer-table shapes.
+- Wallet admin reads legacy Interac on-ramp and off-ramp request data through the `onramp/admin/requests` edge path, reads checkout sessions through `onramp/admin/sessions`, and submits manual settlement retries through `onramp/session/:id/retry`.
+- Wallet home, merchant dashboard, and admin dashboard now read voucher merchant liquidity and voucher compatibility through the `voucher-preferences` edge function rather than direct Next API routes.
+- Compatibility Next routes remain available for non-wallet consumers, but they now proxy to edge functions and are no longer the source of business logic.
 
 ### 2. SpareChange
 

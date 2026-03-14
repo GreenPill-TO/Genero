@@ -17,6 +17,16 @@ import {
   getRedemptionRequests,
   settleRedemptionRequest,
 } from "@shared/lib/edge/redemptionsClient";
+import {
+  getAdminOnrampSessions,
+  getOnrampAdminRequests,
+  retryOnrampSession,
+} from "@shared/lib/edge/onrampClient";
+import {
+  getVoucherCompatibilityRules,
+  getVoucherMerchants,
+  saveVoucherCompatibilityRule,
+} from "@shared/lib/edge/voucherPreferencesClient";
 import { useRouter } from "next/navigation";
 import { createClient } from "@shared/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
@@ -476,11 +486,13 @@ export default function AdminDashboardPage() {
     setLoadError(null);
 
     try {
-      const body = await fetchJson<{
+      const body = await getOnrampAdminRequests({
+        citySlug: "tcoin",
+      }) as {
         onRampRequests?: Array<Record<string, unknown>>;
         offRampRequests?: Array<Record<string, unknown>>;
         statuses?: Array<Record<string, unknown>>;
-      }>("/api/admin/ramp-requests?citySlug=tcoin");
+      };
 
       const normalisedOnRamps: OnRampRequest[] = (body.onRampRequests ?? []).map(
         (row: Record<string, unknown>) => {
@@ -598,15 +610,19 @@ export default function AdminDashboardPage() {
         getGovernanceActions({ limit: 50, appContext: { citySlug: "tcoin" } }) as Promise<{
           actions?: GovernanceActionRecord[];
         }>,
-        fetchJson<{ rules?: VoucherCompatibilityRule[] }>(
-          "/api/vouchers/compatibility?citySlug=tcoin&chainId=42220"
-        ),
-        fetchJson<{ merchants?: MerchantVoucherLiquidity[] }>(
-          "/api/vouchers/merchants?citySlug=tcoin&chainId=42220&scope=city"
-        ),
-        fetchJson<{ sessions?: OnrampCheckoutSessionSummary[] }>(
-          "/api/onramp/admin/sessions?citySlug=tcoin&limit=50"
-        ),
+        getVoucherCompatibilityRules({
+          chainId: 42220,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ rules?: VoucherCompatibilityRule[] }>,
+        getVoucherMerchants({
+          chainId: 42220,
+          scope: "city",
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ merchants?: MerchantVoucherLiquidity[] }>,
+        getAdminOnrampSessions({
+          limit: 50,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ sessions?: OnrampCheckoutSessionSummary[] }>,
       ]);
 
       if (!isMountedRef.current) return;
@@ -825,10 +841,8 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      await fetchJson("/api/vouchers/compatibility", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await saveVoucherCompatibilityRule(
+        {
           chainId: 42220,
           poolAddress,
           tokenAddress,
@@ -836,8 +850,9 @@ export default function AdminDashboardPage() {
           acceptedByDefault: voucherRuleForm.acceptedByDefault,
           ruleStatus: voucherRuleForm.ruleStatus === "inactive" ? "inactive" : "active",
           reason: voucherRuleForm.reason.trim() || "Voucher compatibility updated from admin dashboard",
-        }),
-      });
+        },
+        { citySlug: "tcoin" }
+      );
 
       toast.success("Voucher compatibility rule saved.");
       setVoucherRuleForm((prev) => ({
@@ -929,10 +944,7 @@ export default function AdminDashboardPage() {
     const key = `onramp-retry-${sessionId}`;
     markSaving(key);
     try {
-      await fetchJson(`/api/onramp/session/${sessionId}/retry`, {
-        method: "POST",
-        body: JSON.stringify({ citySlug: "tcoin" }),
-      });
+      await retryOnrampSession(sessionId, {}, { citySlug: "tcoin" });
       toast.success("On-ramp settlement retry submitted.");
       await loadControlPlaneData();
     } catch (error) {

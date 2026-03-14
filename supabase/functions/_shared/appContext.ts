@@ -45,24 +45,46 @@ export async function resolveActiveAppContext(options: {
     .eq("ref_citycoins.slug", citySlug);
 
   if (environment) {
-    query = query.eq("environment", environment);
-  } else {
-    query = query.order("environment", { ascending: true });
+    query = query.eq("environment", environment).limit(1);
+    const { data, error } = await query.maybeSingle();
+    if (error) {
+      throw new Error(`Failed to resolve app instance: ${error.message}`);
+    }
+
+    if (!data?.id) {
+      throw new Error(`No app instance found for app='${appSlug}' city='${citySlug}' environment='${environment}'.`);
+    }
+
+    return {
+      appSlug,
+      citySlug,
+      environment,
+      appInstanceId: Number(data.id),
+    };
   }
 
-  const { data, error } = await query.limit(1).maybeSingle();
+  const { data, error } = await query.order("environment", { ascending: true });
   if (error) {
     throw new Error(`Failed to resolve app instance: ${error.message}`);
   }
 
-  if (!data?.id) {
+  if (!Array.isArray(data) || data.length === 0) {
     throw new Error(`No app instance found for app='${appSlug}' city='${citySlug}'.`);
   }
+
+  if (data.length > 1) {
+    const environments = data.map((row: Record<string, unknown>) => String(row.environment ?? "")).filter(Boolean);
+    throw new Error(
+      `Multiple app instances found for app='${appSlug}' city='${citySlug}'. Specify environment explicitly. Matches: ${environments.join(", ")}.`
+    );
+  }
+
+  const first = data[0];
 
   return {
     appSlug,
     citySlug,
     environment,
-    appInstanceId: Number(data.id),
+    appInstanceId: Number(first.id),
   };
 }

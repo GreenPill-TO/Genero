@@ -1,3 +1,168 @@
+## v1.30
+### Timestamp
+- 2026-03-14 19:45:00 EDT
+
+### Objective
+- Replace the temporary drift-tolerance layer with the intended future-state contracts for wallet checkout and BIA/voucher read paths.
+
+### What Changed
+- Added `supabase/migrations/20260314213000_v1.03_wallet_contract_read_models.sql` to formalize the target schema:
+  - adds canonical `public.wallet_list.public_key`
+  - adds `public.v_bia_mappings_v1`
+  - adds `public.v_bia_mapping_health_v1`
+  - adds `public.v_voucher_liquidity_rows_v1`
+  - adds `public.get_voucher_merchants_v1(...)`
+- Updated `supabase/seed.sql` so the seeded wallet users now have deterministic `wallet_list.public_key` rows and Hubert also has a seeded EVM wallet row.
+- Updated `supabase/functions/_shared/onramp.ts` so Buy TCOIN checkout now uses `wallet_list.public_key` as the only recipient-wallet source and returns explicit contract states: `ready`, `needs_wallet`, `disabled`, or `misconfigured`.
+- Updated `supabase/functions/_shared/voucherRouting.ts` and `supabase/functions/bia-service/index.ts` so voucher merchant liquidity and BIA mapping health read from the new SQL read models instead of shaping wallet/admin payloads directly from raw `indexer` tables.
+- Updated `shared/lib/onramp/types.ts` and `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx` to consume those explicit checkout states, including a dedicated wallet-setup message when the user lacks a canonical EVM public key.
+- Added/updated focused tests for the new checkout-state contract in `app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx`.
+
+### Verification
+- `npx vitest run app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx supabase/functions/onramp/index.test.ts supabase/functions/voucher-preferences/index.test.ts`
+- `npx vitest run app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `npx tsc --noEmit --pretty false 2>&1 | rg "(shared/lib/onramp/types|app/tcoin/wallet/components/modals/BuyTcoinModal|app/tcoin/wallet/components/modals/BuyTcoinModal.test|supabase/functions/_shared/onramp|supabase/functions/_shared/voucherRouting|supabase/functions/bia-service|supabase/functions/voucher-preferences)"`
+  - no matches for the files changed in this session
+
+### Files Edited
+- `supabase/migrations/20260314213000_v1.03_wallet_contract_read_models.sql`
+- `supabase/seed.sql`
+- `supabase/functions/_shared/onramp.ts`
+- `supabase/functions/_shared/voucherRouting.ts`
+- `supabase/functions/bia-service/index.ts`
+- `shared/lib/onramp/types.ts`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.29
+### Timestamp
+- 2026-03-14 17:30:00 EDT
+
+### Objective
+- Patch the deployed edge-function stack so the linked Supabase project tolerates legacy schema drift during smoke tests, specifically for on-ramp admin reads, voucher merchant reads, BIA mapping health, and disabled Buy TCOIN checkout.
+
+### What Changed
+- Updated `supabase/functions/_shared/onramp.ts` so disabled checkout returns a handled payload, legacy admin request reads fetch user names/emails without relying on schema-cache relationships, and recipient-wallet resolution falls back to `users.address` when `wallet_list.public_key` is unavailable.
+- Updated `supabase/functions/_shared/voucherRouting.ts` and `supabase/functions/bia-service/index.ts` to treat missing `indexer` schemas/tables as empty optional data instead of hard errors.
+- Updated `shared/lib/onramp/types.ts` and `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx` so the wallet handles disabled checkout responses cleanly.
+- Added a regression test in `app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx` for the disabled-checkout response contract.
+
+### Verification
+- Pending targeted Vitest rerun after patch application.
+
+### Files Edited
+- `supabase/functions/_shared/onramp.ts`
+- `supabase/functions/_shared/voucherRouting.ts`
+- `supabase/functions/bia-service/index.ts`
+- `shared/lib/onramp/types.ts`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.28
+### Timestamp
+- 2026-03-14 17:05:00 EDT
+
+### Objective
+- Update the default Supabase seed identity so the seeded admin user uses `hubert.cormac@gmail.com` instead of `alice@example.com`.
+
+### What Changed
+- Changed the seeded `public.users` row with `id = 1001` in `supabase/seed.sql` to use `hubert.cormac@gmail.com`.
+
+### Verification
+- `rg -n "alice@example.com" supabase agent-context docs README.md AGENTS.md`
+  - only the seed row matched before the update
+
+### Files Edited
+- `supabase/seed.sql`
+- `agent-context/session-log.md`
+
+## v1.27
+### Timestamp
+- 2026-03-14 16:20:00 EDT
+
+### Objective
+- Finish the app-scoped edge-function migration for wallet onramp and the remaining wallet shim dependencies, then convert the corresponding Next routes into compatibility proxies and add targeted handler-level coverage.
+
+### What Changed
+- Replaced the `501` placeholder in `supabase/functions/onramp/index.ts` with a real edge-function handler that now supports checkout session creation, session reads, widget-open updates, admin session listing, manual retry, user touch settlement, and legacy ramp admin reads.
+- Added Deno-safe shared helpers for onramp and voucher merchant routing in `supabase/functions/_shared/onramp.ts` and `supabase/functions/_shared/voucherRouting.ts`.
+- Tightened `supabase/functions/_shared/appContext.ts` so ambiguous `ref_app_instances` matches now fail unless callers specify `environment` explicitly.
+- Expanded `supabase/functions/voucher-preferences/index.ts` to serve voucher compatibility reads/writes and voucher merchant liquidity reads.
+- Added `shared/lib/edge/serverProxy.ts` and converted the app-scoped Next routes touched in this phase into compatibility shims that proxy to the canonical edge functions instead of keeping duplicate business logic locally.
+- Refactored wallet buy checkout, wallet admin, wallet home, and merchant dashboard flows to use typed edge clients for onramp admin/session operations and voucher compatibility/merchant liquidity reads.
+- Added focused Vitest coverage for the new edge handlers, shared app-context/RBAC logic, the onramp and redemption proxy routes, wallet admin, wallet home, and the buy-checkout modal.
+
+### Verification
+- `npx vitest run supabase/functions/_shared/appContext.test.ts supabase/functions/_shared/rbac.test.ts supabase/functions/onramp/index.test.ts supabase/functions/voucher-preferences/index.test.ts app/api/onramp/session/route.test.ts app/api/redemptions/routes.test.ts app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx`
+- `npx tsc --noEmit --pretty false | rg "(serverProxy|shared/lib/edge/onramp|shared/lib/edge/vouchers|shared/lib/edge/voucherPreferencesClient|supabase/functions/onramp|supabase/functions/voucher-preferences|supabase/functions/_shared/onramp|supabase/functions/_shared/voucherRouting|app/tcoin/wallet/components/modals/BuyTcoinModal|app/tcoin/wallet/components/dashboard/WalletHome|app/tcoin/wallet/merchant/LiveMerchantDashboard|app/tcoin/wallet/admin/page|app/api/onramp|app/api/vouchers|app/api/redemptions|app/api/merchant/application|app/api/stores|app/api/city-manager|app/api/bias|app/api/control-plane|app/api/governance|app/api/user_requests)"`
+  - no matches for the files changed in this session
+
+### Files Edited
+- `shared/lib/edge/serverProxy.ts`
+- `shared/lib/edge/onramp.ts`
+- `shared/lib/edge/onrampClient.ts`
+- `shared/lib/edge/vouchers.ts`
+- `shared/lib/edge/voucherPreferencesClient.ts`
+- `supabase/functions/_shared/appContext.ts`
+- `supabase/functions/_shared/onramp.ts`
+- `supabase/functions/_shared/voucherRouting.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/functions/_shared/appContext.test.ts`
+- `supabase/functions/_shared/rbac.test.ts`
+- `supabase/functions/onramp/index.test.ts`
+- `supabase/functions/voucher-preferences/index.test.ts`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/merchant/LiveMerchantDashboard.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/admin/page.test.tsx`
+- `app/api/onramp/session/route.ts`
+- `app/api/onramp/session/[id]/route.ts`
+- `app/api/onramp/session/[id]/retry/route.ts`
+- `app/api/onramp/admin/sessions/route.ts`
+- `app/api/onramp/touch/route.ts`
+- `app/api/admin/ramp-requests/route.ts`
+- `app/api/vouchers/preferences/route.ts`
+- `app/api/vouchers/compatibility/route.ts`
+- `app/api/vouchers/merchants/route.ts`
+- `app/api/control-plane/access/route.ts`
+- `app/api/governance/actions/route.ts`
+- `app/api/user_requests/route.ts`
+- `app/api/redemptions/request/route.ts`
+- `app/api/redemptions/list/route.ts`
+- `app/api/redemptions/[id]/approve/route.ts`
+- `app/api/redemptions/[id]/settle/route.ts`
+- `app/api/merchant/application/status/route.ts`
+- `app/api/merchant/application/start/route.ts`
+- `app/api/merchant/application/restart/route.ts`
+- `app/api/merchant/application/step/route.ts`
+- `app/api/merchant/application/submit/route.ts`
+- `app/api/stores/route.ts`
+- `app/api/stores/[id]/bia/route.ts`
+- `app/api/city-manager/stores/route.ts`
+- `app/api/city-manager/stores/[id]/approve/route.ts`
+- `app/api/city-manager/stores/[id]/reject/route.ts`
+- `app/api/bias/list/route.ts`
+- `app/api/bias/mappings/route.ts`
+- `app/api/bias/controls/route.ts`
+- `app/api/bias/create/route.ts`
+- `app/api/bias/select/route.ts`
+- `app/api/bias/suggest/route.ts`
+- `app/api/onramp/session/route.test.ts`
+- `app/api/redemptions/routes.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.26
 ### Timestamp
 - 2026-03-14 04:05:00 EDT

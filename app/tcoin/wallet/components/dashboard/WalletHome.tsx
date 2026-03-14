@@ -10,6 +10,7 @@ import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
+import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
 import { createClient } from "@shared/lib/supabase/client";
 import { BuyTcoinModal, TopUpModal } from "@tcoin/wallet/components/modals";
 import { ContributionsCard } from "./ContributionsCard";
@@ -221,13 +222,10 @@ export function WalletHome({
 
     const loadMerchants = async () => {
       try {
-        const response = await fetch("/api/vouchers/merchants?citySlug=tcoin&scope=my_pool", {
-          credentials: "include",
+        const body = await getVoucherMerchants({
+          scope: "my_pool",
+          appContext: { citySlug: "tcoin" },
         });
-        const body = await response.json();
-        if (!response.ok) {
-          return;
-        }
         const rows = Array.isArray(body?.merchants) ? body.merchants : [];
         const normalized = rows
           .filter((row: any) => row && typeof row === "object" && row.available === true)

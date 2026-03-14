@@ -2,8 +2,10 @@ import { resolveAuthenticatedUser } from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
+import { assertAdminOrOperator } from "../_shared/rbac.ts";
 import { toNumber } from "../_shared/validation.ts";
 import { getAddress, isAddress, type Address } from "npm:viem@2.23.3";
+import { getVoucherCompatibilityRules, listMerchantsForVoucherScope, resolveActiveUserBiaSet } from "../_shared/voucherRouting.ts";
 
 type DenoServe = {
   serve(handler: (req: Request) => Promise<Response> | Response): void;
@@ -67,7 +69,7 @@ async function readBody(req: Request) {
   }
 }
 
-async function handleRequest(req: Request): Promise<Response> {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -185,6 +187,161 @@ async function handleRequest(req: Request): Promise<Response> {
       });
 
       return jsonResponse({ preference });
+    }
+
+    if (req.method === "GET" && pathname === "/compatibility") {
+      const chainId = Math.max(1, Math.trunc(toNumber(new URL(req.url).searchParams.get("chainId"), 42220)));
+      const rules = await getVoucherCompatibilityRules({
+        supabase: auth.serviceRole,
+        citySlug: appContext.citySlug,
+        chainId,
+      });
+
+      return jsonResponse({
+        citySlug: appContext.citySlug,
+        chainId,
+        rules,
+      });
+    }
+
+    if (req.method === "POST" && pathname === "/compatibility") {
+      await assertAdminOrOperator({
+        supabase: auth.serviceRole,
+        userId: Number(auth.userRow.id),
+        appInstanceId: appContext.appInstanceId,
+      });
+
+      const chainId = Math.max(1, Math.trunc(toNumber(body?.chainId, 42220)));
+      const poolAddress = normalizeOptionalAddress(body?.poolAddress);
+      const tokenAddress = normalizeOptionalAddress(body?.tokenAddress);
+      if (!poolAddress || !tokenAddress) {
+        return jsonResponse({ error: "poolAddress and tokenAddress are required." }, { status: 400 });
+      }
+
+      const merchantStoreIdRaw = toNumber(body?.merchantStoreId, 0);
+      const merchantStoreId = merchantStoreIdRaw > 0 ? Math.trunc(merchantStoreIdRaw) : null;
+      const acceptedByDefault = body?.acceptedByDefault !== false;
+      const ruleStatus = body?.ruleStatus === "inactive" ? "inactive" : "active";
+      const nowIso = new Date().toISOString();
+
+      let existingQuery = auth.serviceRole
+        .from("voucher_compatibility_rules")
+        .select("id")
+        .eq("city_slug", appContext.citySlug)
+        .eq("chain_id", chainId)
+        .eq("pool_address", poolAddress)
+        .eq("token_address", tokenAddress);
+
+      if (merchantStoreId == null) {
+        existingQuery = existingQuery.is("merchant_store_id", null);
+      } else {
+        existingQuery = existingQuery.eq("merchant_store_id", merchantStoreId);
+      }
+
+      const { data: existing, error: existingError } = await existingQuery.limit(1).maybeSingle();
+      if (existingError) {
+        throw new Error(`Failed to check existing compatibility rule: ${existingError.message}`);
+      }
+
+      let saved: Record<string, unknown> | null = null;
+      if (existing?.id) {
+        const { data, error } = await auth.serviceRole
+          .from("voucher_compatibility_rules")
+          .update({
+            accepted_by_default: acceptedByDefault,
+            rule_status: ruleStatus,
+            updated_at: nowIso,
+            created_by: auth.userRow.id,
+          })
+          .eq("id", existing.id)
+          .select("*")
+          .single();
+
+        if (error) {
+          throw new Error(`Failed to update compatibility rule: ${error.message}`);
+        }
+        saved = data;
+      } else {
+        const { data, error } = await auth.serviceRole
+          .from("voucher_compatibility_rules")
+          .insert({
+            city_slug: appContext.citySlug,
+            chain_id: chainId,
+            pool_address: poolAddress,
+            token_address: tokenAddress,
+            merchant_store_id: merchantStoreId,
+            accepted_by_default: acceptedByDefault,
+            rule_status: ruleStatus,
+            created_by: auth.userRow.id,
+            created_at: nowIso,
+            updated_at: nowIso,
+          })
+          .select("*")
+          .single();
+
+        if (error) {
+          throw new Error(`Failed to create compatibility rule: ${error.message}`);
+        }
+        saved = data;
+      }
+
+      await auth.serviceRole.from("governance_actions_log").insert({
+        action_type: "voucher_compatibility_updated",
+        city_slug: appContext.citySlug,
+        actor_user_id: auth.userRow.id,
+        reason:
+          typeof body?.reason === "string" && body.reason.trim() !== ""
+            ? body.reason.trim()
+            : "Voucher compatibility rule updated",
+        payload: {
+          appInstanceId: appContext.appInstanceId,
+          chainId,
+          poolAddress,
+          tokenAddress,
+          merchantStoreId,
+          acceptedByDefault,
+          ruleStatus,
+        },
+      });
+
+      return jsonResponse({ rule: saved });
+    }
+
+    if (req.method === "GET" && pathname === "/merchants") {
+      const url = new URL(req.url);
+      const chainId = Math.max(1, Math.trunc(toNumber(url.searchParams.get("chainId"), 42220)));
+      const scopeRaw = (url.searchParams.get("scope") ?? "my_pool").trim().toLowerCase();
+      const scope = scopeRaw === "city" ? "city" : "my_pool";
+
+      const [merchants, userBiaScope] = await Promise.all([
+        listMerchantsForVoucherScope({
+          supabase: auth.serviceRole,
+          citySlug: appContext.citySlug,
+          chainId,
+          userId: Number(auth.userRow.id),
+          appInstanceId: appContext.appInstanceId,
+          scope,
+        }),
+        resolveActiveUserBiaSet({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          appInstanceId: appContext.appInstanceId,
+        }),
+      ]);
+
+      return jsonResponse({
+        citySlug: appContext.citySlug,
+        chainId,
+        scope,
+        liquiditySource: "sarafu_onchain",
+        readOnly: true,
+        appInstanceId: appContext.appInstanceId,
+        biaScope: {
+          primaryBiaId: userBiaScope.primaryBiaId,
+          secondaryBiaIds: userBiaScope.secondaryBiaIds,
+        },
+        merchants,
+      });
     }
 
     return jsonResponse({ error: "Not found." }, { status: 404 });

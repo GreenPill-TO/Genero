@@ -60,6 +60,11 @@ vi.mock("@shared/hooks/useTokenBalance", () => ({
   useTokenBalance: tokenBalanceMock,
 }));
 
+const getVoucherMerchantsMock = vi.hoisted(() => vi.fn(async () => ({ merchants: [] })));
+vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
+  getVoucherMerchants: getVoucherMerchantsMock,
+}));
+
 const matchMock = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ data: [{ id: 7 }], error: null })
 );
@@ -102,9 +107,9 @@ vi.mock("@shared/lib/supabase/client", () => ({
   createClient: () => ({ from: fromMock }),
 }));
 
-const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn(async () => []));
+const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn<(...args: any[]) => Promise<any[]>>(async () => []));
 vi.mock("@shared/api/services/supabaseService", () => ({
-  fetchContactsForOwner: (...args: any[]) => fetchContactsForOwnerMock(...args),
+  fetchContactsForOwner: (...args: any[]) => (fetchContactsForOwnerMock as any)(...args),
 }));
 
 const pushMock = vi.hoisted(() => vi.fn());
@@ -121,7 +126,7 @@ vi.mock("./ContributionsCard", () => ({
 }));
 const sendCardMock = vi.hoisted(() => vi.fn(() => <div />));
 vi.mock("./SendCard", () => ({
-  SendCard: (props: any) => sendCardMock(props),
+  SendCard: (props: any) => (sendCardMock as any)(props),
 }));
 vi.mock("./AccountCard", () => ({ AccountCard: () => <div /> }));
 vi.mock("./OtherCard", () => ({ OtherCard: () => <div /> }));
@@ -170,8 +175,8 @@ describe("WalletHome deep-link scanning", () => {
     tokenBalanceMock.mockReturnValueOnce({ balance: "5.5" });
     render(<WalletHome />);
     expect(sendCardMock).toHaveBeenCalled();
-    const props = sendCardMock.mock.calls[0][0];
-    expect(props.userBalance).toBe(5.5);
+    const props = (sendCardMock.mock.calls[0] as any[] | undefined)?.[0] as { userBalance?: number } | undefined;
+    expect(props?.userBalance).toBe(5.5);
   });
 
   it("opens contact profile page from Recents avatar", async () => {
@@ -185,7 +190,7 @@ describe("WalletHome deep-link scanning", () => {
         state: "accepted",
         last_interaction: "2026-03-11T10:00:00.000Z",
       },
-    ]);
+    ] as any[]);
 
     render(<WalletHome />);
 

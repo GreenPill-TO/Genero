@@ -20,6 +20,7 @@ import { getBiaList } from "@shared/lib/edge/biaClient";
 import { getGovernanceActions } from "@shared/lib/edge/governanceClient";
 import { createRedemptionRequest, getRedemptionRequests } from "@shared/lib/edge/redemptionsClient";
 import { assignStoreBia, saveStoreProfile } from "@shared/lib/edge/storeOperationsClient";
+import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
 import { toast } from "react-toastify";
 
 const CITY_SLUG = "tcoin";
@@ -268,9 +269,11 @@ export function LiveMerchantDashboard() {
         getGovernanceActions({ limit: 20, appContext: { citySlug: CITY_SLUG } }) as Promise<{
           actions?: GovernanceActionRecord[];
         }>,
-        fetchJson<{ merchants?: MerchantVoucherLiquidity[] }>(
-          `/api/vouchers/merchants?citySlug=${CITY_SLUG}&chainId=42220&scope=city`
-        ),
+        getVoucherMerchants({
+          chainId: 42220,
+          scope: "city",
+          appContext: { citySlug: CITY_SLUG },
+        }) as Promise<{ merchants?: MerchantVoucherLiquidity[] }>,
       ]);
 
       const nextBias = biaResponse.bias ?? [];

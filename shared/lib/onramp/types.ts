@@ -44,15 +44,37 @@ export type CreateOnrampSessionRequest = {
   countryCode?: string;
 };
 
-export type CreateOnrampSessionResponse = {
-  sessionId: string;
-  provider: "transak";
-  status: OnrampSessionStatus;
-  depositAddress: `0x${string}`;
-  recipientWallet: `0x${string}`;
-  widgetUrl: string;
-  widgetConfig: Record<string, string>;
-};
+export type OnrampCheckoutCreateState = "ready" | "needs_wallet" | "disabled" | "misconfigured";
+
+export type CreateOnrampSessionResponse =
+  | {
+      state: "ready";
+      sessionId: string;
+      provider: "transak";
+      status: OnrampSessionStatus;
+      depositAddress: `0x${string}`;
+      recipientWallet: `0x${string}`;
+      widgetUrl: string;
+      widgetConfig: Record<string, string>;
+    }
+  | {
+      state: "needs_wallet";
+      reason: "wallet_not_ready";
+      message: string;
+    }
+  | {
+      state: "disabled";
+      reason: "feature_disabled";
+      message: string;
+      fallback?: string;
+    }
+  | {
+      state: "misconfigured";
+      reason: "provider_config" | "session_create_failed";
+      message: string;
+      technicalError?: string;
+      fallback?: string;
+    };
 
 export type OnrampStatusResponse = {
   session: OnrampCheckoutSession;
