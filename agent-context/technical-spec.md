@@ -19,7 +19,7 @@
   - `public.connections` uses composite foreign keys `(owner_user_id, app_instance_id)` and `(connected_user_id, app_instance_id)` into `public.app_user_profiles` with `ON DELETE CASCADE` for app-scoped relationship integrity.
   - Shared app-scoped user settings are now served by the `supabase/functions/user-settings` edge function, which resolves the authenticated `users` row plus the active `ref_app_instances` record before reading or mutating profile/preferences/signup state.
   - `public.charities` is restored as the shared charity catalogue for wallet and sparechange settings, with authenticated read access and deterministic seed rows so the user-settings bootstrap can always populate required charity choices.
-  - Supabase Storage now provisions a public `profile_pictures` bucket for user avatars, with authenticated write/update/delete policies and public read access for rendered profile images.
+  - Supabase Storage now provisions a public `profile_pictures` bucket for user avatars, with public read access and authenticated write/update/delete policies restricted to `users/<auth.uid>/...` object paths owned by the uploading auth user.
   - Agents may prepare migrations and inspect local schema files, but linked-database mutation commands remain human-only and require explicit approval before any `supabase --linked` or equivalent write operation is attempted.
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
@@ -39,6 +39,7 @@
   - **App Registry**: `ref_apps`, `ref_citycoins`, and `ref_app_instances` tables track each deployment pairing with unique slugs;
     runtime helpers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
     queries.
+  - The user-settings edge function now resolves CORS headers per request and only reflects explicitly allowed frontend origins (`USER_SETTINGS_ALLOWED_ORIGINS`, site URL envs, plus localhost defaults) instead of sending a wildcard origin header.
 
 ## Extensibility
 
@@ -143,6 +144,7 @@
 - wallet readiness derived from existing wallet custody/share tables.
 - Theme preference is now server-backed per app instance, cached locally only for first paint under `theme_cache:${appSlug}:${citySlug}:${environment}`, and legacy local theme keys are migrated after authenticated bootstrap when the server is still on `system`.
 - Wallet `/welcome` is now a resumable six-step wizard (welcome, user details, profile picture, community settings, wallet setup, final hand-off), and both onboarding plus Edit Profile upload avatars through the same `shared/lib/supabase/profilePictures.ts` helper.
+- Avatar uploads resolve the authenticated Supabase auth user at upload time so wallet and sparechange both write to the same policy-compliant `users/<auth.uid>/avatar.<ext>` storage prefix.
 - The wallet layout now always mounts the Cubid SDK `Provider` and `WalletCubidProvider`, even when the older `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS` flag is unset, so inline Cubid verification widgets on `/welcome` inherit the wagmi context they require.
 - The linked remote Supabase project now seeds `Daily Bread Food Bank`, `Native Women's Resource Centre of Toronto`, and `Parkdale Community Food Bank` into `public.charities`, which unblocks the required charity step in wallet onboarding and the direct-read sparechange charity modal.
 - Step 5 of wallet onboarding now exposes a development-only/local-only `Skip` action when `NEXT_PUBLIC_APP_ENVIRONMENT` is `development` or `local`; the edge function mirrors that rule so wallet setup can be bypassed only in those environments.

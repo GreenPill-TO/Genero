@@ -1,4 +1,44 @@
-## v1.24
+## v1.64
+### Timestamp
+- 2026-03-14 14:30:00 EDT
+
+### Objective
+- Address the inline review comments and failing CI on PR #56 covering app-context environment resolution, profile-picture storage security, CORS, theme hook stability, username uniqueness, and the remaining test/workflow failures.
+
+### What Changed
+- Fixed `supabase/functions/_shared/appContext.ts` so resolved app context now returns the environment from the matched `ref_app_instances` row when callers omit the environment header/body.
+- Tightened `supabase/functions/_shared/userSettings.ts` username uniqueness checks to use exact normalized matching instead of wildcard-based `ilike`.
+- Reworked the user-settings edge-function CORS helper to reflect only allowed frontend origins, documented `USER_SETTINGS_ALLOWED_ORIGINS`, and threaded request-aware headers through the shared JSON response helper.
+- Replaced the broad `profile_pictures` storage write policies with auth-owner and `users/<auth.uid>/...` path constraints, then updated the shared profile-picture uploader and sparechange profile modal to write through the same authenticated prefix.
+- Stabilized dark-mode theme migration/listener logic in `shared/providers/dark-mode-provider.tsx` and `shared/hooks/useDarkMode.tsx` to avoid effect churn and stale listener closures.
+- Fixed the wallet welcome test description to match the step it actually covers.
+- Fixed CI by mocking `server-only` in Vitest setup, adding a fallback runtime config path in `shared/hooks/useSendMoney.tsx`, and removing the unsupported `--force` flag from the preview Supabase reset workflow.
+- Renumbered the duplicate session-log headers so each recorded session now has a unique version tag.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx shared/hooks/useSendMoney.test.ts app/api/indexer/status/route.test.ts`
+- `pnpm exec eslint shared/providers/dark-mode-provider.tsx shared/hooks/useDarkMode.tsx shared/hooks/useSendMoney.tsx shared/lib/supabase/profilePictures.ts app/tcoin/sparechange/components/modals/UserProfileModal.tsx app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `.env.local.example`
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+- `app/tcoin/sparechange/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `shared/hooks/useDarkMode.tsx`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/lib/supabase/profilePictures.ts`
+- `shared/providers/dark-mode-provider.tsx`
+- `supabase/functions/_shared/appContext.ts`
+- `supabase/functions/_shared/cors.ts`
+- `supabase/functions/_shared/responses.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/migrations/20260314024500_v1.02_profile_pictures_bucket.sql`
+- `vitest.setup.ts`
+
+## v1.63
 ### Timestamp
 - 2026-03-14 02:24:00 EDT
 
@@ -29,7 +69,7 @@
 - `agent-context/functional-spec.md`
 - `agent-context/session-log.md`
 
-## v1.23
+## v1.62
 ### Timestamp
 - 2026-03-14 02:14:00 EDT
 
@@ -57,7 +97,7 @@
 - `agent-context/functional-spec.md`
 - `agent-context/session-log.md`
 
-## v1.22
+## v1.61
 ### Timestamp
 - 2026-03-14 02:02:00 EDT
 
@@ -87,7 +127,7 @@
 - `agent-context/functional-spec.md`
 - `agent-context/session-log.md`
 
-## v1.21
+## v1.60
 ### Timestamp
 - 2026-03-14 01:41:24 EDT
 
@@ -111,7 +151,7 @@
 - `agent-context/technical-spec.md`
 - `agent-context/session-log.md`
 
-## v1.20
+## v1.59
 ### Timestamp
 - 2026-03-14 00:45:00 EDT
 
@@ -173,7 +213,7 @@
 - `README.md`
 - `AGENTS.md`
 
-## v1.20
+## v1.58
 ### Timestamp
 - 2026-03-14 02:20:00 EDT
 
@@ -205,7 +245,7 @@
 - `shared/api/hooks/useControlPlaneAccess.test.ts`
 - `.env.local.example`
 
-## v1.19
+## v1.57
 ### Timestamp
 - 2026-03-13 23:38:00 EDT
 
@@ -221,7 +261,7 @@
 - `agent-context/session-log.md`
 - `agent-context/technical-spec.md`
 
-## v1.18
+## v1.56
 ### Timestamp
 - 2026-03-13 23:33:00 EDT
 

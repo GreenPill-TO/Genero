@@ -13,7 +13,18 @@ function resolveFileExtension(file: File): string {
 export async function uploadProfilePicture(userId: number | string, file: File): Promise<string> {
   const supabase = createClient();
   const fileExtension = resolveFileExtension(file);
-  const filePath = `users/${userId}/avatar.${fileExtension}`;
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  const ownerSegment =
+    typeof user?.id === "string" && user.id.trim().length > 0 ? user.id.trim() : String(userId).trim();
+
+  if (userError || !ownerSegment) {
+    throw new Error("Unable to resolve the authenticated user for this profile picture upload.");
+  }
+
+  const filePath = `users/${ownerSegment}/avatar.${fileExtension}`;
 
   const { error: uploadError } = await supabase.storage.from(PROFILE_PICTURE_BUCKET).upload(filePath, file, {
     cacheControl: "3600",

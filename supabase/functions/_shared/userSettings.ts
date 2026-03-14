@@ -400,7 +400,7 @@ async function validateUsername(options: {
   const { data: existingUser, error: existingError } = await options.supabase
     .from("users")
     .select("id")
-    .ilike("username", normalised)
+    .eq("username", normalised)
     .neq("id", options.userId)
     .limit(1)
     .maybeSingle();

@@ -1,6 +1,6 @@
 import { resolveAuthenticatedUser } from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import {
   completeSignup,
@@ -32,7 +32,7 @@ async function readRequestBody(req: Request) {
 
 async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: resolveCorsHeaders(req) });
   }
 
   try {
@@ -51,6 +51,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "GET" && pathname === "/bootstrap") {
       return jsonResponse(
+        req,
         await getUserSettingsBootstrap({
           supabase: auth.serviceRole,
           userId: Number(auth.userRow.id),
@@ -61,6 +62,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "PATCH" && pathname === "/profile") {
       return jsonResponse(
+        req,
         await updateUserProfile({
           supabase: auth.serviceRole,
           userId: Number(auth.userRow.id),
@@ -72,6 +74,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "PATCH" && pathname === "/preferences") {
       return jsonResponse(
+        req,
         await updateUserPreferences({
           supabase: auth.serviceRole,
           userId: Number(auth.userRow.id),
@@ -83,6 +86,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/signup/start") {
       return jsonResponse(
+        req,
         await startSignup({
           supabase: auth.serviceRole,
           userId: Number(auth.userRow.id),
@@ -93,6 +97,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/signup/step") {
       return jsonResponse(
+        req,
         await saveSignupStep({
           supabase: auth.serviceRole,
           userId: Number(auth.userRow.id),
@@ -104,6 +109,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/signup/reset") {
       return jsonResponse(
+        req,
         await resetSignup({
           supabase: auth.serviceRole,
           userId: Number(auth.userRow.id),
@@ -114,6 +120,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/signup/complete") {
       return jsonResponse(
+        req,
         await completeSignup({
           supabase: auth.serviceRole,
           userId: Number(auth.userRow.id),
@@ -122,11 +129,11 @@ async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected user-settings error";
     const status = message === "Unauthorized" ? 401 : 400;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

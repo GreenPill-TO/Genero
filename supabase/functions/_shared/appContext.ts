@@ -62,7 +62,10 @@ export async function resolveActiveAppContext(options: {
   return {
     appSlug,
     citySlug,
-    environment,
+    environment:
+      typeof data.environment === "string" && data.environment.trim().length > 0
+        ? data.environment.trim().toLowerCase()
+        : environment,
     appInstanceId: Number(data.id),
   };
 }

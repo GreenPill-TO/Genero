@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@shared/components/ui/Button";
 import {
@@ -16,13 +16,15 @@ export default function useDarkMode() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isFollowingSystem, setIsFollowingSystem] = useState(true);
   const [themeMode, setThemeMode] = useState<UserSettingsTheme>("system");
+  const themeModeRef = useRef<UserSettingsTheme>("system");
 
-  const applyMode = (mode: UserSettingsTheme) => {
+  const applyMode = useCallback((mode: UserSettingsTheme) => {
     const resolvedDark = applyThemePreference(mode);
+    themeModeRef.current = mode;
     setThemeMode(mode);
     setIsFollowingSystem(mode === "system");
     setIsDarkMode(resolvedDark);
-  };
+  }, []);
 
   const setThemeOverride = (mode: "light" | "dark") => {
     writeCachedThemePreference(mode);
@@ -51,15 +53,17 @@ export default function useDarkMode() {
     applyMode(cachedTheme);
 
     const listener = (e: MediaQueryListEvent) => {
-      if (themeMode === "system") {
-        setIsFollowingSystem(true);
-        setIsDarkMode(e.matches);
-        applyThemePreference("system");
+      if (themeModeRef.current !== "system") {
+        return;
       }
+
+      setIsFollowingSystem(true);
+      setIsDarkMode(e.matches);
+      applyThemePreference("system");
     };
     mediaQuery.addEventListener("change", listener);
     return () => mediaQuery.removeEventListener("change", listener);
-  }, [themeMode]);
+  }, [applyMode]);
 
   useEffect(() => {
     if (themeMode !== "system") {
