@@ -1931,3 +1931,22 @@
 - `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
 - `app/tcoin/wallet/city-admin/page.tsx`
 - `agent-context/session-log.md`
+
+## v1.55
+### Timestamp
+- 2026-03-13 22:46:29 EDT
+
+### Objective
+- Add a seeded admin user for `hubert.cormac@gmail.com`.
+
+### What Changed
+- Updated `supabase/seed.sql` to include:
+- new user row with email `hubert.cormac@gmail.com`,
+- `is_admin = true`,
+- deterministic seeded identity values (`id=1004`, username `hubert-cormac`).
+- Added matching seeded admin role assignment in wallet dev app instance.
+- Added matching seeded `app_user_profiles` row for consistency.
+
+### Files Edited
+- `supabase/seed.sql`
+- `agent-context/session-log.md`

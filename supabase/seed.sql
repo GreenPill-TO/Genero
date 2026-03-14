@@ -58,7 +58,8 @@ INSERT INTO public.users (id, cubid_id, username, email, full_name, is_admin, au
 VALUES
   (1001, 'cubid-seed-1', 'alice', 'alice@example.com', 'Alice Merchant', true, 'seed-auth-user-1001', 'CA', now(), now()),
   (1002, 'cubid-seed-2', 'bob', 'bob@example.com', 'Bob Shopper', false, 'seed-auth-user-1002', 'CA', now(), now()),
-  (1003, 'cubid-seed-3', 'carol', 'carol@example.com', 'Carol Operator', true, 'seed-auth-user-1003', 'CA', now(), now())
+  (1003, 'cubid-seed-3', 'carol', 'carol@example.com', 'Carol Operator', true, 'seed-auth-user-1003', 'CA', now(), now()),
+  (1004, 'cubid-seed-4', 'hubert-cormac', 'hubert.cormac@gmail.com', 'Hubert Cormac', true, 'seed-auth-user-1004', 'CA', now(), now())
 ON CONFLICT (id) DO UPDATE
 SET username = EXCLUDED.username,
     email = EXCLUDED.email,
@@ -80,6 +81,12 @@ FROM public.ref_app_instances ai
 WHERE ai.slug = 'wallet-tcoin-development'
 ON CONFLICT (user_id, role, app_instance_id) DO NOTHING;
 
+INSERT INTO public.roles (user_id, role, assigned_by, app_instance_id, created_at)
+SELECT 1004, 'admin', 1001, ai.id, now()
+FROM public.ref_app_instances ai
+WHERE ai.slug = 'wallet-tcoin-development'
+ON CONFLICT (user_id, role, app_instance_id) DO NOTHING;
+
 INSERT INTO public.app_user_profiles (user_id, app_instance_id, metadata, created_at, updated_at)
 SELECT u.id, ai.id, jsonb_build_object('seeded', true), now(), now()
 FROM (VALUES (1001), (1002), (1003)) AS u(id)
@@ -89,6 +96,14 @@ CROSS JOIN LATERAL (
   WHERE slug = 'wallet-tcoin-development'
   LIMIT 1
 ) ai
+ON CONFLICT (user_id, app_instance_id) DO UPDATE
+SET metadata = EXCLUDED.metadata,
+    updated_at = now();
+
+INSERT INTO public.app_user_profiles (user_id, app_instance_id, metadata, created_at, updated_at)
+SELECT 1004, ai.id, jsonb_build_object('seeded', true), now(), now()
+FROM public.ref_app_instances ai
+WHERE ai.slug = 'wallet-tcoin-development'
 ON CONFLICT (user_id, app_instance_id) DO UPDATE
 SET metadata = EXCLUDED.metadata,
     updated_at = now();
