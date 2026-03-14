@@ -1785,3 +1785,23 @@
 ### Files Edited
 - `app/tcoin/wallet/merchant/page.tsx`
 - `agent-context/session-log.md`
+
+## v1.49
+### Timestamp
+- 2026-03-13 21:18:25 EDT
+
+### Objective
+- Add a migration that provisions the merchant image storage bucket and required policies.
+
+### What Changed
+- Added idempotent Supabase migration to create bucket:
+- `merchant_assets` (public).
+- Added `storage.objects` policies scoped to `merchant_assets`:
+- public `SELECT`,
+- authenticated `INSERT`,
+- authenticated `UPDATE` (required for upload upserts),
+- authenticated `DELETE`.
+
+### Files Edited
+- `supabase/migrations/20260313211500_v1.00_merchant_assets_bucket.sql`
+- `agent-context/session-log.md`
