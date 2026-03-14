@@ -1875,3 +1875,33 @@
 ### Files Edited
 - `app/tcoin/wallet/merchant/page.tsx`
 - `agent-context/session-log.md`
+
+## v1.53
+### Timestamp
+- 2026-03-13 22:23:43 EDT
+
+### Objective
+- Expand Supabase seed data substantially across project tables and use it to reset/populate the linked database.
+
+### What Changed
+- Added new comprehensive seed file:
+- `supabase/seed.sql`.
+- Seed now includes representative dummy data across:
+- core public app tables (`users`, app registry tables, wallet/share tables, transactions, notifications, stores, merchant signup, approvals),
+- BIA/voucher/onramp tables,
+- contract management metadata tables,
+- indexer control + derived tables (`indexer.*`),
+- chain event/materialized data tables (`chain_data.*`),
+- cron logging table.
+- Included deterministic IDs/UUIDs and conflict-safe upserts to keep seed rerunnable.
+- Added sequence sync statements for identity-backed tables seeded with explicit IDs.
+- Fixed seed compatibility with current migrated schema by removing non-portable `user_encrypted_share` column assumptions (`credential_id` was not present at runtime schema state).
+
+### Verification
+- Ran linked remote reset with seed execution:
+- `printf 'y\n' | supabase db reset --linked`
+- Reset completed successfully and seeded data from `supabase/seed.sql`.
+
+### Files Edited
+- `supabase/seed.sql`
+- `agent-context/session-log.md`
