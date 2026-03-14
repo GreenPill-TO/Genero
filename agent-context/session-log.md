@@ -1,3 +1,22 @@
+## v1.66
+### Timestamp
+- 2026-03-14 13:59:00 EDT
+
+### Objective
+- Fix the follow-up Supabase PR validation workflow compatibility issue uncovered after pushing the new two-remote CI configuration.
+
+### What Changed
+- Removed the unsupported `--yes` flag from `.github/workflows/pr-migrations.yml` because the repository's current Supabase CLI version accepts `--dry-run` on `db push` but rejects `--yes`.
+- Kept the branch-targeted DEV/PROD dry-run validation model unchanged.
+
+### Verification
+- `gh run view 23093059175 --log-failed`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `agent-context/session-log.md`
+
 ## v1.65
 ### Timestamp
 - 2026-03-14 13:55:00 EDT

@@ -50,4 +50,4 @@ jobs:
         run: |
           set -e
           echo "Validating migrations for ${TARGET_ENV} (project ref ${TARGET_PROJECT_REF})"
-          supabase db push --dry-run --yes --db-url "$TARGET_DB_URL"
+          supabase db push --dry-run --db-url "$TARGET_DB_URL"
