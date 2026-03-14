@@ -1711,3 +1711,27 @@
 ### Files Edited
 - `docs/merchant-signup-city-manager-architecture.md`
 - `agent-context/session-log.md`
+
+## v1.46
+### Timestamp
+- 2026-03-13 20:45:52 EDT
+
+### Objective
+- Improve merchant signup step-1 UX content and controls.
+
+### What Changed
+- Updated merchant signup step-1 introduction copy to clearly explain:
+- merchants accept TCOIN (including partial payments),
+- each merchant belongs to one neighbourhood/BIA,
+- payments may arrive as TCOIN or local merchant tokens within the same BIA,
+- only TCOIN is redeemable to CADm on CELO,
+- redemptions are at 97% of par (3% below par), with 3% retained for charitable donations.
+- Added a `Cancel` button on step 1 of the signup wizard.
+- Step-1 cancel now closes the wizard and returns the user to the draft-application state view.
+
+### Verification
+- Reviewed rendered diff for `merchant/page.tsx` to confirm updated copy and step-1 cancel/back behavior.
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`

@@ -391,8 +391,14 @@ export default function MerchantDashboardPage() {
             {wizardStep === 1 && (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Merchants are expected to keep profile details accurate, follow city settlement policy, and maintain
-                  redeemable operations when approved.
+                  Merchants sign up to accept TCOIN payments, including partial payments. Each merchant belongs to one
+                  neighbourhood/BIA. Payments you receive may come as TCOIN or as tokens from other local merchants in
+                  the same BIA.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Only TCOIN can be redeemed for CADm on CELO. Redemptions use a predetermined exchange rate of 97% of
+                  par (3% below par), and the remaining 3% is retained to fund the charitable donation flow built into
+                  the system.
                 </p>
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -494,13 +500,19 @@ export default function MerchantDashboardPage() {
             )}
 
             <div className="flex items-center justify-between gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setWizardStep((prev) => Math.max(1, prev - 1))}
-                disabled={wizardStep <= 1 || isSavingStep || isSubmitting}
-              >
-                Back
-              </Button>
+              {wizardStep === 1 ? (
+                <Button variant="outline" onClick={() => setShowWizard(false)} disabled={isSavingStep || isSubmitting}>
+                  Cancel
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setWizardStep((prev) => Math.max(1, prev - 1))}
+                  disabled={isSavingStep || isSubmitting}
+                >
+                  Back
+                </Button>
+              )}
               {wizardStep < 5 ? (
                 <Button onClick={() => void nextStep()} disabled={isSavingStep || isSubmitting}>
                   {isSavingStep ? "Saving…" : "Save and continue"}
