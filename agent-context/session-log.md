@@ -1765,3 +1765,23 @@
 ### Files Edited
 - `app/tcoin/wallet/merchant/page.tsx`
 - `agent-context/session-log.md`
+
+## v1.48
+### Timestamp
+- 2026-03-13 21:12:51 EDT
+
+### Objective
+- Fix step-2 merchant preview overlap behavior and align image uploads to a dedicated merchant bucket.
+
+### What Changed
+- Updated merchant signup preview layout so the logo circle is overlaid across the bottom edge of the banner (clear partial overlap).
+- Added spacing adjustments so preview text sits correctly below the overlaid logo.
+- Switched merchant image uploads to dedicated Supabase bucket constant:
+- `merchant_assets`.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`

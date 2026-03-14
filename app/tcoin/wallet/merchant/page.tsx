@@ -22,7 +22,7 @@ import { toast } from "react-toastify";
 import { LiveMerchantDashboard } from "./LiveMerchantDashboard";
 
 const CITY_SLUG = "tcoin";
-const MERCHANT_ASSET_BUCKET = "profile_pictures";
+const MERCHANT_ASSET_BUCKET = "merchant_assets";
 
 type BiaRecord = {
   id: string;
@@ -633,7 +633,7 @@ export default function MerchantDashboardPage() {
 
                 <div className="rounded-lg border p-4">
                   <p className="text-sm font-medium mb-3">Store page preview</p>
-                  <div className="relative">
+                  <div className="relative mb-10">
                     <div className="relative h-28 w-full overflow-hidden rounded-lg border bg-muted/40">
                       {previewForField("bannerUrl") ? (
                         <Image
@@ -647,7 +647,7 @@ export default function MerchantDashboardPage() {
                         <div className="h-full w-full border-2 border-dashed border-muted-foreground/30" />
                       )}
                     </div>
-                    <div className="absolute left-4 top-16 relative h-20 w-20 overflow-hidden rounded-full border-4 border-background bg-muted">
+                    <div className="absolute left-4 top-full -translate-y-1/2 h-20 w-20 overflow-hidden rounded-full border-4 border-background bg-muted shadow-sm">
                       {previewForField("logoUrl") ? (
                         <Image
                           src={previewForField("logoUrl") ?? ""}
@@ -661,7 +661,7 @@ export default function MerchantDashboardPage() {
                       )}
                     </div>
                   </div>
-                  <div className="pt-12 space-y-2">
+                  <div className="pt-4 space-y-2">
                     <p className="text-base font-semibold">{form.displayName.trim() || "Your store name"}</p>
                     <p className="text-sm text-muted-foreground">
                       {form.description.trim() || "Your store description will appear here as you type."}
