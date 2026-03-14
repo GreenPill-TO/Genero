@@ -1735,3 +1735,33 @@
 ### Files Edited
 - `app/tcoin/wallet/merchant/page.tsx`
 - `agent-context/session-log.md`
+
+## v1.47
+### Timestamp
+- 2026-03-13 21:01:56 EDT
+
+### Objective
+- Upgrade merchant signup UX with image uploads, live store preview, strict per-step completion gating, and clearer geocode/map behavior.
+
+### What Changed
+- Replaced step-2 image URL inputs with image upload functionality supporting both:
+- file browsing,
+- drag-and-drop upload.
+- Added Supabase storage upload flow for step-2 logo/banner assets (`profile_pictures` bucket, `merchant_assets/...` paths).
+- Added immediate visual preview handling for uploaded images and wired preview state cleanup for local blob URLs.
+- Split step 2 into two halves:
+- left side: store details + image upload controls,
+- right side: live store page preview (banner frame + overlaid circular logo frame + live name/description).
+- Added step validation gating so `Save and continue`/`Submit application` remain disabled until each step is fulfilled.
+- Enforced step-2 gating to require both banner and logo uploads (and no in-flight upload) before continue.
+- Updated step 3:
+- lat/lng are now read-only display values (no editable input fields),
+- editing address clears old coordinates until geocoded again,
+- map preview is displayed after successful geocode.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass, no errors/warnings).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`

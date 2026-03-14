@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui/alert";
 import { Badge } from "@shared/components/ui/badge";
@@ -16,10 +17,12 @@ import {
 } from "@shared/components/ui/Select";
 import { Textarea } from "@shared/components/ui/TextArea";
 import type { MerchantApplicationStatusResponse } from "@shared/lib/merchantSignup/types";
+import { createClient } from "@shared/lib/supabase/client";
 import { toast } from "react-toastify";
 import { LiveMerchantDashboard } from "./LiveMerchantDashboard";
 
 const CITY_SLUG = "tcoin";
+const MERCHANT_ASSET_BUCKET = "profile_pictures";
 
 type BiaRecord = {
   id: string;
@@ -39,6 +42,8 @@ type SignupForm = {
   biaId: string;
   slug: string;
 };
+
+type ImageField = "logoUrl" | "bannerUrl";
 
 const EMPTY_FORM: SignupForm = {
   consentAccepted: false,
@@ -97,6 +102,20 @@ export default function MerchantDashboardPage() {
   const [isSavingStep, setIsSavingStep] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [slugCheck, setSlugCheck] = useState<{ available: boolean; checkedSlug: string } | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState<{ logoUrl: boolean; bannerUrl: boolean }>({
+    logoUrl: false,
+    bannerUrl: false,
+  });
+  const [isDraggingImage, setIsDraggingImage] = useState<{ logoUrl: boolean; bannerUrl: boolean }>({
+    logoUrl: false,
+    bannerUrl: false,
+  });
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null);
+  const bannerFileInputRef = useRef<HTMLInputElement | null>(null);
+  const logoPreviewRef = useRef<string | null>(null);
+  const bannerPreviewRef = useRef<string | null>(null);
 
   const appState = status?.state ?? "none";
   const isDraft = appState === "draft";
@@ -125,6 +144,28 @@ export default function MerchantDashboardPage() {
       biaId: app.bia?.id ?? "",
       slug: app.profile.slug ?? "",
     }));
+    if (app.profile.slug) {
+      setSlugCheck({ available: true, checkedSlug: app.profile.slug.toLowerCase() });
+    }
+  }, []);
+
+  useEffect(() => {
+    logoPreviewRef.current = logoPreviewUrl;
+  }, [logoPreviewUrl]);
+
+  useEffect(() => {
+    bannerPreviewRef.current = bannerPreviewUrl;
+  }, [bannerPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreviewRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(logoPreviewRef.current);
+      }
+      if (bannerPreviewRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(bannerPreviewRef.current);
+      }
+    };
   }, []);
 
   const loadStatus = useCallback(async () => {
@@ -244,6 +285,94 @@ export default function MerchantDashboardPage() {
     }
   };
 
+  const setPreviewUrl = (field: ImageField, nextUrl: string | null) => {
+    if (field === "logoUrl") {
+      setLogoPreviewUrl((prev) => {
+        if (prev?.startsWith("blob:")) {
+          URL.revokeObjectURL(prev);
+        }
+        return nextUrl;
+      });
+      return;
+    }
+    setBannerPreviewUrl((prev) => {
+      if (prev?.startsWith("blob:")) {
+        URL.revokeObjectURL(prev);
+      }
+      return nextUrl;
+    });
+  };
+
+  const uploadStoreImage = async (field: ImageField, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file.");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setPreviewUrl(field, previewUrl);
+    setUploadingImage((prev) => ({ ...prev, [field]: true }));
+
+    try {
+      const supabase = createClient();
+      const extension = file.name.split(".").pop()?.toLowerCase() || "png";
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").toLowerCase();
+      const scope = storeId ? `store-${storeId}` : "draft";
+      const filePath = `merchant_assets/${scope}/${field}-${Date.now()}-${safeName || `asset.${extension}`}`;
+
+      const { error: uploadError } = await supabase.storage.from(MERCHANT_ASSET_BUCKET).upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      const { data } = supabase.storage.from(MERCHANT_ASSET_BUCKET).getPublicUrl(filePath);
+      const publicUrl = data?.publicUrl ?? null;
+      if (!publicUrl) {
+        throw new Error("Could not resolve image URL after upload.");
+      }
+
+      setForm((prev) => ({ ...prev, [field]: publicUrl }));
+      setPreviewUrl(field, publicUrl);
+      toast.success(field === "logoUrl" ? "Logo uploaded." : "Banner uploaded.");
+    } catch (uploadError) {
+      toast.error(uploadError instanceof Error ? uploadError.message : "Could not upload image.");
+      setPreviewUrl(field, null);
+    } finally {
+      setUploadingImage((prev) => ({ ...prev, [field]: false }));
+      if (field === "logoUrl" && logoFileInputRef.current) {
+        logoFileInputRef.current.value = "";
+      }
+      if (field === "bannerUrl" && bannerFileInputRef.current) {
+        bannerFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleImageInputChange = async (field: ImageField, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await uploadStoreImage(field, file);
+  };
+
+  const handleImageDrop = async (field: ImageField, event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDraggingImage((prev) => ({ ...prev, [field]: false }));
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    await uploadStoreImage(field, file);
+  };
+
+  const inputForField = (field: ImageField) => (field === "logoUrl" ? logoFileInputRef : bannerFileInputRef);
+  const labelForField = (field: ImageField) => (field === "logoUrl" ? "Logo image" : "Banner image");
+  const previewForField = (field: ImageField) =>
+    (field === "logoUrl" ? logoPreviewUrl : bannerPreviewUrl) || form[field] || null;
+  const isUploadingField = (field: ImageField) => uploadingImage[field];
+
   const currentStepPayload = useMemo(() => {
     if (wizardStep === 1) {
       return { consentAccepted: form.consentAccepted };
@@ -268,6 +397,44 @@ export default function MerchantDashboardPage() {
     }
     return { slug: form.slug.trim().toLowerCase() };
   }, [wizardStep, form]);
+
+  const normalisedSlug = useMemo(() => form.slug.trim().toLowerCase(), [form.slug]);
+  const geocodeReady = useMemo(() => {
+    const lat = Number.parseFloat(form.lat);
+    const lng = Number.parseFloat(form.lng);
+    return Number.isFinite(lat) && Number.isFinite(lng);
+  }, [form.lat, form.lng]);
+
+  const isCurrentStepComplete = useMemo(() => {
+    if (wizardStep === 1) {
+      return form.consentAccepted;
+    }
+    if (wizardStep === 2) {
+      return (
+        form.displayName.trim().length > 0 &&
+        form.description.trim().length > 0 &&
+        form.logoUrl.trim().length > 0 &&
+        form.bannerUrl.trim().length > 0 &&
+        !uploadingImage.logoUrl &&
+        !uploadingImage.bannerUrl
+      );
+    }
+    if (wizardStep === 3) {
+      return form.addressText.trim().length > 0 && geocodeReady;
+    }
+    if (wizardStep === 4) {
+      return form.biaId.trim().length > 0;
+    }
+    const slugMatchesCheck = slugCheck?.checkedSlug === normalisedSlug;
+    return normalisedSlug.length > 0 && slugCheck?.available === true && slugMatchesCheck;
+  }, [wizardStep, form, geocodeReady, slugCheck, normalisedSlug, uploadingImage.logoUrl, uploadingImage.bannerUrl]);
+
+  const mapEmbedSrc = useMemo(() => {
+    if (!geocodeReady) return null;
+    return `https://www.openstreetmap.org/export/embed.html?layer=mapnik&marker=${encodeURIComponent(
+      `${form.lat},${form.lng}`
+    )}`;
+  }, [geocodeReady, form.lat, form.lng]);
 
   const saveCurrentStep = async () => {
     if (!storeId) {
@@ -412,27 +579,95 @@ export default function MerchantDashboardPage() {
             )}
 
             {wizardStep === 2 && (
-              <div className="space-y-3">
-                <Input
-                  placeholder="Store name"
-                  value={form.displayName}
-                  onChange={(event) => setForm((prev) => ({ ...prev, displayName: event.target.value }))}
-                />
-                <Textarea
-                  placeholder="Store description"
-                  value={form.description}
-                  onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-                />
-                <Input
-                  placeholder="Logo image URL"
-                  value={form.logoUrl}
-                  onChange={(event) => setForm((prev) => ({ ...prev, logoUrl: event.target.value }))}
-                />
-                <Input
-                  placeholder="Banner image URL"
-                  value={form.bannerUrl}
-                  onChange={(event) => setForm((prev) => ({ ...prev, bannerUrl: event.target.value }))}
-                />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Store name"
+                    value={form.displayName}
+                    onChange={(event) => setForm((prev) => ({ ...prev, displayName: event.target.value }))}
+                  />
+                  <Textarea
+                    placeholder="Store description"
+                    value={form.description}
+                    onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                  />
+
+                  {(["bannerUrl", "logoUrl"] as ImageField[]).map((field) => (
+                    <div key={field} className="space-y-2">
+                      <p className="text-sm font-medium">{labelForField(field)}</p>
+                      <div
+                        className={`rounded-md border border-dashed p-4 text-sm ${
+                          isDraggingImage[field] ? "border-pink-400 bg-pink-50/40 dark:bg-pink-950/20" : "border-border"
+                        }`}
+                        onDragEnter={(event) => {
+                          event.preventDefault();
+                          setIsDraggingImage((prev) => ({ ...prev, [field]: true }));
+                        }}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDragLeave={() => setIsDraggingImage((prev) => ({ ...prev, [field]: false }))}
+                        onDrop={(event) => void handleImageDrop(field, event)}
+                      >
+                        <input
+                          ref={inputForField(field)}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => void handleImageInputChange(field, event)}
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => inputForField(field).current?.click()}
+                            disabled={isUploadingField(field)}
+                          >
+                            Browse files
+                          </Button>
+                          <span className="text-xs text-muted-foreground">or drag and drop image here</span>
+                        </div>
+                        {isUploadingField(field) && <p className="mt-2 text-xs text-muted-foreground">Uploading…</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-lg border p-4">
+                  <p className="text-sm font-medium mb-3">Store page preview</p>
+                  <div className="relative">
+                    <div className="relative h-28 w-full overflow-hidden rounded-lg border bg-muted/40">
+                      {previewForField("bannerUrl") ? (
+                        <Image
+                          src={previewForField("bannerUrl") ?? ""}
+                          alt="Store banner preview"
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 50vw"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full border-2 border-dashed border-muted-foreground/30" />
+                      )}
+                    </div>
+                    <div className="absolute left-4 top-16 relative h-20 w-20 overflow-hidden rounded-full border-4 border-background bg-muted">
+                      {previewForField("logoUrl") ? (
+                        <Image
+                          src={previewForField("logoUrl") ?? ""}
+                          alt="Store logo preview"
+                          fill
+                          sizes="80px"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full border-2 border-dashed border-muted-foreground/30 rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="pt-12 space-y-2">
+                    <p className="text-base font-semibold">{form.displayName.trim() || "Your store name"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {form.description.trim() || "Your store description will appear here as you type."}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -441,23 +676,37 @@ export default function MerchantDashboardPage() {
                 <Textarea
                   placeholder="Business address"
                   value={form.addressText}
-                  onChange={(event) => setForm((prev) => ({ ...prev, addressText: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, addressText: event.target.value, lat: "", lng: "" }))
+                  }
                 />
                 <div className="flex gap-2">
-                  <Input
-                    placeholder="Latitude"
-                    value={form.lat}
-                    onChange={(event) => setForm((prev) => ({ ...prev, lat: event.target.value }))}
-                  />
-                  <Input
-                    placeholder="Longitude"
-                    value={form.lng}
-                    onChange={(event) => setForm((prev) => ({ ...prev, lng: event.target.value }))}
-                  />
+                  <div className="flex-1 px-1 py-1">
+                    <p className="text-xs text-muted-foreground">Latitude</p>
+                    <p className="text-sm">{form.lat || "Not set"}</p>
+                  </div>
+                  <div className="flex-1 px-1 py-1">
+                    <p className="text-xs text-muted-foreground">Longitude</p>
+                    <p className="text-sm">{form.lng || "Not set"}</p>
+                  </div>
                 </div>
                 <Button variant="outline" onClick={() => void lookupAddress()}>
                   Geocode address
                 </Button>
+                {mapEmbedSrc && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Map preview</p>
+                    <div className="h-40 overflow-hidden rounded-md border">
+                      <iframe
+                        title="Store location preview"
+                        src={mapEmbedSrc}
+                        className="h-full w-full"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -482,7 +731,7 @@ export default function MerchantDashboardPage() {
                   placeholder="Store slug (e.g. king-west-cafe)"
                   value={form.slug}
                   onChange={(event) => {
-                    setForm((prev) => ({ ...prev, slug: event.target.value.toLowerCase() }));
+                    setForm((prev) => ({ ...prev, slug: event.target.value.toLowerCase().trim() }));
                     setSlugCheck(null);
                   }}
                 />
@@ -514,11 +763,11 @@ export default function MerchantDashboardPage() {
                 </Button>
               )}
               {wizardStep < 5 ? (
-                <Button onClick={() => void nextStep()} disabled={isSavingStep || isSubmitting}>
+                <Button onClick={() => void nextStep()} disabled={!isCurrentStepComplete || isSavingStep || isSubmitting}>
                   {isSavingStep ? "Saving…" : "Save and continue"}
                 </Button>
               ) : (
-                <Button onClick={() => void submitApplication()} disabled={isSavingStep || isSubmitting}>
+                <Button onClick={() => void submitApplication()} disabled={!isCurrentStepComplete || isSavingStep || isSubmitting}>
                   {isSubmitting ? "Submitting…" : "Submit application"}
                 </Button>
               )}
