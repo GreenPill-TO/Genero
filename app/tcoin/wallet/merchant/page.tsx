@@ -102,6 +102,7 @@ export default function MerchantDashboardPage() {
   const [isSavingStep, setIsSavingStep] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isAddressEditing, setIsAddressEditing] = useState(true);
   const [slugCheck, setSlugCheck] = useState<{ available: boolean; checkedSlug: string } | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null);
@@ -145,6 +146,8 @@ export default function MerchantDashboardPage() {
       biaId: app.bia?.id ?? "",
       slug: app.profile.slug ?? "",
     }));
+    const hasCoords = app.profile.lat != null && app.profile.lng != null;
+    setIsAddressEditing(!hasCoords);
     if (app.profile.slug) {
       setSlugCheck({ available: true, checkedSlug: app.profile.slug.toLowerCase() });
     }
@@ -262,6 +265,7 @@ export default function MerchantDashboardPage() {
         lat: String(response.lat),
         lng: String(response.lng),
       }));
+      setIsAddressEditing(false);
       toast.success("Address matched successfully.");
     } catch (geoError) {
       toast.error(geoError instanceof Error ? geoError.message : "Could not geocode that address.");
@@ -424,14 +428,14 @@ export default function MerchantDashboardPage() {
       );
     }
     if (wizardStep === 3) {
-      return form.addressText.trim().length > 0 && geocodeReady;
+      return form.addressText.trim().length > 0 && geocodeReady && !isAddressEditing;
     }
     if (wizardStep === 4) {
       return form.biaId.trim().length > 0;
     }
     const slugMatchesCheck = slugCheck?.checkedSlug === normalisedSlug;
     return normalisedSlug.length > 0 && slugCheck?.available === true && slugMatchesCheck;
-  }, [wizardStep, form, geocodeReady, slugCheck, normalisedSlug, uploadingImage.logoUrl, uploadingImage.bannerUrl]);
+  }, [wizardStep, form, geocodeReady, isAddressEditing, slugCheck, normalisedSlug, uploadingImage.logoUrl, uploadingImage.bannerUrl]);
 
   const mapEmbedSrc = useMemo(() => {
     if (!geocodeReady) return null;
@@ -452,6 +456,13 @@ export default function MerchantDashboardPage() {
       bbox
     )}&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`;
   }, [geocodeReady, form.lat, form.lng]);
+
+  const addressDisplayLines = useMemo(() => {
+    return form.addressText
+      .split(",")
+      .map((segment) => segment.trim())
+      .filter((segment) => segment.length > 0);
+  }, [form.addressText]);
 
   const saveCurrentStep = async () => {
     if (!storeId) {
@@ -690,14 +701,29 @@ export default function MerchantDashboardPage() {
 
             {wizardStep === 3 && (
               <div className="space-y-3">
-                <Textarea
-                  placeholder="123 Main St, Smallville, England"
-                  className="placeholder:text-muted-foreground/55"
-                  value={form.addressText}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, addressText: event.target.value, lat: "", lng: "" }))
-                  }
-                />
+                {isAddressEditing ? (
+                  <Textarea
+                    placeholder="123 Main St, Smallville, England"
+                    className="placeholder:text-muted-foreground/55"
+                    value={form.addressText}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, addressText: event.target.value, lat: "", lng: "" }))
+                    }
+                  />
+                ) : (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Geocoded address</p>
+                    {addressDisplayLines.length > 0 ? (
+                      addressDisplayLines.map((line, index) => (
+                        <p key={`${line}-${index}`} className="text-sm leading-5">
+                          {line}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-sm leading-5">{form.addressText}</p>
+                    )}
+                  </div>
+                )}
                 {geocodeReady && (
                   <div className="flex gap-2">
                     <div className="flex-1 px-1 py-1">
@@ -781,13 +807,29 @@ export default function MerchantDashboardPage() {
               )}
               <div className="flex items-center gap-2">
                 {wizardStep === 3 && (
-                  <Button
-                    type="button"
-                    onClick={() => void lookupAddress()}
-                    disabled={isGeocoding || isSavingStep || isSubmitting || form.addressText.trim().length === 0}
-                  >
-                    {isGeocoding ? "Finding..." : "Find this address"}
-                  </Button>
+                  <>
+                    {isAddressEditing ? (
+                      <Button
+                        type="button"
+                        onClick={() => void lookupAddress()}
+                        disabled={isGeocoding || isSavingStep || isSubmitting || form.addressText.trim().length === 0}
+                      >
+                        {isGeocoding ? "Finding..." : "Find this address"}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setIsAddressEditing(true);
+                          setForm((prev) => ({ ...prev, lat: "", lng: "" }));
+                        }}
+                        disabled={isSavingStep || isSubmitting}
+                      >
+                        Edit address
+                      </Button>
+                    )}
+                  </>
                 )}
                 {wizardStep < 5 ? (
                   <Button onClick={() => void nextStep()} disabled={!isCurrentStepComplete || isSavingStep || isSubmitting}>

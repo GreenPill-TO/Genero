@@ -1849,3 +1849,29 @@
 ### Files Edited
 - `app/tcoin/wallet/merchant/page.tsx`
 - `agent-context/session-log.md`
+
+## v1.52
+### Timestamp
+- 2026-03-13 22:03:35 EDT
+
+### Objective
+- Improve step-3 address flow by locking geocoded addresses and adding explicit edit/re-geocode behavior.
+
+### What Changed
+- Added address edit/lock state to step 3:
+- after successful geocode, address field becomes read-only display,
+- geocoded address is rendered as multi-line rows (split by comma segments),
+- input frame is removed in read-only mode.
+- Added `Edit address` button in action row for step 3:
+- reenables address editing,
+- clears lat/lng so re-geocoding is required,
+- disables `Save and continue` until address is geocoded again.
+- Updated step-completion gate for step 3 to require both geocoded coordinates and non-editing (locked) state.
+- Kept map/coordinate display only after geocoding succeeds.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`
