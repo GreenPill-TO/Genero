@@ -13,6 +13,15 @@ const generateReferenceCode = () => {
   return `${base}-${randomPart}`;
 };
 
+function calculateFiatAmount(tokenAmount: number, exchangeRate: unknown): number {
+  if (!Number.isFinite(tokenAmount)) {
+    return 0;
+  }
+  return typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
+    ? tokenAmount * exchangeRate
+    : tokenAmount;
+}
+
 export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: any; tokenLabel?: string }) {
   const [step, setStep] = useState("input");
   const [amount, setAmount] = useState("");
@@ -77,10 +86,7 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
         .select("*");
 
       const tokenAmount = Number.parseFloat(amount);
-      const fiatAmount =
-        Number.isFinite(tokenAmount) && Number.isFinite(exchangeRate) && exchangeRate > 0
-          ? tokenAmount * exchangeRate
-          : tokenAmount;
+      const fiatAmount = calculateFiatAmount(tokenAmount, exchangeRate);
 
       if (Number.isFinite(tokenAmount) && tokenAmount > 0) {
         const buyResponse = await fetch("/api/pools/buy", {
@@ -133,9 +139,7 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
 
   const { exchangeRate } = useControlVariables();
   const parsedAmount = Number.parseFloat(amount);
-  const safeExchangeRate =
-    typeof exchangeRate === "number" && Number.isFinite(exchangeRate) ? exchangeRate : 0;
-  const amountInCad = Number.isFinite(parsedAmount) ? parsedAmount * safeExchangeRate : 0;
+  const amountInCad = calculateFiatAmount(parsedAmount, exchangeRate);
 
   return (
     <div className="p-4 pb-0 space-y-6">

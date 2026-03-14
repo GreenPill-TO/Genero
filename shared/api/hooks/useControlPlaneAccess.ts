@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@shared/api/hooks/useAuth";
 
 export type ControlPlaneAccess = {
   citySlug: string;
@@ -32,8 +33,11 @@ async function fetchControlPlaneAccess(citySlug: string): Promise<ControlPlaneAc
 }
 
 export function useControlPlaneAccess(citySlug = "tcoin", enabled = true) {
+  const { authData } = useAuth();
+  const authUserId = authData?.user?.id ?? "anonymous";
+
   return useQuery({
-    queryKey: ["control-plane-access", citySlug],
+    queryKey: ["control-plane-access", citySlug, authUserId],
     queryFn: () => fetchControlPlaneAccess(citySlug),
     enabled,
     staleTime: 60_000,

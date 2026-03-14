@@ -1,6 +1,7 @@
 "use client";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { useEffect, useMemo, useState } from "react";
+import React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   WalletHome,
   ContactsTab,
@@ -30,13 +31,28 @@ export default function Dashboard() {
 
   const mainClass = "font-sans pb-24 p-4 sm:p-8 lg:pb-8 lg:pl-28 bg-background text-foreground min-h-screen";
 
+  const handleTabChange = useCallback(
+    (next: string, options?: { showReceiveQr?: boolean }) => {
+      setActiveTab(next);
+      if (next === "home") {
+        router.push("/dashboard");
+      } else {
+        router.push(`/dashboard?tab=${encodeURIComponent(next)}`);
+      }
+      if (next === "receive") {
+        setReceiveQrVisible(options?.showReceiveQr ?? true);
+      }
+    },
+    [router]
+  );
+
   const content = useMemo(() => {
     if (isLoadingUser || error) return null;
     if (activeTab === "home") {
       return (
         <WalletHome
           tokenLabel="TCOIN"
-          onOpenTransactionHistory={() => setActiveTab("history")}
+          onOpenTransactionHistory={() => handleTabChange("history")}
         />
       );
     }
@@ -47,12 +63,11 @@ export default function Dashboard() {
           onContactsResolved={(records) => setCachedContacts(records)}
           onSend={(contact) => {
             setSendRecipient({ ...contact });
-            setActiveTab("send");
+            handleTabChange("send");
           }}
           onRequest={(contact) => {
             setRequestRecipient({ ...contact });
-            setReceiveQrVisible(false);
-            setActiveTab("receive");
+            handleTabChange("receive", { showReceiveQr: false });
           }}
         />
       );
@@ -82,7 +97,7 @@ export default function Dashboard() {
     if (activeTab === "history") {
       return (
         <TransactionHistoryTab
-          onBackToDashboard={() => setActiveTab("home")}
+          onBackToDashboard={() => handleTabChange("home")}
         />
       );
     }
@@ -98,6 +113,7 @@ export default function Dashboard() {
     requestRecipient,
     cachedContacts,
     receiveQrVisible,
+    handleTabChange,
   ]);
 
   useEffect(() => {
@@ -118,23 +134,11 @@ export default function Dashboard() {
 
   if (isLoadingUser) return <div className={mainClass}> ... Loading </div>;
 
-  const handleTabChange = (next: string) => {
-    setActiveTab(next);
-    if (next === "home") {
-      router.push("/dashboard");
-    } else {
-      router.push(`/dashboard?tab=${encodeURIComponent(next)}`);
-    }
-    if (next === "receive") {
-      setReceiveQrVisible(true);
-    }
-  };
-
   return (
     <ErrorBoundary fallback={<div className={mainClass}>Something went wrong.</div>}>
       <div className={mainClass}>
         {content}
-        <DashboardFooter active={activeTab} onChange={handleTabChange} />
+        <DashboardFooter active={activeTab} onChange={(next) => handleTabChange(next)} />
       </div>
     </ErrorBoundary>
   );

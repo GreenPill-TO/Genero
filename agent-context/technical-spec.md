@@ -34,6 +34,7 @@
 - **API Routes**: Custom `/api/auth/sms` for Twilio verification, wallet auth, and onboarding.
   - Protected wallet control-plane routes now resolve app-scoped access server-side from `public.roles` (`admin`/`operator`) against the active `ref_app_instances` record, and UI affordances are keyed from that same API contract.
   - Wallet user-managed settings surfaces (`/welcome`, Edit Profile, Theme, Charity, BIA preferences) now use the shared user-settings edge function rather than bespoke Next API handlers or direct browser table writes.
+  - Client control-plane access caching is now keyed by authenticated user identity as well as city slug so role-derived UI state cannot leak across account switches.
 - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
   - **App Registry**: `ref_apps`, `ref_citycoins`, and `ref_app_instances` tables track each deployment pairing with unique slugs;
     runtime helpers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
@@ -77,6 +78,7 @@
 - Contact page features a form that records user requests in Supabase `user_requests` along with an array of detected IP addresses and offers clearer spacing before the return-home link.
 - Resources and Contact pages reuse the landing page header and footer, adopt the wider layout and are accessible without authentication.
 - Wallet dashboard (`/dashboard`) is also a public route, allowing unauthenticated access and rendering without the navbar or toast notifications.
+- Dashboard tab deep-links are now URL-backed for both footer navigation and programmatic tab changes, so internal transitions remain consistent with `/dashboard?tab=...`.
 - Landing page links resolve to the whitepaper, Telegram chat, presentation and source code repository.
 - Twilio API routes initialise clients inside handlers so builds succeed without environment variables.
 - All section headings use the `font-extrabold` class for extra emphasis.

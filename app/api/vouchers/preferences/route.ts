@@ -103,22 +103,20 @@ export async function POST(req: Request) {
     const tokenAddress = normalizeOptionalAddress(body.tokenAddress);
     const nowIso = new Date().toISOString();
 
-    let existingQuery = serviceRole
-      .from("user_voucher_preferences")
-      .select("id")
-      .eq("user_id", userRow.id)
-      .eq("app_instance_id", appInstanceId)
-      .eq("city_slug", citySlug)
-      .limit(1)
-      .maybeSingle();
-
-    existingQuery = buildPreferenceScopeQuery({
-      query: existingQuery,
+    const existingQuery = buildPreferenceScopeQuery({
+      query: serviceRole
+        .from("user_voucher_preferences")
+        .select("id")
+        .eq("user_id", userRow.id)
+        .eq("app_instance_id", appInstanceId)
+        .eq("city_slug", citySlug),
       merchantStoreId,
       tokenAddress,
     });
 
-    const { data: existing, error: existingError } = await existingQuery;
+    const { data: existing, error: existingError } = await existingQuery
+      .limit(1)
+      .maybeSingle();
 
     if (existingError) {
       throw new Error(`Failed to find existing voucher preference: ${existingError.message}`);

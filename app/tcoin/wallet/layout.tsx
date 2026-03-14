@@ -19,8 +19,8 @@ const WalletCubidProvider = dynamic(
   () => import('cubid-wallet').then((mod) => mod.WalletCubidProvider),
   { ssr: false }
 );
-import 'cubid-wallet/dist/styles.css'
-import 'cubid-sdk/dist/index.css'
+import "cubid-wallet/dist/styles.css";
+import "cubid-sdk/dist/index.css";
 
 const queryClient = new QueryClient();
 const themeCacheKey = `theme_cache:${(process.env.NEXT_PUBLIC_APP_NAME ?? "wallet").trim().toLowerCase()}:${(process.env.NEXT_PUBLIC_CITYCOIN ?? "tcoin").trim().toLowerCase()}:${((process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase() || "default")}`;
