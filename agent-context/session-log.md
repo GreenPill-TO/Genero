@@ -1805,3 +1805,27 @@
 ### Files Edited
 - `supabase/migrations/20260313211500_v1.00_merchant_assets_bucket.sql`
 - `agent-context/session-log.md`
+
+## v1.50
+### Timestamp
+- 2026-03-13 21:30:40 EDT
+
+### Objective
+- Refine merchant signup step-3 address UX and CTA placement.
+
+### What Changed
+- Updated step-3 address placeholder to sample text:
+- `123 Main St, Smallville, England`.
+- Hid latitude/longitude display until geocoding succeeds.
+- Removed inline geocode button from step body and moved it into the bottom action row.
+- Added pink primary CTA in step 3:
+- button text `Find this address`,
+- positioned immediately left of `Save and continue`.
+- Added geocoding loading state for this CTA (`Finding...`) and disabled it when address is empty or while requests are in flight.
+
+### Verification
+- Ran `pnpm exec eslint app/tcoin/wallet/merchant/page.tsx` (pass).
+
+### Files Edited
+- `app/tcoin/wallet/merchant/page.tsx`
+- `agent-context/session-log.md`

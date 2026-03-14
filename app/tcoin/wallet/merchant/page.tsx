@@ -101,6 +101,7 @@ export default function MerchantDashboardPage() {
   const [biaOptions, setBiaOptions] = useState<BiaRecord[]>([]);
   const [isSavingStep, setIsSavingStep] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const [slugCheck, setSlugCheck] = useState<{ available: boolean; checkedSlug: string } | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null);
@@ -245,6 +246,7 @@ export default function MerchantDashboardPage() {
       return;
     }
 
+    setIsGeocoding(true);
     try {
       const response = await fetchJson<{ normalizedAddress: string; lat: number; lng: number }>(
         "/api/merchant/geocode",
@@ -263,6 +265,8 @@ export default function MerchantDashboardPage() {
       toast.success("Address matched successfully.");
     } catch (geoError) {
       toast.error(geoError instanceof Error ? geoError.message : "Could not geocode that address.");
+    } finally {
+      setIsGeocoding(false);
     }
   };
 
@@ -674,25 +678,24 @@ export default function MerchantDashboardPage() {
             {wizardStep === 3 && (
               <div className="space-y-3">
                 <Textarea
-                  placeholder="Business address"
+                  placeholder="123 Main St, Smallville, England"
                   value={form.addressText}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, addressText: event.target.value, lat: "", lng: "" }))
                   }
                 />
-                <div className="flex gap-2">
-                  <div className="flex-1 px-1 py-1">
-                    <p className="text-xs text-muted-foreground">Latitude</p>
-                    <p className="text-sm">{form.lat || "Not set"}</p>
+                {geocodeReady && (
+                  <div className="flex gap-2">
+                    <div className="flex-1 px-1 py-1">
+                      <p className="text-xs text-muted-foreground">Latitude</p>
+                      <p className="text-sm">{form.lat}</p>
+                    </div>
+                    <div className="flex-1 px-1 py-1">
+                      <p className="text-xs text-muted-foreground">Longitude</p>
+                      <p className="text-sm">{form.lng}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 px-1 py-1">
-                    <p className="text-xs text-muted-foreground">Longitude</p>
-                    <p className="text-sm">{form.lng || "Not set"}</p>
-                  </div>
-                </div>
-                <Button variant="outline" onClick={() => void lookupAddress()}>
-                  Geocode address
-                </Button>
+                )}
                 {mapEmbedSrc && (
                   <div className="space-y-2">
                     <p className="text-xs text-muted-foreground">Map preview</p>
@@ -762,15 +765,27 @@ export default function MerchantDashboardPage() {
                   Back
                 </Button>
               )}
-              {wizardStep < 5 ? (
-                <Button onClick={() => void nextStep()} disabled={!isCurrentStepComplete || isSavingStep || isSubmitting}>
-                  {isSavingStep ? "Saving…" : "Save and continue"}
-                </Button>
-              ) : (
-                <Button onClick={() => void submitApplication()} disabled={!isCurrentStepComplete || isSavingStep || isSubmitting}>
-                  {isSubmitting ? "Submitting…" : "Submit application"}
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {wizardStep === 3 && (
+                  <Button
+                    type="button"
+                    className="bg-[#d600d6] text-white hover:bg-[#bc00bc] dark:bg-[#ff99ff] dark:text-black dark:hover:bg-[#ffb3ff]"
+                    onClick={() => void lookupAddress()}
+                    disabled={isGeocoding || isSavingStep || isSubmitting || form.addressText.trim().length === 0}
+                  >
+                    {isGeocoding ? "Finding..." : "Find this address"}
+                  </Button>
+                )}
+                {wizardStep < 5 ? (
+                  <Button onClick={() => void nextStep()} disabled={!isCurrentStepComplete || isSavingStep || isSubmitting}>
+                    {isSavingStep ? "Saving…" : "Save and continue"}
+                  </Button>
+                ) : (
+                  <Button onClick={() => void submitApplication()} disabled={!isCurrentStepComplete || isSavingStep || isSubmitting}>
+                    {isSubmitting ? "Submitting…" : "Submit application"}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
