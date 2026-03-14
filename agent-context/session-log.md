@@ -1,3 +1,27 @@
+## v1.65
+### Timestamp
+- 2026-03-14 13:55:00 EDT
+
+### Objective
+- Replace the obsolete PREVIEW-database CI assumptions with a two-remote workflow that targets DEV for PRs into `dev` and PROD for PRs into `main`, using the new direct-connection secrets safely.
+
+### What Changed
+- Reworked `.github/workflows/pr-migrations.yml` into a non-destructive PR validation workflow that selects DEV or PROD from `github.base_ref` and runs `supabase db push --dry-run --db-url ...` against the matching remote.
+- Removed PREVIEW-specific reset/apply logic from PR CI so shared remote databases are no longer reset during pull-request validation.
+- Updated `.github/workflows/db-pull-env.yml` to support only DEV and PROD, source database URLs from `SUPABASE_DIRECT_CONNECTION_STRING_DEV` / `SUPABASE_DIRECT_CONNECTION_STRING_PROD`, and open drift PRs back to `dev` or `main` based on the selected environment.
+- Updated the database workflow and technical spec artefacts so repository documentation now matches the two-remote CI/CD model.
+
+### Verification
+- `supabase db push --help`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `.github/workflows/db-pull-env.yml`
+- `agent-context/db-workflow.md`
+- `agent-context/technical-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.64
 ### Timestamp
 - 2026-03-14 14:30:00 EDT

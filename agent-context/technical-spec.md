@@ -23,6 +23,8 @@
   - Agents may prepare migrations and inspect local schema files, but linked-database mutation commands remain human-only and require explicit approval before any `supabase --linked` or equivalent write operation is attempted.
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
+  - Supabase PR migration validation is branch-targeted and non-destructive: PRs into `dev` dry-run against the DEV database connection, while PRs into `main` dry-run against the PROD database connection.
+  - Remote deploy workflows still use `SUPABASE_ACCESS_TOKEN` plus `SUPABASE_PROJECT_REF_DEV` / `SUPABASE_PROJECT_REF_PROD`, while drift/dry-run workflows use direct connection strings for DEV and PROD.
 
 ## Architecture
 
