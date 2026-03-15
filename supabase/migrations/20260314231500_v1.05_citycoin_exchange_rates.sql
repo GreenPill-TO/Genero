@@ -63,14 +63,19 @@ GRANT SELECT ON public.v_citycoin_exchange_rates_current_v1 TO authenticated;
 
 COMMIT;
 
--- DOWN
--- BEGIN;
--- REVOKE SELECT ON public.v_citycoin_exchange_rates_current_v1 FROM authenticated;
--- DROP VIEW IF EXISTS public.v_citycoin_exchange_rates_current_v1;
--- DROP INDEX IF EXISTS citycoin_exchange_rates_dedupe_idx;
--- DROP INDEX IF EXISTS citycoin_exchange_rates_city_indexed_idx;
--- DROP INDEX IF EXISTS citycoin_exchange_rates_city_observed_idx;
--- DROP TABLE IF EXISTS public.citycoin_exchange_rates;
--- ALTER TABLE IF EXISTS indexer.city_contract_overrides
---   DROP COLUMN IF EXISTS oracle_router_address;
--- COMMIT;
+-- migrate:down
+BEGIN;
+
+REVOKE SELECT ON public.v_citycoin_exchange_rates_current_v1 FROM authenticated;
+DROP VIEW IF EXISTS public.v_citycoin_exchange_rates_current_v1;
+
+DROP INDEX IF EXISTS citycoin_exchange_rates_dedupe_idx;
+DROP INDEX IF EXISTS citycoin_exchange_rates_city_indexed_idx;
+DROP INDEX IF EXISTS citycoin_exchange_rates_city_observed_idx;
+
+DROP TABLE IF EXISTS public.citycoin_exchange_rates;
+
+ALTER TABLE IF EXISTS indexer.city_contract_overrides
+  DROP COLUMN IF EXISTS oracle_router_address;
+
+COMMIT;

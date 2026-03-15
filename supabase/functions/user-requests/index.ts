@@ -18,11 +18,43 @@ async function readBody(req: Request) {
   try {
     return (await req.json()) as Record<string, unknown>;
   } catch {
-    return {};
+    throw new Error("Request body must be valid JSON.");
   }
 }
 
-async function handleRequest(req: Request): Promise<Response> {
+function normaliseRequiredString(
+  value: unknown,
+  field: string,
+  maxLength: number
+): string {
+  if (typeof value !== "string") {
+    throw new Error(`${field} is required.`);
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`${field} is required.`);
+  }
+
+  if (trimmed.length > maxLength) {
+    throw new Error(`${field} must be ${maxLength} characters or fewer.`);
+  }
+
+  return trimmed;
+}
+
+function normaliseEmail(value: unknown): string {
+  const email = normaliseRequiredString(value, "Email", 254);
+  const basicEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!basicEmailPattern.test(email)) {
+    throw new Error("Email must be a valid email address.");
+  }
+
+  return email.toLowerCase();
+}
+
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -46,11 +78,14 @@ async function handleRequest(req: Request): Promise<Response> {
         req.headers.get("x-client-ip"),
       ];
       const ipAddresses = ipCandidates.filter(Boolean).map((value) => String(value).split(",")[0].trim());
+      const name = normaliseRequiredString(body?.name, "Name", 120);
+      const email = normaliseEmail(body?.email);
+      const message = normaliseRequiredString(body?.message, "Message", 5000);
 
       const payload: Record<string, unknown> = {
-        name: typeof body?.name === "string" ? body.name : null,
-        email: typeof body?.email === "string" ? body.email : null,
-        message: typeof body?.message === "string" ? body.message : null,
+        name,
+        email,
+        message,
         ip_addresses: ipAddresses,
         app_instance_id: appContext.appInstanceId,
       };
@@ -60,7 +95,7 @@ async function handleRequest(req: Request): Promise<Response> {
         throw new Error(error.message);
       }
 
-      return jsonResponse({ success: true });
+      return jsonResponse(req, { success: true });
     }
 
     if (req.method === "GET" && pathname === "/list") {
@@ -91,14 +126,14 @@ async function handleRequest(req: Request): Promise<Response> {
         throw new Error(`Failed to load user requests: ${error.message}`);
       }
 
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: appContext.citySlug,
         appInstanceId: appContext.appInstanceId,
         requests: data ?? [],
       });
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected user-requests error";
     const status =
@@ -107,7 +142,7 @@ async function handleRequest(req: Request): Promise<Response> {
         : message.startsWith("Forbidden")
           ? 403
           : 400;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

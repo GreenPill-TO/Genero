@@ -78,6 +78,15 @@ async function loadLatestRateSnapshot(options: {
   return data;
 }
 
+function normaliseTimestamp(value: unknown): number | null {
+  if (typeof value !== "string" || value.trim() === "") {
+    return null;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export async function ingestCityExchangeRate(options: {
   supabase: SupabaseClient<any, any, any>;
   client: PublicClient;
@@ -163,10 +172,12 @@ export async function ingestCityExchangeRate(options: {
   });
 
   const latestRate = latestSnapshot?.rate == null ? null : Number(latestSnapshot.rate);
+  const latestObservedAtMs = normaliseTimestamp(latestSnapshot?.observed_at);
+  const observedAtMs = normaliseTimestamp(observedAt);
   const shouldInsert =
     latestSnapshot == null ||
     latestSnapshot.asset_id !== assetId ||
-    latestSnapshot.observed_at !== observedAt ||
+    latestObservedAtMs !== observedAtMs ||
     latestRate == null ||
     Math.abs(latestRate - rate) > Number.EPSILON ||
     Boolean(latestSnapshot.used_fallback) !== usedFallback;

@@ -97,4 +97,46 @@ describe("ingestCityExchangeRate", () => {
       })
     );
   });
+
+  it("does not insert a duplicate snapshot when observed_at differs only by timestamp formatting", async () => {
+    readContractMock
+      .mockResolvedValueOnce("0x00000000000000000000000000000000000000aa")
+      .mockResolvedValueOnce(`0x${"1".repeat(64)}`)
+      .mockResolvedValueOnce([3410000000000000000n, 1710417600n, false]);
+
+    maybeSingleMock
+      .mockResolvedValueOnce({
+        data: { id: 1, symbol: "TCOIN" },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          rate: "3.41",
+          observed_at: "2024-03-14T12:00:00+00:00",
+          asset_id: `0x${"1".repeat(64)}`,
+          used_fallback: false,
+        },
+        error: null,
+      });
+
+    insertMock.mockResolvedValue({ error: null });
+
+    const result = await ingestCityExchangeRate({
+      supabase,
+      client,
+      citySlug: "tcoin",
+      cityContracts: {
+        citySlug: "tcoin",
+        cityVersion: 1,
+        chainId: 42220,
+        contracts: {
+          TCOIN: "0x0000000000000000000000000000000000000001",
+          ORACLE_ROUTER: "0x0000000000000000000000000000000000000002",
+        },
+      },
+    });
+
+    expect(result.state).toBe("ready");
+    expect(insertMock).not.toHaveBeenCalled();
+  });
 });

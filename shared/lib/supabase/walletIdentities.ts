@@ -14,6 +14,10 @@ function getClient(client?: SupabaseClientLike) {
   return client ?? createClient();
 }
 
+function normaliseWalletAddress(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
 function normaliseUserId(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -29,7 +33,7 @@ function normaliseUserId(value: unknown): number | null {
 
 function normaliseWalletRow(row: Record<string, unknown>): WalletIdentityRecord | null {
   const userId = normaliseUserId(row.user_id);
-  const publicKey = typeof row.public_key === "string" ? row.public_key.trim() : "";
+  const publicKey = normaliseWalletAddress(row.public_key);
   if (userId == null || publicKey === "") {
     return null;
   }
@@ -105,7 +109,20 @@ export async function mapUserIdsByWallets(
   wallets: string[],
   client?: SupabaseClientLike
 ): Promise<Map<string, number>> {
-  if (wallets.length === 0) {
+  const requestedWallets = new Map<string, string[]>();
+  wallets.forEach((wallet) => {
+    const normalised = normaliseWalletAddress(wallet);
+    if (!normalised) {
+      return;
+    }
+
+    const existing = requestedWallets.get(normalised) ?? [];
+    existing.push(wallet);
+    requestedWallets.set(normalised, existing);
+  });
+
+  const normalisedWallets = Array.from(requestedWallets.keys());
+  if (normalisedWallets.length === 0) {
     return new Map();
   }
 
@@ -113,7 +130,7 @@ export async function mapUserIdsByWallets(
   const { data, error } = await supabase
     .from("v_wallet_identities_v1")
     .select("user_id,public_key,wallet_key_id,wallet_ready,has_encrypted_share")
-    .in("public_key", wallets);
+    .in("public_key", normalisedWallets);
 
   if (error) {
     throw error;
@@ -125,8 +142,15 @@ export async function mapUserIdsByWallets(
     if (!normalised) {
       continue;
     }
+
     if (!walletToUserId.has(normalised.public_key)) {
       walletToUserId.set(normalised.public_key, normalised.user_id);
+    }
+
+    for (const originalWallet of requestedWallets.get(normalised.public_key) ?? []) {
+      if (!walletToUserId.has(originalWallet)) {
+        walletToUserId.set(originalWallet, normalised.user_id);
+      }
     }
   }
   return walletToUserId;

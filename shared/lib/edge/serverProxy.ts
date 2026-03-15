@@ -38,6 +38,20 @@ function normalizePath(path: string): string {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
+function buildProxyHeaders(options: {
+  accessToken?: string;
+  appContext: ReturnType<typeof resolveAppScope>;
+}): Record<string, string> {
+  return {
+    "content-type": "application/json",
+    apikey: resolvePublishableKey(),
+    "x-app-slug": options.appContext.appSlug,
+    "x-city-slug": options.appContext.citySlug,
+    "x-app-environment": options.appContext.environment,
+    ...(options.accessToken ? { Authorization: `Bearer ${options.accessToken}` } : {}),
+  };
+}
+
 export async function proxyEdgeRequest(options: ProxyEdgeRequestOptions): Promise<NextResponse> {
   const supabase = createClient();
   const {
@@ -53,14 +67,10 @@ export async function proxyEdgeRequest(options: ProxyEdgeRequestOptions): Promis
     `${resolveSupabaseUrl()}/functions/v1/${options.functionName}${normalizePath(options.path)}`,
     {
       method: options.method ?? options.req.method.toUpperCase(),
-      headers: {
-        "content-type": "application/json",
-        apikey: resolvePublishableKey(),
-        Authorization: session?.access_token ? `Bearer ${session.access_token}` : "",
-        "x-app-slug": appContext.appSlug,
-        "x-city-slug": appContext.citySlug,
-        "x-app-environment": appContext.environment,
-      },
+      headers: buildProxyHeaders({
+        accessToken: session?.access_token,
+        appContext,
+      }),
       body:
         (options.method ?? options.req.method.toUpperCase()) === "GET"
           ? undefined

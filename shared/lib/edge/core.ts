@@ -8,12 +8,36 @@ type EdgeInvokeOptions = {
   appContext?: AppScopeInput | null;
 };
 
-function resolveHeaders(context: ResolvedAppScope): Record<string, string> {
+function resolveSupabaseUrl(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!url) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL is required.");
+  }
+  return url;
+}
+
+function resolvePublishableKey(): string {
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!key) {
+    throw new Error(
+      "Missing Supabase publishable key. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY."
+    );
+  }
+
+  return key;
+}
+
+function resolveHeaders(context: ResolvedAppScope, accessToken?: string): Record<string, string> {
   return {
     "content-type": "application/json",
+    apikey: resolvePublishableKey(),
     "x-app-slug": context.appSlug,
     "x-city-slug": context.citySlug,
     "x-app-environment": context.environment,
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
   };
 }
 
@@ -30,17 +54,10 @@ export async function invokeEdgeFunction<T>(
   } = await supabase.auth.getSession();
 
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${functionName}${path.startsWith("/") ? path : `/${path}`}`,
+    `${resolveSupabaseUrl()}/functions/v1/${functionName}${path.startsWith("/") ? path : `/${path}`}`,
     {
       method,
-      headers: {
-        ...resolveHeaders(context),
-        apikey:
-          process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-          "",
-        Authorization: `Bearer ${session?.access_token ?? ""}`,
-      },
+      headers: resolveHeaders(context, session?.access_token),
       body:
         method === "GET"
           ? undefined

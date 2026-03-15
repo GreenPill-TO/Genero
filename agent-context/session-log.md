@@ -1,3 +1,39 @@
+## v1.36
+### Timestamp
+- 2026-03-15 10:40:00 EDT
+
+### Objective
+- Address the active inline review comments on PR #58 by tightening request validation, cleaning up edge auth headers, fixing rate-dedupe and wallet normalisation edge cases, and aligning seed/migration details with repository standards.
+
+### What Changed
+- Updated `supabase/functions/user-requests/index.ts` so `/create` now rejects malformed JSON and validates trimmed `name`, `email`, and `message` fields before inserting, and exported `handleRequest` for direct handler tests.
+- Added focused coverage in `supabase/functions/user-requests/index.test.ts` for rejected invalid payloads and successful validated inserts.
+- Updated `shared/lib/edge/core.ts` and `shared/lib/edge/serverProxy.ts` so public edge invocations omit `Authorization` entirely when there is no session token, while still failing fast on missing Supabase URL/publishable-key configuration.
+- Added targeted tests in `shared/lib/edge/core.test.ts` and `shared/lib/edge/serverProxy.test.ts` to pin the conditional-auth-header behaviour.
+- Replaced the commented rollback stub in `supabase/migrations/20260314231500_v1.05_citycoin_exchange_rates.sql` with a proper executable `-- migrate:down` section.
+- Updated `services/indexer/src/rates.ts` and `services/indexer/src/rates.test.ts` to compare `observed_at` timestamps semantically instead of by raw string formatting, preventing duplicate inserts when Postgres and `toISOString()` serialize the same instant differently.
+- Updated `shared/lib/supabase/walletIdentities.ts` and added `shared/lib/supabase/walletIdentities.test.ts` so wallet lookups are normalised to lowercase for querying while preserving caller-provided keys in the returned map.
+- Changed the duplicate personal seed email on the non-primary seeded user in `supabase/seed.sql` to `hubert-cormac@example.com`, keeping the first admin seed row unchanged per PR guidance.
+
+### Verification
+- `pnpm exec tsc --noEmit -p tsconfig.ci.json`
+- `npx vitest run supabase/functions/user-requests/index.test.ts shared/lib/edge/core.test.ts shared/lib/edge/serverProxy.test.ts services/indexer/src/rates.test.ts shared/lib/supabase/walletIdentities.test.ts`
+
+### Files Edited
+- `supabase/functions/user-requests/index.ts`
+- `supabase/functions/user-requests/index.test.ts`
+- `shared/lib/edge/core.ts`
+- `shared/lib/edge/core.test.ts`
+- `shared/lib/edge/serverProxy.ts`
+- `shared/lib/edge/serverProxy.test.ts`
+- `supabase/migrations/20260314231500_v1.05_citycoin_exchange_rates.sql`
+- `services/indexer/src/rates.ts`
+- `services/indexer/src/rates.test.ts`
+- `shared/lib/supabase/walletIdentities.ts`
+- `shared/lib/supabase/walletIdentities.test.ts`
+- `supabase/seed.sql`
+- `agent-context/session-log.md`
+
 ## v1.35
 ### Timestamp
 - 2026-03-15 01:45:00 EDT
