@@ -1,3 +1,23 @@
+## v1.35
+### Timestamp
+- 2026-03-15 01:45:00 EDT
+
+### Objective
+- Fix the failing Frontend CI workflow on PR #58 by resolving the new type errors in the city-rate indexer path and shared Radio component.
+
+### What Changed
+- Updated `services/indexer/src/rates.ts` so the optional `ORACLE_ROUTER` and `TCOIN` contract addresses are narrowed after the zero-address guards before calling `viem` `readContract`, which satisfies the stricter CI typecheck without weakening the runtime setup checks.
+- Updated `shared/components/ui/Radio.tsx` so `RadioProps` omits the native input `size` attribute before extending the component variant props, avoiding the `InputHTMLAttributes` and `class-variance-authority` type collision uncovered in CI.
+
+### Verification
+- `pnpm exec tsc --noEmit -p tsconfig.ci.json`
+- `npx vitest run services/indexer/src/rates.test.ts app/tcoin/wallet/components/modals/ContactSelectModal.test.tsx`
+
+### Files Edited
+- `services/indexer/src/rates.ts`
+- `shared/components/ui/Radio.tsx`
+- `agent-context/session-log.md`
+
 ## v1.34
 ### Timestamp
 - 2026-03-15 00:50:00 EDT

@@ -83,7 +83,7 @@ export async function ingestCityExchangeRate(options: {
   client: PublicClient;
   citySlug: string;
   cityContracts: CityContractSet;
-}) : Promise<ExchangeRateIngestionResult> {
+}): Promise<ExchangeRateIngestionResult> {
   const oracleRouter = options.cityContracts.contracts.ORACLE_ROUTER;
   const tcoinToken = options.cityContracts.contracts.TCOIN;
 
@@ -107,8 +107,11 @@ export async function ingestCityExchangeRate(options: {
     };
   }
 
+  const oracleRouterAddress = oracleRouter as Address;
+  const tcoinTokenAddress = tcoinToken as Address;
+
   const reserveRegistry = (await options.client.readContract({
-    address: oracleRouter,
+    address: oracleRouterAddress,
     abi: oracleRouterAbi,
     functionName: "reserveRegistry",
   })) as Address;
@@ -127,7 +130,7 @@ export async function ingestCityExchangeRate(options: {
     address: reserveRegistry,
     abi: reserveRegistryAbi,
     functionName: "getAssetIdByToken",
-    args: [tcoinToken],
+    args: [tcoinTokenAddress],
   })) as Hex;
 
   if (isZeroBytes32(assetId)) {
@@ -141,7 +144,7 @@ export async function ingestCityExchangeRate(options: {
   }
 
   const [price18, updatedAt, usedFallback] = (await options.client.readContract({
-    address: oracleRouter,
+    address: oracleRouterAddress,
     abi: oracleRouterAbi,
     functionName: "getCadPrice",
     args: [assetId],
@@ -180,9 +183,9 @@ export async function ingestCityExchangeRate(options: {
       used_fallback: usedFallback,
       metadata: {
         citySlug: options.citySlug,
-        oracleRouter,
+        oracleRouter: oracleRouterAddress,
         reserveRegistry,
-        tokenAddress: tcoinToken,
+        tokenAddress: tcoinTokenAddress,
       },
     });
 
