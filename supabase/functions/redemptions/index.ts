@@ -51,11 +51,12 @@ async function handleRequest(req: Request): Promise<Response> {
     const url = new URL(req.url);
 
     if (req.method === "POST" && pathname === "/request") {
-      return jsonResponse(await createRedemptionRequest({ ...base, payload: body ?? {} }));
+      return jsonResponse(req, await createRedemptionRequest({ ...base, payload: body ?? {} }));
     }
 
     if (req.method === "GET" && pathname === "/list") {
       return jsonResponse(
+        req,
         await listRedemptionRequests({
           ...base,
           statusFilter: url.searchParams.get("status")?.trim().toLowerCase() ?? null,
@@ -68,20 +69,20 @@ async function handleRequest(req: Request): Promise<Response> {
     if (req.method === "POST" && /^\/[^/]+\/approve$/.test(pathname)) {
       const requestId = pathname.split("/")[1] ?? "";
       if (!requestId) {
-        return jsonResponse({ error: "Request id is required." }, { status: 400 });
+        return jsonResponse(req, { error: "Request id is required." }, { status: 400 });
       }
-      return jsonResponse(await approveRedemption({ ...base, requestId, payload: body ?? {} }));
+      return jsonResponse(req, await approveRedemption({ ...base, requestId, payload: body ?? {} }));
     }
 
     if (req.method === "POST" && /^\/[^/]+\/settle$/.test(pathname)) {
       const requestId = pathname.split("/")[1] ?? "";
       if (!requestId) {
-        return jsonResponse({ error: "Request id is required." }, { status: 400 });
+        return jsonResponse(req, { error: "Request id is required." }, { status: 400 });
       }
-      return jsonResponse(await settleRedemption({ ...base, requestId, payload: body ?? {} }));
+      return jsonResponse(req, await settleRedemption({ ...base, requestId, payload: body ?? {} }));
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected redemptions error";
     const status =
@@ -94,7 +95,7 @@ async function handleRequest(req: Request): Promise<Response> {
             : message.includes("required") || message.includes("Invalid")
               ? 400
               : 500;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

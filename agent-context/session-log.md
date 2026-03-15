@@ -1,3 +1,33 @@
+## v1.37
+### Timestamp
+- 2026-03-15 11:10:00 EDT
+
+### Objective
+- Fix the latest PR #58 CI failures by aligning the remaining edge handlers with the shared response helper contract and updating stale tests after the wallet-identity/read-model refactor.
+
+### What Changed
+- Updated the edge handlers in `supabase/functions/citycoin-market/index.ts`, `supabase/functions/onramp/index.ts`, `supabase/functions/payment-requests/index.ts`, `supabase/functions/voucher-preferences/index.ts`, `supabase/functions/control-plane/index.ts`, `supabase/functions/governance/index.ts`, `supabase/functions/merchant-applications/index.ts`, `supabase/functions/redemptions/index.ts`, and `supabase/functions/store-operations/index.ts` so every `jsonResponse` call now passes the active `Request`, matching the shared CORS-aware response helper signature.
+- Updated `shared/api/services/supabaseService.test.ts` so the contact-service tests mock `v_wallet_identities_v1` instead of the pre-refactor `wallet_list` table and reflect the current “first wallet identity wins” behaviour.
+- Updated `app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx` so its wallet mocks align with `v_wallet_identities_v1` and its transaction-modal assertions match the current received/sent rendering.
+
+### Verification
+- `pnpm exec tsc --noEmit -p tsconfig.ci.json`
+- `pnpm test -- --reporter=default --run`
+
+### Files Edited
+- `supabase/functions/citycoin-market/index.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/payment-requests/index.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/functions/control-plane/index.ts`
+- `supabase/functions/governance/index.ts`
+- `supabase/functions/merchant-applications/index.ts`
+- `supabase/functions/redemptions/index.ts`
+- `supabase/functions/store-operations/index.ts`
+- `shared/api/services/supabaseService.test.ts`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+- `agent-context/session-log.md`
+
 ## v1.36
 ### Timestamp
 - 2026-03-15 10:40:00 EDT

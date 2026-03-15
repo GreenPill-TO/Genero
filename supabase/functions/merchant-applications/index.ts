@@ -51,15 +51,15 @@ async function handleRequest(req: Request): Promise<Response> {
       rawPathname.replace(/^\/functions\/v1\/merchant-applications/, "").replace(/^\/merchant-applications/, "") || "/";
 
     if (req.method === "GET" && pathname === "/status") {
-      return jsonResponse(await getMerchantStatus(base));
+      return jsonResponse(req, await getMerchantStatus(base));
     }
 
     if (req.method === "POST" && pathname === "/start") {
-      return jsonResponse(await startMerchantApplication({ ...base, forceNew: body?.forceNew === true }));
+      return jsonResponse(req, await startMerchantApplication({ ...base, forceNew: body?.forceNew === true }));
     }
 
     if (req.method === "POST" && pathname === "/restart") {
-      return jsonResponse(await restartMerchantApplication(base));
+      return jsonResponse(req, await restartMerchantApplication(base));
     }
 
     if (req.method === "POST" && pathname === "/step") {
@@ -67,13 +67,14 @@ async function handleRequest(req: Request): Promise<Response> {
       const step = Number(body?.step ?? 0);
 
       if (!Number.isFinite(storeId) || storeId <= 0) {
-        return jsonResponse({ error: "storeId must be a positive number." }, { status: 400 });
+        return jsonResponse(req, { error: "storeId must be a positive number." }, { status: 400 });
       }
       if (!Number.isFinite(step) || step < 1 || step > 5) {
-        return jsonResponse({ error: "step must be between 1 and 5." }, { status: 400 });
+        return jsonResponse(req, { error: "step must be between 1 and 5." }, { status: 400 });
       }
 
       return jsonResponse(
+        req,
         await saveMerchantApplicationStep({
           ...base,
           storeId,
@@ -86,17 +87,17 @@ async function handleRequest(req: Request): Promise<Response> {
     if (req.method === "POST" && pathname === "/submit") {
       const storeId = Number(body?.storeId ?? 0);
       if (!Number.isFinite(storeId) || storeId <= 0) {
-        return jsonResponse({ error: "storeId must be a positive number." }, { status: 400 });
+        return jsonResponse(req, { error: "storeId must be a positive number." }, { status: 400 });
       }
 
       const result = await submitMerchantApplication({ ...base, storeId });
       if ("error" in result) {
-        return jsonResponse(result, { status: 400 });
+        return jsonResponse(req, result, { status: 400 });
       }
-      return jsonResponse(result);
+      return jsonResponse(req, result);
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected merchant-applications error";
     const status =
@@ -107,7 +108,7 @@ async function handleRequest(req: Request): Promise<Response> {
           : message.includes("Only")
             ? 409
             : 400;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

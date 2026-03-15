@@ -112,7 +112,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         userId: Number(auth.userRow.id),
       });
 
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: cityScope.citySlug,
         requests,
       });
@@ -127,7 +127,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         includeClosed,
       });
 
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: cityScope.citySlug,
         requests,
       });
@@ -140,7 +140,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         userId: Number(auth.userRow.id),
       });
 
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: cityScope.citySlug,
         participants,
       });
@@ -165,7 +165,7 @@ export async function handleRequest(req: Request): Promise<Response> {
               : null,
       });
 
-      return jsonResponse({ request });
+      return jsonResponse(req, { request });
     }
 
     if (req.method === "POST" && pathname === "/mark-paid") {
@@ -190,7 +190,7 @@ export async function handleRequest(req: Request): Promise<Response> {
               : null,
       });
 
-      return jsonResponse({ request });
+      return jsonResponse(req, { request });
     }
 
     if (req.method === "POST" && pathname === "/dismiss") {
@@ -209,7 +209,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         requestId,
       });
 
-      return jsonResponse({ request });
+      return jsonResponse(req, { request });
     }
 
     if (req.method === "POST" && pathname === "/cancel") {
@@ -228,10 +228,10 @@ export async function handleRequest(req: Request): Promise<Response> {
         requestId,
       });
 
-      return jsonResponse({ request });
+      return jsonResponse(req, { request });
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected payment-requests error";
     const status =
@@ -242,7 +242,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           : message === "Payment request not found."
             ? 404
             : 400;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

@@ -53,6 +53,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/store") {
       return jsonResponse(
+        req,
         await upsertStore({
           ...base,
           payload: body ?? {},
@@ -63,10 +64,11 @@ async function handleRequest(req: Request): Promise<Response> {
     if (req.method === "POST" && /^\/store\/\d+\/bia$/.test(pathname)) {
       const storeId = Number(pathname.split("/")[2] ?? 0);
       if (!Number.isFinite(storeId) || storeId <= 0) {
-        return jsonResponse({ error: "Invalid store id." }, { status: 400 });
+        return jsonResponse(req, { error: "Invalid store id." }, { status: 400 });
       }
 
       return jsonResponse(
+        req,
         await assignStoreBia({
           ...base,
           storeId,
@@ -78,16 +80,17 @@ async function handleRequest(req: Request): Promise<Response> {
     if (req.method === "GET" && pathname === "/city-manager/stores") {
       const status = (url.searchParams.get("status") ?? "pending").trim().toLowerCase();
       const limit = Math.max(1, Math.min(250, Math.trunc(toNumber(url.searchParams.get("limit"), 50))));
-      return jsonResponse(await listCityManagerStores({ ...base, status, limit }));
+      return jsonResponse(req, await listCityManagerStores({ ...base, status, limit }));
     }
 
     if (req.method === "POST" && /^\/city-manager\/stores\/\d+\/approve$/.test(pathname)) {
       const storeId = Number(pathname.split("/")[3] ?? 0);
       if (!Number.isFinite(storeId) || storeId <= 0) {
-        return jsonResponse({ error: "Invalid store id." }, { status: 400 });
+        return jsonResponse(req, { error: "Invalid store id." }, { status: 400 });
       }
 
       return jsonResponse(
+        req,
         await approveCityManagerStore({
           ...base,
           storeId,
@@ -100,16 +103,16 @@ async function handleRequest(req: Request): Promise<Response> {
       const storeId = Number(pathname.split("/")[3] ?? 0);
       const reason = typeof body?.reason === "string" ? body.reason.trim() : "";
       if (!Number.isFinite(storeId) || storeId <= 0) {
-        return jsonResponse({ error: "Invalid store id." }, { status: 400 });
+        return jsonResponse(req, { error: "Invalid store id." }, { status: 400 });
       }
       if (!reason) {
-        return jsonResponse({ error: "Rejection reason is required." }, { status: 400 });
+        return jsonResponse(req, { error: "Rejection reason is required." }, { status: 400 });
       }
 
-      return jsonResponse(await rejectCityManagerStore({ ...base, storeId, reason }));
+      return jsonResponse(req, await rejectCityManagerStore({ ...base, storeId, reason }));
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected store-operations error";
     const status =
@@ -122,7 +125,7 @@ async function handleRequest(req: Request): Promise<Response> {
             : message.includes("required") || message.includes("Only")
               ? 400
               : 500;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

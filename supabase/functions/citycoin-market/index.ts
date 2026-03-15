@@ -96,7 +96,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
   try {
     if (req.method !== "GET") {
-      return jsonResponse({ error: "Not found." }, { status: 404 });
+      return jsonResponse(req, { error: "Not found." }, { status: 404 });
     }
 
     const auth = await resolveAuthenticatedUser(req);
@@ -106,7 +106,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       rawPathname.replace(/^\/functions\/v1\/citycoin-market/, "").replace(/^\/citycoin-market/, "") || "/";
 
     if (pathname !== "/rate/current") {
-      return jsonResponse({ error: "Not found." }, { status: 404 });
+      return jsonResponse(req, { error: "Not found." }, { status: 404 });
     }
 
     const queryCitySlug = url.searchParams.get("citySlug")?.trim().toLowerCase() ?? null;
@@ -119,6 +119,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       explicitHeaderCitySlug !== queryCitySlug
     ) {
       return jsonResponse(
+        req,
         { error: `citySlug '${queryCitySlug}' does not match appContext city '${explicitHeaderCitySlug}'.` },
         { status: 400 }
       );
@@ -135,14 +136,14 @@ export async function handleRequest(req: Request): Promise<Response> {
         supabase: auth.serviceRole,
         citySlug,
       });
-      return jsonResponse(result, { status: 200 });
+      return jsonResponse(req, result, { status: 200 });
     }
 
     const result = await resolveCityRate({
       supabase: auth.serviceRole,
       citySlug,
     });
-    return jsonResponse(result, { status: 200 });
+    return jsonResponse(req, result, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected citycoin-market error";
     const status =
@@ -151,7 +152,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         : message.includes("was not found")
           ? 404
           : 400;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

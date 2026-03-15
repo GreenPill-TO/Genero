@@ -98,7 +98,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         throw new Error(`Failed to load voucher preferences: ${error.message}`);
       }
 
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: appContext.citySlug,
         appInstanceId: appContext.appInstanceId,
         preferences: data ?? [],
@@ -108,7 +108,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     if (req.method === "PATCH" && pathname === "/preferences") {
       const trustStatus = normalizeTrustStatus(body?.trustStatus);
       if (!trustStatus) {
-        return jsonResponse({ error: "trustStatus must be trusted, blocked, or default." }, { status: 400 });
+        return jsonResponse(req, { error: "trustStatus must be trusted, blocked, or default." }, { status: 400 });
       }
 
       const merchantStoreIdRaw = toNumber(body?.merchantStoreId, 0);
@@ -186,7 +186,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         },
       });
 
-      return jsonResponse({ preference });
+      return jsonResponse(req, { preference });
     }
 
     if (req.method === "GET" && pathname === "/compatibility") {
@@ -197,7 +197,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         chainId,
       });
 
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: appContext.citySlug,
         chainId,
         rules,
@@ -215,7 +215,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       const poolAddress = normalizeOptionalAddress(body?.poolAddress);
       const tokenAddress = normalizeOptionalAddress(body?.tokenAddress);
       if (!poolAddress || !tokenAddress) {
-        return jsonResponse({ error: "poolAddress and tokenAddress are required." }, { status: 400 });
+        return jsonResponse(req, { error: "poolAddress and tokenAddress are required." }, { status: 400 });
       }
 
       const merchantStoreIdRaw = toNumber(body?.merchantStoreId, 0);
@@ -304,7 +304,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         },
       });
 
-      return jsonResponse({ rule: saved });
+      return jsonResponse(req, { rule: saved });
     }
 
     if (req.method === "GET" && pathname === "/merchants") {
@@ -329,7 +329,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         }),
       ]);
 
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: appContext.citySlug,
         chainId,
         state: merchantResult.state,
@@ -346,11 +346,11 @@ export async function handleRequest(req: Request): Promise<Response> {
       });
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected voucher-preferences error";
     const status = message === "Unauthorized" ? 401 : 400;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

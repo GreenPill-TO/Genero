@@ -32,7 +32,7 @@ async function handleRequest(req: Request): Promise<Response> {
         roles: ["admin", "operator"],
       });
 
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: appContext.citySlug,
         appInstanceId: appContext.appInstanceId,
         isAdminOrOperator,
@@ -41,11 +41,11 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected control-plane error";
     const status = message === "Unauthorized" ? 401 : 400;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

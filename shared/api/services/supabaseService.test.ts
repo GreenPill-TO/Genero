@@ -15,11 +15,17 @@ const supabaseState = vi.hoisted(() => ({
     profile_image_url: string | null;
   }>,
   usersError: null as { message: string } | null,
-  walletList: [] as Array<{ user_id: unknown; public_key: string | null; wallet_key_id: number | null }>,
-  walletListError: null as { message: string } | null,
+  walletIdentities: [] as Array<{
+    user_id: unknown;
+    public_key: string | null;
+    wallet_key_id: string | null;
+    wallet_ready?: boolean;
+    has_encrypted_share?: boolean;
+  }>,
+  walletIdentitiesError: null as { message: string } | null,
   connectionsCalls: 0,
   usersCalls: 0,
-  walletListCalls: 0,
+  walletIdentityCalls: 0,
 }));
 
 vi.mock("@shared/lib/supabase/client", () => ({
@@ -53,24 +59,16 @@ vi.mock("@shared/lib/supabase/client", () => ({
         };
       }
 
-      if (table === "wallet_list") {
+      if (table === "v_wallet_identities_v1") {
         return {
           select: () => ({
-            in: () => ({
-              order: (field: string, options: { ascending: boolean }) => {
-                supabaseState.walletListCalls += 1;
-                let data = supabaseState.walletList;
-                // Sort by field (assume numeric id)
-                if (field === "id" && !options.ascending) {
-                  // Descending order - reverse the array
-                  data = [...data].reverse();
-                }
-                return Promise.resolve({
-                  data,
-                  error: supabaseState.walletListError,
-                });
-              },
-            }),
+            in: () => {
+              supabaseState.walletIdentityCalls += 1;
+              return Promise.resolve({
+                data: supabaseState.walletIdentities,
+                error: supabaseState.walletIdentitiesError,
+              });
+            },
           }),
         };
       }
@@ -93,11 +91,11 @@ describe("fetchContactsForOwner", () => {
     supabaseState.connectionsError = null;
     supabaseState.users = [];
     supabaseState.usersError = null;
-    supabaseState.walletList = [];
-    supabaseState.walletListError = null;
+    supabaseState.walletIdentities = [];
+    supabaseState.walletIdentitiesError = null;
     supabaseState.connectionsCalls = 0;
     supabaseState.usersCalls = 0;
-    supabaseState.walletListCalls = 0;
+    supabaseState.walletIdentityCalls = 0;
   });
 
   it("returns an empty array when the owner id is invalid", async () => {
@@ -123,11 +121,11 @@ describe("fetchContactsForOwner", () => {
         profile_image_url: "avatar.png",
       },
     ];
-    supabaseState.walletList = [
+    supabaseState.walletIdentities = [
       {
         user_id: 7,
         public_key: "0xabc",
-        wallet_key_id: 70,
+        wallet_key_id: "70",
       },
     ];
 
@@ -145,7 +143,7 @@ describe("fetchContactsForOwner", () => {
     ]);
     expect(supabaseState.connectionsCalls).toBe(1);
     expect(supabaseState.usersCalls).toBe(1);
-    expect(supabaseState.walletListCalls).toBe(1);
+    expect(supabaseState.walletIdentityCalls).toBe(1);
   });
 
   it("deduplicates multiple rows for the same contact", async () => {
@@ -165,11 +163,11 @@ describe("fetchContactsForOwner", () => {
         profile_image_url: null,
       },
     ];
-    supabaseState.walletList = [
+    supabaseState.walletIdentities = [
       {
         user_id: 8,
         public_key: null,
-        wallet_key_id: 80,
+        wallet_key_id: "80",
       },
     ];
 
@@ -195,16 +193,16 @@ describe("fetchContactsForOwner", () => {
         profile_image_url: null,
       },
     ];
-    supabaseState.walletList = [
+    supabaseState.walletIdentities = [
       {
         user_id: 14,
         public_key: "0xshared-primary",
-        wallet_key_id: 999,
+        wallet_key_id: "999",
       },
       {
         user_id: 14,
         public_key: "0xshared-secondary",
-        wallet_key_id: 999,
+        wallet_key_id: "999",
       },
     ];
 
@@ -212,7 +210,7 @@ describe("fetchContactsForOwner", () => {
     expect(result).toEqual([
       expect.objectContaining({
         id: 14,
-        wallet_address: "0xshared-secondary",
+        wallet_address: "0xshared-primary",
       }),
     ]);
   });
@@ -222,7 +220,7 @@ describe("fetchContactsForOwner", () => {
       { connected_user_id: 9, state: "accepted", modified_at: null },
     ];
     supabaseState.users = [];
-    supabaseState.walletList = [];
+    supabaseState.walletIdentities = [];
 
     const result = await fetchContactsForOwner(1);
     expect(result).toEqual([]);
@@ -241,11 +239,11 @@ describe("fetchContactsForOwner", () => {
         profile_image_url: null,
       },
     ];
-    supabaseState.walletList = [
+    supabaseState.walletIdentities = [
       {
         user_id: 12,
         public_key: null,
-        wallet_key_id: 120,
+        wallet_key_id: "120",
       },
     ];
 
@@ -285,7 +283,7 @@ describe("fetchContactsForOwner", () => {
         profile_image_url: null,
       },
     ];
-    supabaseState.walletListError = { message: "wallets down" };
+    supabaseState.walletIdentitiesError = { message: "wallets down" };
 
     await expect(fetchContactsForOwner(1)).rejects.toEqual({ message: "wallets down" });
   });

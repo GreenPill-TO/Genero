@@ -58,7 +58,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         fiatCurrency: typeof body?.fiatCurrency === "string" ? body.fiatCurrency : "CAD",
         countryCode: typeof body?.countryCode === "string" ? body.countryCode : null,
       });
-      return jsonResponse(result.body, { status: result.status });
+      return jsonResponse(req, result.body, { status: result.status });
     }
 
     if (req.method === "GET" && /^\/session\/[^/]+$/.test(pathname)) {
@@ -70,7 +70,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         citySlug: appContext.citySlug,
         appInstanceId: appContext.appInstanceId,
       });
-      return jsonResponse(result.body, { status: result.status });
+      return jsonResponse(req, result.body, { status: result.status });
     }
 
     if (req.method === "POST" && /^\/session\/[^/]+$/.test(pathname)) {
@@ -83,7 +83,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         appInstanceId: appContext.appInstanceId,
         action: typeof body?.action === "string" ? body.action : undefined,
       });
-      return jsonResponse(result.body, { status: result.status });
+      return jsonResponse(req, result.body, { status: result.status });
     }
 
     if (req.method === "POST" && /^\/session\/[^/]+\/retry$/.test(pathname)) {
@@ -94,7 +94,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         appInstanceId: appContext.appInstanceId,
         sessionId,
       });
-      return jsonResponse(result.body, { status: result.status });
+      return jsonResponse(req, result.body, { status: result.status });
     }
 
     if (req.method === "POST" && pathname === "/touch") {
@@ -104,7 +104,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         appInstanceId: appContext.appInstanceId,
         citySlug: appContext.citySlug,
       });
-      return jsonResponse(result.body, { status: result.status });
+      return jsonResponse(req, result.body, { status: result.status });
     }
 
     if (req.method === "GET" && pathname === "/admin/sessions") {
@@ -117,7 +117,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         status: url.searchParams.get("status")?.trim().toLowerCase() ?? null,
         targetUserId: Math.trunc(toNumber(url.searchParams.get("userId"), 0)),
       });
-      return jsonResponse(result.body, { status: result.status });
+      return jsonResponse(req, result.body, { status: result.status });
     }
 
     if (req.method === "GET" && pathname === "/admin/requests") {
@@ -127,10 +127,10 @@ export async function handleRequest(req: Request): Promise<Response> {
         appInstanceId: appContext.appInstanceId,
         citySlug: appContext.citySlug,
       });
-      return jsonResponse(result.body, { status: result.status });
+      return jsonResponse(req, result.body, { status: result.status });
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected onramp error";
     const status =
@@ -141,7 +141,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           : message.includes("not found")
             ? 404
             : 400;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 
