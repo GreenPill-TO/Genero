@@ -12,6 +12,7 @@ import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
 import { getActiveAppInstance, normaliseCredentialId } from '@shared/api/services/supabaseService';
 import { getActiveCityContracts, getRpcUrlForChainId } from '@shared/lib/contracts/cityContracts';
 import { executeVoucherSwapAndTransfer } from '@shared/lib/vouchers/onchain';
+import { listWalletIdentitiesForUser } from '@shared/lib/supabase/walletIdentities';
 
 
 // Helper: Convert hex string to Uint8Array.
@@ -209,12 +210,8 @@ export const useSendMoney = ({
                                 .single();
                         if (error) throw new Error(error.message);
                         if (!data?.email) throw new Error('Email not found');
-                        const { data: wallet_data, error: walletErr } = await supabase
-                                .from("wallet_list")
-                                .select("*")
-                                .match({ user_id: userId });
-                        if (walletErr) throw new Error(walletErr.message);
-                        setWallet(wallet_data?.[0]?.public_key ?? null);
+                        const walletRows = await listWalletIdentitiesForUser(userId, supabase);
+                        setWallet(walletRows[0]?.public_key ?? null);
                 } catch (err: any) {
                         console.error('fetchWalletAddress error', err);
                         setError(err.message);

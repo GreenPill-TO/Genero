@@ -1,14 +1,6 @@
 import { invokeEdgeFunction } from "./core";
 import type { AppScopeInput } from "./types";
-import type { BiaListResponse } from "./bia";
-
-type BiaMappingsResponse = {
-  citySlug: string;
-  chainId: number;
-  canAdminister: boolean;
-  mappings: unknown[];
-  health: unknown;
-};
+import type { BiaListResponse, BiaMappingsResponse } from "./bia";
 
 type BiaControlsResponse = {
   citySlug: string;

@@ -1,3 +1,5 @@
+import type { OperationalState } from "./types";
+
 export type VoucherPreferencesResponse = {
   citySlug: string;
   appInstanceId: number;
@@ -57,6 +59,8 @@ export type VoucherMerchantLiquidity = {
 export type VoucherMerchantsResponse = {
   citySlug: string;
   chainId: number;
+  state: OperationalState;
+  setupMessage?: string | null;
   scope: "city" | "my_pool";
   liquiditySource: string;
   readOnly: boolean;

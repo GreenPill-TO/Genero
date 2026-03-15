@@ -14,6 +14,17 @@ const DenoRuntime = (globalThis as typeof globalThis & { Deno?: DenoServe }).Den
 
 type MappingStatus = "active" | "inactive" | "pending";
 
+function isReadModelMissing(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("schema cache") ||
+    lower.includes("does not exist") ||
+    lower.includes("could not find the table") ||
+    lower.includes("could not find the function") ||
+    lower.includes("could not find a relationship")
+  );
+}
+
 function normalizeAddress(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -96,6 +107,8 @@ async function handleRequest(req: Request): Promise<Response> {
 
       let mappings: unknown[] = [];
       let controls: unknown[] = [];
+      let mappingsState: "ready" | "empty" | "setup_required" = "empty";
+      let mappingsSetupMessage: string | null = null;
       if (includeMappings && canAdminister) {
         const [mappingResult, controlsResult] = await Promise.all([
           auth.serviceRole
@@ -105,9 +118,18 @@ async function handleRequest(req: Request): Promise<Response> {
             .order("updated_at", { ascending: false }),
           auth.serviceRole.from("bia_pool_controls").select("*"),
         ]);
-        if (mappingResult.error) throw new Error(`Failed to load BIA pool mappings: ${mappingResult.error.message}`);
+        if (mappingResult.error) {
+          if (isReadModelMissing(mappingResult.error.message)) {
+            mappingsState = "setup_required";
+            mappingsSetupMessage = "BIA mapping read model is not available yet for this app instance.";
+          } else {
+            throw new Error(`Failed to load BIA pool mappings: ${mappingResult.error.message}`);
+          }
+        } else {
+          mappings = mappingResult.data ?? [];
+          mappingsState = mappings.length === 0 ? "empty" : "ready";
+        }
         if (controlsResult.error) throw new Error(`Failed to load BIA controls: ${controlsResult.error.message}`);
-        mappings = mappingResult.data ?? [];
         controls = controlsResult.data ?? [];
       }
 
@@ -129,6 +151,8 @@ async function handleRequest(req: Request): Promise<Response> {
           effectiveFrom: row.effective_from,
         })),
         bias: biasResult.data ?? [],
+        mappingsState,
+        mappingsSetupMessage,
         mappings,
         controls,
         canAdminister,
@@ -152,9 +176,23 @@ async function handleRequest(req: Request): Promise<Response> {
         .eq("chain_id", chainId)
         .order("updated_at", { ascending: false });
 
-      if (mappingError) throw new Error(`Failed to load BIA mappings: ${mappingError.message}`);
+      if (mappingError) {
+        if (isReadModelMissing(mappingError.message)) {
+          return jsonResponse({
+            citySlug: appContext.citySlug,
+            chainId,
+            state: "setup_required",
+            setupMessage: "BIA mapping read model is not available yet for this app instance.",
+            canAdminister,
+            mappings: [],
+            health: null,
+          });
+        }
+        throw new Error(`Failed to load BIA mappings: ${mappingError.message}`);
+      }
 
       let health = null;
+      let state: "ready" | "empty" | "setup_required" = (mappings ?? []).length === 0 ? "empty" : "ready";
       if (includeHealth) {
         const { data: healthRow, error: healthError } = await auth.serviceRole
           .from("v_bia_mapping_health_v1")
@@ -165,7 +203,11 @@ async function handleRequest(req: Request): Promise<Response> {
           .maybeSingle();
 
         if (healthError) {
-          throw new Error(`Failed to load mapping health: ${healthError.message}`);
+          if (isReadModelMissing(healthError.message)) {
+            state = "setup_required";
+          } else {
+            throw new Error(`Failed to load mapping health: ${healthError.message}`);
+          }
         }
 
         health = healthRow
@@ -186,6 +228,11 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse({
         citySlug: appContext.citySlug,
         chainId,
+        state,
+        setupMessage:
+          state === "setup_required"
+            ? "BIA mapping health read model is not available yet for this app instance."
+            : null,
         canAdminister,
         mappings: mappings ?? [],
         health,

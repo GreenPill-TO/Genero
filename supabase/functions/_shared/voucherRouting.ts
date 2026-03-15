@@ -60,6 +60,12 @@ export async function listMerchantsForVoucherScope(options: {
   appInstanceId: number;
   scope: "my_pool" | "city";
 }) {
+  const buildSetupRequired = (message: string) => ({
+    state: "setup_required" as const,
+    setupMessage: message,
+    merchants: [],
+  });
+
   const { data, error } = await options.supabase.rpc("get_voucher_merchants_v1", {
     p_city_slug: options.citySlug,
     p_chain_id: options.chainId,
@@ -69,10 +75,18 @@ export async function listMerchantsForVoucherScope(options: {
   });
 
   if (error) {
+    const lower = error.message.toLowerCase();
+    if (
+      lower.includes("schema cache") ||
+      lower.includes("could not find the function") ||
+      lower.includes("does not exist")
+    ) {
+      return buildSetupRequired("Voucher merchant read model is not available yet for this app instance.");
+    }
     throw new Error(`Failed to load voucher merchants from read model: ${error.message}`);
   }
 
-  return (data ?? []).map((row: Record<string, unknown>) => ({
+  const merchants = (data ?? []).map((row: Record<string, unknown>) => ({
     merchantStoreId: Number(row.merchant_store_id),
     displayName: typeof row.display_name === "string" ? row.display_name : undefined,
     walletAddress: typeof row.wallet_address === "string" ? row.wallet_address : undefined,
@@ -95,6 +109,12 @@ export async function listMerchantsForVoucherScope(options: {
     sourceMode: typeof row.source_mode === "string" ? row.source_mode : undefined,
     available: row.available === true,
   }));
+
+  return {
+    state: merchants.length === 0 ? ("empty" as const) : ("ready" as const),
+    setupMessage: null,
+    merchants,
+  };
 }
 
 export async function getVoucherCompatibilityRules(options: {

@@ -508,6 +508,17 @@ function classifySessionError(message: string): {
   };
 }
 
+function isReadModelMissing(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("schema cache") ||
+    lower.includes("does not exist") ||
+    lower.includes("could not find the table") ||
+    lower.includes("could not find the function") ||
+    lower.includes("could not find a relationship")
+  );
+}
+
 function resolveReferrerDomain(appBaseUrl: string): string {
   try {
     return new URL(appBaseUrl).host;
@@ -593,11 +604,9 @@ async function buildTransakSession(input: {
 
 async function resolveUserRecipientWallet(supabase: any, userId: number): Promise<`0x${string}`> {
   const { data, error } = await supabase
-    .from("wallet_list")
-    .select("public_key")
+    .from("v_wallet_identities_v1")
+    .select("public_key,wallet_ready")
     .eq("user_id", userId)
-    .eq("namespace", "EVM")
-    .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -605,7 +614,7 @@ async function resolveUserRecipientWallet(supabase: any, userId: number): Promis
     throw new Error(`Failed to resolve recipient wallet: ${error.message}`);
   }
 
-  if (data?.public_key && isAddress(data.public_key)) {
+  if (data?.wallet_ready === true && data?.public_key && isAddress(data.public_key)) {
     return getAddress(data.public_key) as `0x${string}`;
   }
 
@@ -1296,67 +1305,82 @@ export async function listLegacyRampAdminRequests(options: {
 
   const [onRampResult, offRampResult, statusResult] = await Promise.all([
     options.supabase
-      .from("interac_transfer")
-      .select("id, created_at, amount, amount_override, status, admin_notes, bank_reference, interac_code, is_sent, approved_timestamp, user_id")
+      .from("v_admin_interac_onramp_ops_v1")
+      .select("*")
       .eq("app_instance_id", options.appInstanceId)
       .order("created_at", { ascending: false }),
     options.supabase
-      .from("off_ramp_req")
-      .select("id, created_at, updated_at, cad_to_user, tokens_burned, exchange_rate, cad_off_ramp_fee, admin_notes, bank_reference_number, status, interac_transfer_target, wallet_account, user_id")
+      .from("v_admin_manual_offramp_ops_v1")
+      .select("*")
       .eq("app_instance_id", options.appInstanceId)
       .order("created_at", { ascending: false }),
     options.supabase.from("ref_request_statuses").select("status").order("status", { ascending: true }),
   ]);
 
   if (onRampResult.error) {
+    if (isReadModelMissing(onRampResult.error.message)) {
+      return {
+        status: 200,
+        body: {
+          citySlug: options.citySlug,
+          appInstanceId: options.appInstanceId,
+          state: "setup_required",
+          setupMessage: "Interac on-ramp operations view is not available yet for this app instance.",
+          onRampRequests: [],
+          offRampRequests: [],
+          statuses: [],
+        },
+      };
+    }
     throw new Error(`Failed to load legacy on-ramp requests: ${onRampResult.error.message}`);
   }
   if (offRampResult.error) {
+    if (isReadModelMissing(offRampResult.error.message)) {
+      return {
+        status: 200,
+        body: {
+          citySlug: options.citySlug,
+          appInstanceId: options.appInstanceId,
+          state: "setup_required",
+          setupMessage: "Manual off-ramp operations view is not available yet for this app instance.",
+          onRampRequests: [],
+          offRampRequests: [],
+          statuses: [],
+        },
+      };
+    }
     throw new Error(`Failed to load legacy off-ramp requests: ${offRampResult.error.message}`);
   }
   if (statusResult.error) {
+    if (isReadModelMissing(statusResult.error.message)) {
+      return {
+        status: 200,
+        body: {
+          citySlug: options.citySlug,
+          appInstanceId: options.appInstanceId,
+          state: "setup_required",
+          setupMessage: "Request status reference data is not configured yet for this app instance.",
+          onRampRequests: [],
+          offRampRequests: [],
+          statuses: [],
+        },
+      };
+    }
     throw new Error(`Failed to load legacy request statuses: ${statusResult.error.message}`);
   }
 
-  const userIds = Array.from(
-    new Set(
-      [...(onRampResult.data ?? []), ...(offRampResult.data ?? [])]
-        .map((row: Record<string, unknown>) => Number(row.user_id))
-        .filter((value) => Number.isFinite(value) && value > 0)
-    )
-  );
-
-  let usersById = new Map<number, { full_name: string | null; email: string | null }>();
-  if (userIds.length > 0) {
-    const usersResult = await options.supabase.from("users").select("id,full_name,email").in("id", userIds);
-    if (usersResult.error) {
-      throw new Error(`Failed to load legacy request users: ${usersResult.error.message}`);
-    }
-
-    usersById = new Map(
-      (usersResult.data ?? []).map((row: Record<string, unknown>) => [
-        Number(row.id),
-        {
-          full_name: typeof row.full_name === "string" ? row.full_name : null,
-          email: typeof row.email === "string" ? row.email : null,
-        },
-      ])
-    );
-  }
+  const onRampRequests = (onRampResult.data ?? []) as Array<Record<string, unknown>>;
+  const offRampRequests = (offRampResult.data ?? []) as Array<Record<string, unknown>>;
 
   return {
     status: 200,
     body: {
       citySlug: options.citySlug,
       appInstanceId: options.appInstanceId,
-      onRampRequests: (onRampResult.data ?? []).map((row: Record<string, unknown>) => ({
-        ...row,
-        users: usersById.get(Number(row.user_id)) ?? { full_name: null, email: null },
-      })),
-      offRampRequests: (offRampResult.data ?? []).map((row: Record<string, unknown>) => ({
-        ...row,
-        users: usersById.get(Number(row.user_id)) ?? { full_name: null, email: null },
-      })),
+      state: onRampRequests.length === 0 && offRampRequests.length === 0 ? "empty" : "ready",
+      setupMessage: null,
+      onRampRequests,
+      offRampRequests,
       statuses: statusResult.data ?? [],
     },
   };

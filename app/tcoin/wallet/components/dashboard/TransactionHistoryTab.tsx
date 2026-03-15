@@ -3,6 +3,7 @@ import { LuArrowLeft } from "react-icons/lu";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import { createClient } from "@shared/lib/supabase/client";
+import { listWalletPublicKeysForUser } from "@shared/lib/supabase/walletIdentities";
 
 type TransactionRow = {
   id: number;
@@ -71,22 +72,7 @@ export function TransactionHistoryTab({
 
       try {
         const supabase = createClient();
-        const { data: walletRows, error: walletError } = await supabase
-          .from("wallet_list")
-          .select("public_key")
-          .eq("user_id", userId);
-
-        if (walletError) {
-          throw new Error(walletError.message);
-        }
-
-        const myWallets = (walletRows ?? [])
-          .map((row: any) =>
-            typeof row.public_key === "string" && row.public_key.trim() !== ""
-              ? row.public_key
-              : null
-          )
-          .filter((wallet: string | null): wallet is string => wallet != null);
+        const myWallets = await listWalletPublicKeysForUser(userId, supabase);
 
         if (myWallets.length === 0) {
           if (isMounted) {

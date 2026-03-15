@@ -64,6 +64,12 @@ const getVoucherMerchantsMock = vi.hoisted(() => vi.fn(async () => ({ merchants:
 vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
   getVoucherMerchants: getVoucherMerchantsMock,
 }));
+const listWalletPublicKeysForUserMock = vi.hoisted(() => vi.fn(async () => []));
+const mapUserIdsByWalletsMock = vi.hoisted(() => vi.fn(async () => new Map()));
+vi.mock("@shared/lib/supabase/walletIdentities", () => ({
+  listWalletPublicKeysForUser: listWalletPublicKeysForUserMock,
+  mapUserIdsByWallets: mapUserIdsByWalletsMock,
+}));
 
 const matchMock = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ data: [{ id: 7 }], error: null })
@@ -141,6 +147,10 @@ describe("WalletHome deep-link scanning", () => {
     sendCardMock.mockClear();
     fetchContactsForOwnerMock.mockReset();
     fetchContactsForOwnerMock.mockResolvedValue([]);
+    listWalletPublicKeysForUserMock.mockReset();
+    listWalletPublicKeysForUserMock.mockResolvedValue([]);
+    mapUserIdsByWalletsMock.mockReset();
+    mapUserIdsByWalletsMock.mockResolvedValue(new Map());
     pushMock.mockReset();
     window.history.replaceState({}, "", "/dashboard");
   });

@@ -1,3 +1,55 @@
+## v1.31
+### Timestamp
+- 2026-03-14 20:35:00 EDT
+
+### Objective
+- Replace the remaining raw wallet/admin read assumptions with canonical operational read models and explicit setup-required states.
+
+### What Changed
+- Added `supabase/migrations/20260314221500_v1.04_operational_read_models.sql` to formalize the next contract layer:
+  - creates `public.v_wallet_identities_v1` as the canonical wallet identity/readiness view over `wallet_list` and encrypted-share state
+  - creates `public.v_admin_interac_onramp_ops_v1` and `public.v_admin_manual_offramp_ops_v1` for first-class Interac/manual cash-ops administration
+  - normalizes legacy `interac_transfer`, `off_ramp_req`, and `ref_request_statuses` columns needed by those views
+- Added `shared/lib/supabase/walletIdentities.ts` and refactored wallet consumers to use that canonical view instead of direct operational `wallet_list` reads:
+  - `shared/api/services/supabaseService.ts`
+  - `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+  - `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+  - `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx`
+  - `shared/hooks/useSendMoney.tsx`
+- Updated `supabase/functions/_shared/onramp.ts` so Buy TCOIN wallet readiness is resolved from `v_wallet_identities_v1`, and admin cash-ops reads now come from the new admin views with explicit `ready` / `empty` / `setup_required` states instead of raw legacy table assumptions.
+- Updated `supabase/functions/_shared/voucherRouting.ts`, `supabase/functions/voucher-preferences/index.ts`, and `supabase/functions/bia-service/index.ts` so missing read models return `setup_required` contracts instead of surfacing generic hard failures.
+- Expanded shared edge DTOs in `shared/lib/edge/onramp.ts`, `shared/lib/edge/vouchers.ts`, `shared/lib/edge/bia.ts`, and `shared/lib/edge/types.ts` to carry operational state and setup messaging.
+- Updated `app/tcoin/wallet/admin/page.tsx` so missing cash-ops, BIA mapping, or voucher-liquidity infrastructure renders setup guidance rather than a generic destructive error.
+
+### Verification
+- `npx vitest run app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx supabase/functions/onramp/index.test.ts supabase/functions/voucher-preferences/index.test.ts`
+  - 5 files, 15 tests passed
+
+### Files Edited
+- `supabase/migrations/20260314221500_v1.04_operational_read_models.sql`
+- `shared/lib/supabase/walletIdentities.ts`
+- `shared/api/services/supabaseService.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx`
+- `shared/hooks/useSendMoney.tsx`
+- `supabase/functions/_shared/onramp.ts`
+- `supabase/functions/_shared/voucherRouting.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/functions/bia-service/index.ts`
+- `shared/lib/edge/types.ts`
+- `shared/lib/edge/onramp.ts`
+- `shared/lib/edge/vouchers.ts`
+- `shared/lib/edge/bia.ts`
+- `shared/lib/edge/biaClient.ts`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/admin/page.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `supabase/functions/voucher-preferences/index.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.30
 ### Timestamp
 - 2026-03-14 19:45:00 EDT

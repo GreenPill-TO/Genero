@@ -1,3 +1,5 @@
+import type { OperationalState } from "./types";
+
 export type BiaRecord = {
   id: string;
   code: string;
@@ -21,7 +23,24 @@ export type BiaListResponse = {
   activeAffiliation: UserBiaAffiliation | null;
   secondaryAffiliations: UserBiaAffiliation[];
   bias: BiaRecord[];
+  mappingsState?: OperationalState;
+  mappingsSetupMessage?: string | null;
   mappings: unknown[];
   controls: unknown[];
   canAdminister: boolean;
+};
+
+export type BiaMappingsResponse = {
+  citySlug: string;
+  chainId: number;
+  state: OperationalState;
+  setupMessage?: string | null;
+  canAdminister: boolean;
+  mappings: unknown[];
+  health: {
+    mappedPools: number;
+    discoveredPools: number;
+    unmappedPools: number;
+    staleMappings: number;
+  } | null;
 };

@@ -10,6 +10,7 @@ import {
 import { Hypodata, contactRecordToHypodata } from "./types";
 import { useModal } from "@shared/contexts/ModalContext";
 import { createClient } from "@shared/lib/supabase/client";
+import { listWalletPublicKeysForUser } from "@shared/lib/supabase/walletIdentities";
 
 type SortOrder = "alphabetical" | "recents";
 
@@ -116,18 +117,7 @@ export function ContactsTab({
 
     const loadWallets = async () => {
       try {
-        const { data, error } = await supabase
-          .from("wallet_list")
-          .select("public_key")
-          .eq("user_id", ownerId);
-        if (error) throw error;
-        const wallets = (data ?? [])
-          .map((row) =>
-            typeof row.public_key === "string" && row.public_key.trim() !== ""
-              ? row.public_key
-              : null
-          )
-          .filter((value): value is string => value != null);
+        const wallets = await listWalletPublicKeysForUser(ownerId, supabase);
         if (!isMounted) return;
         setUserWallets(wallets);
       } catch (error) {
@@ -177,18 +167,7 @@ export function ContactsTab({
       const results = await Promise.all(
         contacts.map(async (contact) => {
           try {
-            const { data: walletRows, error: walletError } = await supabase
-              .from("wallet_list")
-              .select("public_key")
-              .eq("user_id", contact.id);
-            if (walletError) throw walletError;
-            const contactWallets = (walletRows ?? [])
-              .map((row) =>
-                typeof row.public_key === "string" && row.public_key.trim() !== ""
-                  ? row.public_key
-                  : null
-              )
-              .filter((value): value is string => value != null);
+            const contactWallets = await listWalletPublicKeysForUser(contact.id, supabase);
 
             if (contactWallets.length === 0) {
               return {

@@ -27,6 +27,7 @@ import {
   getVoucherMerchants,
   saveVoucherCompatibilityRule,
 } from "@shared/lib/edge/voucherPreferencesClient";
+import type { OperationalState } from "@shared/lib/edge/types";
 import { useRouter } from "next/navigation";
 import { createClient } from "@shared/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
@@ -360,6 +361,8 @@ export default function AdminDashboardPage() {
   const [onRampRequests, setOnRampRequests] = useState<OnRampRequest[]>([]);
   const [offRampRequests, setOffRampRequests] = useState<OffRampRequest[]>([]);
   const [onRampStatuses, setOnRampStatuses] = useState<string[]>([]);
+  const [cashOpsState, setCashOpsState] = useState<OperationalState>("empty");
+  const [cashOpsSetupMessage, setCashOpsSetupMessage] = useState<string | null>(null);
   const [onRampEdits, setOnRampEdits] = useState<Record<number, OnRampEditState>>({});
   const [offRampEdits, setOffRampEdits] = useState<Record<number, OffRampEditState>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -374,10 +377,14 @@ export default function AdminDashboardPage() {
     unmappedPools: number;
     staleMappings: number;
   } | null>(null);
+  const [biaMappingsState, setBiaMappingsState] = useState<OperationalState>("empty");
+  const [biaMappingsSetupMessage, setBiaMappingsSetupMessage] = useState<string | null>(null);
   const [redemptionRequests, setRedemptionRequests] = useState<RedemptionRequestRecord[]>([]);
   const [governanceActions, setGovernanceActions] = useState<GovernanceActionRecord[]>([]);
   const [voucherRules, setVoucherRules] = useState<VoucherCompatibilityRule[]>([]);
   const [merchantLiquidityRows, setMerchantLiquidityRows] = useState<MerchantVoucherLiquidity[]>([]);
+  const [voucherMerchantState, setVoucherMerchantState] = useState<OperationalState>("empty");
+  const [voucherMerchantSetupMessage, setVoucherMerchantSetupMessage] = useState<string | null>(null);
   const [onrampCheckoutSessions, setOnrampCheckoutSessions] = useState<OnrampCheckoutSessionSummary[]>([]);
   const [controlPlaneError, setControlPlaneError] = useState<string | null>(null);
   const [isControlPlaneLoading, setIsControlPlaneLoading] = useState(false);
@@ -489,6 +496,8 @@ export default function AdminDashboardPage() {
       const body = await getOnrampAdminRequests({
         citySlug: "tcoin",
       }) as {
+        state?: OperationalState;
+        setupMessage?: string | null;
         onRampRequests?: Array<Record<string, unknown>>;
         offRampRequests?: Array<Record<string, unknown>>;
         statuses?: Array<Record<string, unknown>>;
@@ -546,6 +555,8 @@ export default function AdminDashboardPage() {
         .filter((value): value is string => Boolean(value));
 
       if (isMountedRef.current) {
+        setCashOpsState(body.state ?? (normalisedOnRamps.length === 0 && normalisedOffRamps.length === 0 ? "empty" : "ready"));
+        setCashOpsSetupMessage(body.setupMessage ?? null);
         setOnRampRequests(normalisedOnRamps);
         setOffRampRequests(normalisedOffRamps);
         setOnRampStatuses(statusValues);
@@ -596,6 +607,8 @@ export default function AdminDashboardPage() {
           chainId: 42220,
           appContext: { citySlug: "tcoin" },
         }) as Promise<{
+          state?: OperationalState;
+          setupMessage?: string | null;
           health?: {
             mappedPools: number;
             discoveredPools: number;
@@ -618,7 +631,11 @@ export default function AdminDashboardPage() {
           chainId: 42220,
           scope: "city",
           appContext: { citySlug: "tcoin" },
-        }) as Promise<{ merchants?: MerchantVoucherLiquidity[] }>,
+        }) as Promise<{
+          state?: OperationalState;
+          setupMessage?: string | null;
+          merchants?: MerchantVoucherLiquidity[];
+        }>,
         getAdminOnrampSessions({
           limit: 50,
           appContext: { citySlug: "tcoin" },
@@ -630,10 +647,14 @@ export default function AdminDashboardPage() {
       const nextBias = biaList.bias ?? [];
       setBiaRecords(nextBias);
       setBiaControls(controlsList.controls ?? biaList.controls ?? []);
+      setBiaMappingsState(mappingList.state ?? (mappingList.health ? "ready" : "empty"));
+      setBiaMappingsSetupMessage(mappingList.setupMessage ?? null);
       setMappingHealth(mappingList.health ?? null);
       setRedemptionRequests(redemptionList.requests ?? []);
       setGovernanceActions(governanceList.actions ?? []);
       setVoucherRules(voucherRuleList.rules ?? []);
+      setVoucherMerchantState(voucherMerchants.state ?? ((voucherMerchants.merchants ?? []).length === 0 ? "empty" : "ready"));
+      setVoucherMerchantSetupMessage(voucherMerchants.setupMessage ?? null);
       setMerchantLiquidityRows(voucherMerchants.merchants ?? []);
       setOnrampCheckoutSessions(onrampAdminList.sessions ?? []);
       setLastSyncedAt(new Date());
@@ -1218,6 +1239,13 @@ export default function AdminDashboardPage() {
         </Alert>
       )}
 
+      {cashOpsState === "setup_required" && cashOpsSetupMessage && (
+        <Alert>
+          <AlertTitle>Cash operations setup required</AlertTitle>
+          <AlertDescription>{cashOpsSetupMessage}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
@@ -1671,6 +1699,18 @@ export default function AdminDashboardPage() {
               <AlertDescription>{controlPlaneError}</AlertDescription>
             </Alert>
           )}
+          {biaMappingsState === "setup_required" && biaMappingsSetupMessage && (
+            <Alert>
+              <AlertTitle>BIA mapping setup required</AlertTitle>
+              <AlertDescription>{biaMappingsSetupMessage}</AlertDescription>
+            </Alert>
+          )}
+          {voucherMerchantState === "setup_required" && voucherMerchantSetupMessage && (
+            <Alert>
+              <AlertTitle>Voucher liquidity setup required</AlertTitle>
+              <AlertDescription>{voucherMerchantSetupMessage}</AlertDescription>
+            </Alert>
+          )}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-md border p-3">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">BIAs</p>
@@ -2094,7 +2134,9 @@ export default function AdminDashboardPage() {
               Voucher issuance and liquidity requirements are read from Sarafu pool/limiter contracts. These values are
               read-only in Genero.
             </p>
-            {merchantLiquidityRows.length === 0 ? (
+            {voucherMerchantState === "setup_required" && voucherMerchantSetupMessage ? (
+              <p className="text-sm text-muted-foreground">{voucherMerchantSetupMessage}</p>
+            ) : merchantLiquidityRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No merchant voucher liquidity rows found.</p>
             ) : (
               merchantLiquidityRows.slice(0, 40).map((row, index) => (

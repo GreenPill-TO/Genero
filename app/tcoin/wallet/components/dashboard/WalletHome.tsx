@@ -12,6 +12,10 @@ import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
 import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
 import { createClient } from "@shared/lib/supabase/client";
+import {
+  listWalletPublicKeysForUser,
+  mapUserIdsByWallets,
+} from "@shared/lib/supabase/walletIdentities";
 import { BuyTcoinModal, TopUpModal } from "@tcoin/wallet/components/modals";
 import { ContributionsCard } from "./ContributionsCard";
 import { SendCard } from "./SendCard";
@@ -311,17 +315,7 @@ export function WalletHome({
           // Best effort only.
         }
 
-        const { data: myWalletRows } = await supabase
-          .from("wallet_list")
-          .select("public_key")
-          .eq("user_id", user_id);
-        const myWallets = (myWalletRows ?? [])
-          .map((row: any) =>
-            typeof row.public_key === "string" && row.public_key.trim() !== ""
-              ? row.public_key
-              : null
-          )
-          .filter((value: string | null): value is string => value != null);
+        const myWallets = await listWalletPublicKeysForUser(user_id, supabase);
         const myWalletSet = new Set(myWallets);
 
         if (myWallets.length > 0) {
@@ -372,21 +366,12 @@ export function WalletHome({
 
           const counterpartWallets = Array.from(walletLastSeen.keys());
           if (counterpartWallets.length > 0) {
-            const { data: counterpartWalletRows } = await supabase
-              .from("wallet_list")
-              .select("user_id, public_key")
-              .in("public_key", counterpartWallets);
-
-            const walletToUserId = new Map<string, number>();
+            const walletToUserId = await mapUserIdsByWallets(counterpartWallets, supabase);
             const userIds = new Set<number>();
-
-            (counterpartWalletRows ?? []).forEach((row: any) => {
-              const wallet =
-                typeof row.public_key === "string" ? row.public_key : null;
-              const userId = parseMaybeNumber(row.user_id);
-              if (!wallet || userId == null) return;
-              walletToUserId.set(wallet, userId);
-              userIds.add(userId);
+            walletToUserId.forEach((userId) => {
+              if (parseMaybeNumber(userId) != null) {
+                userIds.add(userId);
+              }
             });
 
             if (userIds.size > 0) {

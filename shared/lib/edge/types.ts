@@ -11,3 +11,5 @@ export type PaginatedResponse<T> = {
   total?: number;
   nextCursor?: string | null;
 };
+
+export type OperationalState = "ready" | "empty" | "setup_required";

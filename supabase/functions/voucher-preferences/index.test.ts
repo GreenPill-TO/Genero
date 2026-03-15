@@ -85,7 +85,11 @@ describe("voucher-preferences handleRequest", () => {
   });
 
   it("returns merchant liquidity through the helper", async () => {
-    voucherRoutingMocks.listMerchantsForVoucherScope.mockResolvedValue([{ merchantStoreId: 9, available: true }]);
+    voucherRoutingMocks.listMerchantsForVoucherScope.mockResolvedValue({
+      state: "ready",
+      setupMessage: null,
+      merchants: [{ merchantStoreId: 9, available: true }],
+    });
     voucherRoutingMocks.resolveActiveUserBiaSet.mockResolvedValue({
       primaryBiaId: "bia-1",
       secondaryBiaIds: [],
@@ -99,6 +103,10 @@ describe("voucher-preferences handleRequest", () => {
     );
 
     expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      state: "ready",
+      merchants: [{ merchantStoreId: 9, available: true }],
+    });
     expect(voucherRoutingMocks.listMerchantsForVoucherScope).toHaveBeenCalledWith(
       expect.objectContaining({
         citySlug: "tcoin",

@@ -313,7 +313,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       const scopeRaw = (url.searchParams.get("scope") ?? "my_pool").trim().toLowerCase();
       const scope = scopeRaw === "city" ? "city" : "my_pool";
 
-      const [merchants, userBiaScope] = await Promise.all([
+      const [merchantResult, userBiaScope] = await Promise.all([
         listMerchantsForVoucherScope({
           supabase: auth.serviceRole,
           citySlug: appContext.citySlug,
@@ -332,6 +332,8 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse({
         citySlug: appContext.citySlug,
         chainId,
+        state: merchantResult.state,
+        setupMessage: merchantResult.setupMessage,
         scope,
         liquiditySource: "sarafu_onchain",
         readOnly: true,
@@ -340,7 +342,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           primaryBiaId: userBiaScope.primaryBiaId,
           secondaryBiaIds: userBiaScope.secondaryBiaIds,
         },
-        merchants,
+        merchants: merchantResult.merchants,
       });
     }
 
