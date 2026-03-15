@@ -1,59 +1,53 @@
-name: Supabase PR Migrations (Preview DB)
+name: Supabase PR Migration Validation
 
 on:
   pull_request:
-    types: [opened, synchronize, closed]
+    types: [opened, synchronize, reopened]
     paths:
       - "supabase/migrations/**"
 
 jobs:
-  preview-migrations:
-    if: github.event.action != 'closed'
-    name: Reset & apply to PREVIEW
+  validate-target-remote:
+    if: github.base_ref == 'dev' || github.base_ref == 'main'
+    name: Dry-run against target remote
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4          # checkout PR code
-      - uses: supabase/setup-cli@v1
-
-      - name: Build PREVIEW DB URL
-        id: preview_url
-        env:
-          PREVIEW_REF:  ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
-          PREVIEW_PASS: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
-        run: |
-          set -e
-          HOST="db.${PREVIEW_REF}.supabase.co"
-          ENC_PASS=$(node -e "process.stdout.write(encodeURIComponent(process.env.PREVIEW_PASS || ''))")
-          echo "DB_URL=postgresql://postgres:${ENC_PASS}@${HOST}:5432/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
-          echo "Using PREVIEW host ${HOST} (password hidden)."
-
-      - name: Reset PREVIEW DB to clean slate
-        run: supabase db reset --db-url "${{ steps.preview_url.outputs.DB_URL }}" --force
-
-      - name: Apply PR migrations (up) to PREVIEW
-        run: supabase db push --db-url "${{ steps.preview_url.outputs.DB_URL }}"
-
-  rollback-migrations:
-    if: github.event.action == 'closed' && github.event.pull_request.merged == false
-    name: Reset PREVIEW to DEV baseline (PR closed unmerged)
-    runs-on: ubuntu-latest
-    steps:
-      # Checkout DEV to use DEV's migrations as the baseline
       - uses: actions/checkout@v4
-        with:
-          ref: dev
       - uses: supabase/setup-cli@v1
 
-      - name: Build PREVIEW DB URL
-        id: preview_url
+      - name: Resolve PR target database
+        id: target
         env:
-          PREVIEW_REF:  ${{ secrets.SUPABASE_PROJECT_REF_PREVIEW }}
-          PREVIEW_PASS: ${{ secrets.SUPABASE_DB_PASSWORD_PREVIEW }}
+          BASE_REF: ${{ github.base_ref }}
+          DEV_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_DEV }}
+          DEV_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_DEV }}
+          PROD_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_PROD }}
+          PROD_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_PROD }}
         run: |
           set -e
-          HOST="db.${PREVIEW_REF}.supabase.co"
-          ENC_PASS=$(node -e "process.stdout.write(encodeURIComponent(process.env.PREVIEW_PASS || ''))")
-          echo "DB_URL=postgresql://postgres:${ENC_PASS}@${HOST}:5432/postgres?sslmode=require" >> "$GITHUB_OUTPUT"
+          case "$BASE_REF" in
+            dev)
+              echo "TARGET_ENV=DEV" >> "$GITHUB_OUTPUT"
+              echo "TARGET_DB_URL=$DEV_DB_URL" >> "$GITHUB_OUTPUT"
+              echo "TARGET_PROJECT_REF=$DEV_PROJECT_REF" >> "$GITHUB_OUTPUT"
+              ;;
+            main)
+              echo "TARGET_ENV=PROD" >> "$GITHUB_OUTPUT"
+              echo "TARGET_DB_URL=$PROD_DB_URL" >> "$GITHUB_OUTPUT"
+              echo "TARGET_PROJECT_REF=$PROD_PROJECT_REF" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported PR base branch: $BASE_REF" >&2
+              exit 1
+              ;;
+          esac
 
-      - name: Reset PREVIEW DB to DEV baseline
-        run: supabase db reset --db-url "${{ steps.preview_url.outputs.DB_URL }}" --force
+      - name: Validate migrations with remote dry-run
+        env:
+          TARGET_ENV: ${{ steps.target.outputs.TARGET_ENV }}
+          TARGET_DB_URL: ${{ steps.target.outputs.TARGET_DB_URL }}
+          TARGET_PROJECT_REF: ${{ steps.target.outputs.TARGET_PROJECT_REF }}
+        run: |
+          set -e
+          echo "Validating migrations for ${TARGET_ENV} (project ref ${TARGET_PROJECT_REF})"
+          supabase --dns-resolver https db push --dry-run --db-url "$TARGET_DB_URL"

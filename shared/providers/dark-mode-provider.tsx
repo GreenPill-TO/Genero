@@ -10,8 +10,13 @@ import { useEffect, useRef } from "react";
 export default function DarkModeProvider({ children }: { children: ReactNode }) {
   const { bootstrap } = useUserSettings();
   const { themeMode, syncThemePreference } = useDarkMode();
-  const migrateLegacyTheme = useUpdateUserPreferencesMutation();
+  const { mutate: mutateLegacyTheme } = useUpdateUserPreferencesMutation();
   const didAttemptLegacyMigration = useRef(false);
+  const mutateLegacyThemeRef = useRef(mutateLegacyTheme);
+
+  useEffect(() => {
+    mutateLegacyThemeRef.current = mutateLegacyTheme;
+  }, [mutateLegacyTheme]);
 
   useEffect(() => {
     const serverTheme = bootstrap?.preferences.theme;
@@ -38,8 +43,8 @@ export default function DarkModeProvider({ children }: { children: ReactNode }) 
     }
 
     didAttemptLegacyMigration.current = true;
-    migrateLegacyTheme.mutate({ theme: legacyTheme });
-  }, [bootstrap, migrateLegacyTheme]);
+    mutateLegacyThemeRef.current({ theme: legacyTheme });
+  }, [bootstrap]);
 
   return <>{children}</>;
 }

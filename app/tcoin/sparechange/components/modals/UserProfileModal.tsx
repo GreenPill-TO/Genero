@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import { createClient } from "@shared/lib/supabase/client";
+import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
 
 interface UserProfileModalProps {
   closeModal: () => void;
@@ -35,24 +36,12 @@ const EditProfileContent = ({ onCancel }: EditProfileContentProps) => {
       const fileInput = document.querySelector("input[type='file']") as HTMLInputElement;
       if (fileInput.files && fileInput.files[0]) {
         const file = fileInput.files[0];
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${userData?.cubidData?.id}.${fileExt}`;
-        const filePath = `profile_pictures/${fileName}`;
-
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage.from("profile_pictures").upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: true,
-        });
-
-        if (uploadError) {
+        try {
+          profileImageUrl = await uploadProfilePicture(userData?.cubidData?.id, file);
+        } catch (uploadError) {
           console.error("Error uploading file:", uploadError);
           return;
         }
-
-        // Get public URL
-        const { data } = supabase.storage.from("profile_pictures").getPublicUrl(filePath);
-        profileImageUrl = data.publicUrl;
       }
     }
 

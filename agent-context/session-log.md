@@ -461,6 +461,132 @@
 - `AGENTS.md`
 
 ## v1.24
+## v1.68
+### Timestamp
+- 2026-03-14 15:18:00 EDT
+
+### Objective
+- Switch the two-remote Supabase CI workflows from the unusable direct IPv6 connection strings to the new session-pooler secrets and update the repo documentation accordingly.
+
+### What Changed
+- Updated `.github/workflows/pr-migrations.yml` so branch-targeted DEV/PROD migration validation now reads `SUPABASE_SESSION_POOLER_DEV` / `SUPABASE_SESSION_POOLER_PROD`.
+- Updated `.github/workflows/db-pull-env.yml` so remote drift generation also uses the DEV/PROD session-pooler secrets instead of the direct connection strings.
+- Updated the database workflow and technical spec artefacts to describe the session-pooler based CI connectivity model.
+
+### Verification
+- `gh secret list -R GreenPill-TO/Genero`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `.github/workflows/db-pull-env.yml`
+- `agent-context/db-workflow.md`
+- `agent-context/technical-spec.md`
+- `agent-context/session-log.md`
+
+## v1.67
+### Timestamp
+- 2026-03-14 14:03:00 EDT
+
+### Objective
+- Fix the remaining GitHub Actions network-resolution issue in branch-targeted Supabase PR validation after the new two-remote workflow was pushed.
+
+### What Changed
+- Updated `.github/workflows/pr-migrations.yml` to run the Supabase dry-run validation with `--dns-resolver https`, avoiding the failing native runner DNS/IPv6 path when connecting to the remote database host.
+- Kept the DEV/PROD branch-targeted validation logic and secret usage unchanged.
+
+### Verification
+- `gh run view 23093082436 --log-failed`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `agent-context/session-log.md`
+
+## v1.66
+### Timestamp
+- 2026-03-14 13:59:00 EDT
+
+### Objective
+- Fix the follow-up Supabase PR validation workflow compatibility issue uncovered after pushing the new two-remote CI configuration.
+
+### What Changed
+- Removed the unsupported `--yes` flag from `.github/workflows/pr-migrations.yml` because the repository's current Supabase CLI version accepts `--dry-run` on `db push` but rejects `--yes`.
+- Kept the branch-targeted DEV/PROD dry-run validation model unchanged.
+
+### Verification
+- `gh run view 23093059175 --log-failed`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `agent-context/session-log.md`
+
+## v1.65
+### Timestamp
+- 2026-03-14 13:55:00 EDT
+
+### Objective
+- Replace the obsolete PREVIEW-database CI assumptions with a two-remote workflow that targets DEV for PRs into `dev` and PROD for PRs into `main`, using the new direct-connection secrets safely.
+
+### What Changed
+- Reworked `.github/workflows/pr-migrations.yml` into a non-destructive PR validation workflow that selects DEV or PROD from `github.base_ref` and runs `supabase db push --dry-run --db-url ...` against the matching remote.
+- Removed PREVIEW-specific reset/apply logic from PR CI so shared remote databases are no longer reset during pull-request validation.
+- Updated `.github/workflows/db-pull-env.yml` to support only DEV and PROD, source database URLs from `SUPABASE_DIRECT_CONNECTION_STRING_DEV` / `SUPABASE_DIRECT_CONNECTION_STRING_PROD`, and open drift PRs back to `dev` or `main` based on the selected environment.
+- Updated the database workflow and technical spec artefacts so repository documentation now matches the two-remote CI/CD model.
+
+### Verification
+- `supabase db push --help`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `.github/workflows/db-pull-env.yml`
+- `agent-context/db-workflow.md`
+- `agent-context/technical-spec.md`
+- `agent-context/session-log.md`
+
+## v1.64
+### Timestamp
+- 2026-03-14 14:30:00 EDT
+
+### Objective
+- Address the inline review comments and failing CI on PR #56 covering app-context environment resolution, profile-picture storage security, CORS, theme hook stability, username uniqueness, and the remaining test/workflow failures.
+
+### What Changed
+- Fixed `supabase/functions/_shared/appContext.ts` so resolved app context now returns the environment from the matched `ref_app_instances` row when callers omit the environment header/body.
+- Tightened `supabase/functions/_shared/userSettings.ts` username uniqueness checks to use exact normalized matching instead of wildcard-based `ilike`.
+- Reworked the user-settings edge-function CORS helper to reflect only allowed frontend origins, documented `USER_SETTINGS_ALLOWED_ORIGINS`, and threaded request-aware headers through the shared JSON response helper.
+- Replaced the broad `profile_pictures` storage write policies with auth-owner and `users/<auth.uid>/...` path constraints, then updated the shared profile-picture uploader and sparechange profile modal to write through the same authenticated prefix.
+- Stabilized dark-mode theme migration/listener logic in `shared/providers/dark-mode-provider.tsx` and `shared/hooks/useDarkMode.tsx` to avoid effect churn and stale listener closures.
+- Fixed the wallet welcome test description to match the step it actually covers.
+- Fixed CI by mocking `server-only` in Vitest setup, adding a fallback runtime config path in `shared/hooks/useSendMoney.tsx`, and removing the unsupported `--force` flag from the preview Supabase reset workflow.
+- Renumbered the duplicate session-log headers so each recorded session now has a unique version tag.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx shared/hooks/useSendMoney.test.ts app/api/indexer/status/route.test.ts`
+- `pnpm exec eslint shared/providers/dark-mode-provider.tsx shared/hooks/useDarkMode.tsx shared/hooks/useSendMoney.tsx shared/lib/supabase/profilePictures.ts app/tcoin/sparechange/components/modals/UserProfileModal.tsx app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `.github/workflows/pr-migrations.yml`
+- `.env.local.example`
+- `agent-context/session-log.md`
+- `agent-context/technical-spec.md`
+- `app/tcoin/sparechange/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `shared/hooks/useDarkMode.tsx`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/lib/supabase/profilePictures.ts`
+- `shared/providers/dark-mode-provider.tsx`
+- `supabase/functions/_shared/appContext.ts`
+- `supabase/functions/_shared/cors.ts`
+- `supabase/functions/_shared/responses.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/migrations/20260314024500_v1.02_profile_pictures_bucket.sql`
+- `vitest.setup.ts`
+
+## v1.63
 ### Timestamp
 - 2026-03-14 02:24:00 EDT
 
@@ -491,7 +617,7 @@
 - `agent-context/functional-spec.md`
 - `agent-context/session-log.md`
 
-## v1.23
+## v1.62
 ### Timestamp
 - 2026-03-14 02:14:00 EDT
 
@@ -519,7 +645,7 @@
 - `agent-context/functional-spec.md`
 - `agent-context/session-log.md`
 
-## v1.22
+## v1.61
 ### Timestamp
 - 2026-03-14 02:02:00 EDT
 
@@ -549,7 +675,7 @@
 - `agent-context/functional-spec.md`
 - `agent-context/session-log.md`
 
-## v1.21
+## v1.60
 ### Timestamp
 - 2026-03-14 01:41:24 EDT
 
@@ -573,7 +699,7 @@
 - `agent-context/technical-spec.md`
 - `agent-context/session-log.md`
 
-## v1.20
+## v1.59
 ### Timestamp
 - 2026-03-14 00:45:00 EDT
 
@@ -635,7 +761,7 @@
 - `README.md`
 - `AGENTS.md`
 
-## v1.20
+## v1.58
 ### Timestamp
 - 2026-03-14 02:20:00 EDT
 
@@ -667,7 +793,7 @@
 - `shared/api/hooks/useControlPlaneAccess.test.ts`
 - `.env.local.example`
 
-## v1.19
+## v1.57
 ### Timestamp
 - 2026-03-13 23:38:00 EDT
 
@@ -683,7 +809,7 @@
 - `agent-context/session-log.md`
 - `agent-context/technical-spec.md`
 
-## v1.18
+## v1.56
 ### Timestamp
 - 2026-03-13 23:33:00 EDT
 

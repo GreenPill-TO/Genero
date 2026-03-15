@@ -213,7 +213,7 @@ describe("WelcomePage", () => {
     expect(replaceMock).toHaveBeenCalledWith("/dashboard");
   });
 
-  it("shows the step 4 skip button in development", () => {
+  it("shows the step 5 skip button in development", () => {
     process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "development";
     useUserSettingsMock.mockReturnValue({
       bootstrap: createBootstrap("draft", {
