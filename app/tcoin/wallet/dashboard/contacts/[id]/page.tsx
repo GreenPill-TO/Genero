@@ -10,6 +10,7 @@ import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
+import { createPaymentRequest } from "@shared/lib/edge/paymentRequestsClient";
 import { createClient } from "@shared/lib/supabase/client";
 
 type ProfileUser = {
@@ -220,21 +221,10 @@ export default function ContactProfilePage() {
       throw new Error("Missing request context");
     }
 
-    const supabase = createClient();
-    const { error } = await supabase.from("invoice_pay_request").insert({
-      request_from: contactId,
-      request_by: currentUserId,
-      amount_requested: requestAmount,
-      is_active: true,
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    await supabase.from("notifications").insert({
-      user_id: String(contactId),
-      notification: `${requestAmount.toFixed(2)} TCOIN request from ${displayName}`,
+    await createPaymentRequest({
+      requestFrom: contactId,
+      amountRequested: requestAmount,
+      appContext: { citySlug: "tcoin" },
     });
   };
 

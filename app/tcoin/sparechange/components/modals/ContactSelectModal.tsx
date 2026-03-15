@@ -1,11 +1,12 @@
 // @ts-nocheck
+import React from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Radio } from "@shared/components/ui/Radio";
 import { useState, useEffect } from "react";
 import { createClient } from "@shared/lib/supabase/client";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { insertSuccessNotification } from "@shared/utils/insertNotification";
+import { createPaymentRequest } from "@shared/lib/edge/paymentRequestsClient";
 
 interface ContactSelectModalProps {
   closeModal: () => void;
@@ -17,7 +18,7 @@ interface ContactSelectModalProps {
 interface Contact {
   value: string;
   label: string;
-  id: number | string;
+  id: number;
   state: string;
 }
 
@@ -47,9 +48,9 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
       } else if (data) {
         // Map each connection and include the state from the backend.
         const mappedContacts = data.map((connection: any) => ({
-          value: connection.connected_user_id,
-          label: connection.connected_user_id?.full_name,
-          id: connection.id,
+          value: String(connection.connected_user_id?.id ?? ""),
+          label: connection.connected_user_id?.full_name ?? "Unknown contact",
+          id: Number(connection.connected_user_id?.id ?? connection.id),
           state: connection.state,
         }));
 
@@ -77,7 +78,6 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
   const myContacts = filteredContacts.filter(contact => contact.state !== "new");
 
   const contactsToDisplay = activeTab === "all" ? allContacts : myContacts;
-  console.log({ selectedContact, contactsToDisplay })
 
   return (
     <div className="mt-2 p-0">
@@ -113,12 +113,11 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
               name="contact-selection"
               key={contact.id}
               label={contact.label}
-              value={contact.value.id}
+              value={contact.value}
               onValueChange={(val) => {
-                console.log(JSON.stringify(val))
                 setSelectedContact(val)
               }}
-              id={String(contact.id)}
+              id={`contact-${contact.id}`}
               defaultChecked={contact.value === selectedContact}
             />
           ))
@@ -138,19 +137,13 @@ const ContactSelectModal = ({ setToSendData, closeModal, amount, method }: Conta
                 const match = str.match(/-?\d+(\.\d+)?/);
                 return match ? Number(match[0]) : NaN;
               }
-              const supabase = createClient();
-              await supabase.from("invoice_pay_request").insert({
-                request_from: parseInt(selectedContact),
-                request_by: userData?.cubidData?.id,
-                amount_requested: extractDecimalFromString(amount)
-              })
-              insertSuccessNotification({
-                user_id: parseInt(selectedContact),
-                notification: `${amount} request by ${userData?.cubidData?.full_name}`
+              await createPaymentRequest({
+                requestFrom: Number.parseInt(selectedContact, 10),
+                amountRequested: extractDecimalFromString(amount),
+                appContext: { citySlug: "tcoin" },
               })
             }
             closeModal();
-            console.log({ selectedContact });
           }}
         >
           {method} {amount}

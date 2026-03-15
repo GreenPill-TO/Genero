@@ -15,6 +15,30 @@ const selectResponses = vi.hoisted(() => ({
 const updateCalls = vi.hoisted(
   () => [] as Array<{ table: string; payload: Record<string, unknown> }>
 );
+const edgeMocks = vi.hoisted(() => ({
+  getBiaList: vi.fn(async () => ({ bias: [], controls: [] })),
+  getBiaMappings: vi.fn(async () => ({ state: "empty", health: null })),
+  getBiaControls: vi.fn(async () => ({ controls: [] })),
+  createBia: vi.fn(async () => ({ bia: {} })),
+  saveBiaMappings: vi.fn(async () => ({ mappings: [] })),
+  saveBiaControls: vi.fn(async () => ({ controls: {} })),
+  getRedemptionRequests: vi.fn(async () => ({ requests: [] })),
+  approveRedemptionRequest: vi.fn(async () => ({ request: {} })),
+  settleRedemptionRequest: vi.fn(async () => ({ request: {}, settlement: {} })),
+  getGovernanceActions: vi.fn(async () => ({ actions: [] })),
+  getOnrampAdminRequests: vi.fn(async (): Promise<any> => ({
+    state: "empty",
+    setupMessage: null,
+    onRampRequests: [],
+    offRampRequests: [],
+    statuses: [],
+  })),
+  getAdminOnrampSessions: vi.fn(async () => ({ sessions: [] })),
+  retryOnrampSession: vi.fn(async () => ({ sessionId: "session-1", result: { skipped: false, status: "mint_complete" } })),
+  getVoucherCompatibilityRules: vi.fn(async () => ({ rules: [] })),
+  getVoucherMerchants: vi.fn(async () => ({ state: "empty", merchants: [] })),
+  saveVoucherCompatibilityRule: vi.fn(async () => ({ rule: {} })),
+}));
 
 const mockFrom = vi.hoisted(() =>
   vi.fn((table: string) => ({
@@ -57,6 +81,25 @@ vi.mock("react-toastify", () => ({
     error: vi.fn(),
   },
 }));
+vi.mock("@shared/lib/edge/biaClient", () => edgeMocks);
+vi.mock("@shared/lib/edge/redemptionsClient", () => ({
+  getRedemptionRequests: edgeMocks.getRedemptionRequests,
+  approveRedemptionRequest: edgeMocks.approveRedemptionRequest,
+  settleRedemptionRequest: edgeMocks.settleRedemptionRequest,
+}));
+vi.mock("@shared/lib/edge/governanceClient", () => ({
+  getGovernanceActions: edgeMocks.getGovernanceActions,
+}));
+vi.mock("@shared/lib/edge/onrampClient", () => ({
+  getOnrampAdminRequests: edgeMocks.getOnrampAdminRequests,
+  getAdminOnrampSessions: edgeMocks.getAdminOnrampSessions,
+  retryOnrampSession: edgeMocks.retryOnrampSession,
+}));
+vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
+  getVoucherCompatibilityRules: edgeMocks.getVoucherCompatibilityRules,
+  getVoucherMerchants: edgeMocks.getVoucherMerchants,
+  saveVoucherCompatibilityRule: edgeMocks.saveVoucherCompatibilityRule,
+}));
 
 import AdminDashboardPage from "./page";
 
@@ -87,21 +130,24 @@ describe("AdminDashboardPage", () => {
     });
     replaceMock.mockReset();
     fetchMock.mockReset();
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const url = typeof input === "string" ? input : input.toString();
-
-      if (url.includes("/api/admin/ramp-requests")) {
-        return createFetchResponse({
-          onRampRequests: selectResponses.interac_transfer.data,
-          offRampRequests: selectResponses.off_ramp_req.data,
-          statuses: selectResponses.ref_request_statuses.data,
-        });
-      }
-
-      return createFetchResponse({});
-    });
+    fetchMock.mockImplementation(async () => createFetchResponse({}));
     mockFrom.mockClear();
     updateCalls.length = 0;
+    edgeMocks.getBiaList.mockResolvedValue({ bias: [], controls: [] });
+    edgeMocks.getBiaMappings.mockResolvedValue({ state: "empty", health: null });
+    edgeMocks.getBiaControls.mockResolvedValue({ controls: [] });
+    edgeMocks.getRedemptionRequests.mockResolvedValue({ requests: [] });
+    edgeMocks.getGovernanceActions.mockResolvedValue({ actions: [] });
+    edgeMocks.getOnrampAdminRequests.mockImplementation(async () => ({
+      state: "ready",
+      setupMessage: null,
+      onRampRequests: selectResponses.interac_transfer.data,
+      offRampRequests: selectResponses.off_ramp_req.data,
+      statuses: selectResponses.ref_request_statuses.data,
+    }));
+    edgeMocks.getAdminOnrampSessions.mockResolvedValue({ sessions: [] });
+    edgeMocks.getVoucherCompatibilityRules.mockResolvedValue({ rules: [] });
+    edgeMocks.getVoucherMerchants.mockResolvedValue({ state: "empty", merchants: [] });
     const responses = getResponses();
     responses.interac_transfer = { data: [], error: null };
     responses.off_ramp_req = { data: [], error: null };
@@ -186,6 +232,23 @@ describe("AdminDashboardPage", () => {
     expect(screen.getByText(/lee@example.com/)).toBeTruthy();
     expect(screen.getByText(/1 awaiting review/i)).toBeTruthy();
     expect(screen.getByText(/1 in progress/i)).toBeTruthy();
+  });
+
+  it("shows setup-required guidance when cash ops read models are missing", async () => {
+    edgeMocks.getOnrampAdminRequests.mockResolvedValue({
+      state: "setup_required",
+      setupMessage: "Interac on-ramp operations view is not available yet for this app instance.",
+      onRampRequests: [],
+      offRampRequests: [],
+      statuses: [],
+    });
+
+    render(<AdminDashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Cash operations setup required/i)).toBeTruthy();
+      expect(screen.getByText(/Interac on-ramp operations view is not available yet/i)).toBeTruthy();
+    });
   });
 
   it("saves edits to on-ramp requests", async () => {

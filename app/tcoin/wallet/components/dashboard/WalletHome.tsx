@@ -10,7 +10,13 @@ import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
+import { getRecentPaymentRequestParticipants } from "@shared/lib/edge/paymentRequestsClient";
+import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
 import { createClient } from "@shared/lib/supabase/client";
+import {
+  listWalletPublicKeysForUser,
+  mapUserIdsByWallets,
+} from "@shared/lib/supabase/walletIdentities";
 import { BuyTcoinModal, TopUpModal } from "@tcoin/wallet/components/modals";
 import { ContributionsCard } from "./ContributionsCard";
 import { SendCard } from "./SendCard";
@@ -221,13 +227,10 @@ export function WalletHome({
 
     const loadMerchants = async () => {
       try {
-        const response = await fetch("/api/vouchers/merchants?citySlug=tcoin&scope=my_pool", {
-          credentials: "include",
+        const body = await getVoucherMerchants({
+          scope: "my_pool",
+          appContext: { citySlug: "tcoin" },
         });
-        const body = await response.json();
-        if (!response.ok) {
-          return;
-        }
         const rows = Array.isArray(body?.merchants) ? body.merchants : [];
         const normalized = rows
           .filter((row: any) => row && typeof row === "object" && row.available === true)
@@ -313,17 +316,7 @@ export function WalletHome({
           // Best effort only.
         }
 
-        const { data: myWalletRows } = await supabase
-          .from("wallet_list")
-          .select("public_key")
-          .eq("user_id", user_id);
-        const myWallets = (myWalletRows ?? [])
-          .map((row: any) =>
-            typeof row.public_key === "string" && row.public_key.trim() !== ""
-              ? row.public_key
-              : null
-          )
-          .filter((value: string | null): value is string => value != null);
+        const myWallets = await listWalletPublicKeysForUser(user_id, supabase);
         const myWalletSet = new Set(myWallets);
 
         if (myWallets.length > 0) {
@@ -374,21 +367,12 @@ export function WalletHome({
 
           const counterpartWallets = Array.from(walletLastSeen.keys());
           if (counterpartWallets.length > 0) {
-            const { data: counterpartWalletRows } = await supabase
-              .from("wallet_list")
-              .select("user_id, public_key")
-              .in("public_key", counterpartWallets);
-
-            const walletToUserId = new Map<string, number>();
+            const walletToUserId = await mapUserIdsByWallets(counterpartWallets, supabase);
             const userIds = new Set<number>();
-
-            (counterpartWalletRows ?? []).forEach((row: any) => {
-              const wallet =
-                typeof row.public_key === "string" ? row.public_key : null;
-              const userId = parseMaybeNumber(row.user_id);
-              if (!wallet || userId == null) return;
-              walletToUserId.set(wallet, userId);
-              userIds.add(userId);
+            walletToUserId.forEach((userId) => {
+              if (parseMaybeNumber(userId) != null) {
+                userIds.add(userId);
+              }
             });
 
             if (userIds.size > 0) {
@@ -421,53 +405,23 @@ export function WalletHome({
           }
         }
 
-        const { data: requestRows } = await supabase
-          .from("invoice_pay_request")
-          .select("request_by, request_from, created_at")
-          .or(`request_by.eq.${user_id},request_from.eq.${user_id}`)
-          .order("created_at", { ascending: false })
-          .limit(80);
+        try {
+          const paymentRequestRecents = await getRecentPaymentRequestParticipants({
+            appContext: { citySlug: "tcoin" },
+          });
 
-        const requestLatestByUser = new Map<number, string>();
-
-        (requestRows ?? []).forEach((row: any) => {
-          const requestBy = parseMaybeNumber(row.request_by);
-          const requestFrom = parseMaybeNumber(row.request_from);
-          const createdAt = typeof row.created_at === "string" ? row.created_at : null;
-          if (!createdAt) return;
-
-          const counterpart =
-            requestBy != null && requestBy !== user_id
-              ? requestBy
-              : requestFrom != null && requestFrom !== user_id
-                ? requestFrom
-                : null;
-
-          if (counterpart == null) return;
-          const existing = requestLatestByUser.get(counterpart);
-          if (!existing || toTimestamp(createdAt) > toTimestamp(existing)) {
-            requestLatestByUser.set(counterpart, createdAt);
-          }
-        });
-
-        if (requestLatestByUser.size > 0) {
-          const userIds = Array.from(requestLatestByUser.keys());
-          const { data: requestUserRows } = await supabase
-            .from("users")
-            .select("id, full_name, username, profile_image_url")
-            .in("id", userIds);
-
-          (requestUserRows ?? []).forEach((row: any) => {
-            const id = parseMaybeNumber(row.id);
-            if (id == null || id === user_id) return;
+          paymentRequestRecents.participants.forEach((participant) => {
+            if (participant.id === user_id) return;
             upsertRecent(recentsByUser, {
-              id,
-              full_name: row.full_name ?? null,
-              username: row.username ?? null,
-              profile_image_url: row.profile_image_url ?? null,
-              lastInteractionAt: requestLatestByUser.get(id) ?? null,
+              id: participant.id,
+              full_name: participant.fullName,
+              username: participant.username,
+              profile_image_url: participant.profileImageUrl,
+              lastInteractionAt: participant.lastInteractionAt,
             });
           });
+        } catch {
+          // Best effort only.
         }
 
         const sorted = Array.from(recentsByUser.values())

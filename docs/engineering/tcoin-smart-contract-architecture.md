@@ -1,4 +1,4 @@
-The following document is based on Genero/docs/tcoin-smart-contract-prd.md. The main rule here is:
+The following document is based on Genero/docs/engineering/tcoin-smart-contract-prd.md. The main rule here is:
 
 **separate registry/state from pricing from mint/redeem from governance from token math.**
 

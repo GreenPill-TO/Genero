@@ -14,7 +14,7 @@ vi.mock("@yudiel/react-qr-scanner", () => ({
   },
 }));
 vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
-  useControlVariables: () => ({ data: { exchange_rate: 1 }, isLoading: false, error: null }),
+  useControlVariables: () => ({ exchangeRate: 1, state: "ready", loading: false, error: null }),
 }));
 
 describe("QrScanModal", () => {

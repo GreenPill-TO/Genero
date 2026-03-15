@@ -18,6 +18,9 @@ vi.mock("@shared/api/hooks/useAuth", () => ({
 vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
   useControlVariables: () => ({
     exchangeRate: null,
+    state: "setup_required",
+    loading: false,
+    error: null,
   }),
 }));
 

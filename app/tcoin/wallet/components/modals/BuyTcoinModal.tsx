@@ -3,8 +3,14 @@ import { LuRefreshCcw } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
+import {
+  createOnrampSession,
+  getOnrampSession,
+  touchOnrampSessions,
+  updateOnrampSession,
+} from "@shared/lib/edge/onrampClient";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
-import type { CreateOnrampSessionResponse, OnrampCheckoutSession } from "@shared/lib/onramp/types";
+import type { OnrampCheckoutSession } from "@shared/lib/onramp/types";
 
 type BuyTcoinModalProps = {
   closeModal: () => void;
@@ -93,7 +99,7 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
 
   const pollTimerRef = useRef<number | null>(null);
   const previousStatusRef = useRef<OnrampCheckoutSession["status"] | null>(null);
-  const { exchangeRate } = useControlVariables();
+  const { exchangeRate, state: exchangeRateState } = useControlVariables();
 
   const safeExchangeRate =
     typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
@@ -209,43 +215,21 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
     setShowTechnicalError(false);
 
     try {
-      const response = await fetch("/api/onramp/session", {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
+      const body = await createOnrampSession(
+        {
           fiatAmount: Number(checkoutFiatAmount.toFixed(2)),
           fiatCurrency: "CAD",
           countryCode: normalizedCountryCode,
-          citySlug: "tcoin",
-        }),
-      });
+        },
+        { citySlug: "tcoin" }
+      );
 
-      const body = (await response.json()) as
-        | CreateOnrampSessionResponse
-        | { error?: string; fallback?: string; technicalError?: string; errorCode?: string };
-
-      if (!response.ok) {
-        const apiError = "error" in body && typeof body.error === "string"
-          ? body.error
-          : "Could not create checkout session.";
-        const technical = "technicalError" in body && typeof body.technicalError === "string"
-          ? body.technicalError
-          : apiError;
-        const userMessage = toUserFacingCheckoutError(apiError);
-
-        setCheckoutError({
-          message: userMessage,
-          technical: technical !== userMessage ? technical : null,
-        });
-        setShowTechnicalError(false);
-        toast.error(userMessage);
-        return;
-      }
-
-      if (!("sessionId" in body) || !("widgetUrl" in body)) {
-        const reason = "Unexpected checkout response from server.";
-        setCheckoutError({ message: reason, technical: JSON.stringify(body) });
+      if (body.state !== "ready") {
+        const reason =
+          typeof body.message === "string" && body.message ? body.message : "Buy TCOIN checkout is currently unavailable.";
+        const technical =
+          body.state === "misconfigured" && typeof body.technicalError === "string" ? body.technicalError : null;
+        setCheckoutError({ message: reason, technical });
         setShowTechnicalError(false);
         toast.error(reason);
         return;
@@ -255,12 +239,9 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
       setWidgetUrl(body.widgetUrl);
       toast.info("Checkout session created. Complete payment in the embedded widget.");
 
-      await fetch(`/api/onramp/session/${body.sessionId}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ citySlug: "tcoin", action: "widget_opened" }),
-      }).catch(() => undefined);
+      await updateOnrampSession(body.sessionId, { action: "widget_opened" }, { citySlug: "tcoin" }).catch(
+        () => undefined
+      );
     } catch (error) {
       const technical = error instanceof Error ? error.message : "Failed to create checkout session.";
       const userMessage = toUserFacingCheckoutError(technical);
@@ -289,24 +270,12 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
     const poll = async () => {
       try {
         setIsPolling(true);
-        const [statusResp] = await Promise.all([
-          fetch(`/api/onramp/session/${sessionId}?citySlug=tcoin`, {
-            credentials: "include",
-          }),
-          fetch("/api/onramp/touch", {
-            method: "POST",
-            credentials: "include",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ citySlug: "tcoin" }),
-          }).catch(() => undefined),
+        const [statusBody] = await Promise.all([
+          getOnrampSession(sessionId, { citySlug: "tcoin" }),
+          touchOnrampSessions({ citySlug: "tcoin" }).catch(() => undefined),
         ]);
 
-        const statusBody = (await statusResp.json()) as {
-          session?: OnrampCheckoutSession;
-          error?: string;
-        };
-
-        if (!statusResp.ok || !statusBody.session) {
+        if (!statusBody.session) {
           return;
         }
 
@@ -401,9 +370,9 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
                 inputMode="decimal"
               />
               <p className="text-xs text-muted-foreground">{conversionPreview}</p>
-              {inputMode === "tcoin" && safeExchangeRate <= 0 && (
+              {inputMode === "tcoin" && exchangeRateState !== "ready" && (
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Live exchange rate is unavailable right now. You can switch to CAD input to continue.
+                  Live exchange rate is unavailable right now. The CAD preview is using a fallback estimate.
                 </p>
               )}
             </div>

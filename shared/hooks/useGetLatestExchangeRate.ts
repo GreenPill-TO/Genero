@@ -1,73 +1,76 @@
 import { useEffect, useState } from "react";
-import { createClient } from "@shared/lib/supabase/client";
+import { getCurrentCitycoinRate } from "@shared/lib/edge/citycoinMarketClient";
+import { resolveAppScope } from "@shared/lib/edge/appScope";
+import type { CitycoinRateState } from "@shared/lib/edge/citycoinMarket";
 
-interface ControlVariable {
-  value?: number;
-}
+const FALLBACK_EXCHANGE_RATE = 3.35;
 
 interface UseControlVariablesOptions {
   isBrowser?: boolean;
+  citySlug?: string | null;
 }
 
 export function useControlVariables(options?: UseControlVariablesOptions) {
   const isBrowser = options?.isBrowser ?? typeof window !== "undefined";
-  const [data, setData] = useState<ControlVariable | null>(null);
+  const [state, setState] = useState<CitycoinRateState>("empty");
+  const [exchangeRate, setExchangeRate] = useState<number>(FALLBACK_EXCHANGE_RATE);
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState<boolean>(isBrowser);
 
   useEffect(() => {
     let isActive = true;
 
-    async function fetchControlVariables() {
+    async function fetchExchangeRate() {
       try {
-        const supabase = createClient();
-        const { data: controlData, error } = await supabase
-          .from("control_variables")
-          .select("*")
-          .match({ variable: "exchange_rate" });
+        const appContext = resolveAppScope(
+          options?.citySlug ? { citySlug: options.citySlug } : undefined
+        );
+        const response = await getCurrentCitycoinRate({
+          citySlug: appContext.citySlug,
+          appContext,
+        });
 
         if (!isActive) {
           return;
         }
 
-        const canDispatch = typeof window !== "undefined";
-
-        if (error) {
-          if (canDispatch) {
-            setError(error);
-          }
-          return;
-        }
-
-        if (canDispatch) {
-          setData(controlData?.[0] ?? null);
-        }
+        setState(response.state);
+        setExchangeRate(
+          response.state === "ready" &&
+            typeof response.exchangeRate === "number" &&
+            Number.isFinite(response.exchangeRate) &&
+            response.exchangeRate > 0
+            ? response.exchangeRate
+            : FALLBACK_EXCHANGE_RATE
+        );
+        setError(null);
       } catch (caughtError) {
         if (!isActive) {
           return;
         }
-        if (typeof window !== "undefined") {
-          setError(caughtError);
-        }
+        setState("setup_required");
+        setExchangeRate(FALLBACK_EXCHANGE_RATE);
+        setError(caughtError);
       } finally {
-        if (isActive && isBrowser && typeof window !== "undefined") {
+        if (isActive) {
           setLoading(false);
         }
       }
     }
 
     if (!isBrowser) {
+      setLoading(false);
       return () => {
         isActive = false;
       };
     }
 
-    fetchControlVariables();
+    void fetchExchangeRate();
 
     return () => {
       isActive = false;
     };
-  }, [isBrowser]);
+  }, [isBrowser, options?.citySlug]);
 
-  return { exchangeRate: data?.value ?? 3.35, error, loading };
+  return { exchangeRate, state, error, loading };
 }

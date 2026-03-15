@@ -103,6 +103,7 @@ contract CityImplementationRegistryTest is Test {
             ttc: makeAddr("ttc"),
             cad: makeAddr("cad"),
             orchestrator: makeAddr("orchestrator"),
+            oracleRouter: makeAddr("oracle-router"),
             voting: makeAddr("voting")
         });
     }

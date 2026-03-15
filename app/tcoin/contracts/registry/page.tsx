@@ -22,7 +22,8 @@ export default function RegistryPage() {
     ttc: "0x0000000000000000000000000000000000000002",
     cad: "0x0000000000000000000000000000000000000003",
     orchestrator: "0x0000000000000000000000000000000000000004",
-    voting: "0x0000000000000000000000000000000000000005",
+    oracleRouter: "0x0000000000000000000000000000000000000005",
+    voting: "0x0000000000000000000000000000000000000006",
     metadataURI: "https://example.org/deployments/tcoin/v-next.json",
   });
   const [message, setMessage] = useState<string | null>(null);
@@ -79,6 +80,7 @@ export default function RegistryPage() {
           ttc: registerInput.ttc as `0x${string}`,
           cad: registerInput.cad as `0x${string}`,
           orchestrator: registerInput.orchestrator as `0x${string}`,
+          oracleRouter: registerInput.oracleRouter as `0x${string}`,
           voting: registerInput.voting as `0x${string}`,
         },
         metadataURI: registerInput.metadataURI,

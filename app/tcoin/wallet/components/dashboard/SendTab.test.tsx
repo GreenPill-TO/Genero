@@ -18,7 +18,7 @@ vi.mock("@shared/api/hooks/useAuth", () => ({
 }));
 
 vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
-  useControlVariables: () => ({ exchangeRate: 1 }),
+  useControlVariables: () => ({ exchangeRate: 1, state: "ready", loading: false, error: null }),
 }));
 
 vi.mock("@shared/hooks/useSendMoney", () => ({
@@ -36,86 +36,79 @@ vi.mock("@shared/hooks/useTokenBalance", () => ({
 const invoiceRequests = [
   {
     id: 1,
-    amount_requested: 12,
-    request_from: 42,
-    request_by: 99,
+    amountRequested: 12,
+    requestFrom: 42,
+    requestBy: 99,
     status: "pending",
-    created_at: "2024-05-01T00:00:00Z",
-    is_active: true,
+    createdAt: "2024-05-01T00:00:00Z",
+    isActive: true,
+    isOpen: true,
+    requesterFullName: "Requester One",
+    requesterUsername: "requester",
+    requesterProfileImageUrl: null,
+    requesterWalletPublicKey: "0xwallet",
   },
   {
     id: 2,
-    amount_requested: 0,
-    request_from: 42,
-    request_by: 100,
+    amountRequested: 0,
+    requestFrom: 42,
+    requestBy: 100,
     status: "pending",
-    created_at: "2024-06-01T00:00:00Z",
-    is_active: true,
+    createdAt: "2024-06-01T00:00:00Z",
+    isActive: true,
+    isOpen: true,
+    requesterFullName: "Requester Two",
+    requesterUsername: "variable",
+    requesterProfileImageUrl: null,
+    requesterWalletPublicKey: "0xwallet2",
   },
   {
     id: 3,
-    amount_requested: 5,
-    request_from: 42,
-    request_by: 101,
+    amountRequested: 5,
+    requestFrom: 42,
+    requestBy: 101,
     status: "pending",
-    created_at: "2024-07-01T00:00:00Z",
-    is_active: false,
+    createdAt: "2024-07-01T00:00:00Z",
+    isActive: false,
+    isOpen: false,
+    requesterFullName: "Requester Three",
+    requesterUsername: "hidden",
+    requesterProfileImageUrl: null,
+    requesterWalletPublicKey: "0xwallet3",
   },
 ];
-const requesterRows = [
-  {
-    id: 99,
-    full_name: "Requester One",
-    username: "requester",
-    profile_image_url: null,
-  },
-  {
-    id: 100,
-    full_name: "Requester Two",
-    username: "variable",
-    profile_image_url: null,
-  },
-];
-const walletRows = [
-  { user_id: 99, public_key: "0xwallet" },
-  { user_id: 100, public_key: "0xwallet2" },
-];
-const updateEqMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
-const updateMock = vi.fn(() => ({ eq: updateEqMock }));
+const dismissPaymentRequestMock = vi.hoisted(() => vi.fn(() => Promise.resolve({ request: { id: 1 } })));
+const markPaymentRequestPaidMock = vi.hoisted(() => vi.fn(() => Promise.resolve({ request: { id: 1, status: "paid" } })));
+const getIncomingPaymentRequestsMock = vi.hoisted(() =>
+  vi.fn(() => Promise.resolve({ citySlug: "tcoin", requests: invoiceRequests }))
+);
+
+vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
+  dismissPaymentRequest: dismissPaymentRequestMock,
+  markPaymentRequestPaid: markPaymentRequestPaidMock,
+  getIncomingPaymentRequests: getIncomingPaymentRequestsMock,
+}));
 
 vi.mock("@shared/lib/supabase/client", () => ({
   createClient: () => ({
     from: (table: string) => {
-      if (table === "invoice_pay_request") {
-        return {
-          select: () => {
-            const builder: any = {
-              eq: () => builder,
-              order: () =>
-                Promise.resolve({ data: invoiceRequests, error: null }),
-            };
-            return builder;
-          },
-          update: updateMock,
-        };
-      }
-
       if (table === "users") {
         return {
           select: () => ({
-            in: (_column: string, values: any[]) => {
-              const ids = values.map((value) => Number(value));
-              const matches = requesterRows.filter((row) => ids.includes(row.id));
-              return Promise.resolve({ data: matches, error: null });
-            },
             eq: (_column: string, value: any) => ({
               single: () => {
-                const id = Number(value);
-                const match = requesterRows.find((row) => row.id === id) ?? null;
-                return Promise.resolve({ data: match, error: null });
+                return Promise.resolve({
+                  data: {
+                    id: Number(value),
+                    full_name: "Requester Fallback",
+                    username: "fallback",
+                    profile_image_url: null,
+                  },
+                  error: null,
+                });
               },
             }),
-            match: () => Promise.resolve({ data: requesterRows, error: null }),
+            match: () => Promise.resolve({ data: [], error: null }),
           }),
         };
       }
@@ -123,16 +116,12 @@ vi.mock("@shared/lib/supabase/client", () => ({
       if (table === "wallet_list") {
         return {
           select: () => ({
-            in: (_column: string, values: any[]) => {
-              const ids = values.map((value) => Number(value));
-              const matches = walletRows.filter((row) => ids.includes(Number(row.user_id)));
-              return Promise.resolve({ data: matches, error: null });
-            },
             eq: (_column: string, value: any) => ({
               single: () => {
-                const id = Number(value);
-                const match = walletRows.find((row) => Number(row.user_id) === id) ?? null;
-                return Promise.resolve({ data: match, error: null });
+                return Promise.resolve({
+                  data: { public_key: `0xwallet-${String(value)}` },
+                  error: null,
+                });
               },
             }),
           }),
@@ -176,8 +165,9 @@ import { SendTab } from "./SendTab";
 afterEach(() => {
   cleanup();
   sendCardProps = undefined;
-  updateMock.mockReset();
-  updateEqMock.mockReset();
+  dismissPaymentRequestMock.mockClear();
+  markPaymentRequestPaidMock.mockClear();
+  getIncomingPaymentRequestsMock.mockClear();
   useTokenBalanceMock.mockClear();
 });
 
@@ -308,8 +298,10 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    expect(updateMock).toHaveBeenCalledWith({ is_active: false });
-    expect(updateEqMock).toHaveBeenCalledWith("id", 1);
+    expect(dismissPaymentRequestMock).toHaveBeenCalledWith({
+      requestId: 1,
+      appContext: { citySlug: "tcoin" },
+    });
   });
 
   it("marks the selected request as paid when payment completes", async () => {
@@ -339,13 +331,11 @@ describe("SendTab", () => {
       });
     });
 
-    expect(updateMock).toHaveBeenCalledWith({
-      status: "paid",
-      paid_at: expect.any(String),
-      transaction_id: 77,
-      is_active: false,
+    expect(markPaymentRequestPaidMock).toHaveBeenCalledWith({
+      requestId: 1,
+      transactionId: 77,
+      appContext: { citySlug: "tcoin" },
     });
-    expect(updateEqMock).toHaveBeenCalledWith("id", 1);
   });
 
   it("extracts the transaction id from transfer metadata when not provided", async () => {
@@ -374,12 +364,10 @@ describe("SendTab", () => {
       });
     });
 
-    expect(updateMock).toHaveBeenCalledWith({
-      status: "paid",
-      paid_at: expect.any(String),
-      transaction_id: 88,
-      is_active: false,
+    expect(markPaymentRequestPaidMock).toHaveBeenCalledWith({
+      requestId: 1,
+      transactionId: 88,
+      appContext: { citySlug: "tcoin" },
     });
-    expect(updateEqMock).toHaveBeenCalledWith("id", 1);
   });
 });

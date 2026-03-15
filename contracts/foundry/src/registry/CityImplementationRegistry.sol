@@ -9,6 +9,7 @@ contract CityImplementationRegistry is Ownable {
         address ttc;
         address cad;
         address orchestrator;
+        address oracleRouter;
         address voting;
     }
 
@@ -124,6 +125,7 @@ contract CityImplementationRegistry is Ownable {
         if (contracts.ttc == address(0)) revert InvalidContractAddress("TTC");
         if (contracts.cad == address(0)) revert InvalidContractAddress("CAD");
         if (contracts.orchestrator == address(0)) revert InvalidContractAddress("ORCHESTRATOR");
+        if (contracts.oracleRouter == address(0)) revert InvalidContractAddress("ORACLE_ROUTER");
         if (contracts.voting == address(0)) revert InvalidContractAddress("VOTING");
     }
 }

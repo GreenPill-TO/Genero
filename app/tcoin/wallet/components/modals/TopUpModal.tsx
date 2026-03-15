@@ -137,7 +137,7 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
     }
   };
 
-  const { exchangeRate } = useControlVariables();
+  const { exchangeRate, state: exchangeRateState } = useControlVariables();
   const parsedAmount = Number.parseFloat(amount);
   const amountInCad = calculateFiatAmount(parsedAmount, exchangeRate);
 
@@ -159,7 +159,12 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
               <Button onClick={handleNext}>Next</Button>
             </div>
           </div>
-          {Boolean(amount) && <div className="mb-4">{amountInCad} CAD</div>}
+          {Boolean(amount) && <div className="mb-2">{amountInCad} CAD</div>}
+          {exchangeRateState !== "ready" && (
+            <p className="mb-4 text-xs text-amber-700 dark:text-amber-300">
+              Live exchange rate is unavailable. CAD values are using a fallback estimate.
+            </p>
+          )}
         </div>
       )}
 
@@ -172,6 +177,11 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
           <p>
             <strong>Amount in CAD:</strong> {amountInCad}
           </p>
+          {exchangeRateState !== "ready" && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              CAD values are using a fallback estimate until the live city rate is indexed.
+            </p>
+          )}
           <p>
             <strong>Reference Code:</strong> {refCode}
           </p>

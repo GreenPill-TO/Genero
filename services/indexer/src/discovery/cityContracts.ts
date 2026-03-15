@@ -29,6 +29,7 @@ function toContractRecord(record: Record<string, unknown>): Partial<Record<Contr
     ["TTC", record.ttc],
     ["CAD", record.cad],
     ["ORCHESTRATOR", record.orchestrator],
+    ["ORACLE_ROUTER", record.oracleRouter],
     ["VOTING", record.voting],
   ];
 
@@ -62,6 +63,7 @@ export async function resolveCityContractSet(options: {
           TTC: activeContracts.contracts.TTC,
           CAD: activeContracts.contracts.CAD,
           ORCHESTRATOR: activeContracts.contracts.ORCHESTRATOR,
+          ORACLE_ROUTER: activeContracts.contracts.ORACLE_ROUTER,
           VOTING: activeContracts.contracts.VOTING,
         },
         metadataURI: activeContracts.metadataURI,
@@ -75,7 +77,7 @@ export async function resolveCityContractSet(options: {
     .schema("indexer")
     .from("city_contract_overrides")
     .select(
-      "city_version,tcoin_address,ttc_address,cad_address,orchestrator_address,voting_address,metadata_uri"
+      "city_version,tcoin_address,ttc_address,cad_address,orchestrator_address,oracle_router_address,voting_address,metadata_uri"
     )
     .eq("city_slug", normalizedSlug)
     .eq("chain_id", chainId)
@@ -96,6 +98,7 @@ export async function resolveCityContractSet(options: {
     ttc: data.ttc_address,
     cad: data.cad_address,
     orchestrator: data.orchestrator_address,
+    oracleRouter: data.oracle_router_address,
     voting: data.voting_address,
   });
 

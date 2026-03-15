@@ -8,10 +8,10 @@ const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn());
 const openModalMock = vi.hoisted(() => vi.fn());
 const closeModalMock = vi.hoisted(() => vi.fn());
 
-const ownerWalletRows = [{ public_key: "0xabc", wallet_key_id: 1 }];
-const contactWalletMap = new Map<number, Array<{ public_key: string; wallet_key_id: number }>>([
-  [11, [{ public_key: "0x1111", wallet_key_id: 11 }]],
-  [12, [{ public_key: "0x2222", wallet_key_id: 12 }]],
+const ownerWalletRows = [{ public_key: "0xabc", wallet_key_id: "1" }];
+const contactWalletMap = new Map<number, Array<{ public_key: string; wallet_key_id: string }>>([
+  [11, [{ public_key: "0x1111", wallet_key_id: "11" }]],
+  [12, [{ public_key: "0x2222", wallet_key_id: "12" }]],
 ]);
 const actEntryRows = [
   {
@@ -45,17 +45,38 @@ vi.mock("@shared/contexts/ModalContext", () => ({
 const createClientMock = vi.hoisted(() =>
   vi.fn(() => ({
     from: (table: string) => {
-      if (table === "wallet_list") {
+      if (table === "v_wallet_identities_v1") {
         return {
           select: () => ({
             eq: (_column: string, value: any) => {
               const id = Number(value);
-              const data =
-                id === 1
-                  ? ownerWalletRows
-                  : contactWalletMap.get(id) ?? [];
-              return Promise.resolve({ data, error: null });
+              const data = id === 1 ? ownerWalletRows : contactWalletMap.get(id) ?? [];
+              return Promise.resolve({
+                data: data.map((row) => ({
+                  user_id: id,
+                  public_key: row.public_key,
+                  wallet_key_id: row.wallet_key_id,
+                  wallet_ready: true,
+                  has_encrypted_share: true,
+                })),
+                error: null,
+              });
             },
+            in: (_column: string, values: any[]) =>
+              Promise.resolve({
+                data: values.flatMap((value) => {
+                  const id = Number(value);
+                  const rows = id === 1 ? ownerWalletRows : contactWalletMap.get(id) ?? [];
+                  return rows.map((row) => ({
+                    user_id: id,
+                    public_key: row.public_key,
+                    wallet_key_id: row.wallet_key_id,
+                    wallet_ready: true,
+                    has_encrypted_share: true,
+                  }));
+                }),
+                error: null,
+              }),
           }),
         };
       }
@@ -184,20 +205,9 @@ describe("ContactsTab", () => {
     expect(openModalMock).toHaveBeenCalled();
     const modalArgs = openModalMock.mock.calls.at(-1)![0];
     const modal = render(modalArgs.content as React.ReactElement);
-    const getByCombinedText = (needle: string) =>
-      modal.getByText((_content, element) => {
-        if (!element || !(element instanceof HTMLElement)) {
-          return false;
-        }
-        if (element.tagName !== "SPAN") {
-          return false;
-        }
-        const text = element.textContent?.replace(/\s+/g, " ").trim();
-        return text?.includes(needle) ?? false;
-      });
 
-    expect(getByCombinedText("Received 5.00 TCOIN")).toBeTruthy();
-    expect(getByCombinedText("Sent 2.00 TCOIN")).toBeTruthy();
+    expect(modal.getByText("Received 5.00 TCOIN")).toBeTruthy();
+    expect(modal.getByText("Sent 2.00 TCOIN")).toBeTruthy();
     modal.unmount();
   });
 

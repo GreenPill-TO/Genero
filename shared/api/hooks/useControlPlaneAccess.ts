@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { getControlPlaneAccess } from "@shared/lib/edge/controlPlaneClient";
+import { resolveAppScope } from "@shared/lib/edge/appScope";
 
 export type ControlPlaneAccess = {
   citySlug: string;
@@ -10,26 +12,7 @@ export type ControlPlaneAccess = {
 };
 
 async function fetchControlPlaneAccess(citySlug: string): Promise<ControlPlaneAccess> {
-  const response = await fetch(`/api/control-plane/access?citySlug=${encodeURIComponent(citySlug)}`, {
-    credentials: "include",
-  });
-
-  let body: unknown = null;
-  try {
-    body = await response.json();
-  } catch {
-    body = null;
-  }
-
-  if (!response.ok) {
-    const message =
-      typeof body === "object" && body !== null && "error" in body && typeof (body as { error?: unknown }).error === "string"
-        ? (body as { error: string }).error
-        : `Request failed (${response.status})`;
-    throw new Error(message);
-  }
-
-  return body as ControlPlaneAccess;
+  return getControlPlaneAccess(resolveAppScope({ citySlug }));
 }
 
 export function useControlPlaneAccess(citySlug = "tcoin", enabled = true) {

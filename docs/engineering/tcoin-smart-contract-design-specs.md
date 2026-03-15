@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document translates the revised TCOIN PRD (Genero/docs/tcoin-smart-contract-prd.md) and Architecture (Genero/docs/tcoin-smart-contract-architecture.md) into a contract-by-contract design spec.
+This document translates the revised TCOIN PRD (Genero/docs/engineering/tcoin-smart-contract-prd.md) and Architecture (Genero/docs/engineering/tcoin-smart-contract-architecture.md) into a contract-by-contract design spec.
 
 The goals are:
 

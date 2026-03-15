@@ -56,11 +56,25 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Receive tab surfaces "Payment requests I have sent" with delete buttons that deactivate the underlying requests.
 - Newly created users land on `/welcome`, which suggests a unique username, indicates when Continue is blocked, and confirms phone verification inline.
 - Wallet user-managed settings are now backed by one shared app-scoped user-settings service, so `/welcome`, Edit Profile, theme selection, charity selection, and BIA preferences all read from the same normalized bootstrap payload and save through the same contract.
+- Wallet app-scoped operational flows are shifting to the same edge-function model: merchant onboarding, city-manager approvals, BIA administration, governance feeds, redemption requests, voucher preference writes, control-plane access checks, and contact submissions now have canonical Supabase edge-function backends scoped by `ref_app_instances`.
 - Wallet onboarding is now resumable: first-time users see a welcome screen, returning incomplete users can resume or reset their draft, and the step order is Welcome → User details → Profile picture → Community settings → Wallet setup → Final welcome.
 - Theme selection is stored per app instance and follows the user across devices, while still using a local cached value for first paint before authenticated bootstrap completes.
 - Charity selection is backed by a shared Supabase catalogue so wallet onboarding and settings modals always offer seeded local charity options instead of failing closed when the app profile lacks prior charity data.
 - In development and local environments only, wallet onboarding step 5 exposes a Skip action so engineers can bypass wallet creation when WebAuthn or Cubid origin requirements are not available on the current host.
 - Wallet profile pictures are uploaded into a dedicated Supabase Storage bucket and the onboarding photo step plus Edit Profile now use the same storage path and public URL generation.
+- Buy TCOIN checkout now treats wallet readiness as an explicit product state: if `wallet_list.public_key` is missing, the user is told to finish wallet setup before checkout can start, rather than silently falling back to another wallet field.
+- Wallet-facing operational reads now use one canonical wallet identity model backed by `wallet_list.public_key`, so contacts, recents, transaction history, send-money recovery, and checkout readiness no longer depend on direct `wallet_list` table shape in the browser.
+- Wallet pages that previously depended on `/api/control-plane/access`, `/api/user_requests`, `/api/merchant/application/*`, `/api/bias/*`, `/api/stores*`, `/api/city-manager/stores*`, `/api/redemptions/*`, and `/api/vouchers/preferences` now talk to typed edge clients instead; the old Next routes remain temporarily for compatibility with non-wallet or not-yet-migrated consumers.
+- Wallet buy-checkout now uses the canonical `onramp` edge function for session creation, checkout-status polling, widget-open tracking, and user-triggered settlement touches instead of the older `/api/onramp/*` transport.
+- Wallet admin, merchant, and home screens now read BIA mapping health and voucher merchant liquidity through stable app-facing read models instead of depending on raw indexer-table shapes.
+- Wallet and SpareChange no longer depend on a hidden `control_variables` table for CAD conversion. They now resolve a city-scoped exchange rate through the `citycoin-market` edge function, which reads the latest indexed oracle snapshot for the active city coin.
+- Wallet admin reads legacy Interac on-ramp and off-ramp request data through the `onramp/admin/requests` edge path, reads checkout sessions through `onramp/admin/sessions`, and submits manual settlement retries through `onramp/session/:id/retry`.
+- When admin infrastructure is not fully configured yet, the dashboard now distinguishes setup-required states from true errors for cash operations, BIA mapping health, and voucher liquidity read models.
+- When a live city exchange rate is not indexed yet, wallet conversion UI uses a fallback display estimate while clearly indicating that the live rate is unavailable.
+- Wallet home, merchant dashboard, and admin dashboard now read voucher merchant liquidity and voucher compatibility through the `voucher-preferences` edge function rather than direct Next API routes.
+- Compatibility Next routes remain available for non-wallet consumers, but they now proxy to edge functions and are no longer the source of business logic.
+- Wallet payment requests are now city-scoped cross-app objects: creating a request in Wallet or SpareChange writes the same city-level queue, while the originating `app_instance_id` is retained only as metadata about where that request was created.
+- Wallet send/receive flows and contact profile requests no longer read or write `invoice_pay_request` directly from the browser; they use the `payment-requests` edge function for incoming queues, outgoing queues, recents, creation, dismissal, cancellation, and paid-state updates.
 
 ### 2. SpareChange
 
@@ -69,6 +83,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - Panhandlers, artists, and nonprofits use static QR codes to receive donations.
 - Donors scan and pay instantly via the wallet.
 - Sign-in modal mirrors the wallet with six auto-advancing verification inputs.
+- SpareChange request flows now use the same city-scoped `payment-requests` backend as Wallet, so targeted requests created in one app appear in the other when both are operating on the same city coin.
 
 ## Key User Flows
 

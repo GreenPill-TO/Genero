@@ -9,7 +9,9 @@ import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
 export interface QrScanModalProps {
   /** Callback to close the modal */
   closeModal: () => void;
-  setToSendData: any;
+  setToSendData?: any;
+  setTcoin?: (value: string) => void;
+  setCad?: (value: string) => void;
 }
 
 function extractDecimalFromString(str: string): number {
@@ -102,8 +104,8 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
 
       setToSendData(userDataFromSupabaseTable?.[0]);
       if (rest?.qrTcoinAmount) {
-        setTcoin(rest?.qrTcoinAmount);
-        setCad(extractDecimalFromString(rest?.qrTcoinAmount) * exchangeRate);
+        setTcoin?.(rest?.qrTcoinAmount);
+        setCad?.(String(extractDecimalFromString(rest?.qrTcoinAmount) * exchangeRate));
       }
     }
 

@@ -161,12 +161,12 @@ export function ReceiveCard({
   };
 
   const shareableRequests = React.useMemo(
-    () => openRequests.filter((request) => request.request_from == null),
+    () => openRequests.filter((request) => request.requestFrom == null),
     [openRequests]
   );
 
   const targetedRequests = React.useMemo(
-    () => openRequests.filter((request) => request.request_from != null),
+    () => openRequests.filter((request) => request.requestFrom != null),
     [openRequests]
   );
 
@@ -259,10 +259,10 @@ export function ReceiveCard({
     }
 
     if (requestContact.id != null) {
-      let existingRequestCount = 0;
-      targetedRequests.forEach((request) => {
-        if (request.request_from == null) return;
-        const recipientId = Number(request.request_from);
+        let existingRequestCount = 0;
+        targetedRequests.forEach((request) => {
+        if (request.requestFrom == null) return;
+        const recipientId = Number(request.requestFrom);
         if (Number.isFinite(recipientId) && recipientId === requestContact.id) {
           existingRequestCount += 1;
         }
@@ -536,7 +536,7 @@ export function ReceiveCard({
                   Shareable
                 </p>
                 {shareableRequests.map((request) => {
-                  const amountValue = normaliseAmount(request.amount_requested);
+                  const amountValue = normaliseAmount(request.amountRequested);
                   const { label, note } = describeRequestAmount(amountValue);
                   return (
                     <div
@@ -548,9 +548,9 @@ export function ReceiveCard({
                         {note && (
                           <p className="text-xs text-muted-foreground">{note}</p>
                         )}
-                        {request.created_at && (
+                        {request.createdAt && (
                           <p className="text-xs text-muted-foreground">
-                            Saved {new Date(request.created_at).toLocaleDateString("en-CA")}
+                            Saved {new Date(request.createdAt).toLocaleDateString("en-CA")}
                           </p>
                         )}
                       </div>
@@ -581,8 +581,8 @@ export function ReceiveCard({
                   To Contacts
                 </p>
                 {targetedRequests.map((request) => {
-                  const amountValue = normaliseAmount(request.amount_requested);
-                  const recipientLabel = getContactLabel(request.request_from ?? null);
+                  const amountValue = normaliseAmount(request.amountRequested);
+                  const recipientLabel = getContactLabel(request.requestFrom ?? null);
                   const { label, note } = describeRequestAmount(amountValue);
                   return (
                     <div

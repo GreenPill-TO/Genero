@@ -3,6 +3,31 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlPlaneAccess } from "@shared/api/hooks/useControlPlaneAccess";
+import {
+  createBia,
+  getBiaControls,
+  getBiaList,
+  getBiaMappings,
+  saveBiaControls,
+  saveBiaMappings,
+} from "@shared/lib/edge/biaClient";
+import { getGovernanceActions } from "@shared/lib/edge/governanceClient";
+import {
+  approveRedemptionRequest,
+  getRedemptionRequests,
+  settleRedemptionRequest,
+} from "@shared/lib/edge/redemptionsClient";
+import {
+  getAdminOnrampSessions,
+  getOnrampAdminRequests,
+  retryOnrampSession,
+} from "@shared/lib/edge/onrampClient";
+import {
+  getVoucherCompatibilityRules,
+  getVoucherMerchants,
+  saveVoucherCompatibilityRule,
+} from "@shared/lib/edge/voucherPreferencesClient";
+import type { OperationalState } from "@shared/lib/edge/types";
 import { useRouter } from "next/navigation";
 import { createClient } from "@shared/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
@@ -336,6 +361,8 @@ export default function AdminDashboardPage() {
   const [onRampRequests, setOnRampRequests] = useState<OnRampRequest[]>([]);
   const [offRampRequests, setOffRampRequests] = useState<OffRampRequest[]>([]);
   const [onRampStatuses, setOnRampStatuses] = useState<string[]>([]);
+  const [cashOpsState, setCashOpsState] = useState<OperationalState>("empty");
+  const [cashOpsSetupMessage, setCashOpsSetupMessage] = useState<string | null>(null);
   const [onRampEdits, setOnRampEdits] = useState<Record<number, OnRampEditState>>({});
   const [offRampEdits, setOffRampEdits] = useState<Record<number, OffRampEditState>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -350,10 +377,14 @@ export default function AdminDashboardPage() {
     unmappedPools: number;
     staleMappings: number;
   } | null>(null);
+  const [biaMappingsState, setBiaMappingsState] = useState<OperationalState>("empty");
+  const [biaMappingsSetupMessage, setBiaMappingsSetupMessage] = useState<string | null>(null);
   const [redemptionRequests, setRedemptionRequests] = useState<RedemptionRequestRecord[]>([]);
   const [governanceActions, setGovernanceActions] = useState<GovernanceActionRecord[]>([]);
   const [voucherRules, setVoucherRules] = useState<VoucherCompatibilityRule[]>([]);
   const [merchantLiquidityRows, setMerchantLiquidityRows] = useState<MerchantVoucherLiquidity[]>([]);
+  const [voucherMerchantState, setVoucherMerchantState] = useState<OperationalState>("empty");
+  const [voucherMerchantSetupMessage, setVoucherMerchantSetupMessage] = useState<string | null>(null);
   const [onrampCheckoutSessions, setOnrampCheckoutSessions] = useState<OnrampCheckoutSessionSummary[]>([]);
   const [controlPlaneError, setControlPlaneError] = useState<string | null>(null);
   const [isControlPlaneLoading, setIsControlPlaneLoading] = useState(false);
@@ -462,11 +493,15 @@ export default function AdminDashboardPage() {
     setLoadError(null);
 
     try {
-      const body = await fetchJson<{
+      const body = await getOnrampAdminRequests({
+        citySlug: "tcoin",
+      }) as {
+        state?: OperationalState;
+        setupMessage?: string | null;
         onRampRequests?: Array<Record<string, unknown>>;
         offRampRequests?: Array<Record<string, unknown>>;
         statuses?: Array<Record<string, unknown>>;
-      }>("/api/admin/ramp-requests?citySlug=tcoin");
+      };
 
       const normalisedOnRamps: OnRampRequest[] = (body.onRampRequests ?? []).map(
         (row: Record<string, unknown>) => {
@@ -520,6 +555,8 @@ export default function AdminDashboardPage() {
         .filter((value): value is string => Boolean(value));
 
       if (isMountedRef.current) {
+        setCashOpsState(body.state ?? (normalisedOnRamps.length === 0 && normalisedOffRamps.length === 0 ? "empty" : "ready"));
+        setCashOpsSetupMessage(body.setupMessage ?? null);
         setOnRampRequests(normalisedOnRamps);
         setOffRampRequests(normalisedOffRamps);
         setOnRampStatuses(statusValues);
@@ -562,33 +599,47 @@ export default function AdminDashboardPage() {
         voucherMerchants,
         onrampAdminList,
       ] = await Promise.all([
-        fetchJson<{ bias?: BiaRecord[]; controls?: BiaControlRecord[] }>(
-          "/api/bias/list?citySlug=tcoin&includeMappings=true"
-        ),
-        fetchJson<{
+        getBiaList({
+          includeMappings: true,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ bias?: BiaRecord[]; controls?: BiaControlRecord[] }>,
+        getBiaMappings({
+          chainId: 42220,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{
+          state?: OperationalState;
+          setupMessage?: string | null;
           health?: {
             mappedPools: number;
             discoveredPools: number;
             unmappedPools: number;
             staleMappings: number;
           } | null;
-        }>("/api/bias/mappings?citySlug=tcoin&chainId=42220"),
-        fetchJson<{ controls?: BiaControlRecord[] }>("/api/bias/controls?citySlug=tcoin"),
-        fetchJson<{ requests?: RedemptionRequestRecord[] }>(
-          "/api/redemptions/list?citySlug=tcoin&limit=100"
-        ),
-        fetchJson<{ actions?: GovernanceActionRecord[] }>(
-          "/api/governance/actions?citySlug=tcoin&limit=50"
-        ),
-        fetchJson<{ rules?: VoucherCompatibilityRule[] }>(
-          "/api/vouchers/compatibility?citySlug=tcoin&chainId=42220"
-        ),
-        fetchJson<{ merchants?: MerchantVoucherLiquidity[] }>(
-          "/api/vouchers/merchants?citySlug=tcoin&chainId=42220&scope=city"
-        ),
-        fetchJson<{ sessions?: OnrampCheckoutSessionSummary[] }>(
-          "/api/onramp/admin/sessions?citySlug=tcoin&limit=50"
-        ),
+        }>,
+        getBiaControls({ citySlug: "tcoin" }) as Promise<{ controls?: BiaControlRecord[] }>,
+        getRedemptionRequests({ limit: 100, appContext: { citySlug: "tcoin" } }) as Promise<{
+          requests?: RedemptionRequestRecord[];
+        }>,
+        getGovernanceActions({ limit: 50, appContext: { citySlug: "tcoin" } }) as Promise<{
+          actions?: GovernanceActionRecord[];
+        }>,
+        getVoucherCompatibilityRules({
+          chainId: 42220,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ rules?: VoucherCompatibilityRule[] }>,
+        getVoucherMerchants({
+          chainId: 42220,
+          scope: "city",
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{
+          state?: OperationalState;
+          setupMessage?: string | null;
+          merchants?: MerchantVoucherLiquidity[];
+        }>,
+        getAdminOnrampSessions({
+          limit: 50,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ sessions?: OnrampCheckoutSessionSummary[] }>,
       ]);
 
       if (!isMountedRef.current) return;
@@ -596,10 +647,14 @@ export default function AdminDashboardPage() {
       const nextBias = biaList.bias ?? [];
       setBiaRecords(nextBias);
       setBiaControls(controlsList.controls ?? biaList.controls ?? []);
+      setBiaMappingsState(mappingList.state ?? (mappingList.health ? "ready" : "empty"));
+      setBiaMappingsSetupMessage(mappingList.setupMessage ?? null);
       setMappingHealth(mappingList.health ?? null);
       setRedemptionRequests(redemptionList.requests ?? []);
       setGovernanceActions(governanceList.actions ?? []);
       setVoucherRules(voucherRuleList.rules ?? []);
+      setVoucherMerchantState(voucherMerchants.state ?? ((voucherMerchants.merchants ?? []).length === 0 ? "empty" : "ready"));
+      setVoucherMerchantSetupMessage(voucherMerchants.setupMessage ?? null);
       setMerchantLiquidityRows(voucherMerchants.merchants ?? []);
       setOnrampCheckoutSessions(onrampAdminList.sessions ?? []);
       setLastSyncedAt(new Date());
@@ -688,16 +743,15 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      await fetchJson("/api/bias/create", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await createBia(
+        {
           code,
           name,
           centerLat,
           centerLng,
-        }),
-      });
+        },
+        { citySlug: "tcoin" }
+      );
       toast.success(`Created BIA ${code}.`);
       setBiaCreateForm({ code: "", name: "", centerLat: "", centerLng: "" });
       await loadControlPlaneData();
@@ -724,10 +778,8 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      await fetchJson("/api/bias/mappings", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await saveBiaMappings(
+        {
           biaId: mappingForm.biaId,
           chainId,
           poolAddress: mappingForm.poolAddress.trim(),
@@ -737,8 +789,9 @@ export default function AdminDashboardPage() {
           feeAddress: mappingForm.feeAddress.trim() || null,
           mappingStatus: "active",
           forceTouch: mappingForm.forceTouch,
-        }),
-      });
+        },
+        { citySlug: "tcoin" }
+      );
       toast.success("Pool mapping saved.");
       await loadControlPlaneData();
     } catch (error) {
@@ -773,18 +826,17 @@ export default function AdminDashboardPage() {
         throw new Error("maxDailyRedemption and maxTxAmount must be numeric when provided.");
       }
 
-      await fetchJson("/api/bias/controls", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await saveBiaControls(
+        {
           biaId: controlsForm.biaId,
           maxDailyRedemption: maxDaily,
           maxTxAmount: maxTx,
           queueOnlyMode: controlsForm.queueOnlyMode,
           isFrozen: controlsForm.isFrozen,
           reason: controlsForm.reason.trim() || "Controls updated from admin UI",
-        }),
-      });
+        },
+        { citySlug: "tcoin" }
+      );
 
       toast.success("BIA controls updated.");
       await loadControlPlaneData();
@@ -810,10 +862,8 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      await fetchJson("/api/vouchers/compatibility", {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await saveVoucherCompatibilityRule(
+        {
           chainId: 42220,
           poolAddress,
           tokenAddress,
@@ -821,8 +871,9 @@ export default function AdminDashboardPage() {
           acceptedByDefault: voucherRuleForm.acceptedByDefault,
           ruleStatus: voucherRuleForm.ruleStatus === "inactive" ? "inactive" : "active",
           reason: voucherRuleForm.reason.trim() || "Voucher compatibility updated from admin dashboard",
-        }),
-      });
+        },
+        { citySlug: "tcoin" }
+      );
 
       toast.success("Voucher compatibility rule saved.");
       setVoucherRuleForm((prev) => ({
@@ -846,17 +897,15 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      await fetchJson(`/api/redemptions/${requestId}/approve`, {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await approveRedemptionRequest(
+        String(requestId),
+        {
           approve,
           rejectionReason: approve ? null : "Rejected in admin dashboard",
-          reason: approve
-            ? "Approved from admin dashboard"
-            : "Rejected from admin dashboard",
-        }),
-      });
+          reason: approve ? "Approved from admin dashboard" : "Rejected from admin dashboard",
+        },
+        { citySlug: "tcoin" }
+      );
       toast.success(approve ? "Redemption approved." : "Redemption rejected.");
       await loadControlPlaneData();
     } catch (error) {
@@ -890,20 +939,18 @@ export default function AdminDashboardPage() {
         throw new Error("Settlement amount must be a positive number.");
       }
 
-      await fetchJson(`/api/redemptions/${request.id}/settle`, {
-        method: "POST",
-        body: JSON.stringify({
-          citySlug: "tcoin",
+      await settleRedemptionRequest(
+        String(request.id),
+        {
           settlementAmount: parsedAmount,
           settlementAsset: draft.settlementAsset || request.settlement_asset || "CAD",
           txHash: draft.txHash.trim() || null,
           notes: draft.notes.trim() || null,
           failed,
-          reason: failed
-            ? "Marked as settlement failure from admin dashboard"
-            : "Settled from admin dashboard",
-        }),
-      });
+          reason: failed ? "Marked as settlement failure from admin dashboard" : "Settled from admin dashboard",
+        },
+        { citySlug: "tcoin" }
+      );
       toast.success(failed ? "Redemption marked as failed." : "Redemption settled.");
       await loadControlPlaneData();
     } catch (error) {
@@ -918,10 +965,7 @@ export default function AdminDashboardPage() {
     const key = `onramp-retry-${sessionId}`;
     markSaving(key);
     try {
-      await fetchJson(`/api/onramp/session/${sessionId}/retry`, {
-        method: "POST",
-        body: JSON.stringify({ citySlug: "tcoin" }),
-      });
+      await retryOnrampSession(sessionId, {}, { citySlug: "tcoin" });
       toast.success("On-ramp settlement retry submitted.");
       await loadControlPlaneData();
     } catch (error) {
@@ -1192,6 +1236,13 @@ export default function AdminDashboardPage() {
         <Alert variant="destructive">
           <AlertTitle>Could not load requests</AlertTitle>
           <AlertDescription>{loadError}</AlertDescription>
+        </Alert>
+      )}
+
+      {cashOpsState === "setup_required" && cashOpsSetupMessage && (
+        <Alert>
+          <AlertTitle>Cash operations setup required</AlertTitle>
+          <AlertDescription>{cashOpsSetupMessage}</AlertDescription>
         </Alert>
       )}
 
@@ -1648,6 +1699,18 @@ export default function AdminDashboardPage() {
               <AlertDescription>{controlPlaneError}</AlertDescription>
             </Alert>
           )}
+          {biaMappingsState === "setup_required" && biaMappingsSetupMessage && (
+            <Alert>
+              <AlertTitle>BIA mapping setup required</AlertTitle>
+              <AlertDescription>{biaMappingsSetupMessage}</AlertDescription>
+            </Alert>
+          )}
+          {voucherMerchantState === "setup_required" && voucherMerchantSetupMessage && (
+            <Alert>
+              <AlertTitle>Voucher liquidity setup required</AlertTitle>
+              <AlertDescription>{voucherMerchantSetupMessage}</AlertDescription>
+            </Alert>
+          )}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-md border p-3">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">BIAs</p>
@@ -2071,7 +2134,9 @@ export default function AdminDashboardPage() {
               Voucher issuance and liquidity requirements are read from Sarafu pool/limiter contracts. These values are
               read-only in Genero.
             </p>
-            {merchantLiquidityRows.length === 0 ? (
+            {voucherMerchantState === "setup_required" && voucherMerchantSetupMessage ? (
+              <p className="text-sm text-muted-foreground">{voucherMerchantSetupMessage}</p>
+            ) : merchantLiquidityRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No merchant voucher liquidity rows found.</p>
             ) : (
               merchantLiquidityRows.slice(0, 40).map((row, index) => (

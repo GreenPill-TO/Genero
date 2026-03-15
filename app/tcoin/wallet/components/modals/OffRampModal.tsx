@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
+import { createRedemptionRequest } from "@shared/lib/edge/redemptionsClient";
 
 interface OffRampProps {
   closeModal: () => void;
@@ -45,7 +46,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
   const { userData } = useAuth();
   const { burnMoney, senderWallet } = useSendMoney({ senderId: userData?.cubidData?.id });
-  const { exchangeRate } = useControlVariables();
+  const { exchangeRate, state: exchangeRateState } = useControlVariables();
 
   const donationAmount = watch("preferredDonationAmount");
   const estimatedCAD = donationAmount * exchangeRate;
@@ -210,12 +211,8 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
         const storeId = Number(storeEmployeeRow?.store_id ?? 0);
         if (Number.isFinite(storeId) && storeId > 0) {
-          const redemptionResponse = await fetch("/api/redemptions/request", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+          await createRedemptionRequest(
+            {
               storeId,
               tokenAmount: donationAmount,
               settlementAsset: "CAD",
@@ -225,16 +222,9 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
                 offRampRequestUuid: offRampRequestId,
                 transactionId,
               },
-            }),
-          });
-
-          if (!redemptionResponse.ok) {
-            const body = await redemptionResponse.json();
-            const message =
-              body?.error ??
-              "Off-ramp burn succeeded, but BIA redemption request creation failed.";
-            throw new Error(message);
-          }
+            },
+            { citySlug: "tcoin" }
+          );
         }
       }
 
@@ -260,6 +250,11 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
             )}
           />
           <p>Estimated CAD: ${estimatedCAD.toFixed(2)}</p>
+          {exchangeRateState !== "ready" && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              CAD values are using a fallback estimate until the live city rate is indexed.
+            </p>
+          )}
           {donationAmount > userBalance && (
             <p className="text-sm text-red-500">
               Warning: The entered TCOIN amount exceeds your available balance of {userBalance}.

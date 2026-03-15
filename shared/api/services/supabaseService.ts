@@ -1,5 +1,6 @@
 import { createClient } from "@shared/lib/supabase/client";
 import { getActiveAppInstance } from "@shared/lib/supabase/appInstance";
+import { mapPrimaryWalletsByUserIds } from "@shared/lib/supabase/walletIdentities";
 import {
   TAppUserProfile,
   TBaseCubidUser,
@@ -378,16 +379,6 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
     throw contactError;
   }
 
-  const { data: walletRows, error: walletError } = await supabase
-    .from("wallet_list")
-    .select("user_id, public_key")
-    .in("user_id", contactIds)
-    .order("id", { ascending: false });
-
-  if (walletError) {
-    throw walletError;
-  }
-
   const contactsById = new Map<number, any>();
   for (const contact of contactRows ?? []) {
     const normalised = normaliseNumericId(contact.id);
@@ -396,16 +387,7 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
     }
   }
 
-  const walletsById = new Map<number, string>();
-  for (const wallet of walletRows ?? []) {
-    const userId = normaliseNumericId(wallet.user_id);
-    if (userId !== null && typeof wallet.public_key === "string" && wallet.public_key.trim() !== "") {
-      // Only set if not already present (first occurrence wins due to ORDER BY id DESC)
-      if (!walletsById.has(userId)) {
-        walletsById.set(userId, wallet.public_key);
-      }
-    }
-  }
+  const walletsById = await mapPrimaryWalletsByUserIds(contactIds, supabase);
 
   const contacts: ContactRecord[] = [];
   for (const connection of dedupedConnections) {

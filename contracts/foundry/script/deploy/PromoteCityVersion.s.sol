@@ -52,6 +52,7 @@ contract PromoteCityVersion is Script {
         payload = string.concat(payload, '    "TTC": "', vm.toString(input.contracts.ttc), '",\n');
         payload = string.concat(payload, '    "CAD": "', vm.toString(input.contracts.cad), '",\n');
         payload = string.concat(payload, '    "ORCHESTRATOR": "', vm.toString(input.contracts.orchestrator), '",\n');
+        payload = string.concat(payload, '    "ORACLE_ROUTER": "', vm.toString(input.contracts.oracleRouter), '",\n');
         payload = string.concat(payload, '    "VOTING": "', vm.toString(input.contracts.voting), '"\n');
         payload = string.concat(payload, "  },\n");
         payload = string.concat(payload, '  "promotedAt": ', vm.toString(block.timestamp), "\n}");
@@ -77,6 +78,7 @@ contract PromoteCityVersion is Script {
             ttc: json.readAddress(".contracts.TTC"),
             cad: json.readAddress(".contracts.CAD"),
             orchestrator: json.readAddress(".contracts.ORCHESTRATOR"),
+            oracleRouter: json.readAddress(".contracts.ORACLE_ROUTER"),
             voting: json.readAddress(".contracts.VOTING")
         });
 
@@ -84,6 +86,7 @@ contract PromoteCityVersion is Script {
         if (input.contracts.ttc == address(0)) revert InvalidContractAddress("TTC");
         if (input.contracts.cad == address(0)) revert InvalidContractAddress("CAD");
         if (input.contracts.orchestrator == address(0)) revert InvalidContractAddress("ORCHESTRATOR");
+        if (input.contracts.oracleRouter == address(0)) revert InvalidContractAddress("ORACLE_ROUTER");
         if (input.contracts.voting == address(0)) revert InvalidContractAddress("VOTING");
 
         input.metadataURI = json.readString(".metadataURI");
