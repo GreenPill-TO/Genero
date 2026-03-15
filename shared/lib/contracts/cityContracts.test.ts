@@ -47,7 +47,8 @@ describe("cityContracts", () => {
         ttc: "0x0000000000000000000000000000000000000002",
         cad: "0x0000000000000000000000000000000000000003",
         orchestrator: "0x0000000000000000000000000000000000000004",
-        voting: "0x0000000000000000000000000000000000000005",
+        oracleRouter: "0x0000000000000000000000000000000000000005",
+        voting: "0x0000000000000000000000000000000000000006",
       },
       metadataURI: "ipfs://bundle-v2",
       exists: true,
@@ -59,6 +60,7 @@ describe("cityContracts", () => {
     expect(first.version).toBe(2);
     expect(first.chainId).toBe(545);
     expect(first.contracts.TCOIN).toBe("0x0000000000000000000000000000000000000001");
+    expect(first.contracts.ORACLE_ROUTER).toBe("0x0000000000000000000000000000000000000005");
     expect(second.version).toBe(2);
 
     expect(getClientMock).toHaveBeenCalledTimes(1);

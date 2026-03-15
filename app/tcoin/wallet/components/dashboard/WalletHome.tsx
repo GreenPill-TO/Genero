@@ -10,6 +10,7 @@ import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
+import { getRecentPaymentRequestParticipants } from "@shared/lib/edge/paymentRequestsClient";
 import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
 import { createClient } from "@shared/lib/supabase/client";
 import {
@@ -404,53 +405,23 @@ export function WalletHome({
           }
         }
 
-        const { data: requestRows } = await supabase
-          .from("invoice_pay_request")
-          .select("request_by, request_from, created_at")
-          .or(`request_by.eq.${user_id},request_from.eq.${user_id}`)
-          .order("created_at", { ascending: false })
-          .limit(80);
+        try {
+          const paymentRequestRecents = await getRecentPaymentRequestParticipants({
+            appContext: { citySlug: "tcoin" },
+          });
 
-        const requestLatestByUser = new Map<number, string>();
-
-        (requestRows ?? []).forEach((row: any) => {
-          const requestBy = parseMaybeNumber(row.request_by);
-          const requestFrom = parseMaybeNumber(row.request_from);
-          const createdAt = typeof row.created_at === "string" ? row.created_at : null;
-          if (!createdAt) return;
-
-          const counterpart =
-            requestBy != null && requestBy !== user_id
-              ? requestBy
-              : requestFrom != null && requestFrom !== user_id
-                ? requestFrom
-                : null;
-
-          if (counterpart == null) return;
-          const existing = requestLatestByUser.get(counterpart);
-          if (!existing || toTimestamp(createdAt) > toTimestamp(existing)) {
-            requestLatestByUser.set(counterpart, createdAt);
-          }
-        });
-
-        if (requestLatestByUser.size > 0) {
-          const userIds = Array.from(requestLatestByUser.keys());
-          const { data: requestUserRows } = await supabase
-            .from("users")
-            .select("id, full_name, username, profile_image_url")
-            .in("id", userIds);
-
-          (requestUserRows ?? []).forEach((row: any) => {
-            const id = parseMaybeNumber(row.id);
-            if (id == null || id === user_id) return;
+          paymentRequestRecents.participants.forEach((participant) => {
+            if (participant.id === user_id) return;
             upsertRecent(recentsByUser, {
-              id,
-              full_name: row.full_name ?? null,
-              username: row.username ?? null,
-              profile_image_url: row.profile_image_url ?? null,
-              lastInteractionAt: requestLatestByUser.get(id) ?? null,
+              id: participant.id,
+              full_name: participant.fullName,
+              username: participant.username,
+              profile_image_url: participant.profileImageUrl,
+              lastInteractionAt: participant.lastInteractionAt,
             });
           });
+        } catch {
+          // Best effort only.
         }
 
         const sorted = Array.from(recentsByUser.values())

@@ -442,14 +442,46 @@ ON CONFLICT (id) DO UPDATE
 SET payload = EXCLUDED.payload,
     created_at = EXCLUDED.created_at;
 
-INSERT INTO public.invoice_pay_request (id, transaction_id, request_from, app_instance_id, created_at)
-SELECT 2601, 2201, 1001, ai.id, now()
+INSERT INTO public.invoice_pay_request (
+  id,
+  transaction_id,
+  request_from,
+  request_by,
+  amount_requested,
+  status,
+  paid_at,
+  closed_at,
+  citycoin_id,
+  app_instance_id,
+  created_at,
+  updated_at
+)
+SELECT
+  2601,
+  2201,
+  1001,
+  1002,
+  25,
+  'paid',
+  now(),
+  now(),
+  ai.citycoin_id,
+  ai.id,
+  now(),
+  now()
 FROM public.ref_app_instances ai
 WHERE ai.slug = 'wallet-tcoin-development'
 ON CONFLICT (id) DO UPDATE
 SET transaction_id = EXCLUDED.transaction_id,
     request_from = EXCLUDED.request_from,
-    app_instance_id = EXCLUDED.app_instance_id;
+    request_by = EXCLUDED.request_by,
+    amount_requested = EXCLUDED.amount_requested,
+    status = EXCLUDED.status,
+    paid_at = EXCLUDED.paid_at,
+    closed_at = EXCLUDED.closed_at,
+    citycoin_id = EXCLUDED.citycoin_id,
+    app_instance_id = EXCLUDED.app_instance_id,
+    updated_at = EXCLUDED.updated_at;
 
 -- ---------------------------------------------------------------------------
 -- BIA and governance data

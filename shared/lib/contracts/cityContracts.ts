@@ -5,7 +5,13 @@ import {
   getCityRegistryPublicClient,
 } from "@shared/lib/contracts/cityRegistryClient";
 
-export type ContractKey = "TCOIN" | "TTC" | "CAD" | "ORCHESTRATOR" | "VOTING";
+export type ContractKey =
+  | "TCOIN"
+  | "TTC"
+  | "CAD"
+  | "ORCHESTRATOR"
+  | "ORACLE_ROUTER"
+  | "VOTING";
 
 export type ActiveCityContracts = {
   citySlug: string;
@@ -32,6 +38,7 @@ type RegistryActiveRecord = {
     ttc: Hex;
     cad: Hex;
     orchestrator: Hex;
+    oracleRouter: Hex;
     voting: Hex;
   };
   metadataURI: string;
@@ -59,6 +66,7 @@ const FALLBACK_CITY_CONTRACTS: Record<string, ActiveCityContracts> = {
       TTC: "0x0000000000000000000000000000000000000000",
       CAD: "0x0000000000000000000000000000000000000000",
       ORCHESTRATOR: "0x0000000000000000000000000000000000000000",
+      ORACLE_ROUTER: "0x0000000000000000000000000000000000000000",
       VOTING: "0x0000000000000000000000000000000000000000",
     },
     metadataURI: "https://sarafu.network/pools/0xA6f024Ad53766d332057d5e40215b695522ee3dE",
@@ -156,6 +164,7 @@ function toActiveCityContracts(
       TTC: record.contracts.ttc,
       CAD: record.contracts.cad,
       ORCHESTRATOR: record.contracts.orchestrator,
+      ORACLE_ROUTER: record.contracts.oracleRouter,
       VOTING: record.contracts.voting,
     },
     metadataURI: record.metadataURI,

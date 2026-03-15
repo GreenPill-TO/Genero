@@ -119,14 +119,14 @@ describe("ReceiveCard", () => {
       openRequests: [
         {
           id: 1,
-          amount_requested: 5,
-          request_from: null,
-          created_at: "2024-01-01T00:00:00Z",
+          amountRequested: 5,
+          requestFrom: null,
+          createdAt: "2024-01-01T00:00:00Z",
         } as any,
         {
           id: 2,
-          amount_requested: 3,
-          request_from: 42,
+          amountRequested: 3,
+          requestFrom: 42,
         } as any,
       ],
       contacts: [
@@ -164,8 +164,8 @@ describe("ReceiveCard", () => {
       openRequests: [
         {
           id: 55,
-          amount_requested: 2,
-          request_from: null,
+          amountRequested: 2,
+          requestFrom: null,
         } as any,
       ],
       onDeleteRequest,
@@ -188,8 +188,8 @@ describe("ReceiveCard", () => {
       openRequests: [
         {
           id: 99,
-          amount_requested: 4,
-          request_from: null,
+          amountRequested: 4,
+          requestFrom: null,
         } as any,
       ],
       onDeleteRequest,
@@ -213,8 +213,8 @@ describe("ReceiveCard", () => {
       openRequests: [
         {
           id: 10,
-          amount_requested: 0,
-          request_from: null,
+          amountRequested: 0,
+          requestFrom: null,
         } as any,
       ],
     });
@@ -298,8 +298,8 @@ describe("ReceiveCard", () => {
       openRequests: [
         {
           id: 22,
-          amount_requested: 5,
-          request_from: 11,
+          amountRequested: 5,
+          requestFrom: 11,
         } as any,
       ],
     });
@@ -387,9 +387,9 @@ describe("ReceiveCard", () => {
       requestContact,
       qrTcoinAmount: "10",
       openRequests: [
-        { id: 31, request_from: 21 } as any,
-        { id: 32, request_from: 21 } as any,
-        { id: 33, request_from: 21 } as any,
+        { id: 31, requestFrom: 21 } as any,
+        { id: 32, requestFrom: 21 } as any,
+        { id: 33, requestFrom: 21 } as any,
       ],
     });
 

@@ -7,6 +7,7 @@ import { pullRpcEvents } from "./ingest/rpcFallback";
 import { pullTrackerEvents } from "./ingest/trackerClient";
 import { persistNormalizedEvents } from "./normalize/persist";
 import { deriveVoucherState } from "./vouchers";
+import { ingestCityExchangeRate } from "./rates";
 import {
   buildScopeKey,
   completeRun,
@@ -94,6 +95,13 @@ export async function runIndexerTouch(options: {
       supabase: options.supabase,
       citySlug,
       chainId,
+    });
+
+    await ingestCityExchangeRate({
+      supabase: options.supabase,
+      client,
+      citySlug,
+      cityContracts,
     });
 
     const discovery = await discoverTrackedPools({

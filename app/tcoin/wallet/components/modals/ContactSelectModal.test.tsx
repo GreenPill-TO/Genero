@@ -19,6 +19,7 @@ const mockContacts = vi.hoisted(() => [
     profile_image_url: null,
     wallet_address: null,
     state: "accepted",
+    last_interaction: null,
   },
 ]);
 

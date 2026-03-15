@@ -20,7 +20,7 @@ vi.mock("react-toastify", () => ({
 }));
 
 vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
-  useControlVariables: () => ({ exchangeRate: 1 }),
+  useControlVariables: () => ({ exchangeRate: 1, state: "ready", loading: false, error: null }),
 }));
 
 vi.mock("@shared/lib/edge/onrampClient", () => ({

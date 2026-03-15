@@ -2,7 +2,13 @@ import type { Address } from "viem";
 
 export type IndexerRunStatus = "idle" | "running" | "success" | "error" | "skipped";
 export type IndexerSource = "tracker" | "rpc";
-export type ContractKey = "TCOIN" | "TTC" | "CAD" | "ORCHESTRATOR" | "VOTING";
+export type ContractKey =
+  | "TCOIN"
+  | "TTC"
+  | "CAD"
+  | "ORCHESTRATOR"
+  | "ORACLE_ROUTER"
+  | "VOTING";
 
 export type BiaScopeSummary = {
   activeBias: number;

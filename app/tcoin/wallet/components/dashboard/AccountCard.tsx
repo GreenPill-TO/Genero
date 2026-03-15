@@ -21,7 +21,7 @@ export function AccountCard({
   onOpenTransactionHistory: () => void;
 }) {
   const { ...rest } = useTokenBalance(senderWallet);
-  const { exchangeRate } = useControlVariables();
+  const { exchangeRate, state: exchangeRateState } = useControlVariables();
 
   const convertToCad = (tcoin: number | string) => {
     const parsed = typeof tcoin === "number" ? tcoin : Number.parseFloat(tcoin);
@@ -85,6 +85,11 @@ export function AccountCard({
           <p className="text-xl">
             {formatNumber(convertToCad(rest.balance), true)} CAD
           </p>
+          {exchangeRateState !== "ready" && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              CAD conversion is using a fallback city-rate estimate.
+            </p>
+          )}
           {typeof totalEquivalent === "number" && Number.isFinite(totalEquivalent) && (
             <p className="mt-3 text-sm text-muted-foreground">
               Total (TCOIN equiv): {formatNumber(totalEquivalent.toString(), false)}

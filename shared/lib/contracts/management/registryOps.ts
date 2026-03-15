@@ -85,6 +85,7 @@ export async function registerAndPromote({
     ttc: `0x${string}`;
     cad: `0x${string}`;
     orchestrator: `0x${string}`;
+    oracleRouter: `0x${string}`;
     voting: `0x${string}`;
   };
   metadataURI: string;

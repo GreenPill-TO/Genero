@@ -4,6 +4,11 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
+import {
+  dismissPaymentRequest,
+  getIncomingPaymentRequests,
+  markPaymentRequestPaid,
+} from "@shared/lib/edge/paymentRequestsClient";
 import { createClient } from "@shared/lib/supabase/client";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
@@ -44,7 +49,7 @@ const formatRequesterName = (
 ): { primary: string; secondary: string } => {
   const requester = request.requester;
   const fallbackId = (() => {
-    const value = request.request_by;
+    const value = request.requestBy;
     if (typeof value === "number" && Number.isFinite(value)) return value;
     if (typeof value === "string") {
       const parsed = Number.parseInt(value, 10);
@@ -140,17 +145,8 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
 
   const selectedRequestAmount = useMemo(() => {
     if (!selectedRequest) return null;
-    const raw = selectedRequest.amount_requested;
-    if (typeof raw === "number") {
-      return Number.isFinite(raw) ? raw : null;
-    }
-    if (typeof raw === "string" && raw.trim() !== "") {
-      const parsed = Number.parseFloat(raw);
-      if (Number.isFinite(parsed)) {
-        return parsed;
-      }
-    }
-    return null;
+    const raw = selectedRequest.amountRequested;
+    return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
   }, [selectedRequest]);
 
   const shouldLockAmount =
@@ -440,106 +436,39 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     }
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("invoice_pay_request")
-        .select("*")
-        .eq("request_from", currentUserId)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
+      const body = await getIncomingPaymentRequests({
+        appContext: { citySlug: "tcoin" },
+      });
 
-      if (error) throw error;
-
-      const rows = (data ?? []) as InvoicePayRequest[];
+      const rows = (body.requests ?? []) as InvoicePayRequest[];
       const filtered = rows.filter((request) => {
-        if (request.is_active === false) {
+        if (request.isActive === false) {
           return false;
         }
 
-        if (typeof request.status === "string") {
-          const status = request.status.trim().toLowerCase();
-          if (CLOSED_REQUEST_STATUSES.has(status)) {
-            return false;
-          }
+        if (CLOSED_REQUEST_STATUSES.has(request.status)) {
+          return false;
         }
 
         return true;
       });
 
-      const requesterIds = Array.from(
-        new Set(
-          filtered
-            .map((request) => {
-              if (typeof request.request_by === "number" && Number.isFinite(request.request_by)) {
-                return request.request_by;
-              }
-              if (typeof request.request_by === "string") {
-                const parsed = Number.parseInt(request.request_by, 10);
-                if (Number.isFinite(parsed)) {
-                  return parsed;
-                }
-              }
-              return null;
-            })
-            .filter((value): value is number => value != null)
-        )
-      );
-
-      const requesterMap = new Map<number, Hypodata>();
-      contactsById.forEach((value, key) => {
-        requesterMap.set(key, value);
-      });
-
-      if (requesterIds.length > 0) {
-        const { data: userRows, error: userError } = await supabase
-          .from("users")
-          .select("id, full_name, username, profile_image_url")
-          .in("id", requesterIds);
-
-        if (userError) throw userError;
-
-        const { data: walletRows, error: walletError } = await supabase
-          .from("wallet_list")
-          .select("user_id, public_key")
-          .in("user_id", requesterIds);
-
-        if (walletError) throw walletError;
-
-        const walletMap = new Map<number, string | undefined>();
-        for (const wallet of walletRows ?? []) {
-          const id = Number(wallet.user_id);
-          if (Number.isFinite(id)) {
-            walletMap.set(id, typeof wallet.public_key === "string" ? wallet.public_key : undefined);
-          }
-        }
-
-        for (const row of userRows ?? []) {
-          const id = Number(row.id);
-          if (!Number.isFinite(id)) continue;
-          const existing = requesterMap.get(id);
-          requesterMap.set(id, {
-            id,
-            full_name: row.full_name ?? existing?.full_name ?? undefined,
-            username: row.username ?? existing?.username ?? undefined,
-            profile_image_url: row.profile_image_url ?? existing?.profile_image_url ?? undefined,
-            wallet_address: walletMap.get(id) ?? existing?.wallet_address ?? undefined,
-            state: existing?.state ?? undefined,
-          });
-        }
-      }
-
       const enriched = filtered.map((request) => {
-        let requesterId: number | null = null;
-        if (typeof request.request_by === "number" && Number.isFinite(request.request_by)) {
-          requesterId = request.request_by;
-        } else if (typeof request.request_by === "string") {
-          const parsed = Number.parseInt(request.request_by, 10);
-          if (Number.isFinite(parsed)) {
-            requesterId = parsed;
-          }
-        }
-
-        const requester = requesterId != null ? requesterMap.get(requesterId) ?? null : null;
+        const requesterId = request.requestBy;
+        const contactRequester =
+          requesterId != null ? contactsById.get(requesterId) ?? null : null;
+        const requester =
+          contactRequester ??
+          (requesterId != null
+            ? ({
+                id: requesterId,
+                full_name: request.requesterFullName ?? undefined,
+                username: request.requesterUsername ?? undefined,
+                profile_image_url: request.requesterProfileImageUrl ?? undefined,
+                wallet_address: request.requesterWalletPublicKey ?? undefined,
+                state: undefined,
+              } as Hypodata)
+            : null);
         return { ...request, requester } as IncomingRequest;
       });
 
@@ -554,49 +483,20 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
 
   const handleRequestSelection = useCallback(
     async (request: IncomingRequest) => {
+      const requesterId = request.requestBy;
       let requester = request.requester ?? null;
-      let requesterId: number | null = null;
-      if (typeof request.request_by === "number" && Number.isFinite(request.request_by)) {
-        requesterId = request.request_by;
-      } else if (typeof request.request_by === "string") {
-        const parsed = Number.parseInt(request.request_by, 10);
-        if (Number.isFinite(parsed)) {
-          requesterId = parsed;
-        }
-      }
 
       if (!requester && requesterId != null) {
-        requester = contactsById.get(requesterId) ?? null;
-      }
-
-      if (!requester && requesterId != null) {
-        try {
-          const supabase = createClient();
-          const { data: userRow, error: userError } = await supabase
-            .from("users")
-            .select("id, full_name, username, profile_image_url")
-            .eq("id", requesterId)
-            .single();
-
-          if (userError) throw userError;
-
-          const { data: walletRow } = await supabase
-            .from("wallet_list")
-            .select("public_key")
-            .eq("user_id", requesterId)
-            .single();
-
-          requester = {
+        requester =
+          contactsById.get(requesterId) ??
+          ({
             id: requesterId,
-            full_name: userRow?.full_name ?? undefined,
-            username: userRow?.username ?? undefined,
-            profile_image_url: userRow?.profile_image_url ?? undefined,
-            wallet_address: walletRow?.public_key ?? undefined,
+            full_name: request.requesterFullName ?? undefined,
+            username: request.requesterUsername ?? undefined,
+            profile_image_url: request.requesterProfileImageUrl ?? undefined,
+            wallet_address: request.requesterWalletPublicKey ?? undefined,
             state: undefined,
-          };
-        } catch (error) {
-          console.error("Unable to load requester details:", error);
-        }
+          } as Hypodata);
       }
 
       if (!requester) {
@@ -607,9 +507,9 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       updateRecipient(requester);
 
       const numericAmount =
-        typeof request.amount_requested === "number"
-          ? request.amount_requested
-          : Number.parseFloat(String(request.amount_requested ?? "0"));
+        typeof request.amountRequested === "number"
+          ? request.amountRequested
+          : Number.parseFloat(String(request.amountRequested ?? "0"));
       const safeAmount = Number.isFinite(numericAmount) ? Math.max(numericAmount, 0) : 0;
 
       if (safeAmount > 0) {
@@ -634,13 +534,10 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
   const handleIgnoreRequest = useCallback(
     async (request: IncomingRequest) => {
       try {
-        const supabase = createClient();
-        const { error } = await supabase
-          .from("invoice_pay_request")
-          .update({ is_active: false })
-          .eq("id", request.id);
-
-        if (error) throw error;
+        await dismissPaymentRequest({
+          requestId: request.id,
+          appContext: { citySlug: "tcoin" },
+        });
 
         setIncomingRequests((prev) =>
           prev.filter((existing) => existing.id !== request.id)
@@ -708,17 +605,11 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       if (!selectedRequest) return;
       const requestId = selectedRequest.id;
       try {
-        const supabase = createClient();
-        const updates = {
-          status: "paid",
-          paid_at: new Date().toISOString(),
-          transaction_id: resolveTransactionId(details) ?? null,
-          is_active: false,
-        };
-        await supabase
-          .from("invoice_pay_request")
-          .update(updates)
-          .eq("id", requestId);
+        await markPaymentRequestPaid({
+          requestId,
+          transactionId: resolveTransactionId(details) ?? null,
+          appContext: { citySlug: "tcoin" },
+        });
       } catch (error) {
         console.error("Failed to mark request as paid:", error);
       } finally {
@@ -983,8 +874,8 @@ function RequestsList({
     <div className="space-y-3">
       {visibleRequests.map((request) => {
         const { primary, secondary } = formatRequesterName(request);
-        const createdLabel = request.created_at
-          ? new Date(request.created_at).toLocaleDateString("en-CA")
+        const createdLabel = request.createdAt
+          ? new Date(request.createdAt).toLocaleDateString("en-CA")
           : null;
 
         const handleIgnore = async () => {
@@ -1004,7 +895,7 @@ function RequestsList({
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-semibold">
-                  {formatRequestAmount(request.amount_requested)}
+                  {formatRequestAmount(request.amountRequested)}
                 </span>
                 {createdLabel && (
                   <span className="text-xs text-muted-foreground">

@@ -21,6 +21,7 @@ export const cityRegistryAbi = [
               { name: "ttc", type: "address" },
               { name: "cad", type: "address" },
               { name: "orchestrator", type: "address" },
+              { name: "oracleRouter", type: "address" },
               { name: "voting", type: "address" },
             ],
           },
@@ -31,4 +32,3 @@ export const cityRegistryAbi = [
     ],
   },
 ] as const;
-

@@ -1,3 +1,120 @@
+## v1.34
+### Timestamp
+- 2026-03-15 00:50:00 EDT
+
+### Objective
+- Formalize payment requests as a city-scoped cross-app contract and remove direct browser access to `invoice_pay_request`.
+
+### What Changed
+- Added `supabase/migrations/20260315003000_v1.06_payment_requests_contract.sql`:
+  - formalizes `public.invoice_pay_request` with canonical lifecycle and scope columns (`citycoin_id`, `request_by`, `amount_requested`, `status`, `updated_at`, `paid_at`, `closed_at`)
+  - backfills `citycoin_id` from `ref_app_instances`
+  - creates `public.v_payment_requests_v1` as the stable app-facing read model over payment requests, users, app instances, city coins, and wallet identities
+- Added the new `payment-requests` edge domain:
+  - `supabase/functions/payment-requests/index.ts`
+  - `supabase/functions/_shared/paymentRequests.ts`
+  - `shared/lib/edge/paymentRequests.ts`
+  - `shared/lib/edge/paymentRequestsClient.ts`
+- Refactored Wallet and SpareChange payment-request consumers to use the edge client instead of direct browser reads/writes:
+  - `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+  - `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+  - `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+  - `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+  - `app/tcoin/sparechange/components/modals/ContactSelectModal.tsx`
+- Updated dashboard payment-request types and seed data to align with the canonical contract.
+- Tightened a few adjacent UI typings uncovered during the refactor:
+  - `shared/components/ui/Radio.tsx` now uses input attributes so checked/defaultChecked callers type-check correctly
+  - `app/tcoin/wallet/components/modals/QrScanModal.tsx` now declares its optional amount setters in the prop interface
+
+### Verification
+- `rg -n "from\\(\"invoice_pay_request\"\\)|invoice_pay_request" app/tcoin shared -g '!**/*.test.tsx'`
+- `npx vitest run supabase/functions/payment-requests/index.test.ts app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `npx tsc --noEmit --pretty false 2>&1 | rg "payment-requests|PaymentRequest|ReceiveTab|SendTab|WalletHome|ContactSelectModal|invoice_pay_request|v_payment_requests_v1|20260315003000|QrScanModal"`
+
+### Files Edited
+- `supabase/migrations/20260315003000_v1.06_payment_requests_contract.sql`
+- `supabase/seed.sql`
+- `supabase/functions/payment-requests/index.ts`
+- `supabase/functions/payment-requests/index.test.ts`
+- `supabase/functions/_shared/paymentRequests.ts`
+- `shared/lib/edge/paymentRequests.ts`
+- `shared/lib/edge/paymentRequestsClient.ts`
+- `app/tcoin/wallet/components/dashboard/types.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `app/tcoin/sparechange/components/modals/ContactSelectModal.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `shared/components/ui/Radio.tsx`
+- `app/tcoin/wallet/components/modals/QrScanModal.tsx`
+- `app/tcoin/wallet/components/modals/ContactSelectModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.33
+### Timestamp
+- 2026-03-14 23:15:00 EDT
+
+### Objective
+- Replace the broken `control_variables` browser read with a city-scoped, indexer-backed exchange-rate contract tied to the on-chain oracle router.
+
+### What Changed
+- Added `supabase/migrations/20260314231500_v1.05_citycoin_exchange_rates.sql`:
+  - extends `indexer.city_contract_overrides` with `oracle_router_address`
+  - creates `public.citycoin_exchange_rates` as append-mostly citycoin rate storage keyed by `ref_citycoins.id`
+  - creates `public.v_citycoin_exchange_rates_current_v1` as the canonical current-rate projection
+- Added a new `citycoin-market` edge function and shared edge client/types:
+  - `supabase/functions/citycoin-market/index.ts`
+  - `shared/lib/edge/citycoinMarket.ts`
+  - `shared/lib/edge/citycoinMarketClient.ts`
+- Refactored `shared/hooks/useGetLatestExchangeRate.ts` so it no longer reads Supabase tables directly from the browser and now returns city-scoped rate state from the edge function.
+- Extended the city registry/read surfaces to include `ORACLE_ROUTER`:
+  - `contracts/foundry/src/registry/CityImplementationRegistry.sol`
+  - `shared/lib/contracts/cityRegistryAbi.ts`
+  - `shared/lib/contracts/cityContracts.ts`
+  - `services/indexer/src/discovery/cityContracts.ts`
+- Added `services/indexer/src/rates.ts` and wired the user-triggered indexer to persist oracle-router rate snapshots during city indexing runs.
+- Updated key wallet/sparechange transactional surfaces to distinguish live and fallback rate usage in copy instead of silently treating fallback values as live data.
+
+### Verification
+- Targeted Vitest run covering the new hook, citycoin-market function, indexer rate module, and updated wallet modal/dashboard tests.
+
+### Files Edited
+- `supabase/migrations/20260314231500_v1.05_citycoin_exchange_rates.sql`
+- `supabase/functions/citycoin-market/index.ts`
+- `supabase/functions/citycoin-market/index.test.ts`
+- `shared/lib/edge/citycoinMarket.ts`
+- `shared/lib/edge/citycoinMarketClient.ts`
+- `shared/hooks/useGetLatestExchangeRate.ts`
+- `shared/hooks/useGetLatestExchangeRate.test.tsx`
+- `services/indexer/src/rates.ts`
+- `services/indexer/src/rates.test.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/discovery/cityContracts.ts`
+- `contracts/foundry/src/registry/CityImplementationRegistry.sol`
+- `contracts/foundry/test/unit/CityImplementationRegistry.t.sol`
+- `shared/lib/contracts/cityRegistryAbi.ts`
+- `shared/lib/contracts/cityContracts.ts`
+- `shared/lib/contracts/cityContracts.test.ts`
+- `shared/lib/contracts/management/abis/cityImplementationRegistryAbi.ts`
+- `shared/lib/contracts/management/types.ts`
+- `shared/lib/contracts/management/registryOps.ts`
+- `app/tcoin/contracts/registry/page.tsx`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/tcoin/wallet/components/modals/TopUpModal.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `app/tcoin/sparechange/components/modals/OffRampModal.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.32
 ### Timestamp
 - 2026-03-14 22:10:00 EDT

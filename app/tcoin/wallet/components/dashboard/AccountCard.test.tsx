@@ -12,7 +12,7 @@ vi.mock("@shared/hooks/useTokenBalance", () => ({
 }));
 
 vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
-  useControlVariables: () => ({ exchangeRate: 1 }),
+  useControlVariables: () => ({ exchangeRate: 1, state: "ready", loading: false, error: null }),
 }));
 
 import { AccountCard } from "./AccountCard";

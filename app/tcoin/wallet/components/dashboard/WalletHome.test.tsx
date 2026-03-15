@@ -47,7 +47,7 @@ vi.mock("@shared/contexts/ModalContext", () => ({
 }));
 
 vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
-  useControlVariables: () => ({ exchangeRate: 1 }),
+  useControlVariables: () => ({ exchangeRate: 1, state: "ready", loading: false, error: null }),
 }));
 
 vi.mock("@shared/hooks/useSendMoney", () => ({
@@ -63,6 +63,12 @@ vi.mock("@shared/hooks/useTokenBalance", () => ({
 const getVoucherMerchantsMock = vi.hoisted(() => vi.fn(async () => ({ merchants: [] })));
 vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
   getVoucherMerchants: getVoucherMerchantsMock,
+}));
+const getRecentPaymentRequestParticipantsMock = vi.hoisted(() =>
+  vi.fn(async () => ({ citySlug: "tcoin", participants: [] }))
+);
+vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
+  getRecentPaymentRequestParticipants: getRecentPaymentRequestParticipantsMock,
 }));
 const listWalletPublicKeysForUserMock = vi.hoisted(() => vi.fn(async () => []));
 const mapUserIdsByWalletsMock = vi.hoisted(() => vi.fn(async () => new Map()));
@@ -90,17 +96,6 @@ const fromMock = vi.hoisted(() => vi.fn((table: string) => {
             order: () => ({
               limit: () => Promise.resolve({ data: [], error: null }),
             }),
-          }),
-        }),
-      }),
-    } as any;
-  }
-  if (table === "invoice_pay_request") {
-    return {
-      select: () => ({
-        or: () => ({
-          order: () => ({
-            limit: () => Promise.resolve({ data: [], error: null }),
           }),
         }),
       }),
@@ -151,6 +146,11 @@ describe("WalletHome deep-link scanning", () => {
     listWalletPublicKeysForUserMock.mockResolvedValue([]);
     mapUserIdsByWalletsMock.mockReset();
     mapUserIdsByWalletsMock.mockResolvedValue(new Map());
+    getRecentPaymentRequestParticipantsMock.mockReset();
+    getRecentPaymentRequestParticipantsMock.mockResolvedValue({
+      citySlug: "tcoin",
+      participants: [],
+    });
     pushMock.mockReset();
     window.history.replaceState({}, "", "/dashboard");
   });

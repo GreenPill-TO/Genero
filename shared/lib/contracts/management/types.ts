@@ -28,6 +28,7 @@ export type CityContext = {
     TTC: Hex;
     CAD: Hex;
     ORCHESTRATOR: Hex;
+    ORACLE_ROUTER: Hex;
     VOTING: Hex;
   };
   rpcUrl: string;
