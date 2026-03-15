@@ -21,6 +21,7 @@
   - `public.charities` is restored as the shared charity catalogue for wallet and sparechange settings, with authenticated read access and deterministic seed rows so the user-settings bootstrap can always populate required charity choices.
   - Supabase Storage now provisions a public `profile_pictures` bucket for user avatars, with authenticated write/update/delete policies and public read access for rendered profile images.
   - Canonical operational read models now live in `public` views instead of ad hoc frontend table reads: `v_wallet_identities_v1` for wallet identity/readiness and `v_admin_interac_onramp_ops_v1` / `v_admin_manual_offramp_ops_v1` for first-class cash-ops administration.
+  - The `v1.04` operational-read-model migration is intentionally self-sufficient on older linked environments: it creates `wallet_list.public_key` if absent before building `v_wallet_identities_v1`, and its rollback instructions are kept as a non-executed `-- DOWN` section so `supabase db push` applies only the forward schema changes.
   - Agents may prepare migrations and inspect local schema files, but linked-database mutation commands remain human-only and require explicit approval before any `supabase --linked` or equivalent write operation is attempted.
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`

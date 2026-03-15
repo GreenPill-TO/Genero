@@ -49,19 +49,18 @@ VALUES
   ('manual_review')
 ON CONFLICT (status) DO NOTHING;
 
+ALTER TABLE IF EXISTS public.wallet_list
+  ADD COLUMN IF NOT EXISTS wallet_key_id bigint,
+  ADD COLUMN IF NOT EXISTS public_key text;
+
 CREATE OR REPLACE VIEW public.v_wallet_identities_v1 AS
 WITH share_rollup AS (
   SELECT
     ues.wallet_key_id,
     COUNT(*)::bigint AS encrypted_share_count,
-    BOOL_OR(ues.revoked_at IS NULL) AS has_active_share,
-    MAX(ues.last_used_at) AS last_share_used_at,
-    (
-      ARRAY_REMOVE(
-        ARRAY_AGG(ues.app_instance_id ORDER BY ues.last_used_at DESC NULLS LAST, ues.created_at DESC NULLS LAST),
-        NULL
-      )
-    )[1] AS latest_share_app_instance_id
+    (COUNT(*) > 0) AS has_active_share,
+    NULL::timestamptz AS last_share_used_at,
+    NULL::bigint AS latest_share_app_instance_id
   FROM public.user_encrypted_share ues
   GROUP BY ues.wallet_key_id
 )
@@ -132,46 +131,42 @@ GRANT SELECT ON public.ref_request_statuses TO authenticated;
 
 COMMIT;
 
--- migrate:down
-BEGIN;
-
-REVOKE SELECT ON public.ref_request_statuses FROM authenticated;
-REVOKE SELECT ON public.v_admin_manual_offramp_ops_v1 FROM authenticated;
-REVOKE SELECT ON public.v_admin_interac_onramp_ops_v1 FROM authenticated;
-REVOKE SELECT ON public.v_wallet_identities_v1 FROM authenticated;
-
-DROP VIEW IF EXISTS public.v_admin_manual_offramp_ops_v1;
-DROP VIEW IF EXISTS public.v_admin_interac_onramp_ops_v1;
-DROP VIEW IF EXISTS public.v_wallet_identities_v1;
-
-DROP INDEX IF EXISTS off_ramp_req_app_instance_idx;
-DROP INDEX IF EXISTS interac_transfer_app_instance_idx;
-
-ALTER TABLE IF EXISTS public.off_ramp_req
-  DROP COLUMN IF EXISTS wallet_account,
-  DROP COLUMN IF EXISTS interac_transfer_target,
-  DROP COLUMN IF EXISTS status,
-  DROP COLUMN IF EXISTS bank_reference_number,
-  DROP COLUMN IF EXISTS admin_notes,
-  DROP COLUMN IF EXISTS cad_off_ramp_fee,
-  DROP COLUMN IF EXISTS exchange_rate,
-  DROP COLUMN IF EXISTS tokens_burned,
-  DROP COLUMN IF EXISTS cad_to_user,
-  DROP COLUMN IF EXISTS updated_at,
-  DROP COLUMN IF EXISTS app_instance_id;
-
-ALTER TABLE IF EXISTS public.interac_transfer
-  DROP COLUMN IF EXISTS approved_timestamp,
-  DROP COLUMN IF EXISTS is_sent,
-  DROP COLUMN IF EXISTS interac_code,
-  DROP COLUMN IF EXISTS bank_reference,
-  DROP COLUMN IF EXISTS admin_notes,
-  DROP COLUMN IF EXISTS status,
-  DROP COLUMN IF EXISTS amount_override,
-  DROP COLUMN IF EXISTS amount,
-  DROP COLUMN IF EXISTS updated_at,
-  DROP COLUMN IF EXISTS app_instance_id;
-
-DROP TABLE IF EXISTS public.ref_request_statuses;
-
-COMMIT;
+-- DOWN
+-- BEGIN;
+-- REVOKE SELECT ON public.ref_request_statuses FROM authenticated;
+-- REVOKE SELECT ON public.v_admin_manual_offramp_ops_v1 FROM authenticated;
+-- REVOKE SELECT ON public.v_admin_interac_onramp_ops_v1 FROM authenticated;
+-- REVOKE SELECT ON public.v_wallet_identities_v1 FROM authenticated;
+-- DROP VIEW IF EXISTS public.v_admin_manual_offramp_ops_v1;
+-- DROP VIEW IF EXISTS public.v_admin_interac_onramp_ops_v1;
+-- DROP VIEW IF EXISTS public.v_wallet_identities_v1;
+-- DROP INDEX IF EXISTS off_ramp_req_app_instance_idx;
+-- DROP INDEX IF EXISTS interac_transfer_app_instance_idx;
+-- ALTER TABLE IF EXISTS public.off_ramp_req
+--   DROP COLUMN IF EXISTS wallet_account,
+--   DROP COLUMN IF EXISTS interac_transfer_target,
+--   DROP COLUMN IF EXISTS status,
+--   DROP COLUMN IF EXISTS bank_reference_number,
+--   DROP COLUMN IF EXISTS admin_notes,
+--   DROP COLUMN IF EXISTS cad_off_ramp_fee,
+--   DROP COLUMN IF EXISTS exchange_rate,
+--   DROP COLUMN IF EXISTS tokens_burned,
+--   DROP COLUMN IF EXISTS cad_to_user,
+--   DROP COLUMN IF EXISTS updated_at,
+--   DROP COLUMN IF EXISTS app_instance_id;
+-- ALTER TABLE IF EXISTS public.interac_transfer
+--   DROP COLUMN IF EXISTS approved_timestamp,
+--   DROP COLUMN IF EXISTS is_sent,
+--   DROP COLUMN IF EXISTS interac_code,
+--   DROP COLUMN IF EXISTS bank_reference,
+--   DROP COLUMN IF EXISTS admin_notes,
+--   DROP COLUMN IF EXISTS status,
+--   DROP COLUMN IF EXISTS amount_override,
+--   DROP COLUMN IF EXISTS amount,
+--   DROP COLUMN IF EXISTS updated_at,
+--   DROP COLUMN IF EXISTS app_instance_id;
+-- ALTER TABLE IF EXISTS public.wallet_list
+--   DROP COLUMN IF EXISTS public_key,
+--   DROP COLUMN IF EXISTS wallet_key_id;
+-- DROP TABLE IF EXISTS public.ref_request_statuses;
+-- COMMIT;

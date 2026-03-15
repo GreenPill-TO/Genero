@@ -1,3 +1,38 @@
+## v1.32
+### Timestamp
+- 2026-03-14 22:10:00 EDT
+
+### Objective
+- Harden the v1.04 operational-read-model migration so it applies cleanly to the linked Supabase project, then verify the deployed edge-function stack in the browser.
+
+### What Changed
+- Updated `supabase/migrations/20260314221500_v1.04_operational_read_models.sql` so the migration is self-sufficient on older linked environments:
+  - adds `wallet_list.public_key` and `wallet_key_id` if missing before creating `v_wallet_identities_v1`
+  - removes dependencies on `user_encrypted_share.revoked_at`, `last_used_at`, and `app_instance_id` while building the wallet-identity rollup
+  - converts the reversible block into a non-executed `-- DOWN` section so `supabase db push` applies only the forward migration
+- Applied the updated migration to the linked Supabase project and redeployed the touched functions (`onramp`, `bia-service`, `voucher-preferences`).
+- Ran a browser smoke pass on `http://localhost:3001` with the linked backend and confirmed the admin surface now loads through direct edge-function calls with `200` responses across:
+  - `onramp/admin/requests`
+  - `onramp/admin/sessions`
+  - `bia-service/list`
+  - `bia-service/mappings`
+  - `voucher-preferences/compatibility`
+  - `voucher-preferences/merchants`
+  - `redemptions/list`
+  - `governance/actions`
+
+### Verification
+- `supabase db push --linked`
+- `supabase functions deploy onramp --no-verify-jwt`
+- `supabase functions deploy bia-service --no-verify-jwt`
+- `supabase functions deploy voucher-preferences --no-verify-jwt`
+- Browser smoke pass on `/dashboard`, `/admin`, `/city-manager`, and `/merchant`
+
+### Files Edited
+- `supabase/migrations/20260314221500_v1.04_operational_read_models.sql`
+- `docs/engineering/technical-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.31
 ### Timestamp
 - 2026-03-14 20:35:00 EDT
