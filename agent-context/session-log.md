@@ -1,3 +1,32 @@
+## v1.38
+### Timestamp
+- 2026-03-18 12:36:17 EDT
+
+### Objective
+- Refactor the TorontoCoin `PoolRegistry` into a merchant-entity registry for `cplTCOIN`, with multi-wallet merchants, merchant-level cpl acceptance and POS-fee eligibility, and wallet-facing payment-target helpers.
+
+### What Changed
+- Replaced the wallet-keyed `PoolRegistry` merchant model with `MerchantEntity` records keyed by `bytes32 merchantId`, including merchant-level `acceptsCplTcoin` and `posFeeEligible` flags, linked-wallet management, compact wallet payment-config lookup, and wallet-facing predicate helpers for payment/POS checks.
+- Expanded `IPoolRegistry` to expose the new merchant-entity approval and query surface while preserving wallet-based compatibility helpers used by existing merchant-redemption logic.
+- Updated `Governance.sol` so merchant approval, suspension, removal, and pool-reassignment proposals now carry `merchantId` payloads, with merchant approval also capturing the initial wallet set.
+- Added focused Foundry coverage for the new merchant-entity workflow and updated the governance test mock to the new pool-registry ABI.
+- Mirrored the updated `PoolRegistry` and `IPoolRegistry` definitions into `contracts/foundry/src/torontocoin/allTcoinContracts.md`.
+- Updated the engineering specs to record the new merchant-entity payment-detection model.
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.37
 ### Timestamp
 - 2026-03-15 11:10:00 EDT

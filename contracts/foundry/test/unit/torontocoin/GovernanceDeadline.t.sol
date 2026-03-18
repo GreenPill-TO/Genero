@@ -35,7 +35,9 @@ contract MockStewardRegistry {
 }
 
 contract MockCharityRegistry {
-    function addCharity(string calldata, address, string calldata) external pure returns (uint256) { return 1; }
+    function addCharity(string calldata, address, string calldata) external pure returns (uint256) {
+        return 1;
+    }
     function removeCharity(uint256) external pure {}
     function suspendCharity(uint256) external pure {}
     function unsuspendCharity(uint256) external pure {}
@@ -47,11 +49,11 @@ contract MockPoolRegistry {
     function removePool(bytes32) external pure {}
     function suspendPool(bytes32) external pure {}
     function unsuspendPool(bytes32) external pure {}
-    function approveMerchant(address, bytes32, string calldata) external pure {}
-    function removeMerchant(address) external pure {}
-    function suspendMerchant(address) external pure {}
-    function unsuspendMerchant(address) external pure {}
-    function reassignMerchantPool(address, bytes32) external pure {}
+    function approveMerchant(bytes32, bytes32, string calldata, address[] calldata) external pure {}
+    function removeMerchant(bytes32) external pure {}
+    function suspendMerchant(bytes32) external pure {}
+    function unsuspendMerchant(bytes32) external pure {}
+    function reassignMerchantPool(bytes32, bytes32) external pure {}
 }
 
 contract MockReserveRegistry {
