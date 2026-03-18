@@ -115,6 +115,7 @@ contract TreasuryMintPreviewTest is Test {
 
     address private router = address(0xCAFE);
     address private user = address(0xBEEF);
+    address private governance = address(0xD00D);
 
     function setUp() public {
         charity = new CharityRegistry(address(this), address(this), address(this));
@@ -130,7 +131,7 @@ contract TreasuryMintPreviewTest is Test {
         treasury = new TreasuryController();
         treasury.initialize(
             address(this),
-            address(this),
+            governance,
             address(this),
             address(treasuryVault),
             address(mrTcoin),
@@ -199,5 +200,44 @@ contract TreasuryMintPreviewTest is Test {
 
         assertEq(mrTcoin.balanceOf(address(0xABCD)), maxMintable);
         assertEq(treasury.getCurrentCollateralizationRatio18(), 11e17);
+    }
+
+    function test_GovernanceCanDisableAdminCharityMinting() public {
+        reserveToken.mint(address(treasuryVault), 121_000_000);
+        mrTcoin.mint(address(0x1111), 100_000_000e12, "");
+
+        vm.prank(governance);
+        treasury.setAdminCanMintToCharity(false);
+
+        assertFalse(treasury.adminCanMintToCharity());
+
+        uint256 maxMintable = treasury.getMaxMintableCharityAmount();
+
+        vm.expectRevert(TreasuryController.Unauthorized.selector);
+        treasury.mintToCharity(1, maxMintable);
+
+        vm.prank(governance);
+        treasury.mintToCharity(1, maxMintable);
+
+        assertEq(mrTcoin.balanceOf(address(0xABCD)), maxMintable);
+    }
+
+    function test_AdminCanSelfDisableCharityMinting() public {
+        reserveToken.mint(address(treasuryVault), 121_000_000);
+        mrTcoin.mint(address(0x1111), 100_000_000e12, "");
+
+        treasury.setAdminCanMintToCharity(false);
+
+        assertFalse(treasury.adminCanMintToCharity());
+
+        uint256 maxMintable = treasury.getMaxMintableCharityAmount();
+
+        vm.expectRevert(TreasuryController.Unauthorized.selector);
+        treasury.mintToCharity(1, maxMintable);
+
+        vm.prank(governance);
+        treasury.mintToCharity(1, maxMintable);
+
+        assertEq(mrTcoin.balanceOf(address(0xABCD)), maxMintable);
     }
 }

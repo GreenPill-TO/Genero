@@ -1,3 +1,30 @@
+## v1.43
+### Timestamp
+- 2026-03-18 15:28:00 EDT
+
+### Objective
+- Add a controllable admin override for `TreasuryController.mintToCharity(...)`, defaulting to enabled while still allowing governance or the admin to switch that path off.
+
+### What Changed
+- Added `adminCanMintToCharity` to `contracts/foundry/src/torontocoin/TreasuryController.sol`, defaulting it to `true` during initialization.
+- Added `setAdminCanMintToCharity(bool enabled)` plus an `AdminCanMintToCharityUpdated` event so either governance or the owner/admin can disable or re-enable the admin charity-mint path.
+- Refactored both `mintToCharity(...)` entrypoints to allow governance unconditionally and owner/admin calls only when `adminCanMintToCharity` remains enabled.
+- Expanded `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol` to verify the default admin mint path, governance-driven disablement, and owner self-disablement while preserving governance access.
+- Synced the treasury-controller interface addition into `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`, mirrored the public interface change into `contracts/foundry/src/torontocoin/allTcoinContracts.md`, and updated the engineering specs.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.42
 ### Timestamp
 - 2026-03-18 15:12:37 EDT

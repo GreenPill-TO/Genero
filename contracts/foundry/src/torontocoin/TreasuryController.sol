@@ -130,6 +130,7 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     event MerchantRedeemRateUpdated(uint256 oldRateBps, uint256 newRateBps);
     event CharityMintRateUpdated(uint256 oldRateBps, uint256 newRateBps);
     event OvercollateralizationTargetUpdated(uint256 oldTarget18, uint256 newTarget18);
+    event AdminCanMintToCharityUpdated(bool oldValue, bool newValue, address indexed actor);
 
     event CharityMintedFromExcess(
         uint256 indexed charityId,
@@ -158,6 +159,7 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     uint256 public merchantRedeemRateBps;
     uint256 public charityMintRateBps;
     uint256 public overcollateralizationTarget18;
+    bool public adminCanMintToCharity;
 
     bool public mintingPaused;
     bool public redemptionPaused;
@@ -179,6 +181,20 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     modifier onlyGovernance() {
         if (msg.sender != governance) revert Unauthorized();
         _;
+    }
+
+    modifier onlyCharityMintAuthority() {
+        if (msg.sender == governance) {
+            _;
+            return;
+        }
+
+        if (msg.sender == owner() && adminCanMintToCharity) {
+            _;
+            return;
+        }
+
+        revert Unauthorized();
     }
 
     modifier onlyIndexerOrOwner() {
@@ -250,6 +266,7 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         _setMerchantRedeemRate(merchantRedeemRateBps_);
         _setCharityMintRate(charityMintRateBps_);
         _setOvercollateralizationTarget(overcollateralizationTarget18_);
+        adminCanMintToCharity = true;
     }
 
     function setTreasury(address treasury_) external onlyOwner {
@@ -575,11 +592,17 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         _setOvercollateralizationTarget(newTarget18);
     }
 
-    function mintToCharity(uint256 amount) external onlyGovernance {
+    function setAdminCanMintToCharity(bool enabled) external onlyGovernanceOrOwner {
+        bool oldValue = adminCanMintToCharity;
+        adminCanMintToCharity = enabled;
+        emit AdminCanMintToCharityUpdated(oldValue, enabled, msg.sender);
+    }
+
+    function mintToCharity(uint256 amount) external onlyCharityMintAuthority {
         _mintToCharity(ICharityRegistry(charityRegistry).getDefaultCharityId(), amount);
     }
 
-    function mintToCharity(uint256 charityId, uint256 amount) external onlyGovernance {
+    function mintToCharity(uint256 charityId, uint256 amount) external onlyCharityMintAuthority {
         _mintToCharity(charityId, amount);
     }
 

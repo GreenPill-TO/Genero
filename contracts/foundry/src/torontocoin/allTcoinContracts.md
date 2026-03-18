@@ -5667,6 +5667,7 @@ interface ITreasuryController {
     function setMerchantRedeemRate(uint256 newRateBps) external;
     function setCharityMintRate(uint256 newRateBps) external;
     function setOvercollateralizationTarget(uint256 newTarget18) external;
+    function setAdminCanMintToCharity(bool enabled) external;
     function mintToCharity(uint256 amount) external;
     function mintToCharity(uint256 charityId, uint256 amount) external;
 }
