@@ -74,6 +74,9 @@ contract TcoinMintRouterTest is Test {
         assertEq(usdc.balanceOf(address(router)), 0);
         assertEq(cadm.balanceOf(address(router)), 0);
         assertEq(tcoin.balanceOf(address(router)), 0);
+        assertTrue(treasury.treasury() != address(treasury));
+        assertEq(cadm.balanceOf(address(treasury)), 0);
+        assertEq(cadm.balanceOf(treasury.treasury()), amountIn);
     }
 
     function test_MintTcoinWithToken_GenericPath() public {
@@ -235,10 +238,15 @@ contract TcoinMintRouterTest is Test {
         assertTrue(swapAdapter.reenterFailed());
     }
 
-    function test_PreviewMintTcoinWithToken() public {
+    function test_PreviewMintTcoinWithToken() public view {
         (uint256 cadmOut, uint256 tcoinOut) = router.previewMintTcoinWithToken(address(usdc), 25e18, 0, "");
 
         assertEq(cadmOut, 25e18);
         assertEq(tcoinOut, 25e18);
+    }
+
+    function test_MockTreasuryMintingUsesVaultAddressForReserveCustody() public view {
+        assertTrue(treasury.treasury() != address(treasury));
+        assertEq(treasury.vaultReserveBalance(), 0);
     }
 }

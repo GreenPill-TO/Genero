@@ -55,7 +55,8 @@ Is this address eligible for merchant redemption treatment?
 Does this merchant still have enough redemption allowance left?
 ```
 
-This contract should be the only place where reserve assets actually move in and out of the protocol.
+This contract is the only place where reserve economics are decided, but reserve ERC20 custody must live in the separate `Treasury` vault.
+`TreasuryController` instructs the vault to pull and release reserve assets; it is not itself the reserve holder.
 
 ---
 
@@ -129,9 +130,9 @@ This should be resolved inside `TreasuryController` through `CharityRegistry.res
 
 ---
 
-## 2.5 Reserve assets are held on-chain
+## 2.5 Reserve assets are held in the Treasury vault
 
-Reserve assets are actually held by the treasury/controller on-chain.
+Reserve assets are held on-chain in the dedicated `Treasury` contract.
 
 If off-chain fiat backing exists, it must still be represented on-chain through a reserve asset token such as:
 
@@ -139,6 +140,7 @@ If off-chain fiat backing exists, it must still be represented on-chain through 
 * protocol TTC accounting token
 
 So the controller does not distinguish between “real on-chain assets” and “off-chain-backed accounting assets.”
+It values and settles against ERC20 reserve tokens, but the balances it relies on are the live balances held by `Treasury`.
 
 It only handles ERC20 reserve tokens.
 
@@ -154,7 +156,7 @@ The selected reserve asset must:
 
 * be active in `ReserveRegistry`
 * have a fresh oracle price
-* have sufficient balance available in the treasury/controller
+* have sufficient balance available in the `Treasury` vault
 
 ---
 
@@ -493,7 +495,7 @@ Accept reserve asset deposit and mint TCOIN.
 charityTcoinOut = userTcoinOut * charityMintRateBps / 10000
 ```
 
-9. transfer reserve asset from caller into controller
+9. instruct `Treasury` to pull reserve asset from caller via `depositReserveFrom(...)`
 10. mint `userTcoinOut` to caller
 11. mint `charityTcoinOut` to resolved charity wallet
 12. update accounting counters
@@ -1034,6 +1036,13 @@ Because allowance is updated by a centralized indexer, the system must tolerate 
 * `unpauseRedemption()`
 * `pauseAssetForTreasury(bytes32 assetId)`
 * `unpauseAssetForTreasury(bytes32 assetId)`
+
+## Treasury split notes
+
+* `TreasuryController` is the policy engine for minting, redemption, collateralization, and router settlement.
+* `Treasury` is the only reserve vault and the only on-chain holder of reserve ERC20 balances.
+* `getTotalReserveValue18()` and reserve sufficiency checks should read `Treasury.reserveBalance(...)`.
+* `depositAssetForLiquidityRoute(...)` remains a controller entrypoint, but it still deposits the reserve asset into `Treasury`.
 
 ---
 

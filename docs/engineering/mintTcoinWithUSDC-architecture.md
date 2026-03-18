@@ -22,13 +22,18 @@ Goal: collapse this into one user transaction while preserving reserve-backed is
 - canonical reserve-backed mint path
 - validates reserve asset, pricing, and charity uplift
 
+4. `Treasury`
+- pure reserve vault
+- receives the CADm reserve deposit when the controller mint path executes
+
 ## 3. On-Chain Sequence (Happy Path)
 ```mermaid
 sequenceDiagram
     actor User
     participant Router as TcoinMintRouter
     participant Adapter as ISwapAdapter
-    participant Treasury as TreasuryController
+    participant Controller as TreasuryController
+    participant Vault as Treasury
     participant TCOIN as TCOIN ERC20
 
     User->>Router: mintTcoinWithUSDC(amountIn,minCadmOut,minTcoinOut,deadline,recipient,charityId,swapData)
@@ -37,8 +42,9 @@ sequenceDiagram
     Router->>Adapter: swapToCadm(tokenIn, cadmToken, amountIn, minCadmOut, deadline, swapData)
     Adapter-->>Router: CADm transferred to router
     Router->>Router: Enforce CADm delta >= minCadmOut
-    Router->>Treasury: depositAndMint(cadmAssetId, cadmOut, charityId, minTcoinOut)
-    Treasury-->>Router: Mint TCOIN to router
+    Router->>Controller: depositAndMint(cadmAssetId, cadmOut, charityId, minTcoinOut)
+    Controller->>Vault: depositReserveFrom(router, CADm, cadmOut)
+    Controller-->>Router: Mint TCOIN to router
     Router->>Router: Enforce TCOIN delta >= minTcoinOut
     Router->>TCOIN: transfer(recipient, tcoinOut)
     Router->>User: Refund token/CADm leftovers (if any)
@@ -51,7 +57,7 @@ sequenceDiagram
 ### 4.2 Swap under-delivers
 - Router compares CADm balance delta to `minCadmOut` and reverts atomically.
 
-### 4.3 Treasury mint under-delivers
+### 4.3 Treasury-controller mint under-delivers
 - Router compares TCOIN balance delta to `minTcoinOut` and reverts atomically.
 
 ### 4.4 Adapter callback/reentrancy attempt

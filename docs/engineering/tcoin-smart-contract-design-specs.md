@@ -496,12 +496,15 @@ It should handle:
 * enforcing merchant redemption allowance limits
 * emergency pause controls for mint/redeem
 
+Reserve ERC20 custody should not live here.
+The dedicated `Treasury` vault is the only reserve holder, and `TreasuryController` should read live vault balances and instruct the vault for deposits/withdrawals.
+
 ## State
 
 ### Asset/accounting state
 
 * optional internal accounting per reserve asset deposited and redeemed
-* reserve balances may be derived from actual ERC20 balances, but evented accounting is still useful
+* reserve balances are derived from the live `Treasury` vault balance, though evented accounting is still useful
 
 ### Parameter state
 
@@ -557,7 +560,7 @@ It should handle:
 
 * asset must be approved and active
 * oracle price must be fresh
-* reserve asset transferred into treasury/controller
+* reserve asset transferred into `Treasury` under controller instruction
 * CAD value computed via oracle
 * TCOIN minted at par using CAD→TCOIN peg
 * charity uplift minted to selected charity or default charity, based on configured charity mint rate

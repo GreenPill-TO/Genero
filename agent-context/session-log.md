@@ -1,3 +1,37 @@
+## v1.46
+### Timestamp
+- 2026-03-18 17:40:00 EDT
+
+### Objective
+- Finish the treasury split everywhere so the repo consistently treats `Treasury` as the only reserve vault and `TreasuryController` as the economic policy layer only.
+
+### What Changed
+- Refactored `contracts/foundry/test/unit/torontocoin/mocks/MockTreasuryMinting.sol` to use a tiny `MockTreasuryVaultForMinting`, so the minting mock now points `treasury()` at a vault address and deposits reserve assets into that vault instead of into the controller mock itself.
+- Tightened `contracts/foundry/test/unit/torontocoin/TcoinMintRouter.t.sol` so the router path now asserts the treasury mock is not self-custodying reserves and that successful reserve-backed mints end with CADm in the mock vault and not on the controller mock.
+- Rewrote the stale treasury-custody language in `contracts/foundry/src/torontocoin/TreasuryController.md`, `contracts/foundry/src/torontocoin/TcoinMintRouter.md`, and `contracts/foundry/src/torontocoin/ReserveRegistry.md` so they now describe `Treasury` as the reserve holder and `TreasuryController` as the pricing/redemption/router policy engine.
+- Updated `docs/engineering/tcoin-smart-contract-architecture.md`, `docs/engineering/tcoin-smart-contract-design-specs.md`, and `docs/engineering/mintTcoinWithUSDC-architecture.md` to introduce `Treasury` as a first-class vault, move reserve-balance ownership from the controller to the vault, and show router/controller/vault interactions explicitly in the architecture narrative.
+- Rebuilt `contracts/foundry/src/torontocoin/allTcoinContracts.md` as a live treasury-split mirror that includes the vault interface, minting interface, `Treasury`, and the vault-based `TreasuryController` boundary notes.
+- Updated the engineering specs so the current repo-level source of truth now says the treasury split is fully reflected across code, mocks, docs, and mirrors, while admin still retains emergency freeze/unfreeze powers because governance voting is too slow for that operational path.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/TcoinMintRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/test/unit/torontocoin/mocks/MockTreasuryMinting.sol`
+- `contracts/foundry/test/unit/torontocoin/TcoinMintRouter.t.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.md`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.md`
+- `contracts/foundry/src/torontocoin/ReserveRegistry.md`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `docs/engineering/tcoin-smart-contract-architecture.md`
+- `docs/engineering/tcoin-smart-contract-design-specs.md`
+- `docs/engineering/mintTcoinWithUSDC-architecture.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.45
 ### Timestamp
 - 2026-03-18 17:20:00 EDT
