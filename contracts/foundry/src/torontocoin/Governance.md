@@ -65,9 +65,10 @@ Examples:
 * `proposeCharityRemove(...)`
 * `proposeCadPegUpdate(...)`
 * `proposeUserRedeemRateUpdate(...)`
-* `proposeDemurrageRateUpdate(...)`
+* `proposeExpirePeriodUpdate(...)`
 * `proposePoolAdd(...)`
 * `proposeReserveAssetAdd(...)`
+* `proposeLiquidityRouterSetScoringWeights(...)`
 
 This makes the contract easier to audit and reduces proposal ambiguity.
 
@@ -213,12 +214,41 @@ For:
 * executing CAD peg changes
 * executing redemption rate changes
 * executing charity mint uplift changes
+* executing finalized controller pointer/admin changes
+
+## `LiquidityRouter`
+
+For:
+
+* executing finalized router pointer updates
+* executing charity top-up policy updates
+* executing pool scoring-weight updates
 
 ## `TCOINToken`
 
 For:
 
-* executing demurrage-rate updates
+* executing expiry-period updates on the finalized token surface
+
+---
+
+# Current Ownership Model
+
+The finalized governance/admin posture is:
+
+* `Governance` should become the `owner` of `TreasuryController`
+* `Governance` should become the configured `governance` address of `TreasuryController`
+* `Governance` should become the `owner` of `LiquidityRouter`
+* `Governance` should become the configured `governance` address of `LiquidityRouter`
+* if token admin proposal paths remain active, `Governance` should also own the token contract
+
+This is necessary because proposal execution now targets a mix of:
+
+* `onlyOwner`
+* `onlyGovernance`
+* `onlyGovernanceOrOwner`
+
+surfaces on the finalized controller/router stack.
 
 ---
 
@@ -251,7 +281,7 @@ enum ProposalType {
     UserRedeemRateUpdate,
     MerchantRedeemRateUpdate,
     CharityMintRateUpdate,
-    DemurrageRateUpdate
+    ExpirePeriodUpdate
 }
 ```
 
@@ -637,7 +667,7 @@ function proposeCadPegUpdate(uint256 newCadPeg18, uint64 votingWindow) external 
 function proposeUserRedeemRateUpdate(uint256 newRateBps, uint64 votingWindow) external onlySteward returns (uint256)
 function proposeMerchantRedeemRateUpdate(uint256 newRateBps, uint64 votingWindow) external onlySteward returns (uint256)
 function proposeCharityMintRateUpdate(uint256 newRateBps, uint64 votingWindow) external onlySteward returns (uint256)
-function proposeDemurrageRateUpdate(uint256 newRate, uint64 votingWindow) external onlySteward returns (uint256)
+function proposeExpirePeriodUpdate(uint256 newExpirePeriod, uint64 votingWindow) external onlySteward returns (uint256)
 ```
 
 ### Special rule for CAD peg
@@ -993,7 +1023,7 @@ Use compact payload mappings and off-chain indexing for rich UX.
 * `proposeUserRedeemRateUpdate(...)`
 * `proposeMerchantRedeemRateUpdate(...)`
 * `proposeCharityMintRateUpdate(...)`
-* `proposeDemurrageRateUpdate(...)`
+* `proposeExpirePeriodUpdate(...)`
 
 ## Voting and execution
 

@@ -466,7 +466,7 @@ proposeCadPegUpdate(uint256 newPeg)
 proposeUserRedeemRateUpdate(uint256 newRate)
 proposeMerchantRedeemRateUpdate(uint256 newRate)
 proposeCharitySurplusMintRateUpdate(uint256 newRate)
-proposeDemurrageRateUpdate(uint256 newRate)
+proposeExpirePeriodUpdate(uint256 newExpirePeriod)
 ```
 
 ### Oracle administration proposals

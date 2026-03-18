@@ -105,14 +105,14 @@ This contract should be based on the Sarafu `DemurrageTokenSingleNocap` model, b
 
 * only controller may mint
 * only controller may burn from arbitrary accounts
-* only governance-controlled admin path may update demurrage rate
+* only governance-controlled admin path may update the token expiry-period parameter
 * emergency pause should be owner/admin controlled
 
 ## Key events
 
 * `ControllerUpdated(address oldController, address newController)`
 * `TreasuryUpdated(address oldTreasury, address newTreasury)`
-* `DemurrageRateUpdated(uint256 oldRate, uint256 newRate)`
+* `ExpirePeriodUpdated(uint256 oldPeriod, uint256 newPeriod)`
 * `DemurrageCaptured(uint256 amount, uint256 timestamp)`
 * standard ERC20 `Transfer`
 * pause/unpause events
@@ -676,7 +676,7 @@ Voting state:
 * `proposeUserRedeemRateUpdate(uint256 newRate)`
 * `proposeMerchantRedeemRateUpdate(uint256 newRate)`
 * `proposeCharityMintRateUpdate(uint256 newRate)`
-* `proposeDemurrageRateUpdate(uint256 newRate)`
+* `proposeExpirePeriodUpdate(uint256 newExpirePeriod)`
 
 ### Voting and execution
 

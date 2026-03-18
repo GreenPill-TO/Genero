@@ -8,6 +8,7 @@ import {IPoolRegistry} from "./interfaces/IPoolRegistry.sol";
 import {IReserveRegistry} from "./interfaces/IReserveRegistry.sol";
 import {IStewardRegistry} from "./interfaces/IStewardRegistry.sol";
 import {ITCOINToken} from "./interfaces/ITCOINToken.sol";
+import {ILiquidityRouterGovernance} from "./interfaces/ILiquidityRouterGovernance.sol";
 import {ITreasuryController} from "./interfaces/ITreasuryController.sol";
 
 contract Governance is Ownable, ReentrancyGuard {
@@ -41,7 +42,31 @@ contract Governance is Ownable, ReentrancyGuard {
         CharityMintRateUpdate,
         OvercollateralizationTargetUpdate,
         CharityMintFromExcess,
-        DemurrageRateUpdate
+        ExpirePeriodUpdate,
+        TreasuryControllerSetTreasury,
+        TreasuryControllerSetGovernance,
+        TreasuryControllerSetIndexer,
+        TreasuryControllerSetLiquidityRouter,
+        TreasuryControllerSetTcoinToken,
+        TreasuryControllerSetReserveRegistry,
+        TreasuryControllerSetCharityRegistry,
+        TreasuryControllerSetPoolRegistry,
+        TreasuryControllerSetOracleRouter,
+        TreasuryControllerPauseMinting,
+        TreasuryControllerUnpauseMinting,
+        TreasuryControllerPauseRedemption,
+        TreasuryControllerUnpauseRedemption,
+        TreasuryControllerPauseAsset,
+        TreasuryControllerUnpauseAsset,
+        TreasuryControllerSetAdminCanMintToCharity,
+        LiquidityRouterSetGovernance,
+        LiquidityRouterSetTreasuryController,
+        LiquidityRouterSetCplTcoin,
+        LiquidityRouterSetCharityPreferencesRegistry,
+        LiquidityRouterSetPoolRegistry,
+        LiquidityRouterSetPoolAdapter,
+        LiquidityRouterSetCharityTopupBps,
+        LiquidityRouterSetScoringWeights
     }
 
     enum ProposalStatus {
@@ -123,9 +148,24 @@ contract Governance is Ownable, ReentrancyGuard {
         uint256 value;
     }
 
+    struct AddressPayload {
+        address account;
+    }
+
+    struct BoolPayload {
+        bool value;
+    }
+
     struct CharityMintPayload {
         uint256 charityId;
         uint256 amount;
+    }
+
+    struct ScoringWeightsPayload {
+        uint256 weightLowMrTcoinLiquidity;
+        uint256 weightHighCplTcoinLiquidity;
+        uint256 weightUserPoolPreference;
+        uint256 weightUserMerchantPreference;
     }
 
     error ZeroAddressOwner();
@@ -150,6 +190,7 @@ contract Governance is Ownable, ReentrancyGuard {
     event PoolRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event ReserveRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event TreasuryControllerUpdated(address indexed oldController, address indexed newController);
+    event LiquidityRouterUpdated(address indexed oldRouter, address indexed newRouter);
     event TcoinTokenUpdated(address indexed oldToken, address indexed newToken);
     event DefaultVotingWindowUpdated(uint64 oldWindow, uint64 newWindow);
 
@@ -180,6 +221,7 @@ contract Governance is Ownable, ReentrancyGuard {
     address public poolRegistry;
     address public reserveRegistry;
     address public treasuryController;
+    address public liquidityRouter;
     address public tcoinToken;
 
     uint64 public defaultVotingWindow;
@@ -199,7 +241,10 @@ contract Governance is Ownable, ReentrancyGuard {
     mapping(uint256 => ReserveAssetAddPayload) private reserveAssetAddPayloads;
     mapping(uint256 => ReserveOracleUpdatePayload) private reserveOracleUpdatePayloads;
     mapping(uint256 => UIntPayload) private uintPayloads;
+    mapping(uint256 => AddressPayload) private addressPayloads;
+    mapping(uint256 => BoolPayload) private boolPayloads;
     mapping(uint256 => CharityMintPayload) private charityMintPayloads;
+    mapping(uint256 => ScoringWeightsPayload) private scoringWeightsPayloads;
 
     constructor(
         address initialOwner,
@@ -208,6 +253,7 @@ contract Governance is Ownable, ReentrancyGuard {
         address poolRegistry_,
         address reserveRegistry_,
         address treasuryController_,
+        address liquidityRouter_,
         address tcoinToken_,
         uint64 defaultVotingWindow_
     ) {
@@ -218,6 +264,7 @@ contract Governance is Ownable, ReentrancyGuard {
         _setPoolRegistry(poolRegistry_);
         _setReserveRegistry(reserveRegistry_);
         _setTreasuryController(treasuryController_);
+        _setLiquidityRouter(liquidityRouter_);
         _setTcoinToken(tcoinToken_);
         _setDefaultVotingWindow(defaultVotingWindow_);
     }
@@ -253,6 +300,10 @@ contract Governance is Ownable, ReentrancyGuard {
 
     function setTreasuryController(address newController) external onlyOwner {
         _setTreasuryController(newController);
+    }
+
+    function setLiquidityRouter(address newRouter) external onlyOwner {
+        _setLiquidityRouter(newRouter);
     }
 
     function setTcoinToken(address newToken) external onlyOwner {
@@ -457,14 +508,14 @@ contract Governance is Ownable, ReentrancyGuard {
         return _proposeRateLike(ProposalType.CharityMintRateUpdate, newRateBps, votingWindow);
     }
 
-    function proposeDemurrageRateUpdate(uint256 newRate, uint64 votingWindow)
+    function proposeExpirePeriodUpdate(uint256 newExpirePeriod, uint64 votingWindow)
         external
         onlySteward
         returns (uint256 proposalId)
     {
-        if (newRate == 0) revert InvalidProposalValue();
-        proposalId = _createProposal(ProposalType.DemurrageRateUpdate, votingWindow);
-        uintPayloads[proposalId] = UIntPayload({value: newRate});
+        if (newExpirePeriod == 0) revert InvalidProposalValue();
+        proposalId = _createProposal(ProposalType.ExpirePeriodUpdate, votingWindow);
+        uintPayloads[proposalId] = UIntPayload({value: newExpirePeriod});
     }
 
     function proposeOvercollateralizationTargetUpdate(uint256 newTarget18, uint64 votingWindow)
@@ -496,6 +547,192 @@ contract Governance is Ownable, ReentrancyGuard {
         if (amount == 0) revert InvalidProposalValue();
         proposalId = _createProposal(ProposalType.CharityMintFromExcess, votingWindow);
         charityMintPayloads[proposalId] = CharityMintPayload({charityId: charityId, amount: amount});
+    }
+
+    function proposeTreasuryControllerSetTreasury(address treasury_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.TreasuryControllerSetTreasury, treasury_, votingWindow);
+    }
+
+    function proposeTreasuryControllerSetGovernance(address governance_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.TreasuryControllerSetGovernance, governance_, votingWindow);
+    }
+
+    function proposeTreasuryControllerSetIndexer(address indexer_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.TreasuryControllerSetIndexer, indexer_, votingWindow);
+    }
+
+    function proposeTreasuryControllerSetLiquidityRouter(address liquidityRouter_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.TreasuryControllerSetLiquidityRouter, liquidityRouter_, votingWindow);
+    }
+
+    function proposeTreasuryControllerSetTcoinToken(address tcoinToken_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.TreasuryControllerSetTcoinToken, tcoinToken_, votingWindow);
+    }
+
+    function proposeTreasuryControllerSetReserveRegistry(address reserveRegistry_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.TreasuryControllerSetReserveRegistry, reserveRegistry_, votingWindow);
+    }
+
+    function proposeTreasuryControllerSetCharityRegistry(address charityRegistry_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.TreasuryControllerSetCharityRegistry, charityRegistry_, votingWindow);
+    }
+
+    function proposeTreasuryControllerSetPoolRegistry(address poolRegistry_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.TreasuryControllerSetPoolRegistry, poolRegistry_, votingWindow);
+    }
+
+    function proposeTreasuryControllerSetOracleRouter(address oracleRouter_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.TreasuryControllerSetOracleRouter, oracleRouter_, votingWindow);
+    }
+
+    function proposeTreasuryControllerPauseMinting(uint64 votingWindow) external onlySteward returns (uint256) {
+        return _proposeNoPayload(ProposalType.TreasuryControllerPauseMinting, votingWindow);
+    }
+
+    function proposeTreasuryControllerUnpauseMinting(uint64 votingWindow) external onlySteward returns (uint256) {
+        return _proposeNoPayload(ProposalType.TreasuryControllerUnpauseMinting, votingWindow);
+    }
+
+    function proposeTreasuryControllerPauseRedemption(uint64 votingWindow) external onlySteward returns (uint256) {
+        return _proposeNoPayload(ProposalType.TreasuryControllerPauseRedemption, votingWindow);
+    }
+
+    function proposeTreasuryControllerUnpauseRedemption(uint64 votingWindow) external onlySteward returns (uint256) {
+        return _proposeNoPayload(ProposalType.TreasuryControllerUnpauseRedemption, votingWindow);
+    }
+
+    function proposeTreasuryControllerPauseAsset(bytes32 assetId, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeBytes32Id(ProposalType.TreasuryControllerPauseAsset, assetId, votingWindow);
+    }
+
+    function proposeTreasuryControllerUnpauseAsset(bytes32 assetId, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeBytes32Id(ProposalType.TreasuryControllerUnpauseAsset, assetId, votingWindow);
+    }
+
+    function proposeSetAdminCanMintToCharity(bool enabled, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeBool(ProposalType.TreasuryControllerSetAdminCanMintToCharity, enabled, votingWindow);
+    }
+
+    function proposeLiquidityRouterSetGovernance(address governance_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.LiquidityRouterSetGovernance, governance_, votingWindow);
+    }
+
+    function proposeLiquidityRouterSetTreasuryController(address treasuryController_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(
+            ProposalType.LiquidityRouterSetTreasuryController, treasuryController_, votingWindow
+        );
+    }
+
+    function proposeLiquidityRouterSetCplTcoin(address cplTcoin_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.LiquidityRouterSetCplTcoin, cplTcoin_, votingWindow);
+    }
+
+    function proposeLiquidityRouterSetCharityPreferencesRegistry(address registry_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.LiquidityRouterSetCharityPreferencesRegistry, registry_, votingWindow);
+    }
+
+    function proposeLiquidityRouterSetPoolRegistry(address registry_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.LiquidityRouterSetPoolRegistry, registry_, votingWindow);
+    }
+
+    function proposeLiquidityRouterSetPoolAdapter(address adapter_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(ProposalType.LiquidityRouterSetPoolAdapter, adapter_, votingWindow);
+    }
+
+    function proposeLiquidityRouterSetCharityTopupBps(uint256 newBps, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeRateLike(ProposalType.LiquidityRouterSetCharityTopupBps, newBps, votingWindow);
+    }
+
+    function proposeLiquidityRouterSetScoringWeights(
+        uint256 newWeightLowMrTcoinLiquidity,
+        uint256 newWeightHighCplTcoinLiquidity,
+        uint256 newWeightUserPoolPreference,
+        uint256 newWeightUserMerchantPreference,
+        uint64 votingWindow
+    ) external onlySteward returns (uint256 proposalId) {
+        proposalId = _createProposal(ProposalType.LiquidityRouterSetScoringWeights, votingWindow);
+        scoringWeightsPayloads[proposalId] = ScoringWeightsPayload({
+            weightLowMrTcoinLiquidity: newWeightLowMrTcoinLiquidity,
+            weightHighCplTcoinLiquidity: newWeightHighCplTcoinLiquidity,
+            weightUserPoolPreference: newWeightUserPoolPreference,
+            weightUserMerchantPreference: newWeightUserMerchantPreference
+        });
     }
 
     /// @notice Cast a weighted steward vote on a pending proposal.
@@ -630,8 +867,62 @@ contract Governance is Ownable, ReentrancyGuard {
             } else {
                 ITreasuryController(treasuryController).mintToCharity(payload.charityId, payload.amount);
             }
-        } else if (proposalType == ProposalType.DemurrageRateUpdate) {
+        } else if (proposalType == ProposalType.ExpirePeriodUpdate) {
             ITCOINToken(tcoinToken).setExpirePeriod(uintPayloads[proposalId].value);
+        } else if (proposalType == ProposalType.TreasuryControllerSetTreasury) {
+            ITreasuryController(treasuryController).setTreasury(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.TreasuryControllerSetGovernance) {
+            ITreasuryController(treasuryController).setGovernance(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.TreasuryControllerSetIndexer) {
+            ITreasuryController(treasuryController).setIndexer(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.TreasuryControllerSetLiquidityRouter) {
+            ITreasuryController(treasuryController).setLiquidityRouter(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.TreasuryControllerSetTcoinToken) {
+            ITreasuryController(treasuryController).setTcoinToken(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.TreasuryControllerSetReserveRegistry) {
+            ITreasuryController(treasuryController).setReserveRegistry(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.TreasuryControllerSetCharityRegistry) {
+            ITreasuryController(treasuryController).setCharityRegistry(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.TreasuryControllerSetPoolRegistry) {
+            ITreasuryController(treasuryController).setPoolRegistry(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.TreasuryControllerSetOracleRouter) {
+            ITreasuryController(treasuryController).setOracleRouter(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.TreasuryControllerPauseMinting) {
+            ITreasuryController(treasuryController).pauseMinting();
+        } else if (proposalType == ProposalType.TreasuryControllerUnpauseMinting) {
+            ITreasuryController(treasuryController).unpauseMinting();
+        } else if (proposalType == ProposalType.TreasuryControllerPauseRedemption) {
+            ITreasuryController(treasuryController).pauseRedemption();
+        } else if (proposalType == ProposalType.TreasuryControllerUnpauseRedemption) {
+            ITreasuryController(treasuryController).unpauseRedemption();
+        } else if (proposalType == ProposalType.TreasuryControllerPauseAsset) {
+            ITreasuryController(treasuryController).pauseAssetForTreasury(bytes32IdPayloads[proposalId].id);
+        } else if (proposalType == ProposalType.TreasuryControllerUnpauseAsset) {
+            ITreasuryController(treasuryController).unpauseAssetForTreasury(bytes32IdPayloads[proposalId].id);
+        } else if (proposalType == ProposalType.TreasuryControllerSetAdminCanMintToCharity) {
+            ITreasuryController(treasuryController).setAdminCanMintToCharity(boolPayloads[proposalId].value);
+        } else if (proposalType == ProposalType.LiquidityRouterSetGovernance) {
+            ILiquidityRouterGovernance(liquidityRouter).setGovernance(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.LiquidityRouterSetTreasuryController) {
+            ILiquidityRouterGovernance(liquidityRouter).setTreasuryController(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.LiquidityRouterSetCplTcoin) {
+            ILiquidityRouterGovernance(liquidityRouter).setCplTcoin(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.LiquidityRouterSetCharityPreferencesRegistry) {
+            ILiquidityRouterGovernance(liquidityRouter).setCharityPreferencesRegistry(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.LiquidityRouterSetPoolRegistry) {
+            ILiquidityRouterGovernance(liquidityRouter).setPoolRegistry(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.LiquidityRouterSetPoolAdapter) {
+            ILiquidityRouterGovernance(liquidityRouter).setPoolAdapter(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.LiquidityRouterSetCharityTopupBps) {
+            ILiquidityRouterGovernance(liquidityRouter).setCharityTopupBps(uintPayloads[proposalId].value);
+        } else if (proposalType == ProposalType.LiquidityRouterSetScoringWeights) {
+            ScoringWeightsPayload storage payload = scoringWeightsPayloads[proposalId];
+            ILiquidityRouterGovernance(liquidityRouter).setScoringWeights(
+                payload.weightLowMrTcoinLiquidity,
+                payload.weightHighCplTcoinLiquidity,
+                payload.weightUserPoolPreference,
+                payload.weightUserMerchantPreference
+            );
         } else {
             revert InvalidProposalValue();
         }
@@ -716,6 +1007,27 @@ contract Governance is Ownable, ReentrancyGuard {
         if (value > BPS_DENOMINATOR) revert InvalidProposalValue();
         proposalId = _createProposal(proposalType, votingWindow);
         uintPayloads[proposalId] = UIntPayload({value: value});
+    }
+
+    function _proposeAddressTarget(ProposalType proposalType, address account, uint64 votingWindow)
+        internal
+        returns (uint256 proposalId)
+    {
+        if (account == address(0)) revert ZeroAddressTarget();
+        proposalId = _createProposal(proposalType, votingWindow);
+        addressPayloads[proposalId] = AddressPayload({account: account});
+    }
+
+    function _proposeBool(ProposalType proposalType, bool value, uint64 votingWindow)
+        internal
+        returns (uint256 proposalId)
+    {
+        proposalId = _createProposal(proposalType, votingWindow);
+        boolPayloads[proposalId] = BoolPayload({value: value});
+    }
+
+    function _proposeNoPayload(ProposalType proposalType, uint64 votingWindow) internal returns (uint256 proposalId) {
+        proposalId = _createProposal(proposalType, votingWindow);
     }
 
     function _createProposal(ProposalType proposalType, uint64 votingWindow) internal returns (uint256 proposalId) {
@@ -807,6 +1119,13 @@ contract Governance is Ownable, ReentrancyGuard {
         address old = treasuryController;
         treasuryController = newController;
         emit TreasuryControllerUpdated(old, newController);
+    }
+
+    function _setLiquidityRouter(address newRouter) internal {
+        if (newRouter == address(0)) revert ZeroAddressRegistry();
+        address old = liquidityRouter;
+        liquidityRouter = newRouter;
+        emit LiquidityRouterUpdated(old, newRouter);
     }
 
     function _setTcoinToken(address newToken) internal {

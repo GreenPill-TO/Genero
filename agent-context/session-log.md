@@ -1,3 +1,31 @@
+## v1.45
+### Timestamp
+- 2026-03-18 17:20:00 EDT
+
+### Objective
+- Reconcile `Governance.sol` with the finalized `TreasuryController`, `LiquidityRouter`, and token admin surfaces so on-chain proposals match the current signatures and ownership model.
+
+### What Changed
+- Expanded `contracts/foundry/src/torontocoin/Governance.sol` with a `liquidityRouter` pointer, a router-governance event/setter, renamed the stale demurrage proposal path to `ExpirePeriodUpdate`, and added explicit proposal families for finalized `TreasuryController` and `LiquidityRouter` pointer/config/admin actions.
+- Added `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol` and broadened `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol` so governance dispatch compiles against the current owner-only, governance-only, and governance-or-owner treasury/router surfaces.
+- Rebuilt `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol` around access-controlled controller/router/token mocks that enforce the intended deployment posture, covering deadline gating, merchant-entity approval payloads, expiry-period updates, router/controller admin proposals, and failure cases when Governance is not wired as the target owner/governance address.
+- Updated `contracts/foundry/src/torontocoin/Governance.md` plus the engineering specs to document that `Governance` should own the finalized controller/router stack and act as their configured governance address where applicable.
+- Left `contracts/foundry/src/torontocoin/allTcoinContracts.md` untouched in this session because it is currently deleted in the worktree and restoring it here would overwrite an existing repo-side change outside this task.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/Governance.md`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.44
 ### Timestamp
 - 2026-03-18 15:51:00 EDT
