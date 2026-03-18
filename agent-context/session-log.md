@@ -1,3 +1,31 @@
+## v1.44
+### Timestamp
+- 2026-03-18 15:51:00 EDT
+
+### Objective
+- Harden `GeneroTokenV3` so `cplTCOIN` is safer to operate in production, with corrected burn semantics, explicit writer authority, clearer previews, visible allowance reporting, and stronger merchant-transfer documentation.
+
+### What Changed
+- Refactored `contracts/foundry/src/torontocoin/GeneroTokenV3.sol` around a unified transfer quote path that now powers `transfer`, `transferFrom`, `previewTransfer(...)`, `previewMerchantTransfer(...)`, and `previewAllowanceRequired(...)`.
+- Switched token allowance storage to internal base-unit accounting with a visible-unit `allowance(...)` getter, visible-unit `Approval` events, and post-spend approval emission in `transferFrom(...)`.
+- Added `getMerchantFeeConfig(...)` and `canResolveCharityFor(...)`, documented the base-unit conservation rule for merchant fee routing, and kept the charity base credit as the rounding remainder to preserve exact internal conservation.
+- Fixed `burn(uint256)` to check the base delta instead of comparing visible units to base balance, removed the broken zero-argument `burn()` overload, and separated owner admin authority from explicit writer mint/burn authority.
+- Rewrote `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol` to cover explicit writer requirements, allowance previews, visible allowance decay, merchant-transfer event semantics, charity-resolution health checks, fee-config introspection, and rounding bounds across decimals and demurrage states.
+- Updated `contracts/foundry/src/torontocoin/GeneroToken.md`, synced the token surface into `contracts/foundry/src/torontocoin/allTcoinContracts.md`, and refreshed the engineering specs.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`
+- `contracts/foundry/src/torontocoin/GeneroToken.md`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.43
 ### Timestamp
 - 2026-03-18 15:28:00 EDT

@@ -406,10 +406,10 @@ contract GeneroTokenV3 {
         uint64 demurrage;
     }
 
-    struct MerchantTransferQuote {
+    struct TransferQuote {
         bytes32 merchantId;
         uint256 payerDebit;
-        uint256 merchantCredit;
+        uint256 recipientCredit;
         uint256 charityCredit;
         uint256 resolvedCharityId;
         address charityWallet;
@@ -417,11 +417,13 @@ contract GeneroTokenV3 {
         uint16 voluntaryFeeBps;
         bool feeApplies;
         uint256 payerDebitBase;
-        uint256 merchantCreditBase;
+        uint256 recipientCreditBase;
         uint256 charityCreditBase;
     }
 
     redistributionItem[] public redistributions;
+
+    // Base balances are stored in non-visible units so demurrage can be applied lazily.
     mapping(address => uint256) account;
 
     int128 public demurrageAmount;
@@ -442,8 +444,10 @@ contract GeneroTokenV3 {
     uint256 public immutable periodDuration;
     int128 public immutable decayLevel;
 
-    mapping(address => bool) minter;
-    mapping(address => mapping(address => uint256)) public allowance;
+    // Writer permissions gate mint and burn; owner is not implicitly a writer.
+    mapping(address => bool) private writer;
+    // Allowances are stored in base units, then projected into visible units for getters and events.
+    mapping(address => mapping(address => uint256)) private allowanceBase;
 
     address public sinkAddress;
     uint256 public expires;
@@ -671,10 +675,42 @@ contract GeneroTokenV3 {
         return _effectiveMerchantFeeBps(merchantId);
     }
 
+    function getMerchantFeeConfig(address merchantWallet)
+        external
+        view
+        returns (
+            bytes32 merchantId,
+            bool hasOverride,
+            uint16 effectiveFeeBps,
+            uint16 overrideFeeBps,
+            uint16 defaultFeeBps_
+        )
+    {
+        (, merchantId,,,,,) = IPoolRegistryForCplTCOIN(poolRegistry).getMerchantPaymentConfig(merchantWallet);
+        defaultFeeBps_ = defaultMerchantFeeBps;
+
+        if (merchantId == bytes32(0)) {
+            return (bytes32(0), false, 0, 0, defaultFeeBps_);
+        }
+
+        hasOverride = merchantFeeOverrideSet[merchantId];
+        overrideFeeBps = hasOverride ? merchantFeeOverrideBps[merchantId] : 0;
+        effectiveFeeBps = _effectiveMerchantFeeBps(merchantId);
+    }
+
     function feeApplies(address payer, address to) public view returns (bool) {
         if (!merchantFeesEnabled) return false;
         if (feeExempt[payer] || feeExempt[to]) return false;
         return IPoolRegistryForCplTCOIN(poolRegistry).isMerchantPosFeeTarget(to);
+    }
+
+    function previewTransfer(address payer, address to, uint256 displayedAmount)
+        external
+        view
+        returns (uint256 payerDebit, uint256 recipientCredit, uint256 charityCredit, bool feeApplies_)
+    {
+        TransferQuote memory quote = _quoteTransfer(payer, to, displayedAmount);
+        return (quote.payerDebit, quote.recipientCredit, quote.charityCredit, quote.feeApplies);
     }
 
     function previewMerchantTransfer(address payer, address to, uint256 displayedAmount)
@@ -691,10 +727,10 @@ contract GeneroTokenV3 {
             bool feeApplies_
         )
     {
-        MerchantTransferQuote memory quote = _quoteMerchantTransfer(payer, to, displayedAmount);
+        TransferQuote memory quote = _quoteTransfer(payer, to, displayedAmount);
         return (
             quote.payerDebit,
-            quote.merchantCredit,
+            quote.recipientCredit,
             quote.charityCredit,
             quote.resolvedCharityId,
             quote.charityWallet,
@@ -702,6 +738,26 @@ contract GeneroTokenV3 {
             quote.voluntaryFeeBps,
             quote.feeApplies
         );
+    }
+
+    function previewAllowanceRequired(address payer, address to, uint256 displayedAmount)
+        external
+        view
+        returns (uint256 requiredVisible, uint256 requiredBase)
+    {
+        TransferQuote memory quote = _quoteTransfer(payer, to, displayedAmount);
+        return (quote.payerDebit, quote.payerDebitBase);
+    }
+
+    function canResolveCharityFor(address payer) external view returns (bool) {
+        try IUserCharityPreferencesRegistryForCplTCOIN(charityPreferencesRegistry)
+            .resolveFeePreferences(payer) returns (
+            uint256, address charityWallet, uint16
+        ) {
+            return charityWallet != address(0);
+        } catch {
+            return false;
+        }
     }
 
     function applyExpiry() public returns (uint8) {
@@ -724,35 +780,31 @@ contract GeneroTokenV3 {
     function addWriter(address _minter) public returns (bool) {
         require(!isSealed(WRITER_STATE));
         require(msg.sender == owner);
-        minter[_minter] = true;
+        writer[_minter] = true;
         return true;
     }
 
     function deleteWriter(address _minter) public returns (bool) {
         require(!isSealed(WRITER_STATE));
         require(msg.sender == owner || _minter == msg.sender);
-        minter[_minter] = false;
+        writer[_minter] = false;
         return true;
     }
 
     function isWriter(address _minter) public view returns (bool) {
-        return minter[_minter] || _minter == owner;
+        return writer[_minter];
     }
 
     function balanceOf(address _account) public view returns (uint256) {
-        int128 baseBalance;
-        int128 currentDemurragedAmount;
-        uint256 periodCount;
-
-        baseBalance = ABDKMath64x64.fromUInt(baseBalanceOf(_account));
-        periodCount = getMinutesDelta(demurrageTimestamp);
-
-        currentDemurragedAmount = ABDKMath64x64.mul(baseBalance, demurrageAmount);
-        return decayBy(ABDKMath64x64.toUInt(currentDemurragedAmount), periodCount);
+        return _visibleAmountFromBase(baseBalanceOf(_account));
     }
 
     function baseBalanceOf(address _account) public view returns (uint256) {
         return account[_account];
+    }
+
+    function allowance(address owner_, address spender) public view returns (uint256) {
+        return _visibleAmountFromBase(allowanceBase[owner_][spender]);
     }
 
     function increaseBaseBalance(address _account, uint256 _delta) internal returns (bool) {
@@ -794,7 +846,7 @@ contract GeneroTokenV3 {
         uint256 baseAmount;
 
         require(applyExpiry() == 0);
-        require(minter[msg.sender] || msg.sender == owner, "ERR_ACCESS");
+        require(writer[msg.sender], "ERR_ACCESS");
 
         changePeriod();
         if (maxSupply > 0) {
@@ -1031,7 +1083,7 @@ contract GeneroTokenV3 {
         } else if (ex > 0) {
             revert("EXPIRED");
         }
-        if (allowance[msg.sender][_spender] > 0) {
+        if (allowanceBase[msg.sender][_spender] > 0) {
             require(_value == 0, "ZERO_FIRST");
         }
 
@@ -1043,39 +1095,41 @@ contract GeneroTokenV3 {
             baseValue = VALUE_LIMIT;
         }
 
-        allowance[msg.sender][_spender] = baseValue;
-        emit Approval(msg.sender, _spender, _value);
+        allowanceBase[msg.sender][_spender] = baseValue;
+        emit Approval(msg.sender, _spender, _visibleAmountFromBase(baseValue));
         return true;
     }
 
     function decreaseAllowance(address _spender, uint256 _value) public returns (bool) {
         uint256 baseValue;
-
-        baseValue = toBaseAmount(_value);
-        require(allowance[msg.sender][_spender] >= baseValue);
+        uint256 remainingBaseValue;
 
         changePeriod();
 
-        allowance[msg.sender][_spender] -= baseValue;
-        emit Approval(msg.sender, _spender, allowance[msg.sender][_spender]);
+        baseValue = toBaseAmount(_value);
+        require(allowanceBase[msg.sender][_spender] >= baseValue, "ERR_SPENDER");
+
+        remainingBaseValue = allowanceBase[msg.sender][_spender] - baseValue;
+        allowanceBase[msg.sender][_spender] = remainingBaseValue;
+        emit Approval(msg.sender, _spender, _visibleAmountFromBase(remainingBaseValue));
         return true;
     }
 
     function increaseAllowance(address _spender, uint256 _value) public returns (bool) {
         uint256 baseValue;
+        uint256 newBaseValue;
 
         changePeriod();
 
         baseValue = toBaseAmount(_value);
+        newBaseValue = allowanceBase[msg.sender][_spender] + baseValue;
 
-        allowance[msg.sender][_spender] += baseValue;
-        emit Approval(msg.sender, _spender, allowance[msg.sender][_spender]);
+        allowanceBase[msg.sender][_spender] = newBaseValue;
+        emit Approval(msg.sender, _spender, _visibleAmountFromBase(newBaseValue));
         return true;
     }
 
     function transfer(address _to, uint256 _value) public returns (bool) {
-        uint256 baseValue;
-        bool result;
         uint8 ex;
 
         ex = applyExpiry();
@@ -1086,20 +1140,13 @@ contract GeneroTokenV3 {
         }
         changePeriod();
 
-        if (feeApplies(msg.sender, _to)) {
-            return _transferWithMerchantFee(msg.sender, _to, _value);
-        }
-
-        baseValue = toBaseAmount(_value);
-        result = transferBase(msg.sender, _to, baseValue);
-        emit Transfer(msg.sender, _to, _value);
-        return result;
+        return _executeTransferQuote(msg.sender, _to, _value, _quoteTransfer(msg.sender, _to, _value));
     }
 
     function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
-        uint256 baseValue;
-        bool result;
         uint8 ex;
+        TransferQuote memory quote;
+        uint256 remainingBaseAllowance;
 
         ex = applyExpiry();
         if (ex == 2) {
@@ -1109,21 +1156,14 @@ contract GeneroTokenV3 {
         }
         changePeriod();
 
-        if (feeApplies(_from, _to)) {
-            MerchantTransferQuote memory quote = _quoteMerchantTransfer(_from, _to, _value);
-            require(allowance[_from][msg.sender] >= quote.payerDebitBase, "ERR_SPENDER");
-            allowance[_from][msg.sender] -= quote.payerDebitBase;
-            return _executeMerchantTransfer(_from, _to, _value, quote);
-        }
+        quote = _quoteTransfer(_from, _to, _value);
+        require(allowanceBase[_from][msg.sender] >= quote.payerDebitBase, "ERR_SPENDER");
 
-        baseValue = toBaseAmount(_value);
-        require(allowance[_from][msg.sender] >= baseValue, "ERR_SPENDER");
+        remainingBaseAllowance = allowanceBase[_from][msg.sender] - quote.payerDebitBase;
+        allowanceBase[_from][msg.sender] = remainingBaseAllowance;
+        emit Approval(_from, msg.sender, _visibleAmountFromBase(remainingBaseAllowance));
 
-        allowance[_from][msg.sender] -= baseValue;
-        result = transferBase(_from, _to, baseValue);
-
-        emit Transfer(_from, _to, _value);
-        return result;
+        return _executeTransferQuote(_from, _to, _value, quote);
     }
 
     function transferBase(address _from, address _to, uint256 _value) internal returns (bool) {
@@ -1145,10 +1185,12 @@ contract GeneroTokenV3 {
     }
 
     function burn(uint256 _value) public returns (bool) {
+        uint256 _delta;
+
         require(applyExpiry() == 0);
-        require(minter[msg.sender] || msg.sender == owner, "ERR_ACCESS");
-        require(_value <= account[msg.sender]);
-        uint256 _delta = toBaseAmount(_value);
+        require(writer[msg.sender], "ERR_ACCESS");
+        _delta = toBaseAmount(_value);
+        require(account[msg.sender] >= _delta, "ERR_OVERSPEND");
 
         decreaseBaseBalance(msg.sender, _delta);
         burned += _value;
@@ -1160,10 +1202,6 @@ contract GeneroTokenV3 {
         require(_from == msg.sender, "ERR_ONLY_SELF_BURN");
         _data;
         burn(_value);
-    }
-
-    function burn() public returns (bool) {
-        return burn(account[msg.sender]);
     }
 
     function totalSupply() public view returns (uint256) {
@@ -1191,58 +1229,55 @@ contract GeneroTokenV3 {
         return false;
     }
 
-    function _transferWithMerchantFee(address payer, address merchant, uint256 displayedAmount)
+    function _executeTransferQuote(address payer, address recipient, uint256 displayedAmount, TransferQuote memory quote)
         internal
         returns (bool)
     {
-        MerchantTransferQuote memory quote = _quoteMerchantTransfer(payer, merchant, displayedAmount);
-        return _executeMerchantTransfer(payer, merchant, displayedAmount, quote);
-    }
-
-    function _executeMerchantTransfer(
-        address payer,
-        address merchant,
-        uint256 displayedAmount,
-        MerchantTransferQuote memory quote
-    ) internal returns (bool) {
         decreaseBaseBalance(payer, quote.payerDebitBase);
-        increaseBaseBalance(merchant, quote.merchantCreditBase);
-        increaseBaseBalance(quote.charityWallet, quote.charityCreditBase);
+        increaseBaseBalance(recipient, quote.recipientCreditBase);
 
-        emit Transfer(payer, merchant, quote.merchantCredit);
-        if (quote.charityCredit > 0) {
+        // Transfer events report recipient-visible credits, not the payer's total debit.
+        emit Transfer(payer, recipient, quote.recipientCredit);
+
+        if (quote.charityCreditBase > 0) {
+            increaseBaseBalance(quote.charityWallet, quote.charityCreditBase);
             emit Transfer(payer, quote.charityWallet, quote.charityCredit);
             emit CharityFeeRouted(payer, quote.resolvedCharityId, quote.charityWallet, quote.charityCredit);
         }
 
-        emit MerchantTransferCharged(
-            payer,
-            merchant,
-            quote.charityWallet,
-            quote.merchantId,
-            displayedAmount,
-            quote.payerDebit,
-            quote.merchantCredit,
-            quote.charityCredit,
-            quote.baseFeeBps,
-            quote.voluntaryFeeBps
-        );
+        if (quote.feeApplies) {
+            emit MerchantTransferCharged(
+                payer,
+                recipient,
+                quote.charityWallet,
+                quote.merchantId,
+                displayedAmount,
+                quote.payerDebit,
+                quote.recipientCredit,
+                quote.charityCredit,
+                quote.baseFeeBps,
+                quote.voluntaryFeeBps
+            );
+        }
 
         return true;
     }
 
-    function _quoteMerchantTransfer(address payer, address to, uint256 displayedAmount)
+    function _quoteTransfer(address payer, address recipient, uint256 displayedAmount)
         internal
         view
-        returns (MerchantTransferQuote memory quote)
+        returns (TransferQuote memory quote)
     {
-        if (!feeApplies(payer, to)) {
-            quote.payerDebit = displayedAmount;
-            quote.merchantCredit = displayedAmount;
+        quote.payerDebit = displayedAmount;
+        quote.recipientCredit = displayedAmount;
+        quote.payerDebitBase = toBaseAmount(displayedAmount);
+        quote.recipientCreditBase = quote.payerDebitBase;
+
+        if (!feeApplies(payer, recipient)) {
             return quote;
         }
 
-        (, quote.merchantId,,,,,) = IPoolRegistryForCplTCOIN(poolRegistry).getMerchantPaymentConfig(to);
+        (, quote.merchantId,,,,,) = IPoolRegistryForCplTCOIN(poolRegistry).getMerchantPaymentConfig(recipient);
         quote.feeApplies = true;
         quote.baseFeeBps = _effectiveMerchantFeeBps(quote.merchantId);
         (quote.resolvedCharityId, quote.charityWallet, quote.voluntaryFeeBps) =
@@ -1252,12 +1287,15 @@ contract GeneroTokenV3 {
         uint256 voluntaryFeeVisible = displayedAmount * quote.voluntaryFeeBps / 10_000;
 
         quote.payerDebit = displayedAmount + voluntaryFeeVisible;
-        quote.merchantCredit = displayedAmount - baseFeeVisible;
+        quote.recipientCredit = displayedAmount - baseFeeVisible;
         quote.charityCredit = baseFeeVisible + voluntaryFeeVisible;
 
         quote.payerDebitBase = toBaseAmount(quote.payerDebit);
-        quote.merchantCreditBase = toBaseAmount(quote.merchantCredit);
-        quote.charityCreditBase = quote.payerDebitBase - quote.merchantCreditBase;
+        quote.recipientCreditBase = toBaseAmount(quote.recipientCredit);
+
+        // Visible fee legs are rounded independently. Using the base-unit remainder for charity preserves exact
+        // conservation, so payerDebitBase always equals recipientCreditBase plus charityCreditBase.
+        quote.charityCreditBase = quote.payerDebitBase - quote.recipientCreditBase;
     }
 
     function _effectiveMerchantFeeBps(bytes32 merchantId) internal view returns (uint16) {
@@ -1275,6 +1313,22 @@ contract GeneroTokenV3 {
             return defaultMerchantFeeBps;
         }
         return overrideBps;
+    }
+
+    function _visibleAmountFromBase(uint256 baseValue) internal view returns (uint256) {
+        int128 baseBalance;
+        int128 currentDemurragedAmount;
+        uint256 periodCount;
+
+        if (baseValue == 0) {
+            return 0;
+        }
+
+        baseBalance = ABDKMath64x64.fromUInt(baseValue);
+        periodCount = getMinutesDelta(demurrageTimestamp);
+        currentDemurragedAmount = ABDKMath64x64.mul(baseBalance, demurrageAmount);
+
+        return decayBy(ABDKMath64x64.toUInt(currentDemurragedAmount), periodCount);
     }
 
     function _setPoolRegistry(address registry) internal {
