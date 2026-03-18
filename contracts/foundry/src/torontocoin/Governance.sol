@@ -583,7 +583,7 @@ contract Governance is Ownable, ReentrancyGuard {
         } else if (proposalType == ProposalType.CharityMintRateUpdate) {
             ITreasuryController(treasuryController).setCharityMintRate(uintPayloads[proposalId].value);
         } else if (proposalType == ProposalType.DemurrageRateUpdate) {
-            ITCOINToken(tcoinToken).updateDemurrageRate(uintPayloads[proposalId].value);
+            ITCOINToken(tcoinToken).setExpirePeriod(uintPayloads[proposalId].value);
         } else {
             revert InvalidProposalValue();
         }

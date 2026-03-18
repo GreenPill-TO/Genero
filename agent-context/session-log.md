@@ -1,3 +1,34 @@
+## v1.40
+### Timestamp
+- 2026-03-18 14:28:42 EDT
+
+### Objective
+- Build `LiquidityRouter` as the non-custodial execution layer for reserve-asset to `cplTCOIN` liquidity routes, and align the treasury/token/governance surfaces it depends on.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/LiquidityRouter.sol`, including the router-local treasury, token, charity-preferences, pool-registry, and pool-adapter interfaces needed for reserve-asset routing into `cplTCOIN`.
+- Implemented weighted pool scoring with hard eligibility filters, explicit pool and merchant-preference inputs, deterministic fallback to the best eligible pool, preview support, and direct `cplTCOIN` charity top-up minting to the resolved charity wallet.
+- Updated `contracts/foundry/src/torontocoin/TreasuryController.sol` with router-facing reserve-deposit helpers (`depositAssetForLiquidityRoute`, `previewLiquidityRouteDeposit`, `getReserveAssetToken`), switched mint calls to the writer-style `mint(address,uint256,bytes)` surface, and changed redemption burns to transfer tokens in first and then call `burn(uint256)`.
+- Updated `contracts/foundry/src/torontocoin/interfaces/ITCOINToken.sol` to match the `GeneroTokenV3` writer-style token surface and adjusted `contracts/foundry/src/torontocoin/Governance.sol` to use `setExpirePeriod(...)` on the remaining demurrage proposal path.
+- Added `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol` covering preferred-pool routing, automatic fallback, merchant-preference scoring, and admin pool seeding/top-up behaviour, and refreshed the treasury/governance mocks that still assumed the pre-`GeneroTokenV3` token ABI.
+- Mirrored the router and the related treasury/governance/token-interface changes into `contracts/foundry/src/torontocoin/allTcoinContracts.md` and updated the engineering specs to describe the new routing flow.
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITCOINToken.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.39
 ### Timestamp
 - 2026-03-18 13:23:40 EDT

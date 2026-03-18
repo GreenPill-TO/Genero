@@ -82,10 +82,10 @@ contract MockTreasuryController {
 }
 
 contract MockTcoin {
-    uint256 public lastDemurrageRate;
+    uint256 public lastExpirePeriod;
 
-    function updateDemurrageRate(uint256 newRate) external {
-        lastDemurrageRate = newRate;
+    function setExpirePeriod(uint256 newExpirePeriod) external {
+        lastExpirePeriod = newExpirePeriod;
     }
 }
 

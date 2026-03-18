@@ -13,12 +13,7 @@ import {IPoolRegistry} from "./interfaces/IPoolRegistry.sol";
 import {IReserveRegistry} from "./interfaces/IReserveRegistry.sol";
 import {ITCOINToken} from "./interfaces/ITCOINToken.sol";
 
-contract TreasuryController is
-    Initializable,
-    OwnableUpgradeable,
-    UUPSUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
@@ -67,6 +62,16 @@ contract TreasuryController is
         bool usedFallbackOracle
     );
 
+    event LiquidityRouteDeposited(
+        address indexed router,
+        address indexed payer,
+        bytes32 indexed assetId,
+        uint256 assetAmount,
+        uint256 cadValue18,
+        uint256 mrTcoinOut,
+        bool usedFallbackOracle
+    );
+
     event RedeemedAsUser(
         address indexed user,
         bytes32 indexed assetId,
@@ -88,7 +93,9 @@ contract TreasuryController is
         bool usedFallbackOracle
     );
 
-    event MerchantAllowanceUpdated(address indexed merchant, uint256 oldAmount, uint256 newAmount, address indexed actor);
+    event MerchantAllowanceUpdated(
+        address indexed merchant, uint256 oldAmount, uint256 newAmount, address indexed actor
+    );
 
     event CadPegUpdated(uint256 oldPeg18, uint256 newPeg18);
     event UserRedeemRateUpdated(uint256 oldRateBps, uint256 newRateBps);
@@ -252,16 +259,17 @@ contract TreasuryController is
         emit OracleRouterUpdated(old, oracleRouter_);
     }
 
-    function depositAndMint(
-        bytes32 assetId,
-        uint256 assetAmount,
-        uint256 requestedCharityId,
-        uint256 minTcoinOut
-    ) external nonReentrant whenMintingNotPaused returns (uint256 userTcoinOut, uint256 charityTcoinOut) {
+    function depositAndMint(bytes32 assetId, uint256 assetAmount, uint256 requestedCharityId, uint256 minTcoinOut)
+        external
+        nonReentrant
+        whenMintingNotPaused
+        returns (uint256 userTcoinOut, uint256 charityTcoinOut)
+    {
         if (assetAmount == 0) revert ZeroAmount();
 
         IReserveRegistry.ReserveAsset memory asset = _resolveActiveAsset(assetId);
-        (uint256 cadValue18,, bool usedFallbackOracle) = IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
+        (uint256 cadValue18,, bool usedFallbackOracle) =
+            IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
 
         userTcoinOut = _tcoinFromCad(cadValue18);
         if (userTcoinOut < minTcoinOut) revert InvalidMinOut(userTcoinOut, minTcoinOut);
@@ -270,9 +278,9 @@ contract TreasuryController is
         charityTcoinOut = (userTcoinOut * charityMintRateBps) / BPS_DENOMINATOR;
 
         IERC20(asset.token).safeTransferFrom(msg.sender, address(this), assetAmount);
-        ITCOINToken(tcoinToken).mint(msg.sender, userTcoinOut);
+        ITCOINToken(tcoinToken).mint(msg.sender, userTcoinOut, "");
         if (charityTcoinOut > 0) {
-            ITCOINToken(tcoinToken).mint(charityWallet, charityTcoinOut);
+            ITCOINToken(tcoinToken).mint(charityWallet, charityTcoinOut, "");
         }
 
         totalDepositedByAsset[assetId] += assetAmount;
@@ -291,11 +299,7 @@ contract TreasuryController is
         );
     }
 
-    function previewMint(
-        bytes32 assetId,
-        uint256 assetAmount,
-        uint256 requestedCharityId
-    )
+    function previewMint(bytes32 assetId, uint256 assetAmount, uint256 requestedCharityId)
         external
         view
         returns (
@@ -315,23 +319,65 @@ contract TreasuryController is
         (resolvedCharityId,) = _resolveMintCharity(requestedCharityId);
     }
 
-    function redeemAsUser(
-        bytes32 assetId,
-        uint256 tcoinAmount,
-        uint256 minAssetOut
-    ) external nonReentrant whenRedemptionNotPaused returns (uint256 assetOut) {
+    function depositAssetForLiquidityRoute(bytes32 assetId, uint256 assetAmount, address payer)
+        external
+        nonReentrant
+        whenMintingNotPaused
+        returns (uint256 mrTcoinOut)
+    {
+        if (assetAmount == 0) revert ZeroAmount();
+
+        IReserveRegistry.ReserveAsset memory asset = _resolveActiveAsset(assetId);
+        (uint256 cadValue18,, bool usedFallbackOracle) =
+            IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
+
+        mrTcoinOut = _tcoinFromCad(cadValue18);
+
+        IERC20(asset.token).safeTransferFrom(msg.sender, address(this), assetAmount);
+
+        totalDepositedByAsset[assetId] += assetAmount;
+
+        emit LiquidityRouteDeposited(
+            msg.sender, payer, assetId, assetAmount, cadValue18, mrTcoinOut, usedFallbackOracle
+        );
+    }
+
+    function previewLiquidityRouteDeposit(bytes32 assetId, uint256 assetAmount)
+        external
+        view
+        returns (uint256 mrTcoinOut, bool usedFallbackOracle, uint256 cadValue18)
+    {
+        if (assetAmount == 0) revert ZeroAmount();
+        _resolveActiveAsset(assetId);
+
+        (cadValue18,, usedFallbackOracle) = IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
+        mrTcoinOut = _tcoinFromCad(cadValue18);
+    }
+
+    function getReserveAssetToken(bytes32 assetId) external view returns (address token) {
+        token = _resolveActiveAsset(assetId).token;
+    }
+
+    function redeemAsUser(bytes32 assetId, uint256 tcoinAmount, uint256 minAssetOut)
+        external
+        nonReentrant
+        whenRedemptionNotPaused
+        returns (uint256 assetOut)
+    {
         if (tcoinAmount == 0) revert ZeroAmount();
 
         bool usedFallbackOracle;
         uint256 grossCad18;
         uint256 redeemableCad18;
-        (assetOut, usedFallbackOracle, grossCad18, redeemableCad18) = _previewRedeem(assetId, tcoinAmount, userRedeemRateBps);
+        (assetOut, usedFallbackOracle, grossCad18, redeemableCad18) =
+            _previewRedeem(assetId, tcoinAmount, userRedeemRateBps);
 
         if (assetOut < minAssetOut) revert InvalidMinOut(assetOut, minAssetOut);
         _ensureSufficientReserve(assetId, assetOut);
 
         IReserveRegistry.ReserveAsset memory asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
-        ITCOINToken(tcoinToken).burnFrom(msg.sender, tcoinAmount);
+        IERC20(tcoinToken).safeTransferFrom(msg.sender, address(this), tcoinAmount);
+        ITCOINToken(tcoinToken).burn(tcoinAmount);
         IERC20(asset.token).safeTransfer(msg.sender, assetOut);
 
         totalRedeemedByAsset[assetId] += assetOut;
@@ -340,11 +386,12 @@ contract TreasuryController is
         emit RedeemedAsUser(msg.sender, assetId, tcoinAmount, assetOut, grossCad18, redeemableCad18, usedFallbackOracle);
     }
 
-    function redeemAsMerchant(
-        bytes32 assetId,
-        uint256 tcoinAmount,
-        uint256 minAssetOut
-    ) external nonReentrant whenRedemptionNotPaused returns (uint256 assetOut) {
+    function redeemAsMerchant(bytes32 assetId, uint256 tcoinAmount, uint256 minAssetOut)
+        external
+        nonReentrant
+        whenRedemptionNotPaused
+        returns (uint256 assetOut)
+    {
         if (tcoinAmount == 0) revert ZeroAmount();
         if (!IPoolRegistry(poolRegistry).isMerchantApprovedInActivePool(msg.sender)) {
             revert MerchantNotEligible(msg.sender);
@@ -367,7 +414,8 @@ contract TreasuryController is
         merchantRedemptionAllowance[msg.sender] = allowanceAvailable - tcoinAmount;
 
         IReserveRegistry.ReserveAsset memory asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
-        ITCOINToken(tcoinToken).burnFrom(msg.sender, tcoinAmount);
+        IERC20(tcoinToken).safeTransferFrom(msg.sender, address(this), tcoinAmount);
+        ITCOINToken(tcoinToken).burn(tcoinAmount);
         IERC20(asset.token).safeTransfer(msg.sender, assetOut);
 
         totalRedeemedByAsset[assetId] += assetOut;
@@ -410,7 +458,8 @@ contract TreasuryController is
         if (tcoinAmount == 0) revert ZeroAmount();
         eligible = IPoolRegistry(poolRegistry).isMerchantApprovedInActivePool(merchant);
         allowanceRemaining = merchantRedemptionAllowance[merchant];
-        (assetOut, usedFallbackOracle, grossCad18, redeemableCad18) = _previewRedeem(assetId, tcoinAmount, merchantRedeemRateBps);
+        (assetOut, usedFallbackOracle, grossCad18, redeemableCad18) =
+            _previewRedeem(assetId, tcoinAmount, merchantRedeemRateBps);
     }
 
     function setMerchantRedemptionAllowance(address merchant, uint256 amount) external onlyIndexerOrOwner {
@@ -513,18 +562,18 @@ contract TreasuryController is
         return charityMintRateBps;
     }
 
-    function _resolveActiveAsset(bytes32 assetId)
-        internal
-        view
-        returns (IReserveRegistry.ReserveAsset memory asset)
-    {
+    function _resolveActiveAsset(bytes32 assetId) internal view returns (IReserveRegistry.ReserveAsset memory asset) {
         asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
         if (asset.assetId == bytes32(0)) revert UnknownAsset(assetId);
         if (asset.status != IReserveRegistry.ReserveAssetStatus.Active) revert AssetInactive(assetId);
         if (assetTreasuryPaused[assetId]) revert AssetPaused(assetId);
     }
 
-    function _resolveMintCharity(uint256 requestedCharityId) internal view returns (uint256 charityId, address charityWallet) {
+    function _resolveMintCharity(uint256 requestedCharityId)
+        internal
+        view
+        returns (uint256 charityId, address charityWallet)
+    {
         ICharityRegistry registry = ICharityRegistry(charityRegistry);
 
         charityId = requestedCharityId;

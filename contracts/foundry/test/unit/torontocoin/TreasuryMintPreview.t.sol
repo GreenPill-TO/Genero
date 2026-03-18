@@ -65,14 +65,29 @@ contract MockOracleRouterForTreasury {
 }
 
 contract MockPoolRegistryForTreasury {
-    function isMerchantApprovedInActivePool(address) external pure returns (bool) { return true; }
-    function getMerchantPool(address) external pure returns (bytes32) { return bytes32("pool-1"); }
+    function isMerchantApprovedInActivePool(address) external pure returns (bool) {
+        return true;
+    }
+
+    function getMerchantPool(address) external pure returns (bytes32) {
+        return bytes32("pool-1");
+    }
 }
 
 contract MockTcoinForTreasury {
-    function decimals() external pure returns (uint8) { return 18; }
-    function mint(address, uint256) external pure {}
-    function burnFrom(address, uint256) external pure {}
+    function decimals() external pure returns (uint8) {
+        return 18;
+    }
+    function mint(address, uint256, bytes calldata) external pure {}
+
+    function mintTo(address, uint256) external pure returns (bool) {
+        return true;
+    }
+
+    function burn(uint256) external pure returns (bool) {
+        return true;
+    }
+    function setExpirePeriod(uint256) external pure {}
 }
 
 contract TreasuryMintPreviewTest is Test {
