@@ -32,6 +32,15 @@ This folder is the hardened TorontoCoin contract suite aligned to the Sarafu rea
 - `getDefaultCharityId()`
 - `getCharityWallet(uint256)`
 - `isActiveCharity(uint256)`
+- `resolveActiveCharityOrDefault(uint256)` — resolves a requested charity ID or falls back to the active default; reverts if no active default exists
+
+### User charity preferences
+`UserCharityPreferencesRegistry` stores per-user charity preferences and voluntary fee settings, decoupled from the global `CharityRegistry`:
+- Users may elect a preferred charity and a voluntary fee in basis points (capped by `maxVoluntaryFeeBps`).
+- `resolveFeePreferences(address)` is the canonical function consumed by `cplTCOIN` at payment time; it returns the resolved charity ID, wallet, and voluntary fee bps.
+- If a user's preferred charity becomes inactive, resolution automatically falls back to the `CharityRegistry` default; reverts if no active default exists.
+- `previewResolvedCharity(address)` is a UI/preview helper that also indicates whether fallback occurred.
+- Fees are attributed to the **payer** (`from`) address, not `msg.sender`, to prevent relayer hijacking of charity routing.
 
 ### Build compatibility hardening
 - OpenZeppelin imports are aligned to installed v4 layout (`security/*` and upgradeable `security/*`).
