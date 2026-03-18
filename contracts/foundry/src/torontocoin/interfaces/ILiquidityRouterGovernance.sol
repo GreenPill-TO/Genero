@@ -6,6 +6,7 @@ interface ILiquidityRouterGovernance {
     function setTreasuryController(address treasury_) external;
     function setCplTcoin(address cplTcoin_) external;
     function setCharityPreferencesRegistry(address registry_) external;
+    function setAcceptancePreferencesRegistry(address registry_) external;
     function setPoolRegistry(address registry_) external;
     function setPoolAdapter(address adapter_) external;
     function setCharityTopupBps(uint256 newBps) external;

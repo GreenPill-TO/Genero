@@ -257,6 +257,7 @@ contract MockLiquidityRouter is MockOwned {
     address public treasuryController;
     address public cplTcoin;
     address public charityPreferencesRegistry;
+    address public acceptancePreferencesRegistry;
     address public poolRegistry;
     address public poolAdapter;
     uint256 public charityTopupBps;
@@ -284,6 +285,10 @@ contract MockLiquidityRouter is MockOwned {
 
     function setCharityPreferencesRegistry(address registry_) external onlyGovernanceOrOwner {
         charityPreferencesRegistry = registry_;
+    }
+
+    function setAcceptancePreferencesRegistry(address registry_) external onlyGovernanceOrOwner {
+        acceptancePreferencesRegistry = registry_;
     }
 
     function setPoolRegistry(address registry_) external onlyGovernanceOrOwner {
@@ -477,6 +482,12 @@ contract GovernanceDeadlineTest is Test {
         uint256 topupProposalId = governance.proposeLiquidityRouterSetCharityTopupBps(450, 1 days);
         _approveAndExecute(topupProposalId);
         assertEq(router.charityTopupBps(), 450);
+
+        vm.prank(steward);
+        uint256 acceptanceRegistryProposalId =
+            governance.proposeLiquidityRouterSetAcceptancePreferencesRegistry(address(0xA11CE), 1 days);
+        _approveAndExecute(acceptanceRegistryProposalId);
+        assertEq(router.acceptancePreferencesRegistry(), address(0xA11CE));
 
         vm.prank(steward);
         uint256 scoringProposalId = governance.proposeLiquidityRouterSetScoringWeights(11, 22, 33, 44, 1 days);

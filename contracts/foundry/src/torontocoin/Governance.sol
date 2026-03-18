@@ -63,6 +63,7 @@ contract Governance is Ownable, ReentrancyGuard {
         LiquidityRouterSetTreasuryController,
         LiquidityRouterSetCplTcoin,
         LiquidityRouterSetCharityPreferencesRegistry,
+        LiquidityRouterSetAcceptancePreferencesRegistry,
         LiquidityRouterSetPoolRegistry,
         LiquidityRouterSetPoolAdapter,
         LiquidityRouterSetCharityTopupBps,
@@ -695,6 +696,16 @@ contract Governance is Ownable, ReentrancyGuard {
         return _proposeAddressTarget(ProposalType.LiquidityRouterSetCharityPreferencesRegistry, registry_, votingWindow);
     }
 
+    function proposeLiquidityRouterSetAcceptancePreferencesRegistry(address registry_, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256)
+    {
+        return _proposeAddressTarget(
+            ProposalType.LiquidityRouterSetAcceptancePreferencesRegistry, registry_, votingWindow
+        );
+    }
+
     function proposeLiquidityRouterSetPoolRegistry(address registry_, uint64 votingWindow)
         external
         onlySteward
@@ -909,6 +920,10 @@ contract Governance is Ownable, ReentrancyGuard {
             ILiquidityRouterGovernance(liquidityRouter).setCplTcoin(addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetCharityPreferencesRegistry) {
             ILiquidityRouterGovernance(liquidityRouter).setCharityPreferencesRegistry(addressPayloads[proposalId].account);
+        } else if (proposalType == ProposalType.LiquidityRouterSetAcceptancePreferencesRegistry) {
+            ILiquidityRouterGovernance(liquidityRouter).setAcceptancePreferencesRegistry(
+                addressPayloads[proposalId].account
+            );
         } else if (proposalType == ProposalType.LiquidityRouterSetPoolRegistry) {
             ILiquidityRouterGovernance(liquidityRouter).setPoolRegistry(addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetPoolAdapter) {

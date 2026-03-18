@@ -42,6 +42,15 @@ This folder is the hardened TorontoCoin contract suite aligned to the Sarafu rea
 - `previewResolvedCharity(address)` is a UI/preview helper that also indicates whether fallback occurred.
 - Fees are attributed to the **payer** (`from`) address, not `msg.sender`, to prevent relayer hijacking of charity routing.
 
+### User acceptance preferences
+`UserAcceptancePreferencesRegistry` is now the canonical user-managed acceptance and preference layer for voucher routing:
+- Pools are allow/deny only and are not ranked on-chain.
+- Merchant vouchers and token addresses can be accepted, denied, and ranked.
+- `strictAcceptedOnly` is one global per-user mode; when enabled, unlisted items are unacceptable unless preferred.
+- Preferred merchants and preferred tokens are implicitly accepted.
+- Denied items override accepted or preferred status.
+- `LiquidityRouter` now reads these stored preferences on-chain instead of taking pool and merchant preference vectors as user calldata.
+
 ### Build compatibility hardening
 - OpenZeppelin imports are aligned to installed v4 layout (`security/*` and upgradeable `security/*`).
 - `GeneroToken` uses v4 transfer hooks (`_beforeTokenTransfer`) instead of v5-style `_update`.

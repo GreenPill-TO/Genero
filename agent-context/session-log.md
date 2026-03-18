@@ -1,3 +1,39 @@
+## v1.47
+### Timestamp
+- 2026-03-18 19:56:00 EDT
+
+### Objective
+- Add a canonical `UserAcceptancePreferencesRegistry` for pool, merchant-voucher, and token acceptance policy, then make `LiquidityRouter` read those stored preferences on-chain instead of taking user preference vectors as calldata.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`, a self-contained on-chain registry where users can manage denied and accepted pools, denied and accepted merchants, ranked preferred merchants, denied and accepted token addresses, ranked preferred token addresses, and one global `strictAcceptedOnly` flag.
+- Added `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.md` and updated `contracts/foundry/src/torontocoin/README.md` so the repo now documents the canonical semantics: allow-unless-denied by default, strict mode as one global flag, pool preferences as allow/deny only, and merchant/token preferences as rankable and implicitly accepted when preferred.
+- Refactored `contracts/foundry/src/torontocoin/LiquidityRouter.sol` so buy and preview flows are now registry-driven: `buyCplTcoin(bytes32,uint256,uint256)` uses `msg.sender`, `previewBuyCplTcoin(address,bytes32,uint256)` takes an explicit buyer, the router stores an `acceptancePreferencesRegistry` pointer, and pool selection now hard-excludes denied pools and denied merchant ecosystems while enforcing strict token/pool/merchant acceptance rules and rank-sensitive preferred-merchant scoring.
+- Replaced the router’s pool-adapter preference hook with the generic `poolMatchesAnyMerchantIds(bytes32,bytes32[])` shape so the same adapter method can be reused for denied, accepted, and preferred merchant matching.
+- Extended `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol` plus `contracts/foundry/src/torontocoin/Governance.sol` so stewards can now propose `LiquidityRouterSetAcceptancePreferencesRegistry` updates against the finalized router admin surface.
+- Added `contracts/foundry/test/unit/torontocoin/UserAcceptancePreferencesRegistry.t.sol`, rewrote `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol` around the live registry, and expanded `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol` so the new acceptance-registry router pointer is covered under the intended governance ownership model.
+- Updated the engineering specs so the current repo-level source of truth now states that voucher acceptance preferences are canonical on-chain protocol state and that `LiquidityRouter` consumes that state directly for pool eligibility and scoring.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/UserAcceptancePreferencesRegistry.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+- `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.md`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/test/unit/torontocoin/UserAcceptancePreferencesRegistry.t.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.46
 ### Timestamp
 - 2026-03-18 17:40:00 EDT
