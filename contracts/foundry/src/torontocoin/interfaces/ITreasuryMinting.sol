@@ -2,18 +2,11 @@
 pragma solidity ^0.8.24;
 
 interface ITreasuryMinting {
-    function depositAndMint(
-        bytes32 assetId,
-        uint256 assetAmount,
-        uint256 requestedCharityId,
-        uint256 minTcoinOut
-    ) external returns (uint256 userTcoinOut, uint256 charityTcoinOut);
+    function depositAndMint(bytes32 assetId, uint256 assetAmount, uint256 requestedCharityId, uint256 minTcoinOut)
+        external
+        returns (uint256 userTcoinOut, uint256 charityTcoinOut);
 
-    function previewMint(
-        bytes32 assetId,
-        uint256 assetAmount,
-        uint256 requestedCharityId
-    )
+    function previewMint(bytes32 assetId, uint256 assetAmount, uint256 requestedCharityId)
         external
         view
         returns (
@@ -25,4 +18,5 @@ interface ITreasuryMinting {
         );
 
     function tcoinToken() external view returns (address);
+    function treasury() external view returns (address);
 }

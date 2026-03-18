@@ -3671,10 +3671,12 @@ contract TcoinMintRouter is Ownable, Pausable, ReentrancyGuard {
         uint256 requestedCharityId
     ) internal returns (uint256 tcoinOut) {
         address tcoin = ITreasuryMinting(treasury).tcoinToken();
+        address treasuryVault = ITreasuryMinting(treasury).treasury();
         if (tcoin == address(0)) revert InvalidAddress();
+        if (treasuryVault == address(0)) revert InvalidAddress();
 
         uint256 tcoinBefore = IERC20(tcoin).balanceOf(address(this));
-        _approveExact(cadmToken, treasury, cadmOut);
+        _approveExact(cadmToken, treasuryVault, cadmOut);
 
         ITreasuryMinting(treasury).depositAndMint(
             cadmAssetId,
@@ -3740,6 +3742,98 @@ contract TcoinMintRouter is Ownable, Pausable, ReentrancyGuard {
         address oldUsdcToken = usdcToken;
         usdcToken = usdcToken_;
         emit UsdcTokenUpdated(oldUsdcToken, usdcToken_, msg.sender);
+    }
+}
+
+```
+
+## ./Treasury.sol
+
+```bash sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+contract Treasury is Ownable {
+    using SafeERC20 for IERC20;
+
+    error ZeroAddressOwner();
+    error ZeroAddressToken();
+    error ZeroAddressTarget();
+    error ZeroAddressCaller();
+    error ZeroAmount();
+    error Unauthorized();
+    error InsufficientReserveBalance(address token, uint256 requested, uint256 available);
+    error SameAuthorizationState(address caller, bool authorized);
+
+    event AuthorizedCallerUpdated(address indexed caller, bool authorized);
+    event ReserveDeposited(address indexed actor, address indexed from, address indexed token, uint256 amount);
+    event ReserveWithdrawn(address indexed actor, address indexed to, address indexed token, uint256 amount);
+    event EmergencySweep(address indexed actor, address indexed token, address indexed to, uint256 amount);
+
+    mapping(address => bool) public authorizedCallers;
+
+    constructor(address initialOwner) {
+        if (initialOwner == address(0)) revert ZeroAddressOwner();
+        _transferOwnership(initialOwner);
+    }
+
+    modifier onlyAuthorizedCaller() {
+        if (!authorizedCallers[msg.sender]) revert Unauthorized();
+        _;
+    }
+
+    function setAuthorizedCaller(address caller, bool authorized) external onlyOwner {
+        if (caller == address(0)) revert ZeroAddressCaller();
+        if (authorizedCallers[caller] == authorized) revert SameAuthorizationState(caller, authorized);
+
+        authorizedCallers[caller] = authorized;
+        emit AuthorizedCallerUpdated(caller, authorized);
+    }
+
+    function depositReserveFrom(address from, address token, uint256 amount)
+        external
+        onlyAuthorizedCaller
+        returns (bool)
+    {
+        if (from == address(0)) revert ZeroAddressTarget();
+        if (token == address(0)) revert ZeroAddressToken();
+        if (amount == 0) revert ZeroAmount();
+
+        IERC20(token).safeTransferFrom(from, address(this), amount);
+        emit ReserveDeposited(msg.sender, from, token, amount);
+        return true;
+    }
+
+    function withdrawReserveTo(address to, address token, uint256 amount) external onlyAuthorizedCaller returns (bool) {
+        if (to == address(0)) revert ZeroAddressTarget();
+        if (token == address(0)) revert ZeroAddressToken();
+        if (amount == 0) revert ZeroAmount();
+
+        uint256 available = IERC20(token).balanceOf(address(this));
+        if (available < amount) revert InsufficientReserveBalance(token, amount, available);
+
+        IERC20(token).safeTransfer(to, amount);
+        emit ReserveWithdrawn(msg.sender, to, token, amount);
+        return true;
+    }
+
+    function reserveBalance(address token) external view returns (uint256) {
+        if (token == address(0)) revert ZeroAddressToken();
+        return IERC20(token).balanceOf(address(this));
+    }
+
+    function emergencySweep(address token, address to, uint256 amount) external onlyOwner returns (bool) {
+        if (token == address(0)) revert ZeroAddressToken();
+        if (to == address(0)) revert ZeroAddressTarget();
+        if (amount == 0) revert ZeroAmount();
+
+        IERC20(token).safeTransfer(to, amount);
+        emit EmergencySweep(msg.sender, token, to, amount);
+        return true;
     }
 }
 
@@ -4095,16 +4189,24 @@ contract TreasuryController is
         emit LiquidityRouteDeposited(msg.sender, payer, assetId, assetAmount, cadValue18, mrTcoinOut, usedFallbackOracle);
     }
 
-    function previewLiquidityRouteDeposit(bytes32 assetId, uint256 assetAmount)
+    function previewDepositAssetForLiquidityRoute(bytes32 assetId, uint256 assetAmount)
         external
         view
-        returns (uint256 mrTcoinOut, bool usedFallbackOracle, uint256 cadValue18)
+        returns (uint256 mrTcoinOut, uint256 cadValue18, bool usedFallbackOracle)
     {
         if (assetAmount == 0) revert ZeroAmount();
         _resolveActiveAsset(assetId);
 
         (cadValue18,, usedFallbackOracle) = IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
         mrTcoinOut = _tcoinFromCad(cadValue18);
+    }
+
+    function previewLiquidityRouteDeposit(bytes32 assetId, uint256 assetAmount)
+        external
+        view
+        returns (uint256 mrTcoinOut, bool usedFallbackOracle, uint256 cadValue18)
+    {
+        (mrTcoinOut, cadValue18, usedFallbackOracle) = this.previewDepositAssetForLiquidityRoute(assetId, assetAmount);
     }
 
     function getReserveAssetToken(bytes32 assetId) external view returns (address token) {
@@ -4852,6 +4954,7 @@ interface IReserveRegistry {
 
     function getReserveAsset(bytes32 assetId) external view returns (ReserveAsset memory);
     function isReserveAssetActive(bytes32 assetId) external view returns (bool);
+    function listReserveAssetIds() external view returns (bytes32[] memory);
 
     function getOracleConfig(bytes32 assetId)
         external
@@ -4926,12 +5029,14 @@ interface ITreasuryControllerForLiquidityRouter {
         external
         returns (uint256 mrTcoinOut);
 
-    function previewLiquidityRouteDeposit(bytes32 assetId, uint256 assetAmount)
+    function previewDepositAssetForLiquidityRoute(bytes32 assetId, uint256 assetAmount)
         external
         view
-        returns (uint256 mrTcoinOut, bool usedFallbackOracle, uint256 cadValue18);
+        returns (uint256 mrTcoinOut, uint256 cadValue18, bool usedFallbackOracle);
 
     function getReserveAssetToken(bytes32 assetId) external view returns (address token);
+    function treasury() external view returns (address);
+    function tcoinToken() external view returns (address);
 }
 
 interface ICplTcoinForLiquidityRouter {
@@ -4994,6 +5099,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
 
     struct ReserveDepositContext {
         uint256 mrTcoinOut;
+        address mrTcoinToken;
     }
 
     struct CharityResolution {
@@ -5309,6 +5415,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         PoolSelection memory selection =
             _selectPool(result.mrTcoinUsed, request.minCplTcoinOut, preferredPoolIds, preferredMerchantIds);
         result.selectedPoolId = selection.poolId;
+        _approveExact(depositContext.mrTcoinToken, poolAdapter, result.mrTcoinUsed);
         result.cplTcoinOut = _buyFromPool(result.selectedPoolId, result.mrTcoinUsed, request.minCplTcoinOut, msg.sender);
 
         CharityResolution memory charity = _resolveCharity(msg.sender);
@@ -5341,7 +5448,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         if (request.reserveAssetAmount == 0) revert ZeroAmount();
 
         (result.mrTcoinUsed,,) = ITreasuryControllerForLiquidityRouter(treasuryController)
-            .previewLiquidityRouteDeposit(request.reserveAssetId, request.reserveAssetAmount);
+            .previewDepositAssetForLiquidityRoute(request.reserveAssetId, request.reserveAssetAmount);
 
         PoolSelection memory selection =
             _selectPool(result.mrTcoinUsed, request.minCplTcoinOut, preferredPoolIds, preferredMerchantIds);
@@ -5439,14 +5546,16 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         internal
         returns (ReserveDepositContext memory context)
     {
+        address treasuryVault = ITreasuryControllerForLiquidityRouter(treasuryController).treasury();
         address reserveAssetToken =
             ITreasuryControllerForLiquidityRouter(treasuryController).getReserveAssetToken(reserveAssetId);
 
         IERC20(reserveAssetToken).safeTransferFrom(payer, address(this), reserveAssetAmount);
-        _approveExact(reserveAssetToken, treasuryController, reserveAssetAmount);
+        _approveExact(reserveAssetToken, treasuryVault, reserveAssetAmount);
 
         context.mrTcoinOut = ITreasuryControllerForLiquidityRouter(treasuryController)
-            .depositAssetForLiquidityRoute(reserveAssetId, reserveAssetAmount, payer);
+            .depositAssetForLiquidityRoute(reserveAssetId, reserveAssetAmount, address(this));
+        context.mrTcoinToken = ITreasuryControllerForLiquidityRouter(treasuryController).tcoinToken();
     }
 
     function _resolveCharity(address payer) internal view returns (CharityResolution memory charity) {
@@ -5488,6 +5597,7 @@ pragma solidity ^0.8.24;
 
 interface ITCOINToken {
     function decimals() external view returns (uint8);
+    function totalSupply() external view returns (uint256);
     function mint(address to, uint256 amount, bytes calldata data) external;
     function mintTo(address beneficiary, uint256 amount) external returns (bool);
     function burn(uint256 amount) external returns (bool);
@@ -5508,6 +5618,20 @@ interface ITreasuryController {
     function setUserRedeemRate(uint256 newRateBps) external;
     function setMerchantRedeemRate(uint256 newRateBps) external;
     function setCharityMintRate(uint256 newRateBps) external;
+}
+
+```
+
+## ./interfaces/ITreasuryVault.sol
+
+```bash sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+interface ITreasuryVault {
+    function depositReserveFrom(address from, address token, uint256 amount) external returns (bool);
+    function withdrawReserveTo(address to, address token, uint256 amount) external returns (bool);
+    function reserveBalance(address token) external view returns (uint256);
 }
 
 ```
@@ -5542,6 +5666,7 @@ interface ITreasuryMinting {
         );
 
     function tcoinToken() external view returns (address);
+    function treasury() external view returns (address);
 }
 
 ```

@@ -12,19 +12,41 @@ import {IOracleRouter} from "./interfaces/IOracleRouter.sol";
 import {IPoolRegistry} from "./interfaces/IPoolRegistry.sol";
 import {IReserveRegistry} from "./interfaces/IReserveRegistry.sol";
 import {ITCOINToken} from "./interfaces/ITCOINToken.sol";
+import {ITreasuryVault} from "./interfaces/ITreasuryVault.sol";
 
 contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
-    uint256 public constant CAD_PEG_MAX_DELTA_BPS = 1_000; // 10%
+    uint256 public constant CAD_PEG_MAX_DELTA_BPS = 1_000;
     uint256 public constant VALUE_SCALE = 1e18;
+
+    struct MintComputation {
+        address assetToken;
+        uint256 cadValue18;
+        uint256 userTcoinOut;
+        uint256 charityTcoinOut;
+        uint256 resolvedCharityId;
+        address charityWallet;
+        bool usedFallbackOracle;
+    }
+
+    struct RedeemComputation {
+        address assetToken;
+        uint256 assetOut;
+        bool usedFallbackOracle;
+        uint256 grossCad18;
+        uint256 redeemableCad18;
+    }
 
     error ZeroAddressOwner();
     error ZeroAddressGovernance();
     error ZeroAddressIndexer();
     error ZeroAddressToken();
     error ZeroAddressRegistry();
+    error ZeroAddressTreasury();
+    error ZeroAddressRouter();
+    error ZeroAddressPayer();
     error ZeroAmount();
     error MintingPaused();
     error RedemptionPaused();
@@ -42,7 +64,12 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     error SameAddress();
     error InvalidPegChange(uint256 oldPeg18, uint256 newPeg18);
     error InvalidCharityResolution(uint256 charityId);
+    error OvercollateralizationTargetTooLow();
+    error CharityMintExceedsHeadroom(uint256 requested, uint256 maxMintable);
+    error InvalidCharityTarget(uint256 charityId);
+    error NotLiquidityRouter(address caller);
 
+    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event GovernanceUpdated(address indexed oldGovernance, address indexed newGovernance);
     event IndexerUpdated(address indexed oldIndexer, address indexed newIndexer);
     event TcoinTokenUpdated(address indexed oldToken, address indexed newToken);
@@ -50,6 +77,7 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     event CharityRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event PoolRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event OracleRouterUpdated(address indexed oldRouter, address indexed newRouter);
+    event LiquidityRouterUpdated(address indexed oldRouter, address indexed newRouter);
 
     event ReserveDeposited(
         address indexed depositor,
@@ -101,11 +129,21 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     event UserRedeemRateUpdated(uint256 oldRateBps, uint256 newRateBps);
     event MerchantRedeemRateUpdated(uint256 oldRateBps, uint256 newRateBps);
     event CharityMintRateUpdated(uint256 oldRateBps, uint256 newRateBps);
+    event OvercollateralizationTargetUpdated(uint256 oldTarget18, uint256 newTarget18);
+
+    event CharityMintedFromExcess(
+        uint256 indexed charityId,
+        address indexed charityWallet,
+        uint256 amount,
+        uint256 collateralizationRatioBefore18,
+        uint256 collateralizationRatioAfter18
+    );
 
     event MintingPauseUpdated(bool paused, address indexed actor);
     event RedemptionPauseUpdated(bool paused, address indexed actor);
     event TreasuryAssetPauseUpdated(bytes32 indexed assetId, bool paused, address indexed actor);
 
+    address public treasury;
     address public governance;
     address public indexer;
     address public tcoinToken;
@@ -113,11 +151,13 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     address public charityRegistry;
     address public poolRegistry;
     address public oracleRouter;
+    address public liquidityRouter;
 
     uint256 public cadPeg18;
     uint256 public userRedeemRateBps;
     uint256 public merchantRedeemRateBps;
     uint256 public charityMintRateBps;
+    uint256 public overcollateralizationTarget18;
 
     bool public mintingPaused;
     bool public redemptionPaused;
@@ -136,6 +176,11 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         _;
     }
 
+    modifier onlyGovernance() {
+        if (msg.sender != governance) revert Unauthorized();
+        _;
+    }
+
     modifier onlyIndexerOrOwner() {
         if (msg.sender != indexer && msg.sender != owner()) revert Unauthorized();
         _;
@@ -151,10 +196,16 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         _;
     }
 
+    modifier onlyLiquidityRouter() {
+        if (msg.sender != liquidityRouter) revert NotLiquidityRouter(msg.sender);
+        _;
+    }
+
     function initialize(
         address owner_,
         address governance_,
         address indexer_,
+        address treasury_,
         address tcoinToken_,
         address reserveRegistry_,
         address charityRegistry_,
@@ -163,11 +214,13 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         uint256 cadPeg18_,
         uint256 userRedeemRateBps_,
         uint256 merchantRedeemRateBps_,
-        uint256 charityMintRateBps_
+        uint256 charityMintRateBps_,
+        uint256 overcollateralizationTarget18_
     ) external initializer {
         if (owner_ == address(0)) revert ZeroAddressOwner();
         if (governance_ == address(0)) revert ZeroAddressGovernance();
         if (indexer_ == address(0)) revert ZeroAddressIndexer();
+        if (treasury_ == address(0)) revert ZeroAddressTreasury();
         if (tcoinToken_ == address(0)) revert ZeroAddressToken();
         if (
             reserveRegistry_ == address(0) || charityRegistry_ == address(0) || poolRegistry_ == address(0)
@@ -181,26 +234,30 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         __ReentrancyGuard_init();
         _transferOwnership(owner_);
 
-        governance = governance_;
-        indexer = indexer_;
-        tcoinToken = tcoinToken_;
-        reserveRegistry = reserveRegistry_;
-        charityRegistry = charityRegistry_;
-        poolRegistry = poolRegistry_;
-        oracleRouter = oracleRouter_;
-
-        emit GovernanceUpdated(address(0), governance_);
-        emit IndexerUpdated(address(0), indexer_);
-        emit TcoinTokenUpdated(address(0), tcoinToken_);
-        emit ReserveRegistryUpdated(address(0), reserveRegistry_);
-        emit CharityRegistryUpdated(address(0), charityRegistry_);
-        emit PoolRegistryUpdated(address(0), poolRegistry_);
-        emit OracleRouterUpdated(address(0), oracleRouter_);
+        _setCorePointers(
+            treasury_,
+            governance_,
+            indexer_,
+            tcoinToken_,
+            reserveRegistry_,
+            charityRegistry_,
+            poolRegistry_,
+            oracleRouter_
+        );
 
         _setCadPeg(cadPeg18_, true);
         _setUserRedeemRate(userRedeemRateBps_);
         _setMerchantRedeemRate(merchantRedeemRateBps_);
         _setCharityMintRate(charityMintRateBps_);
+        _setOvercollateralizationTarget(overcollateralizationTarget18_);
+    }
+
+    function setTreasury(address treasury_) external onlyOwner {
+        if (treasury_ == address(0)) revert ZeroAddressTreasury();
+        if (treasury_ == treasury) revert SameAddress();
+        address old = treasury;
+        treasury = treasury_;
+        emit TreasuryUpdated(old, treasury_);
     }
 
     function setGovernance(address governance_) external onlyOwner {
@@ -217,6 +274,14 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         address old = indexer;
         indexer = indexer_;
         emit IndexerUpdated(old, indexer_);
+    }
+
+    function setLiquidityRouter(address liquidityRouter_) external onlyOwner {
+        if (liquidityRouter_ == address(0)) revert ZeroAddressRouter();
+        if (liquidityRouter_ == liquidityRouter) revert SameAddress();
+        address old = liquidityRouter;
+        liquidityRouter = liquidityRouter_;
+        emit LiquidityRouterUpdated(old, liquidityRouter_);
     }
 
     function setTcoinToken(address tcoinToken_) external onlyOwner {
@@ -267,20 +332,15 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     {
         if (assetAmount == 0) revert ZeroAmount();
 
-        IReserveRegistry.ReserveAsset memory asset = _resolveActiveAsset(assetId);
-        (uint256 cadValue18,, bool usedFallbackOracle) =
-            IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
-
-        userTcoinOut = _tcoinFromCad(cadValue18);
+        MintComputation memory mintResult = _computeMint(assetId, assetAmount, requestedCharityId);
+        userTcoinOut = mintResult.userTcoinOut;
         if (userTcoinOut < minTcoinOut) revert InvalidMinOut(userTcoinOut, minTcoinOut);
+        charityTcoinOut = mintResult.charityTcoinOut;
 
-        (uint256 resolvedCharityId, address charityWallet) = _resolveMintCharity(requestedCharityId);
-        charityTcoinOut = (userTcoinOut * charityMintRateBps) / BPS_DENOMINATOR;
-
-        IERC20(asset.token).safeTransferFrom(msg.sender, address(this), assetAmount);
+        ITreasuryVault(treasury).depositReserveFrom(msg.sender, mintResult.assetToken, assetAmount);
         ITCOINToken(tcoinToken).mint(msg.sender, userTcoinOut, "");
         if (charityTcoinOut > 0) {
-            ITCOINToken(tcoinToken).mint(charityWallet, charityTcoinOut, "");
+            ITCOINToken(tcoinToken).mint(mintResult.charityWallet, charityTcoinOut, "");
         }
 
         totalDepositedByAsset[assetId] += assetAmount;
@@ -291,11 +351,11 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
             msg.sender,
             assetId,
             assetAmount,
-            cadValue18,
+            mintResult.cadValue18,
             userTcoinOut,
             charityTcoinOut,
-            resolvedCharityId,
-            usedFallbackOracle
+            mintResult.resolvedCharityId,
+            mintResult.usedFallbackOracle
         );
     }
 
@@ -311,35 +371,48 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         )
     {
         if (assetAmount == 0) revert ZeroAmount();
-        _resolveActiveAsset(assetId);
-
-        (cadValue18,, usedFallbackOracle) = IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
-        userTcoinOut = _tcoinFromCad(cadValue18);
-        charityTcoinOut = (userTcoinOut * charityMintRateBps) / BPS_DENOMINATOR;
-        (resolvedCharityId,) = _resolveMintCharity(requestedCharityId);
+        MintComputation memory mintResult = _computeMint(assetId, assetAmount, requestedCharityId);
+        userTcoinOut = mintResult.userTcoinOut;
+        charityTcoinOut = mintResult.charityTcoinOut;
+        resolvedCharityId = mintResult.resolvedCharityId;
+        usedFallbackOracle = mintResult.usedFallbackOracle;
+        cadValue18 = mintResult.cadValue18;
     }
 
     function depositAssetForLiquidityRoute(bytes32 assetId, uint256 assetAmount, address payer)
         external
         nonReentrant
+        onlyLiquidityRouter
         whenMintingNotPaused
         returns (uint256 mrTcoinOut)
     {
+        if (payer == address(0)) revert ZeroAddressPayer();
         if (assetAmount == 0) revert ZeroAmount();
 
-        IReserveRegistry.ReserveAsset memory asset = _resolveActiveAsset(assetId);
-        (uint256 cadValue18,, bool usedFallbackOracle) =
-            IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
+        MintComputation memory mintResult = _computeMint(assetId, assetAmount, 0);
+        mrTcoinOut = mintResult.userTcoinOut;
 
-        mrTcoinOut = _tcoinFromCad(cadValue18);
-
-        IERC20(asset.token).safeTransferFrom(msg.sender, address(this), assetAmount);
+        ITreasuryVault(treasury).depositReserveFrom(payer, mintResult.assetToken, assetAmount);
+        ITCOINToken(tcoinToken).mint(msg.sender, mrTcoinOut, "");
 
         totalDepositedByAsset[assetId] += assetAmount;
+        totalTcoinMintedViaDeposits += mrTcoinOut;
 
         emit LiquidityRouteDeposited(
-            msg.sender, payer, assetId, assetAmount, cadValue18, mrTcoinOut, usedFallbackOracle
+            msg.sender, payer, assetId, assetAmount, mintResult.cadValue18, mrTcoinOut, mintResult.usedFallbackOracle
         );
+    }
+
+    function previewDepositAssetForLiquidityRoute(bytes32 assetId, uint256 assetAmount)
+        external
+        view
+        returns (uint256 mrTcoinOut, uint256 cadValue18, bool usedFallbackOracle)
+    {
+        if (assetAmount == 0) revert ZeroAmount();
+        MintComputation memory mintResult = _computeMint(assetId, assetAmount, 0);
+        mrTcoinOut = mintResult.userTcoinOut;
+        cadValue18 = mintResult.cadValue18;
+        usedFallbackOracle = mintResult.usedFallbackOracle;
     }
 
     function previewLiquidityRouteDeposit(bytes32 assetId, uint256 assetAmount)
@@ -347,11 +420,7 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         view
         returns (uint256 mrTcoinOut, bool usedFallbackOracle, uint256 cadValue18)
     {
-        if (assetAmount == 0) revert ZeroAmount();
-        _resolveActiveAsset(assetId);
-
-        (cadValue18,, usedFallbackOracle) = IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
-        mrTcoinOut = _tcoinFromCad(cadValue18);
+        (mrTcoinOut, cadValue18, usedFallbackOracle) = this.previewDepositAssetForLiquidityRoute(assetId, assetAmount);
     }
 
     function getReserveAssetToken(bytes32 assetId) external view returns (address token) {
@@ -366,24 +435,27 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     {
         if (tcoinAmount == 0) revert ZeroAmount();
 
-        bool usedFallbackOracle;
-        uint256 grossCad18;
-        uint256 redeemableCad18;
-        (assetOut, usedFallbackOracle, grossCad18, redeemableCad18) =
-            _previewRedeem(assetId, tcoinAmount, userRedeemRateBps);
+        RedeemComputation memory redeemResult = _computeRedeem(assetId, tcoinAmount, userRedeemRateBps);
+        assetOut = redeemResult.assetOut;
 
         if (assetOut < minAssetOut) revert InvalidMinOut(assetOut, minAssetOut);
-        _ensureSufficientReserve(assetId, assetOut);
 
-        IReserveRegistry.ReserveAsset memory asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
         IERC20(tcoinToken).safeTransferFrom(msg.sender, address(this), tcoinAmount);
         ITCOINToken(tcoinToken).burn(tcoinAmount);
-        IERC20(asset.token).safeTransfer(msg.sender, assetOut);
+        ITreasuryVault(treasury).withdrawReserveTo(msg.sender, redeemResult.assetToken, assetOut);
 
         totalRedeemedByAsset[assetId] += assetOut;
         totalTcoinBurnedViaRedemption += tcoinAmount;
 
-        emit RedeemedAsUser(msg.sender, assetId, tcoinAmount, assetOut, grossCad18, redeemableCad18, usedFallbackOracle);
+        emit RedeemedAsUser(
+            msg.sender,
+            assetId,
+            tcoinAmount,
+            assetOut,
+            redeemResult.grossCad18,
+            redeemResult.redeemableCad18,
+            redeemResult.usedFallbackOracle
+        );
     }
 
     function redeemAsMerchant(bytes32 assetId, uint256 tcoinAmount, uint256 minAssetOut)
@@ -402,21 +474,16 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
             revert MerchantAllowanceExceeded(msg.sender, tcoinAmount, allowanceAvailable);
         }
 
-        bool usedFallbackOracle;
-        uint256 grossCad18;
-        uint256 redeemableCad18;
-        (assetOut, usedFallbackOracle, grossCad18, redeemableCad18) =
-            _previewRedeem(assetId, tcoinAmount, merchantRedeemRateBps);
+        RedeemComputation memory redeemResult = _computeRedeem(assetId, tcoinAmount, merchantRedeemRateBps);
+        assetOut = redeemResult.assetOut;
 
         if (assetOut < minAssetOut) revert InvalidMinOut(assetOut, minAssetOut);
-        _ensureSufficientReserve(assetId, assetOut);
 
         merchantRedemptionAllowance[msg.sender] = allowanceAvailable - tcoinAmount;
 
-        IReserveRegistry.ReserveAsset memory asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
         IERC20(tcoinToken).safeTransferFrom(msg.sender, address(this), tcoinAmount);
         ITCOINToken(tcoinToken).burn(tcoinAmount);
-        IERC20(asset.token).safeTransfer(msg.sender, assetOut);
+        ITreasuryVault(treasury).withdrawReserveTo(msg.sender, redeemResult.assetToken, assetOut);
 
         totalRedeemedByAsset[assetId] += assetOut;
         totalTcoinBurnedViaRedemption += tcoinAmount;
@@ -427,10 +494,10 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
             assetId,
             tcoinAmount,
             assetOut,
-            grossCad18,
-            redeemableCad18,
+            redeemResult.grossCad18,
+            redeemResult.redeemableCad18,
             merchantRedemptionAllowance[msg.sender],
-            usedFallbackOracle
+            redeemResult.usedFallbackOracle
         );
     }
 
@@ -504,6 +571,53 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         _setCharityMintRate(newRateBps);
     }
 
+    function setOvercollateralizationTarget(uint256 newTarget18) external onlyGovernance {
+        _setOvercollateralizationTarget(newTarget18);
+    }
+
+    function mintToCharity(uint256 amount) external onlyGovernance {
+        _mintToCharity(ICharityRegistry(charityRegistry).getDefaultCharityId(), amount);
+    }
+
+    function mintToCharity(uint256 charityId, uint256 amount) external onlyGovernance {
+        _mintToCharity(charityId, amount);
+    }
+
+    function getTotalReserveValue18() public view returns (uint256 totalReserveValue18) {
+        bytes32[] memory assetIds = IReserveRegistry(reserveRegistry).listReserveAssetIds();
+
+        for (uint256 i = 0; i < assetIds.length; ++i) {
+            IReserveRegistry.ReserveAsset memory asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetIds[i]);
+            if (asset.token == address(0)) continue;
+
+            uint256 balance = ITreasuryVault(treasury).reserveBalance(asset.token);
+            if (balance == 0) continue;
+
+            (uint256 cadValue18,,) = IOracleRouter(oracleRouter).previewCadValue(assetIds[i], balance);
+            totalReserveValue18 += cadValue18;
+        }
+    }
+
+    function getCurrentMrTcoinSupply() public view returns (uint256) {
+        return ITCOINToken(tcoinToken).totalSupply();
+    }
+
+    function getCurrentCollateralizationRatio18() public view returns (uint256) {
+        uint256 supply = getCurrentMrTcoinSupply();
+        if (supply == 0) return type(uint256).max;
+
+        return (getTotalReserveValue18() * VALUE_SCALE) / supply;
+    }
+
+    function getMaxMintableCharityAmount() public view returns (uint256) {
+        uint256 supply = getCurrentMrTcoinSupply();
+        uint256 reserveValue18 = getTotalReserveValue18();
+        uint256 maxSupportedSupply = (reserveValue18 * VALUE_SCALE) / overcollateralizationTarget18;
+
+        if (maxSupportedSupply <= supply) return 0;
+        return maxSupportedSupply - supply;
+    }
+
     function pauseMinting() external onlyGovernanceOrOwner {
         mintingPaused = true;
         emit MintingPauseUpdated(true, msg.sender);
@@ -562,94 +676,166 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         return charityMintRateBps;
     }
 
-    function _resolveActiveAsset(bytes32 assetId) internal view returns (IReserveRegistry.ReserveAsset memory asset) {
-        asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
-        if (asset.assetId == bytes32(0)) revert UnknownAsset(assetId);
-        if (asset.status != IReserveRegistry.ReserveAssetStatus.Active) revert AssetInactive(assetId);
-        if (assetTreasuryPaused[assetId]) revert AssetPaused(assetId);
-    }
-
-    function _resolveMintCharity(uint256 requestedCharityId)
-        internal
-        view
-        returns (uint256 charityId, address charityWallet)
-    {
-        ICharityRegistry registry = ICharityRegistry(charityRegistry);
-
-        charityId = requestedCharityId;
-        if (charityId == 0 || !registry.isActiveCharity(charityId)) {
-            charityId = registry.getDefaultCharityId();
-        }
-
-        if (charityId == 0 || !registry.isActiveCharity(charityId)) {
-            revert InvalidCharityResolution(charityId);
-        }
-
-        charityWallet = registry.getCharityWallet(charityId);
-        if (charityWallet == address(0)) revert InvalidCharityResolution(charityId);
-    }
-
-    function _grossCadValueFromTcoin(uint256 tcoinAmount) internal view returns (uint256 grossCad18) {
-        grossCad18 = (tcoinAmount * cadPeg18) / VALUE_SCALE;
-    }
-
-    function _tcoinFromCad(uint256 cadValue18) internal view returns (uint256 tcoinAmount) {
-        tcoinAmount = (cadValue18 * VALUE_SCALE) / cadPeg18;
-    }
-
-    function _assetAmountFromCad(bytes32 assetId, uint256 cadValue18)
-        internal
-        view
-        returns (uint256 assetAmount, bool usedFallback)
-    {
-        IReserveRegistry.ReserveAsset memory asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
-        (uint256 price18,, bool usedFallbackQuote) = IOracleRouter(oracleRouter).getCadPrice(assetId);
-        assetAmount = (cadValue18 * (10 ** asset.tokenDecimals)) / price18;
-        usedFallback = usedFallbackQuote;
-    }
-
-    function _previewRedeem(bytes32 assetId, uint256 tcoinAmount, uint256 rateBps)
+    function _previewRedeem(bytes32 assetId, uint256 tcoinAmount, uint256 redeemRateBps)
         internal
         view
         returns (uint256 assetOut, bool usedFallbackOracle, uint256 grossCad18, uint256 redeemableCad18)
     {
-        _resolveActiveAsset(assetId);
-        grossCad18 = _grossCadValueFromTcoin(tcoinAmount);
-        redeemableCad18 = (grossCad18 * rateBps) / BPS_DENOMINATOR;
-        (assetOut, usedFallbackOracle) = _assetAmountFromCad(assetId, redeemableCad18);
+        IReserveRegistry.ReserveAsset memory asset = _resolveActiveAsset(assetId);
+
+        grossCad18 = _cadFromTcoin(tcoinAmount);
+        redeemableCad18 = (grossCad18 * redeemRateBps) / BPS_DENOMINATOR;
+
+        (uint256 price18,, bool fallbackUsed) = IOracleRouter(oracleRouter).getCadPrice(assetId);
+        usedFallbackOracle = fallbackUsed;
+        assetOut = (redeemableCad18 * (10 ** asset.tokenDecimals)) / price18;
+
+        _ensureSufficientReserve(assetId, assetOut);
     }
 
-    function _ensureSufficientReserve(bytes32 assetId, uint256 requested) internal view {
-        IReserveRegistry.ReserveAsset memory asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
-        uint256 available = IERC20(asset.token).balanceOf(address(this));
-        if (available < requested) {
-            revert InsufficientReserveBalance(assetId, requested, available);
+    function _setCorePointers(
+        address treasury_,
+        address governance_,
+        address indexer_,
+        address tcoinToken_,
+        address reserveRegistry_,
+        address charityRegistry_,
+        address poolRegistry_,
+        address oracleRouter_
+    ) internal {
+        treasury = treasury_;
+        governance = governance_;
+        indexer = indexer_;
+        tcoinToken = tcoinToken_;
+        reserveRegistry = reserveRegistry_;
+        charityRegistry = charityRegistry_;
+        poolRegistry = poolRegistry_;
+        oracleRouter = oracleRouter_;
+
+        emit TreasuryUpdated(address(0), treasury_);
+        emit GovernanceUpdated(address(0), governance_);
+        emit IndexerUpdated(address(0), indexer_);
+        emit TcoinTokenUpdated(address(0), tcoinToken_);
+        emit ReserveRegistryUpdated(address(0), reserveRegistry_);
+        emit CharityRegistryUpdated(address(0), charityRegistry_);
+        emit PoolRegistryUpdated(address(0), poolRegistry_);
+        emit OracleRouterUpdated(address(0), oracleRouter_);
+    }
+
+    function _computeMint(bytes32 assetId, uint256 assetAmount, uint256 requestedCharityId)
+        internal
+        view
+        returns (MintComputation memory mintResult)
+    {
+        mintResult.assetToken = _resolveActiveAsset(assetId).token;
+        (mintResult.cadValue18,, mintResult.usedFallbackOracle) =
+            IOracleRouter(oracleRouter).previewCadValue(assetId, assetAmount);
+        mintResult.userTcoinOut = _tcoinFromCad(mintResult.cadValue18);
+        mintResult.charityTcoinOut = (mintResult.userTcoinOut * charityMintRateBps) / BPS_DENOMINATOR;
+
+        if (requestedCharityId != 0 || charityMintRateBps > 0) {
+            (mintResult.resolvedCharityId, mintResult.charityWallet) = _resolveMintCharity(requestedCharityId);
         }
     }
 
-    function _setCadPeg(uint256 newCadPeg18, bool initializing) internal {
+    function _computeRedeem(bytes32 assetId, uint256 tcoinAmount, uint256 redeemRateBps)
+        internal
+        view
+        returns (RedeemComputation memory redeemResult)
+    {
+        redeemResult.assetToken = IReserveRegistry(reserveRegistry).getReserveAsset(assetId).token;
+        (
+            redeemResult.assetOut,
+            redeemResult.usedFallbackOracle,
+            redeemResult.grossCad18,
+            redeemResult.redeemableCad18
+        ) = _previewRedeem(assetId, tcoinAmount, redeemRateBps);
+    }
+
+    function _resolveActiveAsset(bytes32 assetId) internal view returns (IReserveRegistry.ReserveAsset memory asset) {
+        if (assetId == bytes32(0)) revert UnknownAsset(assetId);
+        asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
+        if (asset.status == IReserveRegistry.ReserveAssetStatus.None) revert UnknownAsset(assetId);
+        if (asset.status != IReserveRegistry.ReserveAssetStatus.Active) revert AssetInactive(assetId);
+        if (assetTreasuryPaused[assetId]) revert AssetPaused(assetId);
+    }
+
+    function _resolveMintCharity(uint256 requestedCharityId) internal view returns (uint256 charityId, address wallet) {
+        charityId = requestedCharityId;
+        if (charityId == 0) {
+            charityId = ICharityRegistry(charityRegistry).getDefaultCharityId();
+        }
+
+        if (charityId == 0 || !ICharityRegistry(charityRegistry).isActiveCharity(charityId)) {
+            revert InvalidCharityResolution(charityId);
+        }
+
+        wallet = ICharityRegistry(charityRegistry).getCharityWallet(charityId);
+        if (wallet == address(0)) revert InvalidCharityResolution(charityId);
+    }
+
+    function _mintToCharity(uint256 charityId, uint256 amount) internal {
+        if (amount == 0) revert ZeroAmount();
+        if (charityId == 0 || !ICharityRegistry(charityRegistry).isActiveCharity(charityId)) {
+            revert InvalidCharityTarget(charityId);
+        }
+
+        address charityWallet = ICharityRegistry(charityRegistry).getCharityWallet(charityId);
+        if (charityWallet == address(0)) revert InvalidCharityTarget(charityId);
+
+        uint256 maxMintable = getMaxMintableCharityAmount();
+        if (amount > maxMintable) revert CharityMintExceedsHeadroom(amount, maxMintable);
+
+        uint256 reserveValue18 = getTotalReserveValue18();
+        uint256 supplyBefore = getCurrentMrTcoinSupply();
+        uint256 ratioBefore18 = supplyBefore == 0 ? type(uint256).max : (reserveValue18 * VALUE_SCALE) / supplyBefore;
+        uint256 ratioAfter18 = (reserveValue18 * VALUE_SCALE) / (supplyBefore + amount);
+
+        ITCOINToken(tcoinToken).mint(charityWallet, amount, "");
+        totalCharityTcoinMinted += amount;
+
+        emit CharityMintedFromExcess(charityId, charityWallet, amount, ratioBefore18, ratioAfter18);
+    }
+
+    function _ensureSufficientReserve(bytes32 assetId, uint256 assetOut) internal view {
+        IReserveRegistry.ReserveAsset memory asset = IReserveRegistry(reserveRegistry).getReserveAsset(assetId);
+        uint256 available = ITreasuryVault(treasury).reserveBalance(asset.token);
+        if (available < assetOut) revert InsufficientReserveBalance(assetId, assetOut, available);
+    }
+
+    function _tcoinFromCad(uint256 cadValue18) internal view returns (uint256) {
+        return (cadValue18 * VALUE_SCALE) / cadPeg18;
+    }
+
+    function _cadFromTcoin(uint256 tcoinAmount) internal view returns (uint256) {
+        return (tcoinAmount * cadPeg18) / VALUE_SCALE;
+    }
+
+    function _setCadPeg(uint256 newCadPeg18, bool initialSet) internal {
         if (newCadPeg18 == 0) revert InvalidCadPeg();
-        uint256 old = cadPeg18;
-        if (!initializing && old != 0) {
-            uint256 lowerBound = old - ((old * CAD_PEG_MAX_DELTA_BPS) / BPS_DENOMINATOR);
-            uint256 upperBound = old + ((old * CAD_PEG_MAX_DELTA_BPS) / BPS_DENOMINATOR);
-            if (newCadPeg18 < lowerBound || newCadPeg18 > upperBound) {
-                revert InvalidPegChange(old, newCadPeg18);
+
+        if (!initialSet) {
+            uint256 oldPeg18 = cadPeg18;
+            uint256 delta = oldPeg18 > newCadPeg18 ? oldPeg18 - newCadPeg18 : newCadPeg18 - oldPeg18;
+            if ((delta * BPS_DENOMINATOR) / oldPeg18 > CAD_PEG_MAX_DELTA_BPS) {
+                revert InvalidPegChange(oldPeg18, newCadPeg18);
             }
         }
+
+        uint256 old = cadPeg18;
         cadPeg18 = newCadPeg18;
         emit CadPegUpdated(old, newCadPeg18);
     }
 
     function _setUserRedeemRate(uint256 newRateBps) internal {
-        if (newRateBps > BPS_DENOMINATOR) revert InvalidRedeemRate();
+        if (newRateBps == 0 || newRateBps > BPS_DENOMINATOR) revert InvalidRedeemRate();
         uint256 old = userRedeemRateBps;
         userRedeemRateBps = newRateBps;
         emit UserRedeemRateUpdated(old, newRateBps);
     }
 
     function _setMerchantRedeemRate(uint256 newRateBps) internal {
-        if (newRateBps > BPS_DENOMINATOR) revert InvalidRedeemRate();
+        if (newRateBps == 0 || newRateBps > BPS_DENOMINATOR) revert InvalidRedeemRate();
         uint256 old = merchantRedeemRateBps;
         merchantRedeemRateBps = newRateBps;
         emit MerchantRedeemRateUpdated(old, newRateBps);
@@ -660,6 +846,13 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         uint256 old = charityMintRateBps;
         charityMintRateBps = newRateBps;
         emit CharityMintRateUpdated(old, newRateBps);
+    }
+
+    function _setOvercollateralizationTarget(uint256 newTarget18) internal {
+        if (newTarget18 < VALUE_SCALE) revert OvercollateralizationTargetTooLow();
+        uint256 old = overcollateralizationTarget18;
+        overcollateralizationTarget18 = newTarget18;
+        emit OvercollateralizationTargetUpdated(old, newTarget18);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}

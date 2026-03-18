@@ -1,3 +1,42 @@
+## v1.41
+### Timestamp
+- 2026-03-18 14:59:54 EDT
+
+### Objective
+- Split reserve custody out of `TreasuryController` into a dedicated `Treasury` vault, refactor the controller into the pure economic policy layer, and preserve router/on-ramp settlement flows against the new custody model.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/Treasury.sol`, a non-upgradeable reserve vault with owner-managed authorized callers, reserve deposit/withdraw primitives, balance views, and emergency sweep support.
+- Added `contracts/foundry/src/torontocoin/interfaces/ITreasuryVault.sol` and refactored `contracts/foundry/src/torontocoin/TreasuryController.sol` so reserve custody now flows through the vault instead of the controller contract itself.
+- Refactored `TreasuryController` initialization and storage to include `treasury`, `liquidityRouter`, and `overcollateralizationTarget18`, added live collateralization and charity-headroom views, and implemented governance-only `mintToCharity(...)` against excess collateralization headroom.
+- Updated the router-facing settlement path so `depositAssetForLiquidityRoute(...)` is router-only, deposits reserves into `Treasury`, and mints mrTCOIN to the router caller; updated `LiquidityRouter.sol` so it now approves the vault, receives mrTCOIN, and passes that liquidity on to the pool adapter.
+- Updated `TcoinMintRouter.sol` and `ITreasuryMinting.sol` so the swap router now approves the underlying vault address instead of the controller for reserve-backed minting.
+- Expanded the shared interfaces (`ITCOINToken`, `IReserveRegistry`, `ITreasuryMinting`) and added focused Foundry coverage for the vault plus the refactored controller custody/collateralization paths.
+- Mirrored the new `Treasury` contract and the related API/interface changes into `contracts/foundry/src/torontocoin/allTcoinContracts.md`.
+- Enabled `via_ir = true` in `contracts/foundry/foundry.toml` after the split controller exceeded Solidity 0.8.30’s non-IR stack limits under the existing optimizer settings.
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Treasury.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryVault.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITCOINToken.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryMinting.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/Treasury.t.sol`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/mocks/MockTreasuryMinting.sol`
+- `contracts/foundry/foundry.toml`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.40
 ### Timestamp
 - 2026-03-18 14:28:42 EDT

@@ -11,12 +11,14 @@ interface ITreasuryControllerForLiquidityRouter {
         external
         returns (uint256 mrTcoinOut);
 
-    function previewLiquidityRouteDeposit(bytes32 assetId, uint256 assetAmount)
+    function previewDepositAssetForLiquidityRoute(bytes32 assetId, uint256 assetAmount)
         external
         view
-        returns (uint256 mrTcoinOut, bool usedFallbackOracle, uint256 cadValue18);
+        returns (uint256 mrTcoinOut, uint256 cadValue18, bool usedFallbackOracle);
 
     function getReserveAssetToken(bytes32 assetId) external view returns (address token);
+    function treasury() external view returns (address);
+    function tcoinToken() external view returns (address);
 }
 
 interface ICplTcoinForLiquidityRouter {
@@ -79,6 +81,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
 
     struct ReserveDepositContext {
         uint256 mrTcoinOut;
+        address mrTcoinToken;
     }
 
     struct CharityResolution {
@@ -394,6 +397,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         PoolSelection memory selection =
             _selectPool(result.mrTcoinUsed, request.minCplTcoinOut, preferredPoolIds, preferredMerchantIds);
         result.selectedPoolId = selection.poolId;
+        _approveExact(depositContext.mrTcoinToken, poolAdapter, result.mrTcoinUsed);
         result.cplTcoinOut = _buyFromPool(result.selectedPoolId, result.mrTcoinUsed, request.minCplTcoinOut, msg.sender);
 
         CharityResolution memory charity = _resolveCharity(msg.sender);
@@ -426,7 +430,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         if (request.reserveAssetAmount == 0) revert ZeroAmount();
 
         (result.mrTcoinUsed,,) = ITreasuryControllerForLiquidityRouter(treasuryController)
-            .previewLiquidityRouteDeposit(request.reserveAssetId, request.reserveAssetAmount);
+            .previewDepositAssetForLiquidityRoute(request.reserveAssetId, request.reserveAssetAmount);
 
         PoolSelection memory selection =
             _selectPool(result.mrTcoinUsed, request.minCplTcoinOut, preferredPoolIds, preferredMerchantIds);
@@ -524,14 +528,16 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         internal
         returns (ReserveDepositContext memory context)
     {
+        address treasuryVault = ITreasuryControllerForLiquidityRouter(treasuryController).treasury();
         address reserveAssetToken =
             ITreasuryControllerForLiquidityRouter(treasuryController).getReserveAssetToken(reserveAssetId);
 
         IERC20(reserveAssetToken).safeTransferFrom(payer, address(this), reserveAssetAmount);
-        _approveExact(reserveAssetToken, treasuryController, reserveAssetAmount);
+        _approveExact(reserveAssetToken, treasuryVault, reserveAssetAmount);
 
         context.mrTcoinOut = ITreasuryControllerForLiquidityRouter(treasuryController)
-            .depositAssetForLiquidityRoute(reserveAssetId, reserveAssetAmount, payer);
+            .depositAssetForLiquidityRoute(reserveAssetId, reserveAssetAmount, address(this));
+        context.mrTcoinToken = ITreasuryControllerForLiquidityRouter(treasuryController).tcoinToken();
     }
 
     function _resolveCharity(address payer) internal view returns (CharityResolution memory charity) {

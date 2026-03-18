@@ -11,24 +11,25 @@ contract MockTreasuryMinting is ITreasuryMinting {
 
     address public immutable cadm;
     address public override tcoinToken;
+    address public immutable override treasury;
 
     uint16 public mintBps = 10_000;
 
     constructor(address cadm_, address tcoinToken_) {
         cadm = cadm_;
         tcoinToken = tcoinToken_;
+        treasury = address(this);
     }
 
     function setMintBps(uint16 mintBps_) external {
         mintBps = mintBps_;
     }
 
-    function depositAndMint(
-        bytes32,
-        uint256 assetAmount,
-        uint256,
-        uint256
-    ) external override returns (uint256 userTcoinOut, uint256 charityTcoinOut) {
+    function depositAndMint(bytes32, uint256 assetAmount, uint256, uint256)
+        external
+        override
+        returns (uint256 userTcoinOut, uint256 charityTcoinOut)
+    {
         IERC20(cadm).safeTransferFrom(msg.sender, address(this), assetAmount);
 
         userTcoinOut = (assetAmount * mintBps) / 10_000;
@@ -37,15 +38,17 @@ contract MockTreasuryMinting is ITreasuryMinting {
         MockERC20(tcoinToken).mint(msg.sender, userTcoinOut);
     }
 
-    function previewMint(
-        bytes32,
-        uint256 assetAmount,
-        uint256
-    )
+    function previewMint(bytes32, uint256 assetAmount, uint256)
         external
         view
         override
-        returns (uint256 userTcoinOut, uint256 charityTcoinOut, uint256 resolvedCharityId, bool usedFallbackOracle, uint256 cadValue18)
+        returns (
+            uint256 userTcoinOut,
+            uint256 charityTcoinOut,
+            uint256 resolvedCharityId,
+            bool usedFallbackOracle,
+            uint256 cadValue18
+        )
     {
         userTcoinOut = (assetAmount * mintBps) / 10_000;
         charityTcoinOut = 0;
