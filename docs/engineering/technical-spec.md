@@ -68,6 +68,7 @@
 ## Notable Features
 
 - The TorontoCoin `PoolRegistry` now models merchants as merchant entities keyed by `bytes32 merchantId`, allowing multiple wallets per merchant, merchant-level `acceptsCplTcoin` / `posFeeEligible` flags, and compact wallet-resolution helpers for `cplTCOIN` payment-path checks.
+- `GeneroTokenV3` is now the Sarafu-family `cplTCOIN` demurrage token design: it preserves Sarafu-style base-balance demurrage, writer/mint/seal/expiry/max-supply/sink controls, and adds merchant-target fee routing on ordinary `transfer` / `transferFrom` using `PoolRegistry` plus `UserCharityPreferencesRegistry`.
 - NFC/RFID support planned for physical tBill integrations.
 - Modal provider listens for the Escape key to dismiss any open modal.
 - QR scanning modal requests camera access via `navigator.mediaDevices.getUserMedia`.

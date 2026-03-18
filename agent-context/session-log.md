@@ -1,3 +1,31 @@
+## v1.39
+### Timestamp
+- 2026-03-18 13:23:40 EDT
+
+### Objective
+- Build `GeneroTokenV3` as the Sarafu-family `cplTCOIN` demurrage token with merchant POS fee routing, direct charity fee payout, and preview helpers.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`, a Sarafu-style demurrage token that preserves base-balance demurrage, writer/mint/seal/expiry/max-supply/sink controls, and adds merchant-target fee logic on ordinary `transfer` and `transferFrom`.
+- Added minimal local registry interfaces inside `GeneroTokenV3.sol` for `PoolRegistry` merchant-target detection and `UserCharityPreferencesRegistry` charity/voluntary-fee resolution.
+- Implemented merchant fee configuration knobs: pool-registry and charity-preferences registry setters, merchant-fee enable toggle, default merchant fee, per-merchant-id fee overrides, and address-based fee exemptions.
+- Added the required preview and introspection helpers, including `previewMerchantTransfer`, `feeApplies`, `getEffectiveMerchantFeeBps`, `getMerchantFeeOverride`, and `hasMerchantFeeOverride`.
+- Added `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol` covering merchant transfer splits, transfer-from allowance consumption on actual payer debit, fee exemptions, and merchant-id fee overrides.
+- Added the accompanying `contracts/foundry/src/torontocoin/GeneroToken.md` design note and replaced the old simple token section in `contracts/foundry/src/torontocoin/allTcoinContracts.md` with the new `GeneroTokenV3` implementation.
+- Updated the engineering specs to record the new `cplTCOIN` merchant-payment semantics.
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`
+- `contracts/foundry/src/torontocoin/GeneroToken.md`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.38
 ### Timestamp
 - 2026-03-18 12:36:17 EDT

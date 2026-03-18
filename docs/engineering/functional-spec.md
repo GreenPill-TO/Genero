@@ -92,6 +92,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - **Wallet recovery compatibility**: if app-scoped passkey shares are missing for legacy records, send-money falls back to legacy cross-app shares and then to the most recently used credentialed share.
 - **Wallet settings management**: authenticated wallet users can update profile details, theme, charity, and BIA preferences through one shared app-scoped settings layer instead of separate ad hoc flows.
 - **Merchant payment detection**: TorontoCoin merchant recognition is now merchant-entity based rather than one-wallet based, so one merchant can operate multiple payout/POS wallets while `cplTCOIN` still resolves one canonical merchant id, one pool assignment, and merchant-level payment/POS eligibility flags from any linked wallet.
+- **Merchant POS payments**: `cplTCOIN` merchant transfers use the visible transfer amount as the sticker price, debit the payer by sticker price plus any voluntary charity fee, credit the merchant net of the base merchant fee, and route the fee component directly to the payer’s resolved charity wallet.
 - **Payments**: Scan QR → specify amount or tip % → confirm and sign.
 - **SpareChange**: Scan public QR → donate → automatic charity attribution.
 
