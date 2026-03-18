@@ -1,3 +1,30 @@
+## v1.42
+### Timestamp
+- 2026-03-18 15:12:37 EDT
+
+### Objective
+- Extend `Governance.sol` so stewards can execute on-chain proposals for `setOvercollateralizationTarget(...)` and `mintToCharity(...)` on the refactored treasury controller.
+
+### What Changed
+- Added new governance proposal types for overcollateralization-target updates and excess-capacity charity mints, plus the corresponding payload storage and steward-facing proposal constructors in `contracts/foundry/src/torontocoin/Governance.sol`.
+- Extended proposal execution so approved governance actions now call `ITreasuryController.setOvercollateralizationTarget(...)`, `ITreasuryController.mintToCharity(uint256)`, or `ITreasuryController.mintToCharity(uint256,uint256)` as appropriate.
+- Expanded `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol` so governance can compile against the new treasury-controller hooks.
+- Added focused Foundry coverage in `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol` for deadline-gated execution of both the collateral-target proposal and default/specified charity-mint proposals.
+- Synced the governance and interface changes into `contracts/foundry/src/torontocoin/allTcoinContracts.md` and updated the engineering specs.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.41
 ### Timestamp
 - 2026-03-18 14:59:54 EDT

@@ -1353,6 +1353,8 @@ contract Governance is Ownable, ReentrancyGuard {
         UserRedeemRateUpdate,
         MerchantRedeemRateUpdate,
         CharityMintRateUpdate,
+        OvercollateralizationTargetUpdate,
+        CharityMintFromExcess,
         DemurrageRateUpdate
     }
 
@@ -1435,6 +1437,11 @@ contract Governance is Ownable, ReentrancyGuard {
         uint256 value;
     }
 
+    struct CharityMintPayload {
+        uint256 charityId;
+        uint256 amount;
+    }
+
     error ZeroAddressOwner();
     error ZeroAddressRegistry();
     error ZeroAddressTarget();
@@ -1506,6 +1513,7 @@ contract Governance is Ownable, ReentrancyGuard {
     mapping(uint256 => ReserveAssetAddPayload) private reserveAssetAddPayloads;
     mapping(uint256 => ReserveOracleUpdatePayload) private reserveOracleUpdatePayloads;
     mapping(uint256 => UIntPayload) private uintPayloads;
+    mapping(uint256 => CharityMintPayload) private charityMintPayloads;
 
     constructor(
         address initialOwner,
@@ -1782,6 +1790,37 @@ contract Governance is Ownable, ReentrancyGuard {
         uintPayloads[proposalId] = UIntPayload({value: newRate});
     }
 
+    function proposeOvercollateralizationTargetUpdate(uint256 newTarget18, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256 proposalId)
+    {
+        if (newTarget18 == 0) revert InvalidProposalValue();
+        proposalId = _createProposal(ProposalType.OvercollateralizationTargetUpdate, votingWindow);
+        uintPayloads[proposalId] = UIntPayload({value: newTarget18});
+    }
+
+    function proposeMintToDefaultCharity(uint256 amount, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256 proposalId)
+    {
+        if (amount == 0) revert InvalidProposalValue();
+        proposalId = _createProposal(ProposalType.CharityMintFromExcess, votingWindow);
+        charityMintPayloads[proposalId] = CharityMintPayload({charityId: 0, amount: amount});
+    }
+
+    function proposeMintToCharity(uint256 charityId, uint256 amount, uint64 votingWindow)
+        external
+        onlySteward
+        returns (uint256 proposalId)
+    {
+        if (charityId == 0) revert InvalidProposalValue();
+        if (amount == 0) revert InvalidProposalValue();
+        proposalId = _createProposal(ProposalType.CharityMintFromExcess, votingWindow);
+        charityMintPayloads[proposalId] = CharityMintPayload({charityId: charityId, amount: amount});
+    }
+
     /// @notice Cast a weighted steward vote on a pending proposal.
     /// @dev A proposal can move to Approved before deadline if quorum and majority conditions are met.
     function voteProposal(uint256 proposalId, bool support) external onlySteward onlyPendingProposal(proposalId) {
@@ -1908,6 +1947,15 @@ contract Governance is Ownable, ReentrancyGuard {
             ITreasuryController(treasuryController).setMerchantRedeemRate(uintPayloads[proposalId].value);
         } else if (proposalType == ProposalType.CharityMintRateUpdate) {
             ITreasuryController(treasuryController).setCharityMintRate(uintPayloads[proposalId].value);
+        } else if (proposalType == ProposalType.OvercollateralizationTargetUpdate) {
+            ITreasuryController(treasuryController).setOvercollateralizationTarget(uintPayloads[proposalId].value);
+        } else if (proposalType == ProposalType.CharityMintFromExcess) {
+            CharityMintPayload storage payload = charityMintPayloads[proposalId];
+            if (payload.charityId == 0) {
+                ITreasuryController(treasuryController).mintToCharity(payload.amount);
+            } else {
+                ITreasuryController(treasuryController).mintToCharity(payload.charityId, payload.amount);
+            }
         } else if (proposalType == ProposalType.DemurrageRateUpdate) {
             ITCOINToken(tcoinToken).setExpirePeriod(uintPayloads[proposalId].value);
         } else {
@@ -5618,6 +5666,9 @@ interface ITreasuryController {
     function setUserRedeemRate(uint256 newRateBps) external;
     function setMerchantRedeemRate(uint256 newRateBps) external;
     function setCharityMintRate(uint256 newRateBps) external;
+    function setOvercollateralizationTarget(uint256 newTarget18) external;
+    function mintToCharity(uint256 amount) external;
+    function mintToCharity(uint256 charityId, uint256 amount) external;
 }
 
 ```

@@ -68,6 +68,10 @@ contract MockReserveRegistry {
 contract MockTreasuryController {
     uint256 public cadPeg18 = 1e18;
     uint256 public lastUserRate;
+    uint256 public lastOvercollateralizationTarget;
+    uint256 public lastCharityMintAmount;
+    uint256 public lastCharityMintCharityId;
+    bool public lastCharityMintUsedDefault;
 
     function setCadPeg(uint256 newCadPeg18) external {
         cadPeg18 = newCadPeg18;
@@ -79,6 +83,22 @@ contract MockTreasuryController {
 
     function setMerchantRedeemRate(uint256) external pure {}
     function setCharityMintRate(uint256) external pure {}
+
+    function setOvercollateralizationTarget(uint256 newTarget18) external {
+        lastOvercollateralizationTarget = newTarget18;
+    }
+
+    function mintToCharity(uint256 amount) external {
+        lastCharityMintAmount = amount;
+        lastCharityMintCharityId = 0;
+        lastCharityMintUsedDefault = true;
+    }
+
+    function mintToCharity(uint256 charityId, uint256 amount) external {
+        lastCharityMintAmount = amount;
+        lastCharityMintCharityId = charityId;
+        lastCharityMintUsedDefault = false;
+    }
 }
 
 contract MockTcoin {
@@ -132,5 +152,46 @@ contract GovernanceDeadlineTest is Test {
         governance.executeProposal(proposalId);
 
         assertEq(treasury.lastUserRate(), 9000);
+    }
+
+    function test_ExecuteOvercollateralizationTargetUpdateAfterDeadline() public {
+        vm.prank(steward);
+        uint256 proposalId = governance.proposeOvercollateralizationTargetUpdate(11e17, 1 days);
+
+        vm.prank(steward);
+        governance.voteProposal(proposalId, true);
+
+        vm.warp(block.timestamp + 1 days + 1);
+        governance.executeProposal(proposalId);
+
+        assertEq(treasury.lastOvercollateralizationTarget(), 11e17);
+    }
+
+    function test_ExecuteCharityMintProposalSupportsDefaultAndSpecifiedTargets() public {
+        vm.prank(steward);
+        uint256 defaultProposalId = governance.proposeMintToDefaultCharity(50e18, 1 days);
+
+        vm.prank(steward);
+        governance.voteProposal(defaultProposalId, true);
+
+        vm.warp(block.timestamp + 1 days + 1);
+        governance.executeProposal(defaultProposalId);
+
+        assertEq(treasury.lastCharityMintAmount(), 50e18);
+        assertEq(treasury.lastCharityMintCharityId(), 0);
+        assertTrue(treasury.lastCharityMintUsedDefault());
+
+        vm.prank(steward);
+        uint256 specificProposalId = governance.proposeMintToCharity(7, 25e18, 1 days);
+
+        vm.prank(steward);
+        governance.voteProposal(specificProposalId, true);
+
+        vm.warp(block.timestamp + 1 days + 2);
+        governance.executeProposal(specificProposalId);
+
+        assertEq(treasury.lastCharityMintAmount(), 25e18);
+        assertEq(treasury.lastCharityMintCharityId(), 7);
+        assertFalse(treasury.lastCharityMintUsedDefault());
     }
 }

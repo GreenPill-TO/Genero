@@ -95,6 +95,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - **Merchant POS payments**: `cplTCOIN` merchant transfers use the visible transfer amount as the sticker price, debit the payer by sticker price plus any voluntary charity fee, credit the merchant net of the base merchant fee, and route the fee component directly to the payer’s resolved charity wallet.
 - **Cross-pool liquidity purchase**: users can now deposit any treasury-approved reserve asset through `LiquidityRouter`, provide pool and merchant-voucher preference vectors, and receive routed `cplTCOIN` plus a direct charity top-up in one transaction, with automatic fallback to the best eligible pool when preferences cannot be fully satisfied.
 - **Reserve custody and redemptions**: reserve assets now sit only in the dedicated `Treasury` vault, while `TreasuryController` performs previews, reserve-backed minting, user/merchant redemption policy, router settlement authorization, and governance-controlled charity minting from overcollateralization headroom.
+- **Treasury policy governance**: stewards can now vote on the overcollateralization target and on governance-triggered excess-capacity charity mints, making both treasury headroom policy and discretionary charity issuance part of the on-chain governance workflow.
 - **Payments**: Scan QR → specify amount or tip % → confirm and sign.
 - **SpareChange**: Scan public QR → donate → automatic charity attribution.
 
