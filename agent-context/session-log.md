@@ -1,3 +1,41 @@
+## v1.52
+### Timestamp
+- 2026-03-19 10:35:00 EDT
+
+### Objective
+- Operationalize the reserve-normalization split by adding a concrete Mento broker adapter, a deploy-and-wire script for the retail liquidity stack, and repo-level integration updates for the new `LiquidityRouter` input-token flow.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.sol` plus `MentoBrokerSwapAdapter.md` as the concrete `ISwapAdapter` implementation for Mento routes. The adapter stores default broker routes per input token, supports optional per-call route overrides through `swapData`, and returns actual observed `mCAD` output back to the caller.
+- Added `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol` so the repo now has a concrete deployment/config path for the retail `cplTCOIN` stack. The script deploys `MentoBrokerSwapAdapter`, `ReserveInputRouter`, and `LiquidityRouter`, wires the helper/router circular dependency, calls `TreasuryController.setLiquidityRouter(...)`, optionally seeds one initial Mento route plus helper-enabled input token, transfers ownership of the new contracts to governance, and writes a deployment artifact.
+- Updated `contracts/foundry/.env.example` with the liquidity-stack deployment variables required by the new script.
+- Added `contracts/foundry/test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`, covering default-route previews, per-call route overrides, and an integration-style normalization path where `ReserveInputRouter` uses the real broker-backed adapter surface to convert an unsupported input into accepted `mCAD`.
+- Updated the TorontoCoin README plus the reserve-input, mint-router, and architecture notes so the written source of truth now distinguishes the older `TcoinMintRouter` checkout path from the newer `LiquidityRouter` retail `cplTCOIN` path, and explicitly documents `MentoBrokerSwapAdapter` as the concrete Mento execution surface shared by both.
+- Confirmed there are currently no live app or indexer call sites for `LiquidityRouter.buyCplTcoin(...)` outside the Solidity/docs layer, so this pass focused the external integration cleanup on deployment/config and architecture notes rather than frontend code rewrites.
+
+### Verification
+- `forge fmt src/torontocoin/MentoBrokerSwapAdapter.sol src/torontocoin/ReserveInputRouter.sol src/torontocoin/LiquidityRouter.sol test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `forge test --match-path test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.sol`
+- `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.md`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/src/torontocoin/ReserveInputRouter.md`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.md`
+- `docs/engineering/mintTcoinWithUSDC-architecture.md`
+- `docs/engineering/buy-tcoin-checkout-orchestrator-architecture.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.51
 ### Timestamp
 - 2026-03-18 22:05:00 EDT

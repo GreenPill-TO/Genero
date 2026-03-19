@@ -17,6 +17,8 @@ Goal: collapse this into one user transaction while preserving reserve-backed is
 2. `ISwapAdapter`
 - abstracts tokenIn -> CADm execution venue
 - replaceable by governance/owner config
+- the recommended concrete implementation is `MentoBrokerSwapAdapter`
+- supports admin-set default broker routes and optional per-call route override via `swapData`
 
 3. `TreasuryController` (via `ITreasuryMinting`)
 - canonical reserve-backed mint path
@@ -92,8 +94,9 @@ Backend/UI quoting should:
 On-chain remains final source of truth for acceptance/rejection.
 
 ## 8. Rollout
-1. Deploy router with treasury, CADm token, CADm assetId, swap adapter, and USDC token.
+1. Deploy router with treasury, CADm token, CADm assetId, and a configured `MentoBrokerSwapAdapter`.
 2. Enable USDC as input token.
-3. Validate preview-vs-execution drift in staging.
-4. Enable wallet feature flag for one-click reserve mint.
-5. Monitor revert distribution, output slippage, and refund frequency.
+3. Configure the default Mento route for USDC (or pass an override through `swapData`).
+4. Validate preview-vs-execution drift in staging.
+5. Enable wallet feature flag for one-click reserve mint.
+6. Monitor revert distribution, output slippage, and refund frequency.

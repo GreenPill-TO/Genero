@@ -57,6 +57,7 @@ This folder is the hardened TorontoCoin contract suite aligned to the Sarafu rea
 - Direct treasury-accepted reserve inputs bypass the helper.
 - Unsupported direct inputs can be normalized into `mCAD` through the helper when explicitly enabled.
 - `TreasuryController` stays narrow and only resolves accepted reserve assets plus liquidity-route settlement capacity.
+- `MentoBrokerSwapAdapter` is the concrete `ISwapAdapter` implementation for Mento broker routes, with admin-set default routes plus optional per-call route overrides for older mint-router flows.
 
 ### Build compatibility hardening
 - OpenZeppelin imports are aligned to installed v4 layout (`security/*` and upgradeable `security/*`).

@@ -81,6 +81,8 @@ Returns:
 
 The helper assumes `mCAD` itself is an active reserve asset in treasury.
 
+The recommended concrete adapter is `MentoBrokerSwapAdapter`, which stores default Mento broker routes on-chain and can still honour optional per-call route overrides for older flows that need them.
+
 ## Access Model
 
 - `normalizeReserveInput(...)`: `LiquidityRouter` only
@@ -92,3 +94,4 @@ The helper assumes `mCAD` itself is an active reserve asset in treasury.
 - The helper engages the swap path only when the input token is not already treasury-accepted.
 - This keeps the normalization boundary separate from retail `cplTCOIN` acquisition and from treasury economics.
 - `TcoinMintRouter` may remain in the repo for older mrTCOIN mint flows, but `ReserveInputRouter` is the active normalization helper for `LiquidityRouter`.
+- `LiquidityRouter` should keep passing empty swap-data and rely on admin-set Mento routes through the adapter; direct broker/exchange selection should stay outside the retail router.

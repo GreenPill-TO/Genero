@@ -6,7 +6,9 @@
 - Network/asset v1: Celo mainnet + USDC input, final asset TCOIN.
 
 ## Problem and Goal
-The contract path (`TcoinMintRouter`) already supports atomic reserve minting (`USDC -> CADm -> TCOIN`), but wallet UX still required fragmented off-chain/on-chain steps.
+The checkout contract path still uses `TcoinMintRouter` for reserve-backed `TCOIN` minting (`USDC -> CADm -> TCOIN`); this is separate from the newer `LiquidityRouter` path that acquires `cplTCOIN`.
+
+For buy-checkout, wallet UX still required fragmented off-chain/on-chain steps.
 
 This architecture adds a backend checkout orchestrator that turns the user experience into one lifecycle:
 1. Create provider checkout session.
@@ -84,6 +86,7 @@ flowchart LR
 
 ### 4) Chain Execution Layer
 - Uses existing `TcoinMintRouter.mintTcoinWithUSDC(...)`.
+- `TcoinMintRouter` can now sit on top of the same concrete `MentoBrokerSwapAdapter` used by `ReserveInputRouter`, keeping Mento broker route config reusable across both reserve-mint and `cplTCOIN` acquisition stacks.
 - Router enforces min-out/deadline + atomic revert semantics.
 - Settlement runner performs:
   1. USDC balance check at deposit wallet.

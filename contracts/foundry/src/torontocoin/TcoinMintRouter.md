@@ -19,6 +19,8 @@ The router depends on three external surfaces:
 2. `ITreasuryMinting` (`treasury`) for reserve-backed TCOIN minting.
 3. ERC20 tokens (`tokenIn`, `CADm`, `TCOIN`) for transfers and approvals.
 
+The recommended concrete adapter is now `MentoBrokerSwapAdapter`, which supports admin-set default Mento routes and optional per-call route overrides through `swapData`.
+
 Trust model:
 - Router is the orchestration boundary.
 - Swap routing quality/liquidity is delegated to the adapter.
