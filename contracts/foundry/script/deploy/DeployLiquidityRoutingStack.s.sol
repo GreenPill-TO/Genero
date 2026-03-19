@@ -7,14 +7,16 @@ import "../../src/torontocoin/LiquidityRouter.sol";
 import "../../src/torontocoin/ReserveInputRouter.sol";
 import "../../src/torontocoin/MentoBrokerSwapAdapter.sol";
 import "../../src/torontocoin/interfaces/ITreasuryController.sol";
+import "../helpers/DeployChainConfig.sol";
 
-contract DeployLiquidityRoutingStack is Script {
+contract DeployLiquidityRoutingStack is DeployChainConfig {
     function run()
         external
         returns (address liquidityRouterAddress, address reserveInputRouterAddress, address mentoSwapAdapterAddress)
     {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(privateKey);
+        ChainSelection memory selection = _assertDeployTargetChain();
 
         address governance = vm.envAddress("GOVERNANCE_ADDRESS");
         address treasuryController = vm.envAddress("TREASURY_CONTROLLER_ADDRESS");
@@ -88,6 +90,9 @@ contract DeployLiquidityRoutingStack is Script {
         console2.log("ReserveInputRouter deployed at", reserveInputRouterAddress);
         console2.log("MentoBrokerSwapAdapter deployed at", mentoSwapAdapterAddress);
         console2.log("Ownership transferred to governance", governance);
+        console2.log("Deploy target chain", selection.target);
+        console2.log("Expected RPC env", selection.rpcEnvVar);
+        console2.log("Explorer API env", selection.explorerApiKeyEnvVar);
     }
 
     function _writeArtifact(

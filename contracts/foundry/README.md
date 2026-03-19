@@ -42,9 +42,19 @@ forge snapshot
 ## Registry Scripts
 
 ```bash
-# Deploy registry (requires PRIVATE_KEY and INITIAL_OWNER)
-forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --rpc-url "$FLOW_EVM_TESTNET_RPC_URL" --broadcast
+# Set DEPLOY_TARGET_CHAIN to either celo or sepolia before broadcasting.
 
-# Promote city version from deployment JSON (requires PRIVATE_KEY, REGISTRY_ADDRESS, DEPLOYMENT_FILE)
-forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --rpc-url "$FLOW_EVM_TESTNET_RPC_URL" --broadcast
+# Deploy registry on Celo mainnet (requires PRIVATE_KEY, INITIAL_OWNER, DEPLOY_TARGET_CHAIN=celo)
+forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --rpc-url celo --broadcast
+
+# Deploy registry on Sepolia (requires PRIVATE_KEY, INITIAL_OWNER, DEPLOY_TARGET_CHAIN=sepolia)
+forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --rpc-url sepolia --broadcast
+
+# Promote city version from deployment JSON on the selected chain
+forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --rpc-url celo --broadcast
 ```
+
+The deploy/admin scripts now validate `DEPLOY_TARGET_CHAIN` against the connected chain ID:
+
+- `celo` => chain ID `42220`, RPC alias `celo`, explorer key env `CELOSCAN_API_KEY`
+- `sepolia` => chain ID `11155111`, RPC alias `sepolia`, explorer key env `ETHERSCAN_API_KEY`

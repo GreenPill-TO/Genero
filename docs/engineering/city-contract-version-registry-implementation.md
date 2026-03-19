@@ -110,11 +110,12 @@ The first city implementation is `tcoin` (Toronto). The bootstrap registry chain
 
 ## Deployment and Operations Runbook
 1. Deploy registry:
-   - `npm run forge:deploy:registry -- --rpc-url "$FLOW_EVM_TESTNET_RPC_URL"`
+   - set `contracts/foundry/.env` `DEPLOY_TARGET_CHAIN` to `celo` or `sepolia`
+   - use the matching Foundry RPC alias: `npm run forge:deploy:registry -- --rpc-url celo` or `npm run forge:deploy:registry -- --rpc-url sepolia`
 2. Update bootstrap constant with deployed registry address:
    - `shared/lib/contracts/cityRegistryClient.ts`
 3. Promote initial `tcoin` version from deployment JSON:
-   - `npm run forge:promote:city -- --rpc-url "$FLOW_EVM_TESTNET_RPC_URL"`
+   - `npm run forge:promote:city -- --rpc-url celo` or `npm run forge:promote:city -- --rpc-url sepolia`
 4. For upgrades:
    - deploy new city contracts
    - produce deployment JSON artifact
@@ -123,5 +124,5 @@ The first city implementation is `tcoin` (Toronto). The bootstrap registry chain
    - call `promoteVersion(cityId, oldVersion)` as owner/multisig
 
 ## Known Follow-up
-- Replace placeholder registry address in `CITY_REGISTRY_BOOTSTRAP` after first Flow testnet deploy.
+- Replace placeholder registry address in `CITY_REGISTRY_BOOTSTRAP` after first live registry deployment on the selected chain.
 - Full repo `npm test` currently has unrelated existing Supabase-env failures outside this implementation area.

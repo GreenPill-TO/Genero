@@ -1,3 +1,34 @@
+## v1.53
+### Timestamp
+- 2026-03-19 10:55:00 EDT
+
+### Objective
+- Standardize the Foundry deployment environment around Celo mainnet and Sepolia, remove the old Flow EVM testnet RPC variable, and make the deploy/admin scripts validate the intended target chain explicitly.
+
+### What Changed
+- Removed `FLOW_EVM_TESTNET_RPC_URL` from `contracts/foundry/.env.example`, added `DEPLOY_TARGET_CHAIN`, and complemented `ETHERSCAN_API_KEY` with `CELOSCAN_API_KEY`.
+- Added `contracts/foundry/script/helpers/DeployChainConfig.sol` as a shared script helper that resolves the selected deploy target (`celo` or `sepolia`), maps it to the expected chain ID, the expected RPC env variable, and the expected explorer API-key env variable, and reverts if a script is broadcast on the wrong chain.
+- Updated `DeployCityImplementationRegistry.s.sol`, `PromoteCityVersion.s.sol`, and `DeployLiquidityRoutingStack.s.sol` to inherit the shared deploy-chain helper, validate `DEPLOY_TARGET_CHAIN` against the connected chain, and log the matching RPC/explorer env expectations for operators.
+- Added Foundry RPC aliases for `celo` and `sepolia` in `contracts/foundry/foundry.toml`, and rewrote the Foundry README plus the city-registry engineering runbook so deployment commands now use `--rpc-url celo` / `--rpc-url sepolia` instead of the removed Flow testnet variable.
+- Updated the engineering technical spec so the repo-level source of truth now reflects the Celo/Sepolia deployment-target model for the Solidity workspace.
+
+### Verification
+- `forge fmt script/helpers/DeployChainConfig.sol script/deploy/DeployCityImplementationRegistry.s.sol script/deploy/PromoteCityVersion.s.sol script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `forge build`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/.env.example`
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/helpers/DeployChainConfig.sol`
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `docs/engineering/technical-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.52
 ### Timestamp
 - 2026-03-19 10:35:00 EDT

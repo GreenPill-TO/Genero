@@ -5,8 +5,9 @@ import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 import "forge-std/console2.sol";
 import "../../src/registry/CityImplementationRegistry.sol";
+import "../helpers/DeployChainConfig.sol";
 
-contract PromoteCityVersion is Script {
+contract PromoteCityVersion is DeployChainConfig {
     using stdJson for string;
 
     error InvalidCitySlug();
@@ -24,19 +25,18 @@ contract PromoteCityVersion is Script {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
         address registryAddress = vm.envAddress("REGISTRY_ADDRESS");
         string memory deploymentFile = vm.envString("DEPLOYMENT_FILE");
+        ChainSelection memory selection = _assertDeployTargetChain();
 
         string memory json = vm.readFile(deploymentFile);
         DeploymentInput memory input = _parseAndValidate(json);
         bytes32 cityId = _cityId(input.citySlug);
 
         vm.startBroadcast(privateKey);
-        promotedVersion = CityImplementationRegistry(registryAddress).registerAndPromote(
-            cityId, input.chainId, input.contracts, input.metadataURI
-        );
+        promotedVersion = CityImplementationRegistry(registryAddress)
+            .registerAndPromote(cityId, input.chainId, input.contracts, input.metadataURI);
         vm.stopBroadcast();
 
-        string memory promotionsDir =
-            string.concat("deployments/registry/", vm.toString(input.chainId), "/promotions");
+        string memory promotionsDir = string.concat("deployments/registry/", vm.toString(input.chainId), "/promotions");
         vm.createDir(promotionsDir, true);
 
         string memory outputPath = string.concat(promotionsDir, "/", vm.toString(block.timestamp), ".json");
@@ -64,6 +64,9 @@ contract PromoteCityVersion is Script {
         console2.log("  chainId:", input.chainId);
         console2.log("  version:", promotedVersion);
         console2.log("  artifact:", outputPath);
+        console2.log("  deployTarget:", selection.target);
+        console2.log("  rpcEnv:", selection.rpcEnvVar);
+        console2.log("  explorerApiEnv:", selection.explorerApiKeyEnvVar);
     }
 
     function _parseAndValidate(string memory json) internal returns (DeploymentInput memory input) {
