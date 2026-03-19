@@ -1,3 +1,24 @@
+## v1.49
+### Timestamp
+- 2026-03-18 20:15:00 EDT
+
+### Objective
+- Clear the current Solidity formatter and linter-style failures on the targeted TorontoCoin contracts without changing contract behaviour.
+
+### What Changed
+- Ran `forge fmt` on the targeted TorontoCoin contract set and updated the files that were out of style: `Governance.sol`, `ReserveRegistry.sol`, and `UserAcceptancePreferencesRegistry.sol`.
+- Confirmed the formatter check passes for the full requested target list: `GeneroTokenV3.sol`, `Governance.sol`, `ReserveRegistry.sol`, `TreasuryController.sol`, and `UserAcceptancePreferencesRegistry.sol`.
+- Left `GeneroTokenV3.sol` and `TreasuryController.sol` unchanged because they were already compliant with the formatter path used by the repo.
+
+### Verification
+- `forge fmt --check src/torontocoin/GeneroTokenV3.sol src/torontocoin/Governance.sol src/torontocoin/ReserveRegistry.sol src/torontocoin/TreasuryController.sol src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/ReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+- `agent-context/session-log.md`
+
 ## v1.48
 ### Timestamp
 - 2026-03-18 20:06:00 EDT

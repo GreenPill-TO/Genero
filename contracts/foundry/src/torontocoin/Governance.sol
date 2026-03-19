@@ -654,11 +654,7 @@ contract Governance is Ownable, ReentrancyGuard {
         return _proposeBytes32Id(ProposalType.TreasuryControllerUnpauseAsset, assetId, votingWindow);
     }
 
-    function proposeSetAdminCanMintToCharity(bool enabled, uint64 votingWindow)
-        external
-        onlySteward
-        returns (uint256)
-    {
+    function proposeSetAdminCanMintToCharity(bool enabled, uint64 votingWindow) external onlySteward returns (uint256) {
         return _proposeBool(ProposalType.TreasuryControllerSetAdminCanMintToCharity, enabled, votingWindow);
     }
 
@@ -919,11 +915,11 @@ contract Governance is Ownable, ReentrancyGuard {
         } else if (proposalType == ProposalType.LiquidityRouterSetCplTcoin) {
             ILiquidityRouterGovernance(liquidityRouter).setCplTcoin(addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetCharityPreferencesRegistry) {
-            ILiquidityRouterGovernance(liquidityRouter).setCharityPreferencesRegistry(addressPayloads[proposalId].account);
+            ILiquidityRouterGovernance(liquidityRouter)
+                .setCharityPreferencesRegistry(addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetAcceptancePreferencesRegistry) {
-            ILiquidityRouterGovernance(liquidityRouter).setAcceptancePreferencesRegistry(
-                addressPayloads[proposalId].account
-            );
+            ILiquidityRouterGovernance(liquidityRouter)
+                .setAcceptancePreferencesRegistry(addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetPoolRegistry) {
             ILiquidityRouterGovernance(liquidityRouter).setPoolRegistry(addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetPoolAdapter) {
@@ -932,12 +928,13 @@ contract Governance is Ownable, ReentrancyGuard {
             ILiquidityRouterGovernance(liquidityRouter).setCharityTopupBps(uintPayloads[proposalId].value);
         } else if (proposalType == ProposalType.LiquidityRouterSetScoringWeights) {
             ScoringWeightsPayload storage payload = scoringWeightsPayloads[proposalId];
-            ILiquidityRouterGovernance(liquidityRouter).setScoringWeights(
-                payload.weightLowMrTcoinLiquidity,
-                payload.weightHighCplTcoinLiquidity,
-                payload.weightUserPoolPreference,
-                payload.weightUserMerchantPreference
-            );
+            ILiquidityRouterGovernance(liquidityRouter)
+                .setScoringWeights(
+                    payload.weightLowMrTcoinLiquidity,
+                    payload.weightHighCplTcoinLiquidity,
+                    payload.weightUserPoolPreference,
+                    payload.weightUserMerchantPreference
+                );
         } else {
             revert InvalidProposalValue();
         }

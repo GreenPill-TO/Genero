@@ -57,16 +57,10 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
     event ReserveAssetRemoved(bytes32 indexed assetId, address indexed actor);
 
     event ReserveAssetOracleUpdated(
-        bytes32 indexed assetId,
-        address indexed primaryOracle,
-        address indexed fallbackOracle
+        bytes32 indexed assetId, address indexed primaryOracle, address indexed fallbackOracle
     );
 
-    event ReserveAssetStalenessUpdated(
-        bytes32 indexed assetId,
-        uint256 oldStaleAfter,
-        uint256 newStaleAfter
-    );
+    event ReserveAssetStalenessUpdated(bytes32 indexed assetId, uint256 oldStaleAfter, uint256 newStaleAfter);
 
     event ReserveAssetCodeUpdated(bytes32 indexed assetId, string oldCode, string newCode);
 
@@ -136,15 +130,7 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         assetIdByToken[token] = assetId;
         reserveAssetIds.push(assetId);
 
-        emit ReserveAssetAdded(
-            assetId,
-            token,
-            code,
-            tokenDecimals,
-            primaryOracle,
-            fallbackOracle,
-            staleAfter
-        );
+        emit ReserveAssetAdded(assetId, token, code, tokenDecimals, primaryOracle, fallbackOracle, staleAfter);
     }
 
     function pauseReserveAsset(bytes32 assetId) external onlyGovernanceOrOwner {
@@ -171,11 +157,11 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         emit ReserveAssetRemoved(assetId, msg.sender);
     }
 
-    function updateReserveAssetOracles(
-        bytes32 assetId,
-        address primaryOracle,
-        address fallbackOracle
-    ) external onlyGovernanceOrOwner whenNotPaused {
+    function updateReserveAssetOracles(bytes32 assetId, address primaryOracle, address fallbackOracle)
+        external
+        onlyGovernanceOrOwner
+        whenNotPaused
+    {
         ReserveAsset storage asset = _getReserveAssetStorage(assetId);
         if (asset.status == ReserveAssetStatus.Removed) revert InvalidAssetStatus(assetId);
         if (primaryOracle == address(0)) revert ZeroPrimaryOracle();
@@ -186,10 +172,11 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         emit ReserveAssetOracleUpdated(assetId, primaryOracle, fallbackOracle);
     }
 
-    function updateReserveAssetStaleness(
-        bytes32 assetId,
-        uint256 staleAfter
-    ) external onlyGovernanceOrOwner whenNotPaused {
+    function updateReserveAssetStaleness(bytes32 assetId, uint256 staleAfter)
+        external
+        onlyGovernanceOrOwner
+        whenNotPaused
+    {
         ReserveAsset storage asset = _getReserveAssetStorage(assetId);
         if (asset.status == ReserveAssetStatus.Removed) revert InvalidAssetStatus(assetId);
         if (staleAfter == 0) revert InvalidStaleness();
@@ -200,10 +187,11 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         emit ReserveAssetStalenessUpdated(assetId, oldStaleAfter, staleAfter);
     }
 
-    function updateReserveAssetCode(
-        bytes32 assetId,
-        string calldata newCode
-    ) external onlyGovernanceOrOwner whenNotPaused {
+    function updateReserveAssetCode(bytes32 assetId, string calldata newCode)
+        external
+        onlyGovernanceOrOwner
+        whenNotPaused
+    {
         ReserveAsset storage asset = _getReserveAssetStorage(assetId);
         if (asset.status == ReserveAssetStatus.Removed) revert InvalidAssetStatus(assetId);
         if (bytes(newCode).length == 0) revert EmptyCode();
@@ -256,22 +244,10 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
     function getOracleConfig(bytes32 assetId)
         external
         view
-        returns (
-            address token,
-            uint8 tokenDecimals,
-            address primaryOracle,
-            address fallbackOracle,
-            uint256 staleAfter
-        )
+        returns (address token, uint8 tokenDecimals, address primaryOracle, address fallbackOracle, uint256 staleAfter)
     {
         ReserveAsset storage asset = _getReserveAssetStorage(assetId);
-        return (
-            asset.token,
-            asset.tokenDecimals,
-            asset.primaryOracle,
-            asset.fallbackOracle,
-            asset.staleAfter
-        );
+        return (asset.token, asset.tokenDecimals, asset.primaryOracle, asset.fallbackOracle, asset.staleAfter);
     }
 
     function _getReserveAssetStorage(bytes32 assetId) internal view returns (ReserveAsset storage asset) {

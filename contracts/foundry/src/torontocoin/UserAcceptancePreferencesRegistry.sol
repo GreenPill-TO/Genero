@@ -20,24 +20,15 @@ contract UserAcceptancePreferencesRegistry is Ownable {
     event StrictAcceptedOnlyUpdated(address indexed user, bool enabled);
 
     event PoolAcceptanceUpdated(
-        address indexed user,
-        bytes32 indexed poolId,
-        AcceptanceStatus oldStatus,
-        AcceptanceStatus newStatus
+        address indexed user, bytes32 indexed poolId, AcceptanceStatus oldStatus, AcceptanceStatus newStatus
     );
 
     event MerchantAcceptanceUpdated(
-        address indexed user,
-        bytes32 indexed merchantId,
-        AcceptanceStatus oldStatus,
-        AcceptanceStatus newStatus
+        address indexed user, bytes32 indexed merchantId, AcceptanceStatus oldStatus, AcceptanceStatus newStatus
     );
 
     event TokenAcceptanceUpdated(
-        address indexed user,
-        address indexed token,
-        AcceptanceStatus oldStatus,
-        AcceptanceStatus newStatus
+        address indexed user, address indexed token, AcceptanceStatus oldStatus, AcceptanceStatus newStatus
     );
 
     event PreferredMerchantsReplaced(address indexed user, bytes32[] merchantIds);
@@ -198,11 +189,7 @@ contract UserAcceptancePreferencesRegistry is Ownable {
         rank = ranked ? rankPlusOne - 1 : 0;
     }
 
-    function getTokenPreferenceRank(address user, address token)
-        external
-        view
-        returns (bool ranked, uint256 rank)
-    {
+    function getTokenPreferenceRank(address user, address token) external view returns (bool ranked, uint256 rank) {
         uint256 rankPlusOne = preferredTokenRankPlusOne[user][token];
         ranked = rankPlusOne != 0;
         rank = ranked ? rankPlusOne - 1 : 0;
@@ -456,11 +443,9 @@ contract UserAcceptancePreferencesRegistry is Ownable {
         indexPlusOne[value] = values.length;
     }
 
-    function _removeBytes32(
-        bytes32[] storage values,
-        mapping(bytes32 => uint256) storage indexPlusOne,
-        bytes32 value
-    ) internal {
+    function _removeBytes32(bytes32[] storage values, mapping(bytes32 => uint256) storage indexPlusOne, bytes32 value)
+        internal
+    {
         uint256 index = indexPlusOne[value];
         if (index == 0) return;
 
@@ -483,11 +468,9 @@ contract UserAcceptancePreferencesRegistry is Ownable {
         indexPlusOne[value] = values.length;
     }
 
-    function _removeAddress(
-        address[] storage values,
-        mapping(address => uint256) storage indexPlusOne,
-        address value
-    ) internal {
+    function _removeAddress(address[] storage values, mapping(address => uint256) storage indexPlusOne, address value)
+        internal
+    {
         uint256 index = indexPlusOne[value];
         if (index == 0) return;
 
