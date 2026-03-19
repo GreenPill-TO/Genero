@@ -56,9 +56,12 @@ contract MockPoolRegistry {
     function suspendPool(bytes32) external pure {}
     function unsuspendPool(bytes32) external pure {}
 
-    function approveMerchant(bytes32 merchantId, bytes32 poolId, string calldata metadataRecordId, address[] calldata wallets)
-        external
-    {
+    function approveMerchant(
+        bytes32 merchantId,
+        bytes32 poolId,
+        string calldata metadataRecordId,
+        address[] calldata wallets
+    ) external {
         lastApprovedMerchantId = merchantId;
         lastApprovedPoolId = poolId;
         lastApprovedMetadataRecordId = metadataRecordId;
@@ -255,6 +258,7 @@ contract MockTreasuryController is MockOwned {
 contract MockLiquidityRouter is MockOwned {
     address public governance;
     address public treasuryController;
+    address public reserveInputRouter;
     address public cplTcoin;
     address public charityPreferencesRegistry;
     address public acceptancePreferencesRegistry;
@@ -277,6 +281,10 @@ contract MockLiquidityRouter is MockOwned {
 
     function setTreasuryController(address treasury_) external onlyGovernanceOrOwner {
         treasuryController = treasury_;
+    }
+
+    function setReserveInputRouter(address router_) external onlyGovernanceOrOwner {
+        reserveInputRouter = router_;
     }
 
     function setCplTcoin(address cplTcoin_) external onlyGovernanceOrOwner {
@@ -435,7 +443,8 @@ contract GovernanceDeadlineTest is Test {
         wallets[1] = address(0xAA02);
 
         vm.prank(steward);
-        uint256 proposalId = governance.proposeMerchantApprove(MERCHANT_ID, POOL_ID, "merchant-metadata", wallets, 1 days);
+        uint256 proposalId =
+            governance.proposeMerchantApprove(MERCHANT_ID, POOL_ID, "merchant-metadata", wallets, 1 days);
 
         _approveAndExecute(proposalId);
 
@@ -488,6 +497,12 @@ contract GovernanceDeadlineTest is Test {
             governance.proposeLiquidityRouterSetAcceptancePreferencesRegistry(address(0xA11CE), 1 days);
         _approveAndExecute(acceptanceRegistryProposalId);
         assertEq(router.acceptancePreferencesRegistry(), address(0xA11CE));
+
+        vm.prank(steward);
+        uint256 reserveInputRouterProposalId =
+            governance.proposeLiquidityRouterSetReserveInputRouter(address(0xDADA), 1 days);
+        _approveAndExecute(reserveInputRouterProposalId);
+        assertEq(router.reserveInputRouter(), address(0xDADA));
 
         vm.prank(steward);
         uint256 scoringProposalId = governance.proposeLiquidityRouterSetScoringWeights(11, 22, 33, 44, 1 days);

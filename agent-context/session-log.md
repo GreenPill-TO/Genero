@@ -1,3 +1,44 @@
+## v1.51
+### Timestamp
+- 2026-03-18 22:05:00 EDT
+
+### Objective
+- Separate reserve-input normalization from `cplTCOIN` pool routing so `LiquidityRouter` remains the retail entrypoint while Mento-style `mCAD` conversion is only engaged when the user input token is not already treasury-accepted.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/ReserveInputRouter.sol` plus `ReserveInputRouter.md` as the dedicated normalization helper. It resolves direct treasury-accepted reserve inputs without swapping, normalizes helper-enabled unsupported inputs into `mCAD`, and remains out of pool selection, charity routing, and treasury policy math.
+- Refactored `contracts/foundry/src/torontocoin/LiquidityRouter.sol` so its public buy/preview surface is now input-token based rather than reserve-asset-id based. The router pulls user input tokens itself, uses `TreasuryController.resolveAcceptedReserveAsset(...)` to decide whether direct treasury settlement is possible, delegates to `ReserveInputRouter` only when needed, then deposits the normalized reserve asset into `depositAssetForLiquidityRoute(...)`, selects the best eligible pool, and finishes the `cplTCOIN` purchase plus charity top-up.
+- Extended `TreasuryController` with `resolveAcceptedReserveAsset(address)` and updated `IReserveRegistry` / `ITreasuryController` accordingly so reserve-input detection stays in the treasury policy layer without embedding normalization logic there.
+- Extended the governance-facing router surface with `setReserveInputRouter(...)`, added the corresponding governance proposal path, and updated the governance regression test harness so the finalized owner/governance execution model still covers router pointer updates.
+- Added focused tests for `ReserveInputRouter`, rewrote `LiquidityRouter` tests around the new direct-vs-normalized input flow, and updated the treasury mock registry to satisfy the new reserve lookup helper.
+- Updated TorontoCoin contract notes and engineering specs so the documented architecture now reflects the split between retail routing, reserve-input normalization, and treasury settlement.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/ReserveInputRouter.sol`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol`
+- `contracts/foundry/test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `contracts/foundry/src/torontocoin/ReserveInputRouter.md`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.md`
+- `contracts/foundry/src/torontocoin/TreasuryController.md`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.50
 ### Timestamp
 - 2026-03-18 21:42:00 EDT

@@ -19,6 +19,10 @@ interface ITreasuryControllerForLiquidityRouter {
     function getReserveAssetToken(bytes32 assetId) external view returns (address token);
     function treasury() external view returns (address);
     function tcoinToken() external view returns (address);
+    function resolveAcceptedReserveAsset(address token)
+        external
+        view
+        returns (bool accepted, bytes32 assetId, address reserveToken);
 }
 
 interface ICplTcoinForLiquidityRouter {
@@ -78,6 +82,23 @@ interface IPoolAdapter {
     function getPoolAccount(bytes32 poolId) external view returns (address poolAccount);
 }
 
+interface IReserveInputRouterForLiquidityRouter {
+    function normalizeReserveInput(address tokenIn, uint256 amountIn, uint256 minReserveOut, address payer)
+        external
+        returns (bytes32 reserveAssetId, address reserveToken, uint256 reserveAmountOut);
+
+    function previewNormalizeReserveInput(address tokenIn, uint256 amountIn)
+        external
+        view
+        returns (
+            bool directAccepted,
+            bool requiresSwap,
+            bytes32 reserveAssetId,
+            address reserveToken,
+            uint256 reserveAmountOut
+        );
+}
+
 contract LiquidityRouter is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -97,6 +118,9 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
     }
 
     struct ReserveDepositContext {
+        bytes32 reserveAssetId;
+        address reserveToken;
+        uint256 reserveAmount;
         uint256 mrTcoinOut;
         address mrTcoinToken;
     }
@@ -107,14 +131,17 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
     }
 
     struct BuyRequest {
-        bytes32 reserveAssetId;
-        uint256 reserveAssetAmount;
+        address inputToken;
+        uint256 inputAmount;
+        uint256 minReserveOut;
         uint256 minCplTcoinOut;
         address buyer;
     }
 
     struct PurchaseResult {
         bytes32 selectedPoolId;
+        bytes32 reserveAssetId;
+        uint256 reserveAmountUsed;
         uint256 mrTcoinUsed;
         uint256 cplTcoinOut;
         uint256 charityTopupOut;
@@ -137,9 +164,12 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
     error ZeroAddressOwner();
     error ZeroAddressGovernance();
     error ZeroAddressDependency();
+    error ZeroAddressToken();
     error ZeroPoolId();
     error ZeroAmount();
     error InvalidBps(uint256 bps);
+    error InvalidReserveOut(uint256 actualOut, uint256 minOut);
+    error UnsupportedReserveInput(address token);
     error Unauthorized();
     error SameAddress();
     error NoEligiblePool();
@@ -148,6 +178,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
 
     event GovernanceUpdated(address indexed oldGovernance, address indexed newGovernance);
     event TreasuryControllerUpdated(address indexed oldTreasury, address indexed newTreasury);
+    event ReserveInputRouterUpdated(address indexed oldRouter, address indexed newRouter);
     event CplTcoinUpdated(address indexed oldToken, address indexed newToken);
     event CharityPreferencesRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event AcceptancePreferencesRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
@@ -167,9 +198,11 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
 
     event CplTcoinPurchased(
         address indexed buyer,
-        bytes32 indexed reserveAssetId,
+        address indexed inputToken,
         bytes32 indexed selectedPoolId,
-        uint256 reserveAssetAmount,
+        bytes32 reserveAssetId,
+        uint256 inputAmount,
+        uint256 reserveAmountUsed,
         uint256 mrTcoinUsed,
         uint256 cplTcoinOut,
         uint256 charityTopupOut,
@@ -179,6 +212,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
 
     address public governance;
     address public treasuryController;
+    address public reserveInputRouter;
     address public cplTcoin;
     address public charityPreferencesRegistry;
     address public acceptancePreferencesRegistry;
@@ -195,6 +229,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         address initialOwner,
         address governance_,
         address treasuryController_,
+        address reserveInputRouter_,
         address cplTcoin_,
         address charityPreferencesRegistry_,
         address acceptancePreferencesRegistry_,
@@ -206,6 +241,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
 
         _setGovernance(governance_);
         _setTreasuryController(treasuryController_);
+        _setReserveInputRouter(reserveInputRouter_);
         _setCplTcoin(cplTcoin_);
         _setCharityPreferencesRegistry(charityPreferencesRegistry_);
         _setAcceptancePreferencesRegistry(acceptancePreferencesRegistry_);
@@ -227,11 +263,13 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         _;
     }
 
-    function buyCplTcoin(bytes32 reserveAssetId, uint256 reserveAssetAmount, uint256 minCplTcoinOut)
+    function buyCplTcoin(address inputToken, uint256 inputAmount, uint256 minReserveOut, uint256 minCplTcoinOut)
         external
         nonReentrant
         returns (
             bytes32 selectedPoolId,
+            bytes32 reserveAssetId,
+            uint256 reserveAmountUsed,
             uint256 mrTcoinUsed,
             uint256 cplTcoinOut,
             uint256 charityTopupOut,
@@ -239,14 +277,17 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         )
     {
         BuyRequest memory request = BuyRequest({
-            reserveAssetId: reserveAssetId,
-            reserveAssetAmount: reserveAssetAmount,
+            inputToken: inputToken,
+            inputAmount: inputAmount,
+            minReserveOut: minReserveOut,
             minCplTcoinOut: minCplTcoinOut,
             buyer: msg.sender
         });
         PurchaseResult memory result = _buyCplTcoin(request);
         return (
             result.selectedPoolId,
+            result.reserveAssetId,
+            result.reserveAmountUsed,
             result.mrTcoinUsed,
             result.cplTcoinOut,
             result.charityTopupOut,
@@ -254,11 +295,13 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         );
     }
 
-    function previewBuyCplTcoin(address buyer, bytes32 reserveAssetId, uint256 reserveAssetAmount)
+    function previewBuyCplTcoin(address buyer, address inputToken, uint256 inputAmount)
         external
         view
         returns (
             bytes32 selectedPoolId,
+            bytes32 reserveAssetId,
+            uint256 reserveAmountOut,
             uint256 mrTcoinOut,
             uint256 cplTcoinOut,
             uint256 charityTopupOut,
@@ -267,11 +310,13 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         )
     {
         BuyRequest memory request = BuyRequest({
-            reserveAssetId: reserveAssetId, reserveAssetAmount: reserveAssetAmount, minCplTcoinOut: 0, buyer: buyer
+            inputToken: inputToken, inputAmount: inputAmount, minReserveOut: 0, minCplTcoinOut: 0, buyer: buyer
         });
         PurchaseResult memory result = _previewBuyCplTcoin(request);
         return (
             result.selectedPoolId,
+            result.reserveAssetId,
+            result.reserveAmountUsed,
             result.mrTcoinUsed,
             result.cplTcoinOut,
             result.charityTopupOut,
@@ -306,6 +351,10 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
 
     function setTreasuryController(address treasury_) external onlyGovernanceOrOwner {
         _setTreasuryController(treasury_);
+    }
+
+    function setReserveInputRouter(address router_) external onlyGovernanceOrOwner {
+        _setReserveInputRouter(router_);
     }
 
     function setCplTcoin(address cplTcoin_) external onlyGovernanceOrOwner {
@@ -388,15 +437,13 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         uint256 minCplTcoinOut,
         AcceptanceContext memory acceptance
     ) internal view returns (PoolCandidate memory candidate) {
-        if (
-            !_isAddressAccepted(
+        if (!_isAddressAccepted(
                 acceptance.acceptedTokenAddresses,
                 acceptance.deniedTokenAddresses,
                 cplTcoin,
                 acceptance.strictAcceptedOnly,
                 acceptance.preferredTokenAddresses
-            )
-        ) {
+            )) {
             return candidate;
         }
 
@@ -441,11 +488,14 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
     }
 
     function _buyCplTcoin(BuyRequest memory request) internal returns (PurchaseResult memory result) {
-        if (request.reserveAssetAmount == 0) revert ZeroAmount();
+        if (request.inputToken == address(0)) revert ZeroAddressToken();
+        if (request.inputAmount == 0) revert ZeroAmount();
 
         AcceptanceContext memory acceptance = _loadAcceptanceContext(request.buyer);
         ReserveDepositContext memory depositContext =
-            _collectReserveAndDeposit(request.reserveAssetId, request.reserveAssetAmount, request.buyer);
+            _collectReserveAndDeposit(request.inputToken, request.inputAmount, request.minReserveOut, request.buyer);
+        result.reserveAssetId = depositContext.reserveAssetId;
+        result.reserveAmountUsed = depositContext.reserveAmount;
         result.mrTcoinUsed = depositContext.mrTcoinOut;
 
         PoolSelection memory selection = _selectPool(result.mrTcoinUsed, request.minCplTcoinOut, acceptance);
@@ -465,9 +515,11 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
 
         emit CplTcoinPurchased(
             request.buyer,
-            request.reserveAssetId,
+            request.inputToken,
             result.selectedPoolId,
-            request.reserveAssetAmount,
+            result.reserveAssetId,
+            request.inputAmount,
+            result.reserveAmountUsed,
             result.mrTcoinUsed,
             result.cplTcoinOut,
             result.charityTopupOut,
@@ -477,11 +529,17 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
     }
 
     function _previewBuyCplTcoin(BuyRequest memory request) internal view returns (PurchaseResult memory result) {
-        if (request.reserveAssetAmount == 0) revert ZeroAmount();
+        if (request.inputToken == address(0)) revert ZeroAddressToken();
+        if (request.inputAmount == 0) revert ZeroAmount();
 
         AcceptanceContext memory acceptance = _loadAcceptanceContext(request.buyer);
+        bool directAccepted;
+        (directAccepted,, result.reserveAssetId,, result.reserveAmountUsed) =
+            _previewNormalizeReserveInput(request.inputToken, request.inputAmount);
+        if (!directAccepted && result.reserveAssetId == bytes32(0)) revert UnsupportedReserveInput(request.inputToken);
+
         (result.mrTcoinUsed,,) = ITreasuryControllerForLiquidityRouter(treasuryController)
-            .previewDepositAssetForLiquidityRoute(request.reserveAssetId, request.reserveAssetAmount);
+            .previewDepositAssetForLiquidityRoute(result.reserveAssetId, result.reserveAmountUsed);
 
         PoolSelection memory selection = _selectPool(result.mrTcoinUsed, request.minCplTcoinOut, acceptance);
         result.selectedPoolId = selection.poolId;
@@ -541,6 +599,14 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         emit TreasuryControllerUpdated(oldTreasury, treasury_);
     }
 
+    function _setReserveInputRouter(address router_) internal {
+        address oldRouter = reserveInputRouter;
+        if (router_ == address(0)) revert ZeroAddressDependency();
+        if (router_ == oldRouter) revert SameAddress();
+        reserveInputRouter = router_;
+        emit ReserveInputRouterUpdated(oldRouter, router_);
+    }
+
     function _setCplTcoin(address cplTcoin_) internal {
         address oldToken = cplTcoin;
         if (cplTcoin_ == address(0)) revert ZeroAddressDependency();
@@ -581,20 +647,58 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         emit PoolAdapterUpdated(oldAdapter, adapter_);
     }
 
-    function _collectReserveAndDeposit(bytes32 reserveAssetId, uint256 reserveAssetAmount, address payer)
+    function _collectReserveAndDeposit(address inputToken, uint256 inputAmount, uint256 minReserveOut, address payer)
         internal
         returns (ReserveDepositContext memory context)
     {
-        address treasuryVault = ITreasuryControllerForLiquidityRouter(treasuryController).treasury();
-        address reserveAssetToken =
-            ITreasuryControllerForLiquidityRouter(treasuryController).getReserveAssetToken(reserveAssetId);
+        (context.reserveAssetId, context.reserveToken, context.reserveAmount) =
+            _normalizeReserveInput(inputToken, inputAmount, minReserveOut, payer);
 
-        IERC20(reserveAssetToken).safeTransferFrom(payer, address(this), reserveAssetAmount);
-        _approveExact(reserveAssetToken, treasuryVault, reserveAssetAmount);
+        address treasuryVault = ITreasuryControllerForLiquidityRouter(treasuryController).treasury();
+        _approveExact(context.reserveToken, treasuryVault, context.reserveAmount);
 
         context.mrTcoinOut = ITreasuryControllerForLiquidityRouter(treasuryController)
-            .depositAssetForLiquidityRoute(reserveAssetId, reserveAssetAmount, address(this));
+            .depositAssetForLiquidityRoute(context.reserveAssetId, context.reserveAmount, address(this));
         context.mrTcoinToken = ITreasuryControllerForLiquidityRouter(treasuryController).tcoinToken();
+    }
+
+    function _normalizeReserveInput(address inputToken, uint256 inputAmount, uint256 minReserveOut, address payer)
+        internal
+        returns (bytes32 reserveAssetId, address reserveToken, uint256 reserveAmountOut)
+    {
+        (bool directAccepted, bytes32 directAssetId, address directReserveToken) =
+            ITreasuryControllerForLiquidityRouter(treasuryController).resolveAcceptedReserveAsset(inputToken);
+        IERC20(inputToken).safeTransferFrom(payer, address(this), inputAmount);
+        if (directAccepted) {
+            if (inputAmount < minReserveOut) revert InvalidReserveOut(inputAmount, minReserveOut);
+            return (directAssetId, directReserveToken, inputAmount);
+        }
+
+        _approveExact(inputToken, reserveInputRouter, inputAmount);
+        return IReserveInputRouterForLiquidityRouter(reserveInputRouter)
+            .normalizeReserveInput(inputToken, inputAmount, minReserveOut, address(this));
+    }
+
+    function _previewNormalizeReserveInput(address inputToken, uint256 inputAmount)
+        internal
+        view
+        returns (
+            bool directAccepted,
+            bool requiresSwap,
+            bytes32 reserveAssetId,
+            address reserveToken,
+            uint256 reserveAmountOut
+        )
+    {
+        (directAccepted, reserveAssetId, reserveToken) = ITreasuryControllerForLiquidityRouter(treasuryController)
+            .resolveAcceptedReserveAsset(inputToken);
+        if (directAccepted) {
+            return (true, false, reserveAssetId, reserveToken, inputAmount);
+        }
+
+        return
+            IReserveInputRouterForLiquidityRouter(reserveInputRouter)
+                .previewNormalizeReserveInput(inputToken, inputAmount);
     }
 
     function _loadAcceptanceContext(address buyer) internal view returns (AcceptanceContext memory acceptance) {
@@ -608,9 +712,9 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
             acceptance.acceptedTokenAddresses,
             acceptance.deniedTokenAddresses,
             acceptance.preferredTokenAddresses
-        ) = IUserAcceptancePreferencesRegistryForLiquidityRouter(acceptancePreferencesRegistry).getRoutingPreferences(
-            buyer
-        );
+        ) =
+            IUserAcceptancePreferencesRegistryForLiquidityRouter(acceptancePreferencesRegistry)
+                .getRoutingPreferences(buyer);
     }
 
     function _resolveCharity(address payer) internal view returns (CharityResolution memory charity) {

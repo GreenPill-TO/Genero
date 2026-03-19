@@ -51,6 +51,13 @@ This folder is the hardened TorontoCoin contract suite aligned to the Sarafu rea
 - Denied items override accepted or preferred status.
 - `LiquidityRouter` now reads these stored preferences on-chain instead of taking pool and merchant preference vectors as user calldata.
 
+### Reserve-input normalization
+`ReserveInputRouter` is now the canonical helper for retail `cplTCOIN` acquisition input normalization:
+- `LiquidityRouter` remains the main user entrypoint.
+- Direct treasury-accepted reserve inputs bypass the helper.
+- Unsupported direct inputs can be normalized into `mCAD` through the helper when explicitly enabled.
+- `TreasuryController` stays narrow and only resolves accepted reserve assets plus liquidity-route settlement capacity.
+
 ### Build compatibility hardening
 - OpenZeppelin imports are aligned to installed v4 layout (`security/*` and upgradeable `security/*`).
 - `GeneroToken` uses v4 transfer hooks (`_beforeTokenTransfer`) instead of v5-style `_update`.

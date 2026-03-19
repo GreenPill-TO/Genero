@@ -49,6 +49,8 @@ Reserve ERC20 custody is not.
 
 It also stores an authorized `liquidityRouter` pointer for the router-only reserve deposit path.
 
+It also exposes `resolveAcceptedReserveAsset(address token)` so upstream routers can detect whether an input token is already an active treasury reserve asset before attempting any normalization.
+
 ## Main Flows
 
 ### Reserve-backed minting
@@ -77,6 +79,18 @@ It:
 4. mints mrTCOIN to the router caller
 
 This path does not mint charity uplift, because the charity top-up for `cplTCOIN` liquidity purchases happens in `LiquidityRouter`.
+
+### Reserve-input resolution
+
+`resolveAcceptedReserveAsset(address token)` is a view helper for routers and normalization helpers.
+
+It returns whether the token is:
+
+- registered in `ReserveRegistry`
+- still active
+- not paused on the treasury side
+
+This keeps reserve-acceptance detection in the policy layer without moving swap logic into `TreasuryController`.
 
 ### User redemption
 
@@ -149,5 +163,6 @@ The controller exposes:
 ## Notes
 
 - `TreasuryController` should be the source of truth for reserve economics, not reserve custody.
+- `TreasuryController` should also be the source of truth for whether a token is currently an acceptable reserve input.
 - Emergency pause powers intentionally remain on the admin/governance path because steward voting is too slow for operational incidents.
 - The intended deployment posture is that on-chain `Governance` owns `TreasuryController` and is also configured as its `governance` address.

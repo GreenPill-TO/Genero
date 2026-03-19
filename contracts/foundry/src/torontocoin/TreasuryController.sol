@@ -444,6 +444,27 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
         token = _resolveActiveAsset(assetId).token;
     }
 
+    function resolveAcceptedReserveAsset(address token)
+        external
+        view
+        returns (bool accepted, bytes32 assetId, address reserveToken)
+    {
+        if (token == address(0)) {
+            return (false, bytes32(0), address(0));
+        }
+
+        try IReserveRegistry(reserveRegistry).getReserveAssetByToken(token) returns (
+            IReserveRegistry.ReserveAsset memory asset
+        ) {
+            if (asset.status != IReserveRegistry.ReserveAssetStatus.Active || assetTreasuryPaused[asset.assetId]) {
+                return (false, bytes32(0), address(0));
+            }
+            return (true, asset.assetId, asset.token);
+        } catch {
+            return (false, bytes32(0), address(0));
+        }
+    }
+
     function redeemAsUser(bytes32 assetId, uint256 tcoinAmount, uint256 minAssetOut)
         external
         nonReentrant

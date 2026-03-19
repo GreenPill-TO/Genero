@@ -8,7 +8,8 @@ It is not a second treasury and not a second registry.
 
 Its role is to:
 
-- accept approved reserve-asset deposits from users
+- accept user purchase intent for `cplTCOIN`
+- normalize input tokens into treasury-accepted reserve assets
 - orchestrate treasury-side settlement into mrTCOIN
 - choose the best eligible `cplTCOIN` pool
 - acquire `cplTCOIN` atomically for the user
@@ -21,13 +22,16 @@ Its role is to:
 
 Current flow:
 
-1. pull reserve asset from the buyer
-2. approve the `Treasury` vault address resolved through `TreasuryController`
-3. call `TreasuryController.depositAssetForLiquidityRoute(...)`
-4. receive mrTCOIN minted to the router
-5. approve the pool adapter
-6. buy `cplTCOIN` from the selected pool for the buyer
-7. mint charity top-up `cplTCOIN` directly to the resolved charity wallet
+1. pull `inputToken` from the buyer
+2. check whether the input token is already treasury-accepted
+3. if direct, keep it unchanged
+4. if not direct, delegate normalization to `ReserveInputRouter`
+5. approve the `Treasury` vault address resolved through `TreasuryController`
+6. call `TreasuryController.depositAssetForLiquidityRoute(...)`
+7. receive mrTCOIN minted to the router
+8. approve the pool adapter
+9. buy `cplTCOIN` from the selected pool for the buyer
+10. mint charity top-up `cplTCOIN` directly to the resolved charity wallet
 
 If any downstream step fails, the whole transaction reverts.
 
@@ -37,6 +41,7 @@ If any downstream step fails, the whole transaction reverts.
 
 - `governance`
 - `treasuryController`
+- `reserveInputRouter`
 - `cplTcoin`
 - `charityPreferencesRegistry`
 - `acceptancePreferencesRegistry`
@@ -70,11 +75,11 @@ For router purposes:
 
 ## Public User Flow
 
-### `buyCplTcoin(bytes32 reserveAssetId, uint256 reserveAssetAmount, uint256 minCplTcoinOut)`
+### `buyCplTcoin(address inputToken, uint256 inputAmount, uint256 minReserveOut, uint256 minCplTcoinOut)`
 
 Uses `msg.sender` as:
 
-- reserve-asset payer
+- input-token payer
 - acceptance-preference owner
 - charity-resolution owner
 - `cplTCOIN` recipient
@@ -82,19 +87,35 @@ Uses `msg.sender` as:
 It returns:
 
 - selected pool id
+- normalized reserve asset id
+- normalized reserve amount used
 - mrTCOIN used
 - `cplTCOIN` output
 - charity top-up output
 - resolved charity id
 
-### `previewBuyCplTcoin(address buyer, bytes32 reserveAssetId, uint256 reserveAssetAmount)`
+### `previewBuyCplTcoin(address buyer, address inputToken, uint256 inputAmount)`
 
 Uses an explicit `buyer` address so preview logic can deterministically read:
 
 - acceptance preferences
 - charity resolution
+- reserve-input normalization
 
 without relying on `msg.sender` in `eth_call`.
+
+## Input Normalization
+
+`LiquidityRouter` does not embed Mento swap internals.
+
+Instead:
+
+- direct reserve-accepted tokens skip the helper entirely
+- unsupported direct tokens are delegated to `ReserveInputRouter`
+- helper-enabled tokens are normalized into `mCAD`
+- treasury settlement always happens after normalization
+
+Users always receive `cplTCOIN`, never mrTCOIN.
 
 ## Pool Selection
 
@@ -151,3 +172,4 @@ The intended deployment posture is that on-chain `Governance` owns `LiquidityRou
 - The router is execution and orchestration, not a registry.
 - The router is also not the source of truth for user acceptance preferences; `UserAcceptancePreferencesRegistry` is.
 - The router still depends on `TreasuryController` for reserve-asset acceptance and mrTCOIN route pricing. It does not duplicate treasury economics.
+- `ReserveInputRouter` is the only helper that should engage the Mento-style swap path, and only when the input token is not already treasury-accepted.

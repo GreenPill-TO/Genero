@@ -12,6 +12,10 @@ interface ITreasuryController {
     function setCharityRegistry(address charityRegistry_) external;
     function setPoolRegistry(address poolRegistry_) external;
     function setOracleRouter(address oracleRouter_) external;
+    function resolveAcceptedReserveAsset(address token)
+        external
+        view
+        returns (bool accepted, bytes32 assetId, address reserveToken);
     function setCadPeg(uint256 newCadPeg18) external;
     function setUserRedeemRate(uint256 newRateBps) external;
     function setMerchantRedeemRate(uint256 newRateBps) external;

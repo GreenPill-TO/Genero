@@ -5,6 +5,9 @@
 - Product abstraction: `USDC -> TCOIN`
 - On-chain path: `tokenIn -> CADm -> TreasuryController.depositAndMint(...) -> TCOIN`
 
+For `cplTCOIN` acquisition, this router is no longer the primary normalization path.
+`ReserveInputRouter` now handles reserve-input normalization for `LiquidityRouter`, while `TcoinMintRouter` remains the older mrTCOIN/TCOIN mint abstraction.
+
 Reserve custody does not end in `TreasuryController`.
 The router approves the vault address returned by `ITreasuryMinting(treasury).treasury()`, and the controller entrypoint causes the dedicated `Treasury` vault to receive the reserve asset.
 

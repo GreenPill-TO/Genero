@@ -39,6 +39,7 @@ interface IReserveRegistry {
     function updateReserveAssetStaleness(bytes32 assetId, uint256 staleAfter) external;
 
     function getReserveAsset(bytes32 assetId) external view returns (ReserveAsset memory);
+    function getReserveAssetByToken(address token) external view returns (ReserveAsset memory);
     function isReserveAssetActive(bytes32 assetId) external view returns (bool);
     function listReserveAssetIds() external view returns (bytes32[] memory);
 

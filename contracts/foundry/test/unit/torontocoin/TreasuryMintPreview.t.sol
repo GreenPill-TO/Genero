@@ -38,6 +38,13 @@ contract MockReserveRegistryForTreasury is IReserveRegistry {
         return asset;
     }
 
+    function getReserveAssetByToken(address token) external view returns (ReserveAsset memory) {
+        if (asset.token != token) {
+            revert("UNKNOWN_TOKEN");
+        }
+        return asset;
+    }
+
     function isReserveAssetActive(bytes32) external pure returns (bool) {
         return true;
     }

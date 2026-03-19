@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 interface ILiquidityRouterGovernance {
     function setGovernance(address governance_) external;
     function setTreasuryController(address treasury_) external;
+    function setReserveInputRouter(address router_) external;
     function setCplTcoin(address cplTcoin_) external;
     function setCharityPreferencesRegistry(address registry_) external;
     function setAcceptancePreferencesRegistry(address registry_) external;
