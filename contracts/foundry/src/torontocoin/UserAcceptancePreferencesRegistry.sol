@@ -34,33 +34,33 @@ contract UserAcceptancePreferencesRegistry is Ownable {
     event PreferredMerchantsReplaced(address indexed user, bytes32[] merchantIds);
     event PreferredTokensReplaced(address indexed user, address[] tokenAddresses);
 
-    mapping(address => bool) private strictAcceptedOnlyByUser;
+    mapping(address => bool) private _strictAcceptedOnlyByUser;
 
-    mapping(address => mapping(bytes32 => AcceptanceStatus)) private poolStatusByUser;
-    mapping(address => mapping(bytes32 => AcceptanceStatus)) private merchantStatusByUser;
-    mapping(address => mapping(address => AcceptanceStatus)) private tokenStatusByUser;
+    mapping(address => mapping(bytes32 => AcceptanceStatus)) private _poolStatusByUser;
+    mapping(address => mapping(bytes32 => AcceptanceStatus)) private _merchantStatusByUser;
+    mapping(address => mapping(address => AcceptanceStatus)) private _tokenStatusByUser;
 
-    mapping(address => bytes32[]) private acceptedPoolIdsByUser;
-    mapping(address => bytes32[]) private deniedPoolIdsByUser;
+    mapping(address => bytes32[]) private _acceptedPoolIdsByUser;
+    mapping(address => bytes32[]) private _deniedPoolIdsByUser;
 
-    mapping(address => bytes32[]) private acceptedMerchantIdsByUser;
-    mapping(address => bytes32[]) private deniedMerchantIdsByUser;
-    mapping(address => bytes32[]) private preferredMerchantIdsByUser;
+    mapping(address => bytes32[]) private _acceptedMerchantIdsByUser;
+    mapping(address => bytes32[]) private _deniedMerchantIdsByUser;
+    mapping(address => bytes32[]) private _preferredMerchantIdsByUser;
 
-    mapping(address => address[]) private acceptedTokenAddressesByUser;
-    mapping(address => address[]) private deniedTokenAddressesByUser;
-    mapping(address => address[]) private preferredTokenAddressesByUser;
+    mapping(address => address[]) private _acceptedTokenAddressesByUser;
+    mapping(address => address[]) private _deniedTokenAddressesByUser;
+    mapping(address => address[]) private _preferredTokenAddressesByUser;
 
-    mapping(address => mapping(bytes32 => uint256)) private acceptedPoolIndexPlusOne;
-    mapping(address => mapping(bytes32 => uint256)) private deniedPoolIndexPlusOne;
+    mapping(address => mapping(bytes32 => uint256)) private _acceptedPoolIndexPlusOne;
+    mapping(address => mapping(bytes32 => uint256)) private _deniedPoolIndexPlusOne;
 
-    mapping(address => mapping(bytes32 => uint256)) private acceptedMerchantIndexPlusOne;
-    mapping(address => mapping(bytes32 => uint256)) private deniedMerchantIndexPlusOne;
-    mapping(address => mapping(bytes32 => uint256)) private preferredMerchantRankPlusOne;
+    mapping(address => mapping(bytes32 => uint256)) private _acceptedMerchantIndexPlusOne;
+    mapping(address => mapping(bytes32 => uint256)) private _deniedMerchantIndexPlusOne;
+    mapping(address => mapping(bytes32 => uint256)) private _preferredMerchantRankPlusOne;
 
-    mapping(address => mapping(address => uint256)) private acceptedTokenIndexPlusOne;
-    mapping(address => mapping(address => uint256)) private deniedTokenIndexPlusOne;
-    mapping(address => mapping(address => uint256)) private preferredTokenRankPlusOne;
+    mapping(address => mapping(address => uint256)) private _acceptedTokenIndexPlusOne;
+    mapping(address => mapping(address => uint256)) private _deniedTokenIndexPlusOne;
+    mapping(address => mapping(address => uint256)) private _preferredTokenRankPlusOne;
 
     constructor(address initialOwner) {
         if (initialOwner == address(0)) revert ZeroAddressOwner();
@@ -68,22 +68,22 @@ contract UserAcceptancePreferencesRegistry is Ownable {
     }
 
     function setStrictAcceptedOnly(bool enabled) external {
-        strictAcceptedOnlyByUser[msg.sender] = enabled;
+        _strictAcceptedOnlyByUser[msg.sender] = enabled;
         emit StrictAcceptedOnlyUpdated(msg.sender, enabled);
     }
 
     function isStrictAcceptedOnly(address user) external view returns (bool) {
-        return strictAcceptedOnlyByUser[user];
+        return _strictAcceptedOnlyByUser[user];
     }
 
     function setPoolAcceptance(bytes32 poolId, AcceptanceStatus status) external {
         if (poolId == bytes32(0)) revert ZeroPoolId();
 
-        AcceptanceStatus oldStatus = poolStatusByUser[msg.sender][poolId];
+        AcceptanceStatus oldStatus = _poolStatusByUser[msg.sender][poolId];
         if (oldStatus == status) return;
 
         _removePoolFromStatusList(msg.sender, poolId, oldStatus);
-        poolStatusByUser[msg.sender][poolId] = status;
+        _poolStatusByUser[msg.sender][poolId] = status;
         _addPoolToStatusList(msg.sender, poolId, status);
 
         emit PoolAcceptanceUpdated(msg.sender, poolId, oldStatus, status);
@@ -124,7 +124,7 @@ contract UserAcceptancePreferencesRegistry is Ownable {
     }
 
     function getPoolAcceptance(address user, bytes32 poolId) external view returns (AcceptanceStatus) {
-        return poolStatusByUser[user][poolId];
+        return _poolStatusByUser[user][poolId];
     }
 
     function getMerchantAcceptance(address user, bytes32 merchantId) external view returns (AcceptanceStatus) {
@@ -136,23 +136,23 @@ contract UserAcceptancePreferencesRegistry is Ownable {
     }
 
     function isPoolAccepted(address user, bytes32 poolId) external view returns (bool) {
-        return _isAccepted(poolStatusByUser[user][poolId], strictAcceptedOnlyByUser[user]);
+        return _isAccepted(_poolStatusByUser[user][poolId], _strictAcceptedOnlyByUser[user]);
     }
 
     function isMerchantAccepted(address user, bytes32 merchantId) external view returns (bool) {
-        return _isAccepted(_getMerchantAcceptance(user, merchantId), strictAcceptedOnlyByUser[user]);
+        return _isAccepted(_getMerchantAcceptance(user, merchantId), _strictAcceptedOnlyByUser[user]);
     }
 
     function isTokenAccepted(address user, address token) external view returns (bool) {
-        return _isAccepted(_getTokenAcceptance(user, token), strictAcceptedOnlyByUser[user]);
+        return _isAccepted(_getTokenAcceptance(user, token), _strictAcceptedOnlyByUser[user]);
     }
 
     function getAcceptedPoolIds(address user) external view returns (bytes32[] memory) {
-        return acceptedPoolIdsByUser[user];
+        return _acceptedPoolIdsByUser[user];
     }
 
     function getDeniedPoolIds(address user) external view returns (bytes32[] memory) {
-        return deniedPoolIdsByUser[user];
+        return _deniedPoolIdsByUser[user];
     }
 
     function getAcceptedMerchantIds(address user) external view returns (bytes32[] memory) {
@@ -160,11 +160,11 @@ contract UserAcceptancePreferencesRegistry is Ownable {
     }
 
     function getDeniedMerchantIds(address user) external view returns (bytes32[] memory) {
-        return deniedMerchantIdsByUser[user];
+        return _deniedMerchantIdsByUser[user];
     }
 
     function getPreferredMerchantIds(address user) external view returns (bytes32[] memory) {
-        return preferredMerchantIdsByUser[user];
+        return _preferredMerchantIdsByUser[user];
     }
 
     function getAcceptedTokenAddresses(address user) external view returns (address[] memory) {
@@ -172,11 +172,11 @@ contract UserAcceptancePreferencesRegistry is Ownable {
     }
 
     function getDeniedTokenAddresses(address user) external view returns (address[] memory) {
-        return deniedTokenAddressesByUser[user];
+        return _deniedTokenAddressesByUser[user];
     }
 
     function getPreferredTokenAddresses(address user) external view returns (address[] memory) {
-        return preferredTokenAddressesByUser[user];
+        return _preferredTokenAddressesByUser[user];
     }
 
     function getMerchantPreferenceRank(address user, bytes32 merchantId)
@@ -184,13 +184,13 @@ contract UserAcceptancePreferencesRegistry is Ownable {
         view
         returns (bool ranked, uint256 rank)
     {
-        uint256 rankPlusOne = preferredMerchantRankPlusOne[user][merchantId];
+        uint256 rankPlusOne = _preferredMerchantRankPlusOne[user][merchantId];
         ranked = rankPlusOne != 0;
         rank = ranked ? rankPlusOne - 1 : 0;
     }
 
     function getTokenPreferenceRank(address user, address token) external view returns (bool ranked, uint256 rank) {
-        uint256 rankPlusOne = preferredTokenRankPlusOne[user][token];
+        uint256 rankPlusOne = _preferredTokenRankPlusOne[user][token];
         ranked = rankPlusOne != 0;
         rank = ranked ? rankPlusOne - 1 : 0;
     }
@@ -210,34 +210,34 @@ contract UserAcceptancePreferencesRegistry is Ownable {
             address[] memory preferredTokenAddresses_
         )
     {
-        strictAcceptedOnly_ = strictAcceptedOnlyByUser[user];
-        acceptedPoolIds_ = acceptedPoolIdsByUser[user];
-        deniedPoolIds_ = deniedPoolIdsByUser[user];
+        strictAcceptedOnly_ = _strictAcceptedOnlyByUser[user];
+        acceptedPoolIds_ = _acceptedPoolIdsByUser[user];
+        deniedPoolIds_ = _deniedPoolIdsByUser[user];
         acceptedMerchantIds_ = _getAcceptedMerchantIds(user);
-        deniedMerchantIds_ = deniedMerchantIdsByUser[user];
-        preferredMerchantIds_ = preferredMerchantIdsByUser[user];
+        deniedMerchantIds_ = _deniedMerchantIdsByUser[user];
+        preferredMerchantIds_ = _preferredMerchantIdsByUser[user];
         acceptedTokenAddresses_ = _getAcceptedTokenAddresses(user);
-        deniedTokenAddresses_ = deniedTokenAddressesByUser[user];
-        preferredTokenAddresses_ = preferredTokenAddressesByUser[user];
+        deniedTokenAddresses_ = _deniedTokenAddressesByUser[user];
+        preferredTokenAddresses_ = _preferredTokenAddressesByUser[user];
     }
 
     function _getMerchantAcceptance(address user, bytes32 merchantId) internal view returns (AcceptanceStatus) {
-        AcceptanceStatus explicitStatus = merchantStatusByUser[user][merchantId];
+        AcceptanceStatus explicitStatus = _merchantStatusByUser[user][merchantId];
         if (explicitStatus == AcceptanceStatus.Denied) {
             return AcceptanceStatus.Denied;
         }
-        if (explicitStatus == AcceptanceStatus.Accepted || preferredMerchantRankPlusOne[user][merchantId] != 0) {
+        if (explicitStatus == AcceptanceStatus.Accepted || _preferredMerchantRankPlusOne[user][merchantId] != 0) {
             return AcceptanceStatus.Accepted;
         }
         return AcceptanceStatus.Unset;
     }
 
     function _getTokenAcceptance(address user, address token) internal view returns (AcceptanceStatus) {
-        AcceptanceStatus explicitStatus = tokenStatusByUser[user][token];
+        AcceptanceStatus explicitStatus = _tokenStatusByUser[user][token];
         if (explicitStatus == AcceptanceStatus.Denied) {
             return AcceptanceStatus.Denied;
         }
-        if (explicitStatus == AcceptanceStatus.Accepted || preferredTokenRankPlusOne[user][token] != 0) {
+        if (explicitStatus == AcceptanceStatus.Accepted || _preferredTokenRankPlusOne[user][token] != 0) {
             return AcceptanceStatus.Accepted;
         }
         return AcceptanceStatus.Unset;
@@ -250,148 +250,148 @@ contract UserAcceptancePreferencesRegistry is Ownable {
     }
 
     function _setMerchantAcceptance(address user, bytes32 merchantId, AcceptanceStatus status) internal {
-        AcceptanceStatus explicitStatus = merchantStatusByUser[user][merchantId];
+        AcceptanceStatus explicitStatus = _merchantStatusByUser[user][merchantId];
         _removeMerchantFromExplicitLists(user, merchantId, explicitStatus);
 
         if (status == AcceptanceStatus.Denied) {
             _removePreferredMerchant(user, merchantId);
         }
 
-        merchantStatusByUser[user][merchantId] = status;
+        _merchantStatusByUser[user][merchantId] = status;
         _addMerchantToExplicitLists(user, merchantId, status);
     }
 
     function _setTokenAcceptance(address user, address token, AcceptanceStatus status) internal {
-        AcceptanceStatus explicitStatus = tokenStatusByUser[user][token];
+        AcceptanceStatus explicitStatus = _tokenStatusByUser[user][token];
         _removeTokenFromExplicitLists(user, token, explicitStatus);
 
         if (status == AcceptanceStatus.Denied) {
             _removePreferredToken(user, token);
         }
 
-        tokenStatusByUser[user][token] = status;
+        _tokenStatusByUser[user][token] = status;
         _addTokenToExplicitLists(user, token, status);
     }
 
     function _replacePreferredMerchants(address user, bytes32[] calldata merchantIds) internal {
-        bytes32[] storage oldPreferred = preferredMerchantIdsByUser[user];
+        bytes32[] storage oldPreferred = _preferredMerchantIdsByUser[user];
         for (uint256 i = 0; i < oldPreferred.length; ++i) {
-            preferredMerchantRankPlusOne[user][oldPreferred[i]] = 0;
+            _preferredMerchantRankPlusOne[user][oldPreferred[i]] = 0;
         }
-        delete preferredMerchantIdsByUser[user];
+        delete _preferredMerchantIdsByUser[user];
 
         for (uint256 i = 0; i < merchantIds.length; ++i) {
             bytes32 merchantId = merchantIds[i];
             if (merchantId == bytes32(0)) revert ZeroMerchantId();
-            if (preferredMerchantRankPlusOne[user][merchantId] != 0) revert DuplicatePreferredMerchant(merchantId);
+            if (_preferredMerchantRankPlusOne[user][merchantId] != 0) revert DuplicatePreferredMerchant(merchantId);
 
-            if (merchantStatusByUser[user][merchantId] == AcceptanceStatus.Denied) {
+            if (_merchantStatusByUser[user][merchantId] == AcceptanceStatus.Denied) {
                 _removeMerchantFromExplicitLists(user, merchantId, AcceptanceStatus.Denied);
-                merchantStatusByUser[user][merchantId] = AcceptanceStatus.Unset;
+                _merchantStatusByUser[user][merchantId] = AcceptanceStatus.Unset;
             }
 
-            preferredMerchantIdsByUser[user].push(merchantId);
-            preferredMerchantRankPlusOne[user][merchantId] = i + 1;
+            _preferredMerchantIdsByUser[user].push(merchantId);
+            _preferredMerchantRankPlusOne[user][merchantId] = i + 1;
         }
     }
 
     function _replacePreferredTokens(address user, address[] calldata tokenAddresses) internal {
-        address[] storage oldPreferred = preferredTokenAddressesByUser[user];
+        address[] storage oldPreferred = _preferredTokenAddressesByUser[user];
         for (uint256 i = 0; i < oldPreferred.length; ++i) {
-            preferredTokenRankPlusOne[user][oldPreferred[i]] = 0;
+            _preferredTokenRankPlusOne[user][oldPreferred[i]] = 0;
         }
-        delete preferredTokenAddressesByUser[user];
+        delete _preferredTokenAddressesByUser[user];
 
         for (uint256 i = 0; i < tokenAddresses.length; ++i) {
             address token = tokenAddresses[i];
             if (token == address(0)) revert ZeroTokenAddress();
-            if (preferredTokenRankPlusOne[user][token] != 0) revert DuplicatePreferredToken(token);
+            if (_preferredTokenRankPlusOne[user][token] != 0) revert DuplicatePreferredToken(token);
 
-            if (tokenStatusByUser[user][token] == AcceptanceStatus.Denied) {
+            if (_tokenStatusByUser[user][token] == AcceptanceStatus.Denied) {
                 _removeTokenFromExplicitLists(user, token, AcceptanceStatus.Denied);
-                tokenStatusByUser[user][token] = AcceptanceStatus.Unset;
+                _tokenStatusByUser[user][token] = AcceptanceStatus.Unset;
             }
 
-            preferredTokenAddressesByUser[user].push(token);
-            preferredTokenRankPlusOne[user][token] = i + 1;
+            _preferredTokenAddressesByUser[user].push(token);
+            _preferredTokenRankPlusOne[user][token] = i + 1;
         }
     }
 
     function _removePoolFromStatusList(address user, bytes32 poolId, AcceptanceStatus status) internal {
         if (status == AcceptanceStatus.Accepted) {
-            _removeBytes32(acceptedPoolIdsByUser[user], acceptedPoolIndexPlusOne[user], poolId);
+            _removeBytes32(_acceptedPoolIdsByUser[user], _acceptedPoolIndexPlusOne[user], poolId);
         } else if (status == AcceptanceStatus.Denied) {
-            _removeBytes32(deniedPoolIdsByUser[user], deniedPoolIndexPlusOne[user], poolId);
+            _removeBytes32(_deniedPoolIdsByUser[user], _deniedPoolIndexPlusOne[user], poolId);
         }
     }
 
     function _addPoolToStatusList(address user, bytes32 poolId, AcceptanceStatus status) internal {
         if (status == AcceptanceStatus.Accepted) {
-            _addBytes32(acceptedPoolIdsByUser[user], acceptedPoolIndexPlusOne[user], poolId);
+            _addBytes32(_acceptedPoolIdsByUser[user], _acceptedPoolIndexPlusOne[user], poolId);
         } else if (status == AcceptanceStatus.Denied) {
-            _addBytes32(deniedPoolIdsByUser[user], deniedPoolIndexPlusOne[user], poolId);
+            _addBytes32(_deniedPoolIdsByUser[user], _deniedPoolIndexPlusOne[user], poolId);
         }
     }
 
     function _removeMerchantFromExplicitLists(address user, bytes32 merchantId, AcceptanceStatus status) internal {
         if (status == AcceptanceStatus.Accepted) {
-            _removeBytes32(acceptedMerchantIdsByUser[user], acceptedMerchantIndexPlusOne[user], merchantId);
+            _removeBytes32(_acceptedMerchantIdsByUser[user], _acceptedMerchantIndexPlusOne[user], merchantId);
         } else if (status == AcceptanceStatus.Denied) {
-            _removeBytes32(deniedMerchantIdsByUser[user], deniedMerchantIndexPlusOne[user], merchantId);
+            _removeBytes32(_deniedMerchantIdsByUser[user], _deniedMerchantIndexPlusOne[user], merchantId);
         }
     }
 
     function _addMerchantToExplicitLists(address user, bytes32 merchantId, AcceptanceStatus status) internal {
         if (status == AcceptanceStatus.Accepted) {
-            _addBytes32(acceptedMerchantIdsByUser[user], acceptedMerchantIndexPlusOne[user], merchantId);
+            _addBytes32(_acceptedMerchantIdsByUser[user], _acceptedMerchantIndexPlusOne[user], merchantId);
         } else if (status == AcceptanceStatus.Denied) {
-            _addBytes32(deniedMerchantIdsByUser[user], deniedMerchantIndexPlusOne[user], merchantId);
+            _addBytes32(_deniedMerchantIdsByUser[user], _deniedMerchantIndexPlusOne[user], merchantId);
         }
     }
 
     function _removeTokenFromExplicitLists(address user, address token, AcceptanceStatus status) internal {
         if (status == AcceptanceStatus.Accepted) {
-            _removeAddress(acceptedTokenAddressesByUser[user], acceptedTokenIndexPlusOne[user], token);
+            _removeAddress(_acceptedTokenAddressesByUser[user], _acceptedTokenIndexPlusOne[user], token);
         } else if (status == AcceptanceStatus.Denied) {
-            _removeAddress(deniedTokenAddressesByUser[user], deniedTokenIndexPlusOne[user], token);
+            _removeAddress(_deniedTokenAddressesByUser[user], _deniedTokenIndexPlusOne[user], token);
         }
     }
 
     function _addTokenToExplicitLists(address user, address token, AcceptanceStatus status) internal {
         if (status == AcceptanceStatus.Accepted) {
-            _addAddress(acceptedTokenAddressesByUser[user], acceptedTokenIndexPlusOne[user], token);
+            _addAddress(_acceptedTokenAddressesByUser[user], _acceptedTokenIndexPlusOne[user], token);
         } else if (status == AcceptanceStatus.Denied) {
-            _addAddress(deniedTokenAddressesByUser[user], deniedTokenIndexPlusOne[user], token);
+            _addAddress(_deniedTokenAddressesByUser[user], _deniedTokenIndexPlusOne[user], token);
         }
     }
 
     function _removePreferredMerchant(address user, bytes32 merchantId) internal {
-        _removeBytes32(preferredMerchantIdsByUser[user], preferredMerchantRankPlusOne[user], merchantId);
+        _removeBytes32(_preferredMerchantIdsByUser[user], _preferredMerchantRankPlusOne[user], merchantId);
         _reindexPreferredMerchants(user);
     }
 
     function _removePreferredToken(address user, address token) internal {
-        _removeAddress(preferredTokenAddressesByUser[user], preferredTokenRankPlusOne[user], token);
+        _removeAddress(_preferredTokenAddressesByUser[user], _preferredTokenRankPlusOne[user], token);
         _reindexPreferredTokens(user);
     }
 
     function _reindexPreferredMerchants(address user) internal {
-        bytes32[] storage preferred = preferredMerchantIdsByUser[user];
+        bytes32[] storage preferred = _preferredMerchantIdsByUser[user];
         for (uint256 i = 0; i < preferred.length; ++i) {
-            preferredMerchantRankPlusOne[user][preferred[i]] = i + 1;
+            _preferredMerchantRankPlusOne[user][preferred[i]] = i + 1;
         }
     }
 
     function _reindexPreferredTokens(address user) internal {
-        address[] storage preferred = preferredTokenAddressesByUser[user];
+        address[] storage preferred = _preferredTokenAddressesByUser[user];
         for (uint256 i = 0; i < preferred.length; ++i) {
-            preferredTokenRankPlusOne[user][preferred[i]] = i + 1;
+            _preferredTokenRankPlusOne[user][preferred[i]] = i + 1;
         }
     }
 
     function _getAcceptedMerchantIds(address user) internal view returns (bytes32[] memory merged) {
-        bytes32[] storage explicitAccepted = acceptedMerchantIdsByUser[user];
-        bytes32[] storage preferred = preferredMerchantIdsByUser[user];
+        bytes32[] storage explicitAccepted = _acceptedMerchantIdsByUser[user];
+        bytes32[] storage preferred = _preferredMerchantIdsByUser[user];
 
         merged = new bytes32[](explicitAccepted.length + preferred.length);
         uint256 count;
@@ -402,7 +402,7 @@ contract UserAcceptancePreferencesRegistry is Ownable {
 
         for (uint256 i = 0; i < preferred.length; ++i) {
             bytes32 merchantId = preferred[i];
-            if (acceptedMerchantIndexPlusOne[user][merchantId] == 0) {
+            if (_acceptedMerchantIndexPlusOne[user][merchantId] == 0) {
                 merged[count++] = merchantId;
             }
         }
@@ -413,8 +413,8 @@ contract UserAcceptancePreferencesRegistry is Ownable {
     }
 
     function _getAcceptedTokenAddresses(address user) internal view returns (address[] memory merged) {
-        address[] storage explicitAccepted = acceptedTokenAddressesByUser[user];
-        address[] storage preferred = preferredTokenAddressesByUser[user];
+        address[] storage explicitAccepted = _acceptedTokenAddressesByUser[user];
+        address[] storage preferred = _preferredTokenAddressesByUser[user];
 
         merged = new address[](explicitAccepted.length + preferred.length);
         uint256 count;
@@ -425,7 +425,7 @@ contract UserAcceptancePreferencesRegistry is Ownable {
 
         for (uint256 i = 0; i < preferred.length; ++i) {
             address token = preferred[i];
-            if (acceptedTokenIndexPlusOne[user][token] == 0) {
+            if (_acceptedTokenIndexPlusOne[user][token] == 0) {
                 merged[count++] = token;
             }
         }

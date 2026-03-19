@@ -77,6 +77,7 @@
 - The treasury split is now reflected consistently across code, mocks, docs, and the rebuilt contract mirror: reserve custody assumptions point only at `Treasury`, while `TreasuryController` is documented and tested as a pure policy/settlement layer that instructs the vault.
 - `Governance` now reconciles against the finalized treasury/router stack: stewards can propose controller parameter updates, excess-capacity charity mints, owner-only and governance-only `TreasuryController` admin actions, and finalized `LiquidityRouter` policy/pointer updates, with the intended deployment posture being that `Governance` owns those contracts and is also their configured governance address where applicable.
 - Contract-level TorontoCoin design notes now exist for `Treasury`, `TreasuryController`, and `LiquidityRouter`, and the treasury/controller/router documentation explicitly reflects the post-split custody model plus the registry-driven acceptance-preferences routing path.
+- Targeted TorontoCoin contracts now normalize private/internal storage and helper names to underscore-prefixed forms so editor linting and Solhint’s private-variable rule agree without changing any external contract surface.
 - Foundry now builds this contract set with `via_ir = true` because the split controller plus router stack otherwise exceeds Solidity 0.8.30’s non-IR stack limits under the current optimizer profile.
 - NFC/RFID support planned for physical tBill integrations.
 - Modal provider listens for the Escape key to dismiss any open modal.

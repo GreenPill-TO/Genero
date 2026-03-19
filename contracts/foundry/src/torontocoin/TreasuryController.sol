@@ -165,7 +165,7 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     bool public redemptionPaused;
 
     mapping(bytes32 => bool) public assetTreasuryPaused;
-    mapping(address => uint256) private merchantRedemptionAllowance;
+    mapping(address => uint256) private _merchantRedemptionAllowance;
 
     mapping(bytes32 => uint256) public totalDepositedByAsset;
     mapping(bytes32 => uint256) public totalRedeemedByAsset;
@@ -486,7 +486,7 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
             revert MerchantNotEligible(msg.sender);
         }
 
-        uint256 allowanceAvailable = merchantRedemptionAllowance[msg.sender];
+        uint256 allowanceAvailable = _merchantRedemptionAllowance[msg.sender];
         if (allowanceAvailable < tcoinAmount) {
             revert MerchantAllowanceExceeded(msg.sender, tcoinAmount, allowanceAvailable);
         }
@@ -496,7 +496,7 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
 
         if (assetOut < minAssetOut) revert InvalidMinOut(assetOut, minAssetOut);
 
-        merchantRedemptionAllowance[msg.sender] = allowanceAvailable - tcoinAmount;
+        _merchantRedemptionAllowance[msg.sender] = allowanceAvailable - tcoinAmount;
 
         IERC20(tcoinToken).safeTransferFrom(msg.sender, address(this), tcoinAmount);
         ITCOINToken(tcoinToken).burn(tcoinAmount);
@@ -513,7 +513,7 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
             assetOut,
             redeemResult.grossCad18,
             redeemResult.redeemableCad18,
-            merchantRedemptionAllowance[msg.sender],
+            _merchantRedemptionAllowance[msg.sender],
             redeemResult.usedFallbackOracle
         );
     }
@@ -541,35 +541,35 @@ contract TreasuryController is Initializable, OwnableUpgradeable, UUPSUpgradeabl
     {
         if (tcoinAmount == 0) revert ZeroAmount();
         eligible = IPoolRegistry(poolRegistry).isMerchantApprovedInActivePool(merchant);
-        allowanceRemaining = merchantRedemptionAllowance[merchant];
+        allowanceRemaining = _merchantRedemptionAllowance[merchant];
         (assetOut, usedFallbackOracle, grossCad18, redeemableCad18) =
             _previewRedeem(assetId, tcoinAmount, merchantRedeemRateBps);
     }
 
     function setMerchantRedemptionAllowance(address merchant, uint256 amount) external onlyIndexerOrOwner {
-        uint256 oldAmount = merchantRedemptionAllowance[merchant];
-        merchantRedemptionAllowance[merchant] = amount;
+        uint256 oldAmount = _merchantRedemptionAllowance[merchant];
+        _merchantRedemptionAllowance[merchant] = amount;
         emit MerchantAllowanceUpdated(merchant, oldAmount, amount, msg.sender);
     }
 
     function increaseMerchantRedemptionAllowance(address merchant, uint256 amount) external onlyIndexerOrOwner {
         if (amount == 0) revert ZeroAmount();
-        uint256 oldAmount = merchantRedemptionAllowance[merchant];
+        uint256 oldAmount = _merchantRedemptionAllowance[merchant];
         uint256 newAmount = oldAmount + amount;
-        merchantRedemptionAllowance[merchant] = newAmount;
+        _merchantRedemptionAllowance[merchant] = newAmount;
         emit MerchantAllowanceUpdated(merchant, oldAmount, newAmount, msg.sender);
     }
 
     function decreaseMerchantRedemptionAllowance(address merchant, uint256 amount) external onlyIndexerOrOwner {
         if (amount == 0) revert ZeroAmount();
-        uint256 oldAmount = merchantRedemptionAllowance[merchant];
+        uint256 oldAmount = _merchantRedemptionAllowance[merchant];
         uint256 newAmount = amount >= oldAmount ? 0 : oldAmount - amount;
-        merchantRedemptionAllowance[merchant] = newAmount;
+        _merchantRedemptionAllowance[merchant] = newAmount;
         emit MerchantAllowanceUpdated(merchant, oldAmount, newAmount, msg.sender);
     }
 
     function getMerchantRedemptionAllowance(address merchant) external view returns (uint256) {
-        return merchantRedemptionAllowance[merchant];
+        return _merchantRedemptionAllowance[merchant];
     }
 
     function setCadPeg(uint256 newCadPeg18) external onlyGovernanceOrOwner {

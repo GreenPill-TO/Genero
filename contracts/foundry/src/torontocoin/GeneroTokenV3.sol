@@ -29,6 +29,7 @@ interface IUserCharityPreferencesRegistryForCplTCOIN {
 /// @notice Sarafu-style demurrage token for cplTCOIN with merchant POS fee routing.
 /// @dev Merchant transfers interpret the visible `_value` as the sticker price.
 contract GeneroTokenV3 {
+    // solhint-disable-next-line private-vars-leading-underscore
     uint256 constant VALUE_LIMIT = 1 << 63;
 
     struct redistributionItem {
@@ -55,7 +56,7 @@ contract GeneroTokenV3 {
     redistributionItem[] public redistributions;
 
     // Base balances are stored in non-visible units so demurrage can be applied lazily.
-    mapping(address => uint256) account;
+    mapping(address => uint256) private _accounts;
 
     int128 public demurrageAmount;
     uint256 public demurrageTimestamp;
@@ -66,23 +67,23 @@ contract GeneroTokenV3 {
     string public symbol;
     uint256 public immutable decimals;
 
-    uint256 supply;
+    uint256 private _supply;
     uint256 public lastPeriod;
     uint256 public totalSink;
-    uint256 burned;
+    uint256 private _burned;
 
     uint256 public immutable periodStart;
     uint256 public immutable periodDuration;
     int128 public immutable decayLevel;
 
     // Writer permissions gate mint and burn; owner is not implicitly a writer.
-    mapping(address => bool) private writer;
+    mapping(address => bool) private _writers;
     // Allowances are stored in base units, then projected into visible units for getters and events.
-    mapping(address => mapping(address => uint256)) private allowanceBase;
+    mapping(address => mapping(address => uint256)) private _allowanceBase;
 
     address public sinkAddress;
     uint256 public expires;
-    bool expired;
+    bool private _expired;
     uint256 public maxSupply;
 
     address public poolRegistry;
@@ -91,8 +92,8 @@ contract GeneroTokenV3 {
     uint16 public defaultMerchantFeeBps;
     uint16 public constant MAX_BASE_MERCHANT_FEE_BPS = 1000;
 
-    mapping(bytes32 => uint16) private merchantFeeOverrideBps;
-    mapping(bytes32 => bool) private merchantFeeOverrideSet;
+    mapping(bytes32 => uint16) private _merchantFeeOverrideBps;
+    mapping(bytes32 => bool) private _merchantFeeOverrideSet;
     mapping(address => bool) public feeExempt;
 
     bool public merchantFeesEnabled;
@@ -111,11 +112,13 @@ contract GeneroTokenV3 {
     event Cap(uint256 indexed _oldCap, uint256 _newCap);
 
     uint256 public sealState;
+    // solhint-disable private-vars-leading-underscore
     uint8 constant WRITER_STATE = 1;
     uint8 constant SINK_STATE = 2;
     uint8 constant EXPIRY_STATE = 4;
     uint8 constant CAP_STATE = 8;
-    uint256 public constant maxSealState = 15;
+    // solhint-enable private-vars-leading-underscore
+    uint256 public constant MAX_SEAL_STATE = 15;
 
     event SealStateChange(bool indexed _final, uint256 _sealState);
 
@@ -192,14 +195,14 @@ contract GeneroTokenV3 {
         require(_state < 16, "ERR_INVALID_STATE");
         require(_state & sealState == 0, "ERR_ALREADY_LOCKED");
         sealState |= _state;
-        emit SealStateChange(sealState == maxSealState, sealState);
+        emit SealStateChange(sealState == MAX_SEAL_STATE, sealState);
         return uint256(sealState);
     }
 
     function isSealed(uint256 _state) public view returns (bool) {
-        require(_state < maxSealState);
+        require(_state < MAX_SEAL_STATE);
         if (_state == 0) {
-            return sealState == maxSealState;
+            return sealState == MAX_SEAL_STATE;
         }
         return _state & sealState == _state;
     }
@@ -209,7 +212,7 @@ contract GeneroTokenV3 {
         uint256 oldTimestamp;
 
         require(!isSealed(EXPIRY_STATE));
-        require(!expired);
+        require(!_expired);
         require(msg.sender == owner);
         r = periodStart + (_expirePeriod * periodDuration);
         require(r > expires);
@@ -258,9 +261,9 @@ contract GeneroTokenV3 {
             revert MerchantFeeOverrideAboveDefault(merchantId, feeBps, defaultMerchantFeeBps);
         }
 
-        oldFeeBps = merchantFeeOverrideSet[merchantId] ? merchantFeeOverrideBps[merchantId] : defaultMerchantFeeBps;
-        merchantFeeOverrideBps[merchantId] = feeBps;
-        merchantFeeOverrideSet[merchantId] = true;
+        oldFeeBps = _merchantFeeOverrideSet[merchantId] ? _merchantFeeOverrideBps[merchantId] : defaultMerchantFeeBps;
+        _merchantFeeOverrideBps[merchantId] = feeBps;
+        _merchantFeeOverrideSet[merchantId] = true;
 
         emit MerchantFeeOverrideUpdated(merchantId, oldFeeBps, feeBps);
     }
@@ -271,9 +274,9 @@ contract GeneroTokenV3 {
         require(msg.sender == owner);
         if (merchantId == bytes32(0)) revert ZeroMerchantId();
 
-        oldFeeBps = merchantFeeOverrideSet[merchantId] ? merchantFeeOverrideBps[merchantId] : defaultMerchantFeeBps;
-        delete merchantFeeOverrideBps[merchantId];
-        delete merchantFeeOverrideSet[merchantId];
+        oldFeeBps = _merchantFeeOverrideSet[merchantId] ? _merchantFeeOverrideBps[merchantId] : defaultMerchantFeeBps;
+        delete _merchantFeeOverrideBps[merchantId];
+        delete _merchantFeeOverrideSet[merchantId];
 
         emit MerchantFeeOverrideUpdated(merchantId, oldFeeBps, defaultMerchantFeeBps);
     }
@@ -291,11 +294,11 @@ contract GeneroTokenV3 {
     }
 
     function getMerchantFeeOverride(bytes32 merchantId) external view returns (uint16) {
-        return merchantFeeOverrideBps[merchantId];
+        return _merchantFeeOverrideBps[merchantId];
     }
 
     function hasMerchantFeeOverride(bytes32 merchantId) external view returns (bool) {
-        return merchantFeeOverrideSet[merchantId];
+        return _merchantFeeOverrideSet[merchantId];
     }
 
     function getEffectiveMerchantFeeBps(address merchantWallet) external view returns (uint16) {
@@ -324,8 +327,8 @@ contract GeneroTokenV3 {
             return (bytes32(0), false, 0, 0, defaultFeeBps_);
         }
 
-        hasOverride = merchantFeeOverrideSet[merchantId];
-        overrideFeeBps = hasOverride ? merchantFeeOverrideBps[merchantId] : 0;
+        hasOverride = _merchantFeeOverrideSet[merchantId];
+        overrideFeeBps = hasOverride ? _merchantFeeOverrideBps[merchantId] : 0;
         effectiveFeeBps = _effectiveMerchantFeeBps(merchantId);
     }
 
@@ -392,7 +395,7 @@ contract GeneroTokenV3 {
     }
 
     function applyExpiry() public returns (uint8) {
-        if (expired) {
+        if (_expired) {
             return 1;
         }
         if (expires == 0) {
@@ -400,7 +403,7 @@ contract GeneroTokenV3 {
         }
         if (block.timestamp >= expires) {
             applyDemurrageLimited(expires - demurrageTimestamp / 60);
-            expired = true;
+            _expired = true;
             emit Expired(block.timestamp);
             changePeriod();
             return 2;
@@ -411,19 +414,19 @@ contract GeneroTokenV3 {
     function addWriter(address _minter) public returns (bool) {
         require(!isSealed(WRITER_STATE));
         require(msg.sender == owner);
-        writer[_minter] = true;
+        _writers[_minter] = true;
         return true;
     }
 
     function deleteWriter(address _minter) public returns (bool) {
         require(!isSealed(WRITER_STATE));
         require(msg.sender == owner || _minter == msg.sender);
-        writer[_minter] = false;
+        _writers[_minter] = false;
         return true;
     }
 
     function isWriter(address _minter) public view returns (bool) {
-        return writer[_minter];
+        return _writers[_minter];
     }
 
     function balanceOf(address _account) public view returns (uint256) {
@@ -431,14 +434,14 @@ contract GeneroTokenV3 {
     }
 
     function baseBalanceOf(address _account) public view returns (uint256) {
-        return account[_account];
+        return _accounts[_account];
     }
 
     function allowance(address owner_, address spender) public view returns (uint256) {
-        return _visibleAmountFromBase(allowanceBase[owner_][spender]);
+        return _visibleAmountFromBase(_allowanceBase[owner_][spender]);
     }
 
-    function increaseBaseBalance(address _account, uint256 _delta) internal returns (bool) {
+    function _increaseBaseBalance(address _account, uint256 _delta) internal returns (bool) {
         uint256 oldBalance;
 
         if (_delta == 0) {
@@ -446,11 +449,11 @@ contract GeneroTokenV3 {
         }
 
         oldBalance = baseBalanceOf(_account);
-        account[_account] = oldBalance + _delta;
+        _accounts[_account] = oldBalance + _delta;
         return true;
     }
 
-    function decreaseBaseBalance(address _account, uint256 _delta) internal returns (bool) {
+    function _decreaseBaseBalance(address _account, uint256 _delta) internal returns (bool) {
         uint256 oldBalance;
 
         if (_delta == 0) {
@@ -459,16 +462,16 @@ contract GeneroTokenV3 {
 
         oldBalance = baseBalanceOf(_account);
         require(oldBalance >= _delta, "ERR_OVERSPEND");
-        account[_account] = oldBalance - _delta;
+        _accounts[_account] = oldBalance - _delta;
         return true;
     }
 
     function sweep(address _account) public returns (uint256) {
         uint256 v;
 
-        v = account[msg.sender];
-        account[msg.sender] = 0;
-        account[_account] += v;
+        v = _accounts[msg.sender];
+        _accounts[msg.sender] = 0;
+        _accounts[_account] += v;
         emit Transfer(msg.sender, _account, v);
         return v;
     }
@@ -477,18 +480,18 @@ contract GeneroTokenV3 {
         uint256 baseAmount;
 
         require(applyExpiry() == 0);
-        require(writer[msg.sender], "ERR_ACCESS");
+        require(_writers[msg.sender], "ERR_ACCESS");
 
         changePeriod();
         if (maxSupply > 0) {
-            require(supply + _amount <= maxSupply);
+            require(_supply + _amount <= maxSupply);
         }
-        supply += _amount;
+        _supply += _amount;
 
         baseAmount = toBaseAmount(_amount);
-        increaseBaseBalance(_beneficiary, baseAmount);
+        _increaseBaseBalance(_beneficiary, baseAmount);
         emit Mint(msg.sender, _beneficiary, _amount);
-        saveRedistributionSupply();
+        _saveRedistributionSupply();
         return true;
     }
 
@@ -535,7 +538,7 @@ contract GeneroTokenV3 {
         return redistributions.length;
     }
 
-    function saveRedistributionSupply() internal returns (bool) {
+    function _saveRedistributionSupply() internal returns (bool) {
         redistributionItem memory currentRedistribution;
         uint256 grownSupply;
 
@@ -551,7 +554,7 @@ contract GeneroTokenV3 {
         return uint128((block.timestamp - periodStart) / periodDuration + 1);
     }
 
-    function checkPeriod() internal view returns (redistributionItem memory) {
+    function _checkPeriod() internal view returns (redistributionItem memory) {
         redistributionItem memory lastRedistribution;
         redistributionItem memory emptyRedistribution;
         uint256 currentPeriod;
@@ -564,13 +567,13 @@ contract GeneroTokenV3 {
         return lastRedistribution;
     }
 
-    function getDistribution(uint256 _supply, int128 _demurrageAmount) public pure returns (uint256) {
+    function getDistribution(uint256 _supplyAmount, int128 _demurrageAmount) public pure returns (uint256) {
         int128 difference;
 
         difference = ABDKMath64x64.mul(
-            ABDKMath64x64.fromUInt(_supply), ABDKMath64x64.sub(ABDKMath64x64.fromUInt(1), _demurrageAmount)
+            ABDKMath64x64.fromUInt(_supplyAmount), ABDKMath64x64.sub(ABDKMath64x64.fromUInt(1), _demurrageAmount)
         );
-        return _supply - ABDKMath64x64.toUInt(difference);
+        return _supplyAmount - ABDKMath64x64.toUInt(difference);
     }
 
     function getDistributionFromRedistribution(redistributionItem memory _redistribution)
@@ -586,13 +589,13 @@ contract GeneroTokenV3 {
         return getDistribution(redistributionSupply, redistributionDemurrage);
     }
 
-    function applyDefaultRedistribution(redistributionItem memory _redistribution) internal returns (uint256) {
+    function _applyDefaultRedistribution(redistributionItem memory _redistribution) internal returns (uint256) {
         uint256 unit;
         uint256 baseUnit;
 
         unit = totalSupply() - getDistributionFromRedistribution(_redistribution);
         baseUnit = toBaseAmount(unit) - totalSink;
-        increaseBaseBalance(sinkAddress, baseUnit);
+        _increaseBaseBalance(sinkAddress, baseUnit);
         emit Redistribution(sinkAddress, _redistribution.period, unit);
         lastPeriod += 1;
         totalSink += baseUnit;
@@ -610,7 +613,7 @@ contract GeneroTokenV3 {
         uint256 nextPeriod;
 
         applyDemurrage();
-        currentRedistribution = checkPeriod();
+        currentRedistribution = _checkPeriod();
         if (isEmptyRedistribution(currentRedistribution)) {
             return false;
         }
@@ -625,7 +628,7 @@ contract GeneroTokenV3 {
         nextRedistribution = toRedistribution(0, nextRedistributionDemurrage, totalSupply(), nextPeriod);
         redistributions.push(nextRedistribution);
 
-        applyDefaultRedistribution(nextRedistribution);
+        _applyDefaultRedistribution(nextRedistribution);
         emit Period(nextPeriod);
         lastDemurrageAmount;
         return true;
@@ -645,7 +648,7 @@ contract GeneroTokenV3 {
         int128 periodPoint;
         int128 lastDemurrageAmount;
 
-        if (expired) {
+        if (_expired) {
             return 0;
         }
 
@@ -714,7 +717,7 @@ contract GeneroTokenV3 {
         } else if (ex > 0) {
             revert("EXPIRED");
         }
-        if (allowanceBase[msg.sender][_spender] > 0) {
+        if (_allowanceBase[msg.sender][_spender] > 0) {
             require(_value == 0, "ZERO_FIRST");
         }
 
@@ -726,7 +729,7 @@ contract GeneroTokenV3 {
             baseValue = VALUE_LIMIT;
         }
 
-        allowanceBase[msg.sender][_spender] = baseValue;
+        _allowanceBase[msg.sender][_spender] = baseValue;
         emit Approval(msg.sender, _spender, _visibleAmountFromBase(baseValue));
         return true;
     }
@@ -738,10 +741,10 @@ contract GeneroTokenV3 {
         changePeriod();
 
         baseValue = toBaseAmount(_value);
-        require(allowanceBase[msg.sender][_spender] >= baseValue, "ERR_SPENDER");
+        require(_allowanceBase[msg.sender][_spender] >= baseValue, "ERR_SPENDER");
 
-        remainingBaseValue = allowanceBase[msg.sender][_spender] - baseValue;
-        allowanceBase[msg.sender][_spender] = remainingBaseValue;
+        remainingBaseValue = _allowanceBase[msg.sender][_spender] - baseValue;
+        _allowanceBase[msg.sender][_spender] = remainingBaseValue;
         emit Approval(msg.sender, _spender, _visibleAmountFromBase(remainingBaseValue));
         return true;
     }
@@ -753,9 +756,9 @@ contract GeneroTokenV3 {
         changePeriod();
 
         baseValue = toBaseAmount(_value);
-        newBaseValue = allowanceBase[msg.sender][_spender] + baseValue;
+        newBaseValue = _allowanceBase[msg.sender][_spender] + baseValue;
 
-        allowanceBase[msg.sender][_spender] = newBaseValue;
+        _allowanceBase[msg.sender][_spender] = newBaseValue;
         emit Approval(msg.sender, _spender, _visibleAmountFromBase(newBaseValue));
         return true;
     }
@@ -788,18 +791,18 @@ contract GeneroTokenV3 {
         changePeriod();
 
         quote = _quoteTransfer(_from, _to, _value);
-        require(allowanceBase[_from][msg.sender] >= quote.payerDebitBase, "ERR_SPENDER");
+        require(_allowanceBase[_from][msg.sender] >= quote.payerDebitBase, "ERR_SPENDER");
 
-        remainingBaseAllowance = allowanceBase[_from][msg.sender] - quote.payerDebitBase;
-        allowanceBase[_from][msg.sender] = remainingBaseAllowance;
+        remainingBaseAllowance = _allowanceBase[_from][msg.sender] - quote.payerDebitBase;
+        _allowanceBase[_from][msg.sender] = remainingBaseAllowance;
         emit Approval(_from, msg.sender, _visibleAmountFromBase(remainingBaseAllowance));
 
         return _executeTransferQuote(_from, _to, _value, quote);
     }
 
-    function transferBase(address _from, address _to, uint256 _value) internal returns (bool) {
-        decreaseBaseBalance(_from, _value);
-        increaseBaseBalance(_to, _value);
+    function _transferBase(address _from, address _to, uint256 _value) internal returns (bool) {
+        _decreaseBaseBalance(_from, _value);
+        _increaseBaseBalance(_to, _value);
 
         return true;
     }
@@ -819,12 +822,12 @@ contract GeneroTokenV3 {
         uint256 _delta;
 
         require(applyExpiry() == 0);
-        require(writer[msg.sender], "ERR_ACCESS");
+        require(_writers[msg.sender], "ERR_ACCESS");
         _delta = toBaseAmount(_value);
-        require(account[msg.sender] >= _delta, "ERR_OVERSPEND");
+        require(_accounts[msg.sender] >= _delta, "ERR_OVERSPEND");
 
-        decreaseBaseBalance(msg.sender, _delta);
-        burned += _value;
+        _decreaseBaseBalance(msg.sender, _delta);
+        _burned += _value;
         emit Burn(msg.sender, _value);
         return true;
     }
@@ -836,15 +839,15 @@ contract GeneroTokenV3 {
     }
 
     function totalSupply() public view returns (uint256) {
-        return supply - burned;
+        return _supply - _burned;
     }
 
     function totalBurned() public view returns (uint256) {
-        return burned;
+        return _burned;
     }
 
     function totalMinted() public view returns (uint256) {
-        return supply;
+        return _supply;
     }
 
     function supportsInterface(bytes4 _sum) public pure returns (bool) {
@@ -866,14 +869,14 @@ contract GeneroTokenV3 {
         uint256 displayedAmount,
         TransferQuote memory quote
     ) internal returns (bool) {
-        decreaseBaseBalance(payer, quote.payerDebitBase);
-        increaseBaseBalance(recipient, quote.recipientCreditBase);
+        _decreaseBaseBalance(payer, quote.payerDebitBase);
+        _increaseBaseBalance(recipient, quote.recipientCreditBase);
 
         // Transfer events report recipient-visible credits, not the payer's total debit.
         emit Transfer(payer, recipient, quote.recipientCredit);
 
         if (quote.charityCreditBase > 0) {
-            increaseBaseBalance(quote.charityWallet, quote.charityCreditBase);
+            _increaseBaseBalance(quote.charityWallet, quote.charityCreditBase);
             emit Transfer(payer, quote.charityWallet, quote.charityCredit);
             emit CharityFeeRouted(payer, quote.resolvedCharityId, quote.charityWallet, quote.charityCredit);
         }
@@ -937,11 +940,11 @@ contract GeneroTokenV3 {
         if (merchantId == bytes32(0)) {
             return defaultMerchantFeeBps;
         }
-        if (!merchantFeeOverrideSet[merchantId]) {
+        if (!_merchantFeeOverrideSet[merchantId]) {
             return defaultMerchantFeeBps;
         }
 
-        overrideBps = merchantFeeOverrideBps[merchantId];
+        overrideBps = _merchantFeeOverrideBps[merchantId];
         if (overrideBps > defaultMerchantFeeBps) {
             return defaultMerchantFeeBps;
         }

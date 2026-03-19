@@ -1,3 +1,36 @@
+## v1.50
+### Timestamp
+- 2026-03-18 21:42:00 EDT
+
+### Objective
+- Clear the remaining TorontoCoin editor lint errors tied to the private-leading-underscore rule on the targeted Solidity contracts.
+
+### What Changed
+- Renamed private and internal storage across `GeneroTokenV3.sol`, `Governance.sol`, `ReserveRegistry.sol`, `TreasuryController.sol`, and `UserAcceptancePreferencesRegistry.sol` so the implementation now consistently uses underscore-prefixed private/internal identifiers.
+- Updated the matching helper-function names in `GeneroTokenV3.sol` to the same underscore-prefixed convention and kept the existing token behaviour intact.
+- Added narrow `solhint` suppression only where the Sarafu-derived private constants in `GeneroTokenV3.sol` must stay in SCREAMING_SNAKE_CASE, avoiding a clash between the underscore rule and the constant-name rule.
+- Kept the pass ABI-safe for the targeted contracts; this was an internal naming and tooling-alignment cleanup rather than a behaviour change.
+- Recorded the lint-hardening note in the engineering specs so the repo’s current source of truth matches the implementation.
+
+### Verification
+- `forge build`
+- `pnpm dlx solhint -c /tmp/solhint.XXXXXX.json contracts/foundry/src/torontocoin/GeneroTokenV3.sol contracts/foundry/src/torontocoin/Governance.sol contracts/foundry/src/torontocoin/ReserveRegistry.sol contracts/foundry/src/torontocoin/TreasuryController.sol contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test --match-path test/unit/torontocoin/UserAcceptancePreferencesRegistry.t.sol`
+- `forge test --match-path test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `forge test --match-path test/unit/torontocoin/PoolRegistry.t.sol`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/ReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.49
 ### Timestamp
 - 2026-03-18 20:15:00 EDT

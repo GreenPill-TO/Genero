@@ -100,6 +100,7 @@ Genero is a multi-city, modular platform enabling the creation and operation of 
 - **Emergency treasury controls**: admin retains emergency mint/redemption freeze and unfreeze powers on `TreasuryController`, because governance voting is intentionally too slow for operational emergency response.
 - **Treasury and liquidity governance**: stewards can now vote on the overcollateralization target, governance-triggered excess-capacity charity mints, finalized `TreasuryController` admin actions, and finalized `LiquidityRouter` policy/pointer updates, with the intended deployment posture being that `Governance` owns those contracts and is also their configured governance address where required.
 - **Contract documentation parity**: the TorontoCoin contract folder now includes current operator and reviewer notes for `Treasury`, `TreasuryController`, and `LiquidityRouter`, aligned to the reserve-vault split and the registry-driven routing model.
+- **Lint-hardening parity**: the latest TorontoCoin contract maintenance pass changes only internal/private naming to satisfy the shared underscore rule; user-facing token, treasury, router, and governance behaviour is unchanged.
 - **Payments**: Scan QR → specify amount or tip % → confirm and sign.
 - **SpareChange**: Scan public QR → donate → automatic charity attribution.
 

@@ -228,24 +228,24 @@ contract Governance is Ownable, ReentrancyGuard {
     uint64 public defaultVotingWindow;
     uint256 public proposalCount;
 
-    mapping(uint256 => Proposal) private proposals;
-    mapping(uint256 => mapping(address => uint256)) private stewardSnapshotWeight;
+    mapping(uint256 => Proposal) private _proposals;
+    mapping(uint256 => mapping(address => uint256)) private _stewardSnapshotWeight;
     mapping(uint256 => mapping(address => bool)) public hasVoted;
 
-    mapping(uint256 => CharityAddPayload) private charityAddPayloads;
-    mapping(uint256 => CharityIdPayload) private charityIdPayloads;
-    mapping(uint256 => PoolAddPayload) private poolAddPayloads;
-    mapping(uint256 => Bytes32IdPayload) private bytes32IdPayloads;
-    mapping(uint256 => MerchantApprovePayload) private merchantApprovePayloads;
-    mapping(uint256 => MerchantIdPayload) private merchantIdPayloads;
-    mapping(uint256 => MerchantPoolReassignPayload) private merchantPoolReassignPayloads;
-    mapping(uint256 => ReserveAssetAddPayload) private reserveAssetAddPayloads;
-    mapping(uint256 => ReserveOracleUpdatePayload) private reserveOracleUpdatePayloads;
-    mapping(uint256 => UIntPayload) private uintPayloads;
-    mapping(uint256 => AddressPayload) private addressPayloads;
-    mapping(uint256 => BoolPayload) private boolPayloads;
-    mapping(uint256 => CharityMintPayload) private charityMintPayloads;
-    mapping(uint256 => ScoringWeightsPayload) private scoringWeightsPayloads;
+    mapping(uint256 => CharityAddPayload) private _charityAddPayloads;
+    mapping(uint256 => CharityIdPayload) private _charityIdPayloads;
+    mapping(uint256 => PoolAddPayload) private _poolAddPayloads;
+    mapping(uint256 => Bytes32IdPayload) private _bytes32IdPayloads;
+    mapping(uint256 => MerchantApprovePayload) private _merchantApprovePayloads;
+    mapping(uint256 => MerchantIdPayload) private _merchantIdPayloads;
+    mapping(uint256 => MerchantPoolReassignPayload) private _merchantPoolReassignPayloads;
+    mapping(uint256 => ReserveAssetAddPayload) private _reserveAssetAddPayloads;
+    mapping(uint256 => ReserveOracleUpdatePayload) private _reserveOracleUpdatePayloads;
+    mapping(uint256 => UIntPayload) private _uintPayloads;
+    mapping(uint256 => AddressPayload) private _addressPayloads;
+    mapping(uint256 => BoolPayload) private _boolPayloads;
+    mapping(uint256 => CharityMintPayload) private _charityMintPayloads;
+    mapping(uint256 => ScoringWeightsPayload) private _scoringWeightsPayloads;
 
     constructor(
         address initialOwner,
@@ -325,7 +325,7 @@ contract Governance is Ownable, ReentrancyGuard {
         if (wallet == address(0)) revert ZeroAddressTarget();
 
         proposalId = _createProposal(ProposalType.CharityAdd, votingWindow);
-        charityAddPayloads[proposalId] =
+        _charityAddPayloads[proposalId] =
             CharityAddPayload({name: name, wallet: wallet, metadataRecordId: metadataRecordId});
     }
 
@@ -354,7 +354,7 @@ contract Governance is Ownable, ReentrancyGuard {
         if (bytes(name).length == 0) revert EmptyString();
 
         proposalId = _createProposal(ProposalType.PoolAdd, votingWindow);
-        poolAddPayloads[proposalId] = PoolAddPayload({poolId: poolId, name: name, metadataRecordId: metadataRecordId});
+        _poolAddPayloads[proposalId] = PoolAddPayload({poolId: poolId, name: name, metadataRecordId: metadataRecordId});
     }
 
     function proposePoolRemove(bytes32 poolId, uint64 votingWindow) external onlySteward returns (uint256) {
@@ -380,7 +380,7 @@ contract Governance is Ownable, ReentrancyGuard {
         if (poolId == bytes32(0)) revert InvalidProposalValue();
 
         proposalId = _createProposal(ProposalType.MerchantApprove, votingWindow);
-        MerchantApprovePayload storage payload = merchantApprovePayloads[proposalId];
+        MerchantApprovePayload storage payload = _merchantApprovePayloads[proposalId];
         payload.merchantId = merchantId;
         payload.poolId = poolId;
         payload.metadataRecordId = metadataRecordId;
@@ -412,7 +412,7 @@ contract Governance is Ownable, ReentrancyGuard {
         if (newPoolId == bytes32(0)) revert InvalidProposalValue();
 
         proposalId = _createProposal(ProposalType.MerchantPoolReassign, votingWindow);
-        merchantPoolReassignPayloads[proposalId] =
+        _merchantPoolReassignPayloads[proposalId] =
             MerchantPoolReassignPayload({merchantId: merchantId, newPoolId: newPoolId});
     }
 
@@ -433,7 +433,7 @@ contract Governance is Ownable, ReentrancyGuard {
         if (staleAfter == 0) revert InvalidProposalValue();
 
         proposalId = _createProposal(ProposalType.ReserveAssetAdd, votingWindow);
-        reserveAssetAddPayloads[proposalId] = ReserveAssetAddPayload({
+        _reserveAssetAddPayloads[proposalId] = ReserveAssetAddPayload({
             assetId: assetId,
             token: token,
             code: code,
@@ -468,7 +468,7 @@ contract Governance is Ownable, ReentrancyGuard {
         if (staleAfter == 0) revert InvalidProposalValue();
 
         proposalId = _createProposal(ProposalType.ReserveOracleUpdate, votingWindow);
-        reserveOracleUpdatePayloads[proposalId] = ReserveOracleUpdatePayload({
+        _reserveOracleUpdatePayloads[proposalId] = ReserveOracleUpdatePayload({
             assetId: assetId, primaryOracle: primaryOracle, fallbackOracle: fallbackOracle, staleAfter: staleAfter
         });
     }
@@ -482,7 +482,7 @@ contract Governance is Ownable, ReentrancyGuard {
         _validateCadPegChange(newCadPeg18);
 
         proposalId = _createProposal(ProposalType.CadPegUpdate, votingWindow);
-        uintPayloads[proposalId] = UIntPayload({value: newCadPeg18});
+        _uintPayloads[proposalId] = UIntPayload({value: newCadPeg18});
     }
 
     function proposeUserRedeemRateUpdate(uint256 newRateBps, uint64 votingWindow)
@@ -516,7 +516,7 @@ contract Governance is Ownable, ReentrancyGuard {
     {
         if (newExpirePeriod == 0) revert InvalidProposalValue();
         proposalId = _createProposal(ProposalType.ExpirePeriodUpdate, votingWindow);
-        uintPayloads[proposalId] = UIntPayload({value: newExpirePeriod});
+        _uintPayloads[proposalId] = UIntPayload({value: newExpirePeriod});
     }
 
     function proposeOvercollateralizationTargetUpdate(uint256 newTarget18, uint64 votingWindow)
@@ -526,7 +526,7 @@ contract Governance is Ownable, ReentrancyGuard {
     {
         if (newTarget18 == 0) revert InvalidProposalValue();
         proposalId = _createProposal(ProposalType.OvercollateralizationTargetUpdate, votingWindow);
-        uintPayloads[proposalId] = UIntPayload({value: newTarget18});
+        _uintPayloads[proposalId] = UIntPayload({value: newTarget18});
     }
 
     function proposeMintToDefaultCharity(uint256 amount, uint64 votingWindow)
@@ -536,7 +536,7 @@ contract Governance is Ownable, ReentrancyGuard {
     {
         if (amount == 0) revert InvalidProposalValue();
         proposalId = _createProposal(ProposalType.CharityMintFromExcess, votingWindow);
-        charityMintPayloads[proposalId] = CharityMintPayload({charityId: 0, amount: amount});
+        _charityMintPayloads[proposalId] = CharityMintPayload({charityId: 0, amount: amount});
     }
 
     function proposeMintToCharity(uint256 charityId, uint256 amount, uint64 votingWindow)
@@ -547,7 +547,7 @@ contract Governance is Ownable, ReentrancyGuard {
         if (charityId == 0) revert InvalidProposalValue();
         if (amount == 0) revert InvalidProposalValue();
         proposalId = _createProposal(ProposalType.CharityMintFromExcess, votingWindow);
-        charityMintPayloads[proposalId] = CharityMintPayload({charityId: charityId, amount: amount});
+        _charityMintPayloads[proposalId] = CharityMintPayload({charityId: charityId, amount: amount});
     }
 
     function proposeTreasuryControllerSetTreasury(address treasury_, uint64 votingWindow)
@@ -734,7 +734,7 @@ contract Governance is Ownable, ReentrancyGuard {
         uint64 votingWindow
     ) external onlySteward returns (uint256 proposalId) {
         proposalId = _createProposal(ProposalType.LiquidityRouterSetScoringWeights, votingWindow);
-        scoringWeightsPayloads[proposalId] = ScoringWeightsPayload({
+        _scoringWeightsPayloads[proposalId] = ScoringWeightsPayload({
             weightLowMrTcoinLiquidity: newWeightLowMrTcoinLiquidity,
             weightHighCplTcoinLiquidity: newWeightHighCplTcoinLiquidity,
             weightUserPoolPreference: newWeightUserPoolPreference,
@@ -745,11 +745,11 @@ contract Governance is Ownable, ReentrancyGuard {
     /// @notice Cast a weighted steward vote on a pending proposal.
     /// @dev A proposal can move to Approved before deadline if quorum and majority conditions are met.
     function voteProposal(uint256 proposalId, bool support) external onlySteward onlyPendingProposal(proposalId) {
-        Proposal storage proposal = proposals[proposalId];
+        Proposal storage proposal = _proposals[proposalId];
         if (block.timestamp > proposal.deadline) revert ProposalExpired(proposalId);
         if (hasVoted[proposalId][msg.sender]) revert ProposalAlreadyVoted(proposalId, msg.sender);
 
-        uint256 weight = stewardSnapshotWeight[proposalId][msg.sender];
+        uint256 weight = _stewardSnapshotWeight[proposalId][msg.sender];
         if (weight == 0) revert NoSnapshotWeight(proposalId, msg.sender);
 
         hasVoted[proposalId][msg.sender] = true;
@@ -800,40 +800,40 @@ contract Governance is Ownable, ReentrancyGuard {
         ProposalType proposalType = proposal.proposalType;
 
         if (proposalType == ProposalType.CharityAdd) {
-            CharityAddPayload storage payload = charityAddPayloads[proposalId];
+            CharityAddPayload storage payload = _charityAddPayloads[proposalId];
             ICharityRegistry(charityRegistry).addCharity(payload.name, payload.wallet, payload.metadataRecordId);
         } else if (proposalType == ProposalType.CharityRemove) {
-            ICharityRegistry(charityRegistry).removeCharity(charityIdPayloads[proposalId].charityId);
+            ICharityRegistry(charityRegistry).removeCharity(_charityIdPayloads[proposalId].charityId);
         } else if (proposalType == ProposalType.CharitySuspend) {
-            ICharityRegistry(charityRegistry).suspendCharity(charityIdPayloads[proposalId].charityId);
+            ICharityRegistry(charityRegistry).suspendCharity(_charityIdPayloads[proposalId].charityId);
         } else if (proposalType == ProposalType.CharityUnsuspend) {
-            ICharityRegistry(charityRegistry).unsuspendCharity(charityIdPayloads[proposalId].charityId);
+            ICharityRegistry(charityRegistry).unsuspendCharity(_charityIdPayloads[proposalId].charityId);
         } else if (proposalType == ProposalType.SetDefaultCharity) {
-            ICharityRegistry(charityRegistry).setDefaultCharity(charityIdPayloads[proposalId].charityId);
+            ICharityRegistry(charityRegistry).setDefaultCharity(_charityIdPayloads[proposalId].charityId);
         } else if (proposalType == ProposalType.PoolAdd) {
-            PoolAddPayload storage payload = poolAddPayloads[proposalId];
+            PoolAddPayload storage payload = _poolAddPayloads[proposalId];
             IPoolRegistry(poolRegistry).addPool(payload.poolId, payload.name, payload.metadataRecordId);
         } else if (proposalType == ProposalType.PoolRemove) {
-            IPoolRegistry(poolRegistry).removePool(bytes32IdPayloads[proposalId].id);
+            IPoolRegistry(poolRegistry).removePool(_bytes32IdPayloads[proposalId].id);
         } else if (proposalType == ProposalType.PoolSuspend) {
-            IPoolRegistry(poolRegistry).suspendPool(bytes32IdPayloads[proposalId].id);
+            IPoolRegistry(poolRegistry).suspendPool(_bytes32IdPayloads[proposalId].id);
         } else if (proposalType == ProposalType.PoolUnsuspend) {
-            IPoolRegistry(poolRegistry).unsuspendPool(bytes32IdPayloads[proposalId].id);
+            IPoolRegistry(poolRegistry).unsuspendPool(_bytes32IdPayloads[proposalId].id);
         } else if (proposalType == ProposalType.MerchantApprove) {
-            MerchantApprovePayload storage payload = merchantApprovePayloads[proposalId];
+            MerchantApprovePayload storage payload = _merchantApprovePayloads[proposalId];
             IPoolRegistry(poolRegistry)
                 .approveMerchant(payload.merchantId, payload.poolId, payload.metadataRecordId, payload.initialWallets);
         } else if (proposalType == ProposalType.MerchantRemove) {
-            IPoolRegistry(poolRegistry).removeMerchant(merchantIdPayloads[proposalId].merchantId);
+            IPoolRegistry(poolRegistry).removeMerchant(_merchantIdPayloads[proposalId].merchantId);
         } else if (proposalType == ProposalType.MerchantSuspend) {
-            IPoolRegistry(poolRegistry).suspendMerchant(merchantIdPayloads[proposalId].merchantId);
+            IPoolRegistry(poolRegistry).suspendMerchant(_merchantIdPayloads[proposalId].merchantId);
         } else if (proposalType == ProposalType.MerchantUnsuspend) {
-            IPoolRegistry(poolRegistry).unsuspendMerchant(merchantIdPayloads[proposalId].merchantId);
+            IPoolRegistry(poolRegistry).unsuspendMerchant(_merchantIdPayloads[proposalId].merchantId);
         } else if (proposalType == ProposalType.MerchantPoolReassign) {
-            MerchantPoolReassignPayload storage payload = merchantPoolReassignPayloads[proposalId];
+            MerchantPoolReassignPayload storage payload = _merchantPoolReassignPayloads[proposalId];
             IPoolRegistry(poolRegistry).reassignMerchantPool(payload.merchantId, payload.newPoolId);
         } else if (proposalType == ProposalType.ReserveAssetAdd) {
-            ReserveAssetAddPayload storage payload = reserveAssetAddPayloads[proposalId];
+            ReserveAssetAddPayload storage payload = _reserveAssetAddPayloads[proposalId];
             IReserveRegistry(reserveRegistry)
                 .addReserveAsset(
                     payload.assetId,
@@ -845,55 +845,55 @@ contract Governance is Ownable, ReentrancyGuard {
                     payload.staleAfter
                 );
         } else if (proposalType == ProposalType.ReserveAssetRemove) {
-            IReserveRegistry(reserveRegistry).removeReserveAsset(bytes32IdPayloads[proposalId].id);
+            IReserveRegistry(reserveRegistry).removeReserveAsset(_bytes32IdPayloads[proposalId].id);
         } else if (proposalType == ProposalType.ReserveAssetPause) {
-            IReserveRegistry(reserveRegistry).pauseReserveAsset(bytes32IdPayloads[proposalId].id);
+            IReserveRegistry(reserveRegistry).pauseReserveAsset(_bytes32IdPayloads[proposalId].id);
         } else if (proposalType == ProposalType.ReserveAssetUnpause) {
-            IReserveRegistry(reserveRegistry).unpauseReserveAsset(bytes32IdPayloads[proposalId].id);
+            IReserveRegistry(reserveRegistry).unpauseReserveAsset(_bytes32IdPayloads[proposalId].id);
         } else if (proposalType == ProposalType.ReserveOracleUpdate) {
-            ReserveOracleUpdatePayload storage payload = reserveOracleUpdatePayloads[proposalId];
+            ReserveOracleUpdatePayload storage payload = _reserveOracleUpdatePayloads[proposalId];
             IReserveRegistry(reserveRegistry)
                 .updateReserveAssetOracles(payload.assetId, payload.primaryOracle, payload.fallbackOracle);
             IReserveRegistry(reserveRegistry).updateReserveAssetStaleness(payload.assetId, payload.staleAfter);
         } else if (proposalType == ProposalType.CadPegUpdate) {
-            uint256 newCadPeg18 = uintPayloads[proposalId].value;
+            uint256 newCadPeg18 = _uintPayloads[proposalId].value;
             _validateCadPegChange(newCadPeg18);
             ITreasuryController(treasuryController).setCadPeg(newCadPeg18);
         } else if (proposalType == ProposalType.UserRedeemRateUpdate) {
-            ITreasuryController(treasuryController).setUserRedeemRate(uintPayloads[proposalId].value);
+            ITreasuryController(treasuryController).setUserRedeemRate(_uintPayloads[proposalId].value);
         } else if (proposalType == ProposalType.MerchantRedeemRateUpdate) {
-            ITreasuryController(treasuryController).setMerchantRedeemRate(uintPayloads[proposalId].value);
+            ITreasuryController(treasuryController).setMerchantRedeemRate(_uintPayloads[proposalId].value);
         } else if (proposalType == ProposalType.CharityMintRateUpdate) {
-            ITreasuryController(treasuryController).setCharityMintRate(uintPayloads[proposalId].value);
+            ITreasuryController(treasuryController).setCharityMintRate(_uintPayloads[proposalId].value);
         } else if (proposalType == ProposalType.OvercollateralizationTargetUpdate) {
-            ITreasuryController(treasuryController).setOvercollateralizationTarget(uintPayloads[proposalId].value);
+            ITreasuryController(treasuryController).setOvercollateralizationTarget(_uintPayloads[proposalId].value);
         } else if (proposalType == ProposalType.CharityMintFromExcess) {
-            CharityMintPayload storage payload = charityMintPayloads[proposalId];
+            CharityMintPayload storage payload = _charityMintPayloads[proposalId];
             if (payload.charityId == 0) {
                 ITreasuryController(treasuryController).mintToCharity(payload.amount);
             } else {
                 ITreasuryController(treasuryController).mintToCharity(payload.charityId, payload.amount);
             }
         } else if (proposalType == ProposalType.ExpirePeriodUpdate) {
-            ITCOINToken(tcoinToken).setExpirePeriod(uintPayloads[proposalId].value);
+            ITCOINToken(tcoinToken).setExpirePeriod(_uintPayloads[proposalId].value);
         } else if (proposalType == ProposalType.TreasuryControllerSetTreasury) {
-            ITreasuryController(treasuryController).setTreasury(addressPayloads[proposalId].account);
+            ITreasuryController(treasuryController).setTreasury(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.TreasuryControllerSetGovernance) {
-            ITreasuryController(treasuryController).setGovernance(addressPayloads[proposalId].account);
+            ITreasuryController(treasuryController).setGovernance(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.TreasuryControllerSetIndexer) {
-            ITreasuryController(treasuryController).setIndexer(addressPayloads[proposalId].account);
+            ITreasuryController(treasuryController).setIndexer(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.TreasuryControllerSetLiquidityRouter) {
-            ITreasuryController(treasuryController).setLiquidityRouter(addressPayloads[proposalId].account);
+            ITreasuryController(treasuryController).setLiquidityRouter(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.TreasuryControllerSetTcoinToken) {
-            ITreasuryController(treasuryController).setTcoinToken(addressPayloads[proposalId].account);
+            ITreasuryController(treasuryController).setTcoinToken(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.TreasuryControllerSetReserveRegistry) {
-            ITreasuryController(treasuryController).setReserveRegistry(addressPayloads[proposalId].account);
+            ITreasuryController(treasuryController).setReserveRegistry(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.TreasuryControllerSetCharityRegistry) {
-            ITreasuryController(treasuryController).setCharityRegistry(addressPayloads[proposalId].account);
+            ITreasuryController(treasuryController).setCharityRegistry(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.TreasuryControllerSetPoolRegistry) {
-            ITreasuryController(treasuryController).setPoolRegistry(addressPayloads[proposalId].account);
+            ITreasuryController(treasuryController).setPoolRegistry(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.TreasuryControllerSetOracleRouter) {
-            ITreasuryController(treasuryController).setOracleRouter(addressPayloads[proposalId].account);
+            ITreasuryController(treasuryController).setOracleRouter(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.TreasuryControllerPauseMinting) {
             ITreasuryController(treasuryController).pauseMinting();
         } else if (proposalType == ProposalType.TreasuryControllerUnpauseMinting) {
@@ -903,31 +903,31 @@ contract Governance is Ownable, ReentrancyGuard {
         } else if (proposalType == ProposalType.TreasuryControllerUnpauseRedemption) {
             ITreasuryController(treasuryController).unpauseRedemption();
         } else if (proposalType == ProposalType.TreasuryControllerPauseAsset) {
-            ITreasuryController(treasuryController).pauseAssetForTreasury(bytes32IdPayloads[proposalId].id);
+            ITreasuryController(treasuryController).pauseAssetForTreasury(_bytes32IdPayloads[proposalId].id);
         } else if (proposalType == ProposalType.TreasuryControllerUnpauseAsset) {
-            ITreasuryController(treasuryController).unpauseAssetForTreasury(bytes32IdPayloads[proposalId].id);
+            ITreasuryController(treasuryController).unpauseAssetForTreasury(_bytes32IdPayloads[proposalId].id);
         } else if (proposalType == ProposalType.TreasuryControllerSetAdminCanMintToCharity) {
-            ITreasuryController(treasuryController).setAdminCanMintToCharity(boolPayloads[proposalId].value);
+            ITreasuryController(treasuryController).setAdminCanMintToCharity(_boolPayloads[proposalId].value);
         } else if (proposalType == ProposalType.LiquidityRouterSetGovernance) {
-            ILiquidityRouterGovernance(liquidityRouter).setGovernance(addressPayloads[proposalId].account);
+            ILiquidityRouterGovernance(liquidityRouter).setGovernance(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetTreasuryController) {
-            ILiquidityRouterGovernance(liquidityRouter).setTreasuryController(addressPayloads[proposalId].account);
+            ILiquidityRouterGovernance(liquidityRouter).setTreasuryController(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetCplTcoin) {
-            ILiquidityRouterGovernance(liquidityRouter).setCplTcoin(addressPayloads[proposalId].account);
+            ILiquidityRouterGovernance(liquidityRouter).setCplTcoin(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetCharityPreferencesRegistry) {
             ILiquidityRouterGovernance(liquidityRouter)
-                .setCharityPreferencesRegistry(addressPayloads[proposalId].account);
+                .setCharityPreferencesRegistry(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetAcceptancePreferencesRegistry) {
             ILiquidityRouterGovernance(liquidityRouter)
-                .setAcceptancePreferencesRegistry(addressPayloads[proposalId].account);
+                .setAcceptancePreferencesRegistry(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetPoolRegistry) {
-            ILiquidityRouterGovernance(liquidityRouter).setPoolRegistry(addressPayloads[proposalId].account);
+            ILiquidityRouterGovernance(liquidityRouter).setPoolRegistry(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetPoolAdapter) {
-            ILiquidityRouterGovernance(liquidityRouter).setPoolAdapter(addressPayloads[proposalId].account);
+            ILiquidityRouterGovernance(liquidityRouter).setPoolAdapter(_addressPayloads[proposalId].account);
         } else if (proposalType == ProposalType.LiquidityRouterSetCharityTopupBps) {
-            ILiquidityRouterGovernance(liquidityRouter).setCharityTopupBps(uintPayloads[proposalId].value);
+            ILiquidityRouterGovernance(liquidityRouter).setCharityTopupBps(_uintPayloads[proposalId].value);
         } else if (proposalType == ProposalType.LiquidityRouterSetScoringWeights) {
-            ScoringWeightsPayload storage payload = scoringWeightsPayloads[proposalId];
+            ScoringWeightsPayload storage payload = _scoringWeightsPayloads[proposalId];
             ILiquidityRouterGovernance(liquidityRouter)
                 .setScoringWeights(
                     payload.weightLowMrTcoinLiquidity,
@@ -943,7 +943,7 @@ contract Governance is Ownable, ReentrancyGuard {
         emit ProposalExecuted(proposalId, msg.sender);
     }
 
-    /// @notice Owner-only cancellation hook for non-executed proposals.
+    /// @notice Owner-only cancellation hook for non-executed _proposals.
     function cancelProposal(uint256 proposalId) external onlyOwner {
         Proposal storage proposal = _getProposalStorage(proposalId);
         if (proposal.status == ProposalStatus.Executed || proposal.status == ProposalStatus.Cancelled) {
@@ -958,7 +958,7 @@ contract Governance is Ownable, ReentrancyGuard {
     }
 
     function getSnapshotWeight(uint256 proposalId, address steward) external view returns (uint256) {
-        return stewardSnapshotWeight[proposalId][steward];
+        return _stewardSnapshotWeight[proposalId][steward];
     }
 
     function getProposalCount() external view returns (uint256) {
@@ -991,7 +991,7 @@ contract Governance is Ownable, ReentrancyGuard {
     {
         if (charityId == 0) revert InvalidProposalValue();
         proposalId = _createProposal(proposalType, votingWindow);
-        charityIdPayloads[proposalId] = CharityIdPayload({charityId: charityId});
+        _charityIdPayloads[proposalId] = CharityIdPayload({charityId: charityId});
     }
 
     function _proposeBytes32Id(ProposalType proposalType, bytes32 id, uint64 votingWindow)
@@ -1000,7 +1000,7 @@ contract Governance is Ownable, ReentrancyGuard {
     {
         if (id == bytes32(0)) revert InvalidProposalValue();
         proposalId = _createProposal(proposalType, votingWindow);
-        bytes32IdPayloads[proposalId] = Bytes32IdPayload({id: id});
+        _bytes32IdPayloads[proposalId] = Bytes32IdPayload({id: id});
     }
 
     function _proposeMerchantId(ProposalType proposalType, bytes32 merchantId, uint64 votingWindow)
@@ -1009,7 +1009,7 @@ contract Governance is Ownable, ReentrancyGuard {
     {
         if (merchantId == bytes32(0)) revert InvalidProposalValue();
         proposalId = _createProposal(proposalType, votingWindow);
-        merchantIdPayloads[proposalId] = MerchantIdPayload({merchantId: merchantId});
+        _merchantIdPayloads[proposalId] = MerchantIdPayload({merchantId: merchantId});
     }
 
     function _proposeRateLike(ProposalType proposalType, uint256 value, uint64 votingWindow)
@@ -1018,7 +1018,7 @@ contract Governance is Ownable, ReentrancyGuard {
     {
         if (value > BPS_DENOMINATOR) revert InvalidProposalValue();
         proposalId = _createProposal(proposalType, votingWindow);
-        uintPayloads[proposalId] = UIntPayload({value: value});
+        _uintPayloads[proposalId] = UIntPayload({value: value});
     }
 
     function _proposeAddressTarget(ProposalType proposalType, address account, uint64 votingWindow)
@@ -1027,7 +1027,7 @@ contract Governance is Ownable, ReentrancyGuard {
     {
         if (account == address(0)) revert ZeroAddressTarget();
         proposalId = _createProposal(proposalType, votingWindow);
-        addressPayloads[proposalId] = AddressPayload({account: account});
+        _addressPayloads[proposalId] = AddressPayload({account: account});
     }
 
     function _proposeBool(ProposalType proposalType, bool value, uint64 votingWindow)
@@ -1035,7 +1035,7 @@ contract Governance is Ownable, ReentrancyGuard {
         returns (uint256 proposalId)
     {
         proposalId = _createProposal(proposalType, votingWindow);
-        boolPayloads[proposalId] = BoolPayload({value: value});
+        _boolPayloads[proposalId] = BoolPayload({value: value});
     }
 
     function _proposeNoPayload(ProposalType proposalType, uint64 votingWindow) internal returns (uint256 proposalId) {
@@ -1050,7 +1050,7 @@ contract Governance is Ownable, ReentrancyGuard {
         uint64 createdAt = uint64(block.timestamp);
         uint64 deadline = createdAt + window;
 
-        Proposal storage proposal = proposals[proposalId];
+        Proposal storage proposal = _proposals[proposalId];
         proposal.proposalId = proposalId;
         proposal.proposalType = proposalType;
         proposal.status = ProposalStatus.Pending;
@@ -1072,7 +1072,7 @@ contract Governance is Ownable, ReentrancyGuard {
             uint256 weight = IStewardRegistry(stewardRegistry).getStewardWeight(steward);
             if (weight == 0) continue;
 
-            stewardSnapshotWeight[proposalId][steward] = weight;
+            _stewardSnapshotWeight[proposalId][steward] = weight;
             totalSnapshotWeight += weight;
         }
     }
@@ -1094,7 +1094,7 @@ contract Governance is Ownable, ReentrancyGuard {
     }
 
     function _getProposalStorage(uint256 proposalId) internal view returns (Proposal storage proposal) {
-        proposal = proposals[proposalId];
+        proposal = _proposals[proposalId];
         if (proposal.status == ProposalStatus.None) revert UnknownProposal(proposalId);
     }
 
