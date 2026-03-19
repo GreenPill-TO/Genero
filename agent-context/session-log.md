@@ -1,3 +1,27 @@
+## v1.48
+### Timestamp
+- 2026-03-18 20:06:00 EDT
+
+### Objective
+- Add the missing contract notes for `Treasury` and `LiquidityRouter`, and rewrite `TreasuryController.md` so the documentation matches the current treasury split, collateralization policy, and router integration.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/Treasury.md` documenting `Treasury` as the pure reserve vault, its authorization model, its reserve-movement primitives, and its strict separation from treasury economics.
+- Added `contracts/foundry/src/torontocoin/LiquidityRouter.md` documenting the router’s non-custodial execution role, registry-driven acceptance model, pool-selection logic, charity top-up flow, and governance/admin surface.
+- Rewrote `contracts/foundry/src/torontocoin/TreasuryController.md` so it now reflects the live split architecture: `Treasury` as reserve vault, `TreasuryController` as policy engine, router-only reserve settlement, overcollateralization-driven charity minting, and the current owner/governance/indexer/liquidity-router authority model.
+- Updated the engineering specs to record that the contract-level TorontoCoin design notes are now current for the treasury/controller/router boundary.
+
+### Verification
+- Documentation-only pass; no tests were run.
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Treasury.md`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.md`
+- `contracts/foundry/src/torontocoin/TreasuryController.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.47
 ### Timestamp
 - 2026-03-18 19:56:00 EDT
