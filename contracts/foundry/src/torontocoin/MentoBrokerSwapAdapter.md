@@ -32,15 +32,26 @@ The adapter stores one default route per input token:
 - `exchangeProvider`
 - `exchangeId`
 
+It can also store one default multihop route per input token:
+
+- `tokenIn`
+- `intermediateToken`
+- `firstExchangeProvider`
+- `firstExchangeId`
+- `secondExchangeProvider`
+- `secondExchangeId`
+
 Owner methods:
 
 - `setBroker(address broker_)`
 - `setDefaultRoute(address tokenIn, address exchangeProvider, bytes32 exchangeId)`
+- `setDefaultMultiHopRoute(address tokenIn, address intermediateToken, address firstExchangeProvider, bytes32 firstExchangeId, address secondExchangeProvider, bytes32 secondExchangeId)`
 - `clearDefaultRoute(address tokenIn)`
 
 View helper:
 
 - `getDefaultRoute(address tokenIn)`
+- `getDefaultRouteConfig(address tokenIn)`
 
 ## Swap Semantics
 
@@ -51,8 +62,9 @@ View helper:
   - `swapData` override, if present
   - otherwise the stored default route for `tokenIn`
 - pulls `tokenIn` from caller
-- approves the broker
-- calls `broker.swapIn(...)`
+- executes either:
+  - one direct `tokenIn -> mCAD` broker swap, or
+  - two chained broker swaps `tokenIn -> intermediateToken -> mCAD`
 - transfers observed `mCAD` output back to caller
 
 The adapter uses actual `mCAD` balance delta as the source of truth for output delivery.
@@ -68,8 +80,22 @@ This keeps preview and execution aligned.
 
 For compatibility with legacy mint-router and backend flows, `swapData` may optionally encode:
 
+Single-hop override:
+
 ```solidity
 abi.encode(address exchangeProvider, bytes32 exchangeId)
+```
+
+Multihop override:
+
+```solidity
+abi.encode(
+    address firstExchangeProvider,
+    bytes32 firstExchangeId,
+    address intermediateToken,
+    address secondExchangeProvider,
+    bytes32 secondExchangeId
+)
 ```
 
 If `swapData` is empty, the default on-chain route for `tokenIn` is used.
@@ -93,4 +119,7 @@ It does not trust broker return values alone; final output is checked against ac
 - `ReserveInputRouter` should be the only component engaging this adapter for retail `cplTCOIN` acquisition.
 - `LiquidityRouter` should never embed broker logic directly.
 - `TcoinMintRouter` may also point at this adapter for the older `TCOIN` mint flow.
+- The current recommended Celo mainnet posture is:
+  - direct `USDm -> CADm` route configured as the base Mento leg
+  - atomic `USDC -> USDm -> CADm` multihop route configured for the retail on-ramp
 - Deployment should set the broker plus at least one route, then enable the matching input token on the calling router/helper.

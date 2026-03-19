@@ -1,3 +1,36 @@
+## v1.56
+### Timestamp
+- 2026-03-19 14:45:00 EDT
+
+### Objective
+- Enable atomic `USDC -> USDm -> CADm` normalization through the shared Mento adapter so the retail `LiquidityRouter` path can support a Transak-funded USDC on-ramp without embedding multihop swap logic in the router itself.
+
+### What Changed
+- Extended `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.sol` so it now supports both single-hop and multihop default routes. The adapter can still execute direct `tokenIn -> CADm` swaps, but it can now also chain `tokenIn -> intermediateToken -> CADm` in one atomic call while preserving the existing `ISwapAdapter` surface consumed by `ReserveInputRouter` and `TcoinMintRouter`.
+- Added multihop admin/config support to the adapter via `setDefaultMultiHopRoute(...)`, `getDefaultRouteConfig(...)`, and a dedicated `CadmMultiHopSwapped` event. Existing single-hop `setDefaultRoute(...)` behaviour remains intact and continues to clear the multihop fields for that token.
+- Updated `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol` so the checked-in Celo config now seeds both the direct `USDm -> CADm` Mento leg and the new atomic `USDC -> USDm -> CADm` route during deployment, and enables `USDC` on `ReserveInputRouter` for the retail flow.
+- Expanded `contracts/foundry/test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol` with live-shape multihop coverage: previewing `USDC -> USDm -> CADm`, executing the multihop directly through the adapter, and normalizing `USDC` through `ReserveInputRouter` into accepted `CADm`.
+- Updated the TorontoCoin contract notes, Foundry README, and engineering specs so the written source of truth now says the retail on-ramp supports atomic `USDC -> USDm -> CADm` normalization through the helper/adapter boundary rather than requiring a separate future multihop pass.
+
+### Verification
+- `forge fmt src/torontocoin/MentoBrokerSwapAdapter.sol script/deploy/DeployLiquidityRoutingStack.s.sol test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `forge build`
+- `forge test --match-path test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.sol`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `contracts/foundry/test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.md`
+- `contracts/foundry/src/torontocoin/ReserveInputRouter.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.55
 ### Timestamp
 - 2026-03-19 14:05:00 EDT

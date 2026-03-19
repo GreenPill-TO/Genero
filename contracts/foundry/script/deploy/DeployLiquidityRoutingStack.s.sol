@@ -40,6 +40,10 @@ contract DeployLiquidityRoutingStack is DeployChainConfig {
         address mentoRouteTokenIn = _chainConfigAddress(selection, ".torontocoin.mento.routeTokenIn");
         address mentoExchangeProvider = _chainConfigAddress(selection, ".torontocoin.mento.exchangeProvider");
         bytes32 mentoExchangeId = _chainConfigBytes32(selection, ".torontocoin.mento.exchangeId");
+        address mentoUsdcToken = _chainConfigAddress(selection, ".torontocoin.mento.usdcToken");
+        address mentoUsdmToken = _chainConfigAddress(selection, ".torontocoin.mento.usdmToken");
+        bytes32 mentoUsdcToUsdmExchangeId = _chainConfigBytes32(selection, ".torontocoin.mento.usdcToUsdmExchangeId");
+        bytes32 mentoUsdmToCadmExchangeId = _chainConfigBytes32(selection, ".torontocoin.mento.usdmToCadmExchangeId");
 
         vm.startBroadcast(privateKey);
 
@@ -68,6 +72,23 @@ contract DeployLiquidityRoutingStack is DeployChainConfig {
             reserveInputRouter.setInputTokenEnabled(mentoRouteTokenIn, true);
         }
 
+        if (mentoUsdcToken != address(0)) {
+            require(mentoUsdmToken != address(0), "mento.usdmToken required");
+            require(mentoExchangeProvider != address(0), "mento.exchangeProvider required");
+            require(mentoUsdcToUsdmExchangeId != bytes32(0), "mento.usdcToUsdmExchangeId required");
+            require(mentoUsdmToCadmExchangeId != bytes32(0), "mento.usdmToCadmExchangeId required");
+
+            mentoAdapter.setDefaultMultiHopRoute(
+                mentoUsdcToken,
+                mentoUsdmToken,
+                mentoExchangeProvider,
+                mentoUsdcToUsdmExchangeId,
+                mentoExchangeProvider,
+                mentoUsdmToCadmExchangeId
+            );
+            reserveInputRouter.setInputTokenEnabled(mentoUsdcToken, true);
+        }
+
         reserveInputRouter.transferOwnership(governance);
         liquidityRouter.transferOwnership(governance);
         mentoAdapter.transferOwnership(governance);
@@ -91,6 +112,10 @@ contract DeployLiquidityRoutingStack is DeployChainConfig {
             mentoRouteTokenIn,
             mentoExchangeProvider,
             mentoExchangeId,
+            mentoUsdcToken,
+            mentoUsdmToken,
+            mentoUsdcToUsdmExchangeId,
+            mentoUsdmToCadmExchangeId,
             liquidityRouterAddress,
             reserveInputRouterAddress,
             mentoSwapAdapterAddress
@@ -118,6 +143,10 @@ contract DeployLiquidityRoutingStack is DeployChainConfig {
         address mentoRouteTokenIn,
         address mentoExchangeProvider,
         bytes32 mentoExchangeId,
+        address mentoUsdcToken,
+        address mentoUsdmToken,
+        bytes32 mentoUsdcToUsdmExchangeId,
+        bytes32 mentoUsdmToCadmExchangeId,
         address liquidityRouterAddress,
         address reserveInputRouterAddress,
         address mentoSwapAdapterAddress
@@ -148,7 +177,15 @@ contract DeployLiquidityRoutingStack is DeployChainConfig {
         payload = string.concat(payload, '  "optionalRouteTokenIn": "', vm.toString(mentoRouteTokenIn), '",\n');
         payload =
             string.concat(payload, '  "optionalRouteExchangeProvider": "', vm.toString(mentoExchangeProvider), '",\n');
-        payload = string.concat(payload, '  "optionalRouteExchangeId": "', vm.toString(mentoExchangeId), '"\n');
+        payload = string.concat(payload, '  "optionalRouteExchangeId": "', vm.toString(mentoExchangeId), '",\n');
+        payload = string.concat(payload, '  "optionalUsdcToken": "', vm.toString(mentoUsdcToken), '",\n');
+        payload = string.concat(payload, '  "optionalUsdmToken": "', vm.toString(mentoUsdmToken), '",\n');
+        payload = string.concat(
+            payload, '  "optionalUsdcToUsdmExchangeId": "', vm.toString(mentoUsdcToUsdmExchangeId), '",\n'
+        );
+        payload = string.concat(
+            payload, '  "optionalUsdmToCadmExchangeId": "', vm.toString(mentoUsdmToCadmExchangeId), '"\n'
+        );
         payload = string.concat(payload, "}\n");
 
         vm.writeFile(outputPath, payload);

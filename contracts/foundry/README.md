@@ -102,4 +102,7 @@ For Celo mainnet, the checked-in config currently records:
 - `USDC -> USDm exchangeId = 0xacc988382b66ee5456086643dcfd9a5ca43dd8f428f6ef22503d8b8013bcffd7`
 - `USDm -> CADm exchangeId = 0x517ccc3bcab9f35e2e24143a0c1809068efc649f740846cfb6a1c5703735c1ee`
 
-The current adapter deploy path still seeds a single Mento leg, so the active configured route remains `USDm -> CADm`. A future multihop adapter pass is needed for native `USDC -> USDm -> CADm`.
+The current adapter deploy path now seeds both:
+
+- direct `USDm -> CADm`
+- atomic `USDC -> USDm -> CADm`

@@ -97,12 +97,17 @@ contract MentoBrokerSwapAdapterTest is Test {
     bytes32 private constant _MCAD_ASSET_ID = keccak256("mCAD");
     bytes32 private constant _ROUTE_A = keccak256("route-a");
     bytes32 private constant _ROUTE_B = keccak256("route-b");
+    bytes32 private constant _ROUTE_C = keccak256("route-c");
+    bytes32 private constant _ROUTE_D = keccak256("route-d");
 
     address private constant _PROVIDER_A = address(0xAAA1);
     address private constant _PROVIDER_B = address(0xBBB2);
+    address private constant _PROVIDER_C = address(0xCCC3);
     address private constant _LIQUIDITY_ROUTER = address(0xA11CE);
 
     MockERC20 private _dai;
+    MockERC20 private _usdc;
+    MockERC20 private _usdm;
     MockERC20 private _cadm;
     MockMentoBroker private _broker;
     MentoBrokerSwapAdapter private _adapter;
@@ -111,6 +116,8 @@ contract MentoBrokerSwapAdapterTest is Test {
 
     function setUp() public {
         _dai = new MockERC20("Dai Stablecoin", "DAI", 18);
+        _usdc = new MockERC20("USD Coin", "USDC", 6);
+        _usdm = new MockERC20("Mento Dollar", "USDm", 18);
         _cadm = new MockERC20("Mento CAD", "mCAD", 18);
         _broker = new MockMentoBroker();
         _adapter = new MentoBrokerSwapAdapter(address(this), address(_broker));
@@ -122,9 +129,13 @@ contract MentoBrokerSwapAdapterTest is Test {
         );
 
         _reserveInputRouter.setInputTokenEnabled(address(_dai), true);
+        _reserveInputRouter.setInputTokenEnabled(address(_usdc), true);
         _adapter.setDefaultRoute(address(_dai), _PROVIDER_A, _ROUTE_A);
+        _adapter.setDefaultMultiHopRoute(address(_usdc), address(_usdm), _PROVIDER_C, _ROUTE_C, _PROVIDER_C, _ROUTE_D);
         _broker.setQuote(address(_dai), _PROVIDER_A, _ROUTE_A, 9_700);
         _broker.setQuote(address(_dai), _PROVIDER_B, _ROUTE_B, 9_500);
+        _broker.setQuote(address(_usdc), _PROVIDER_C, _ROUTE_C, 9_900);
+        _broker.setQuote(address(_usdm), _PROVIDER_C, _ROUTE_D, 9_800);
     }
 
     function test_PreviewUsesConfiguredDefaultRoute() public view {
@@ -145,6 +156,23 @@ contract MentoBrokerSwapAdapterTest is Test {
         assertEq(_dai.balanceOf(address(_broker)), amountIn);
     }
 
+    function test_PreviewUsesConfiguredMultiHopRouteForUsdc() public view {
+        uint256 quote = _adapter.previewSwapToCadm(address(_usdc), address(_cadm), 100e6, "");
+        assertEq(quote, 97_020_000);
+    }
+
+    function test_SwapToCadmSupportsConfiguredMultiHopRoute() public {
+        uint256 amountIn = 100e6;
+        _usdc.mint(address(this), amountIn);
+        IERC20(address(_usdc)).approve(address(_adapter), amountIn);
+
+        uint256 cadmOut = _adapter.swapToCadm(address(_usdc), address(_cadm), amountIn, 97_000_000, block.timestamp, "");
+
+        assertEq(cadmOut, 97_020_000);
+        assertEq(_cadm.balanceOf(address(this)), 97_020_000);
+        assertEq(_usdc.balanceOf(address(_broker)), amountIn);
+    }
+
     function test_ReserveInputRouterNormalizesUnsupportedInputThroughMentoBrokerAdapter() public {
         uint256 amountIn = 50e18;
 
@@ -161,5 +189,23 @@ contract MentoBrokerSwapAdapterTest is Test {
         assertEq(reserveAmountOut, 48_500_000000000000000);
         assertEq(_cadm.balanceOf(_LIQUIDITY_ROUTER), 48_500_000000000000000);
         assertEq(_dai.balanceOf(address(_broker)), amountIn);
+    }
+
+    function test_ReserveInputRouterNormalizesUsdcThroughUsdmIntoCadm() public {
+        uint256 amountIn = 100e6;
+
+        _usdc.mint(_LIQUIDITY_ROUTER, amountIn);
+        vm.prank(_LIQUIDITY_ROUTER);
+        IERC20(address(_usdc)).approve(address(_reserveInputRouter), amountIn);
+
+        vm.prank(_LIQUIDITY_ROUTER);
+        (bytes32 reserveAssetId, address reserveToken, uint256 reserveAmountOut) =
+            _reserveInputRouter.normalizeReserveInput(address(_usdc), amountIn, 97_000_000, _LIQUIDITY_ROUTER);
+
+        assertEq(reserveAssetId, _MCAD_ASSET_ID);
+        assertEq(reserveToken, address(_cadm));
+        assertEq(reserveAmountOut, 97_020_000);
+        assertEq(_cadm.balanceOf(_LIQUIDITY_ROUTER), 97_020_000);
+        assertEq(_usdc.balanceOf(address(_broker)), amountIn);
     }
 }
