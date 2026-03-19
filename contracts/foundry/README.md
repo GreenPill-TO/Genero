@@ -58,3 +58,24 @@ The deploy/admin scripts now validate `DEPLOY_TARGET_CHAIN` against the connecte
 
 - `celo` => chain ID `42220`, RPC alias `celo`, explorer key env `CELOSCAN_API_KEY`
 - `sepolia` => chain ID `11155111`, RPC alias `sepolia`, explorer key env `ETHERSCAN_API_KEY`
+
+## Mento Exchange Discovery
+
+To discover the real `MENTO_EXCHANGE_ID` for `MENTO_ROUTE_TOKEN_IN -> CADM_TOKEN_ADDRESS`, use:
+
+```bash
+forge script script/helpers/DiscoverMentoExchangeIds.s.sol:DiscoverMentoExchangeIds --rpc-url celo
+```
+
+Required env:
+
+- `DEPLOY_TARGET_CHAIN`
+- `MENTO_BROKER_ADDRESS`
+- `CADM_TOKEN_ADDRESS`
+- `MENTO_ROUTE_TOKEN_IN`
+
+Optional filter:
+
+- `MENTO_EXCHANGE_PROVIDER_ADDRESS`
+
+The script queries `Broker.getExchangeProviders()` and then `provider.getExchanges()` to print matching exchange IDs from live chain state.

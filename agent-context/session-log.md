@@ -1,3 +1,28 @@
+## v1.54
+### Timestamp
+- 2026-03-19 11:10:00 EDT
+
+### Objective
+- Add a safe way to discover live Mento `exchangeId` values for `tokenIn -> mCAD`, and remove truly unused Foundry env variables from the Solidity workspace.
+
+### What Changed
+- Added `contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol` as a read-only helper script. It uses the canonical Mento discovery flow from the Broker docs: query `getExchangeProviders()` on the Broker, then `getExchanges()` on each provider, and print the matching exchange IDs for `MENTO_ROUTE_TOKEN_IN` paired with `CADM_TOKEN_ADDRESS`.
+- Trimmed `contracts/foundry/.env.example` to remove unused Alchemy-specific placeholders (`MAINNET_RPC_URL_ALCHEMY`, `SEPOLIA_RPC_URL_ALCHEMY`, `ALCHEMY_API_KEY`) while keeping the active Celo/Sepolia deployment variables and the explorer API-key envs used operationally for verification.
+- Updated the Foundry README with the exact `forge script ... DiscoverMentoExchangeIds` invocation and the required env surface for resolving `MENTO_EXCHANGE_ID` from live chain state.
+- Updated the engineering technical spec so the current source of truth now records that Mento exchange IDs are discovered from Broker/provider state rather than assumed or hand-derived in the repo.
+
+### Verification
+- `forge fmt script/helpers/DiscoverMentoExchangeIds.s.sol`
+- `forge build`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/README.md`
+- `docs/engineering/technical-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.53
 ### Timestamp
 - 2026-03-19 10:55:00 EDT
