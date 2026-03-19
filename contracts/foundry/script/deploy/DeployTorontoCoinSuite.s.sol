@@ -5,6 +5,7 @@ import "forge-std/Script.sol";
 import "forge-std/console2.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {CharityRegistry} from "../../src/torontocoin/CharityRegistry.sol";
+import {DirectOnlySwapAdapter} from "../../src/torontocoin/DirectOnlySwapAdapter.sol";
 import {GeneroTokenV3} from "../../src/torontocoin/GeneroTokenV3.sol";
 import {Governance} from "../../src/torontocoin/Governance.sol";
 import {GovernanceExecutionHelper} from "../../src/torontocoin/GovernanceExecutionHelper.sol";
@@ -13,6 +14,7 @@ import {GovernanceRouterProposalHelper} from "../../src/torontocoin/GovernanceRo
 import {LiquidityRouter} from "../../src/torontocoin/LiquidityRouter.sol";
 import {ManagedPoolAdapter} from "../../src/torontocoin/ManagedPoolAdapter.sol";
 import {MentoBrokerSwapAdapter} from "../../src/torontocoin/MentoBrokerSwapAdapter.sol";
+import {MintableTestReserveToken} from "../../src/torontocoin/MintableTestReserveToken.sol";
 import {OracleRouter} from "../../src/torontocoin/OracleRouter.sol";
 import {PoolRegistry} from "../../src/torontocoin/PoolRegistry.sol";
 import {ReserveInputRouter} from "../../src/torontocoin/ReserveInputRouter.sol";
@@ -45,6 +47,7 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         address cplTcoin;
         address staticCadOracle;
         address managedPoolAdapter;
+        address reserveSwapAdapter;
         address mentoBrokerSwapAdapter;
         address reserveInputRouter;
         address liquidityRouter;
@@ -52,6 +55,8 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         address governanceExecutionHelper;
         address governanceProposalHelper;
         address governanceRouterProposalHelper;
+        address reserveAssetToken;
+        address scenarioInputToken;
     }
 
     error ConfigAmountExceedsGeneroTokenLimit(string key, uint256 amount, uint256 maxAmount);
@@ -67,11 +72,18 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         bool governanceOwnsTokens = _chainConfigBool(selection, ".roles.governanceOwnsTokens");
 
         bytes32 cadmAssetId = _chainConfigBytes32(selection, ".torontocoin.reserves.cadm.assetId");
-        address cadmToken = _chainConfigAddress(selection, ".torontocoin.reserves.cadm.token");
+        bool deployReserveToken = _chainConfigBoolOr(selection, ".torontocoin.reserves.cadm.deployToken", false);
+        address cadmToken = _chainConfigAddressOrDefault(selection, ".torontocoin.reserves.cadm.token", address(0));
         string memory cadmCode = _chainConfigString(selection, ".torontocoin.reserves.cadm.code");
         uint8 cadmTokenDecimals = uint8(_chainConfigUint(selection, ".torontocoin.reserves.cadm.tokenDecimals"));
         uint256 cadmStaleAfter = _chainConfigUint(selection, ".torontocoin.reserves.cadm.staleAfter");
         int256 staticCadPrice = int256(_chainConfigUint(selection, ".torontocoin.reserves.cadm.staticCadPrice18"));
+        string memory deployedReserveName =
+            _chainConfigStringOr(selection, ".torontocoin.reserves.cadm.deployedTokenName", "Toronto Test Reserve CAD");
+        string memory deployedReserveSymbol =
+            _chainConfigStringOr(selection, ".torontocoin.reserves.cadm.deployedTokenSymbol", "tCAD");
+        uint256 deployedReserveMintAmount =
+            _chainConfigUintOr(selection, ".torontocoin.reserves.cadm.deployedTokenMintAmount", 0);
 
         string memory mrName = _chainConfigString(selection, ".torontocoin.tokens.mrTcoin.name");
         string memory mrSymbol = _chainConfigString(selection, ".torontocoin.tokens.mrTcoin.symbol");
@@ -128,6 +140,9 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         uint256 bootstrapPoolQuoteBps = _chainConfigUint(selection, ".torontocoin.bootstrap.poolQuoteBps");
         bool bootstrapPoolExecutionEnabled = _chainConfigBool(selection, ".torontocoin.bootstrap.poolExecutionEnabled");
         uint256 bootstrapPoolSeed = _chainConfigUint(selection, ".torontocoin.bootstrap.initialPoolSeed");
+        address scenarioBuyer = _chainConfigAddressOrDefault(selection, ".torontocoin.scenarioB.buyer", deployer);
+        address configuredScenarioInputToken =
+            _chainConfigAddressOrDefault(selection, ".torontocoin.scenarioB.inputToken", address(0));
 
         if (bootstrapPoolSeed > MAX_GENERO_VISIBLE_AMOUNT) {
             revert ConfigAmountExceedsGeneroTokenLimit(
@@ -135,14 +150,22 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
             );
         }
 
-        address mentoBroker = _chainConfigAddress(selection, ".torontocoin.mento.broker");
-        address mentoExchangeProvider = _chainConfigAddress(selection, ".torontocoin.mento.exchangeProvider");
-        address mentoRouteTokenIn = _chainConfigAddress(selection, ".torontocoin.mento.routeTokenIn");
-        bytes32 mentoExchangeId = _chainConfigBytes32(selection, ".torontocoin.mento.exchangeId");
-        address mentoUsdcToken = _chainConfigAddress(selection, ".torontocoin.mento.usdcToken");
-        address mentoUsdmToken = _chainConfigAddress(selection, ".torontocoin.mento.usdmToken");
-        bytes32 mentoUsdcToUsdmExchangeId = _chainConfigBytes32(selection, ".torontocoin.mento.usdcToUsdmExchangeId");
-        bytes32 mentoUsdmToCadmExchangeId = _chainConfigBytes32(selection, ".torontocoin.mento.usdmToCadmExchangeId");
+        bool mentoEnabled = _chainConfigBoolOr(selection, ".torontocoin.mento.enabled", true);
+        address mentoBroker = mentoEnabled ? _chainConfigAddress(selection, ".torontocoin.mento.broker") : address(0);
+        address mentoExchangeProvider =
+            mentoEnabled ? _chainConfigAddress(selection, ".torontocoin.mento.exchangeProvider") : address(0);
+        address mentoRouteTokenIn =
+            mentoEnabled ? _chainConfigAddress(selection, ".torontocoin.mento.routeTokenIn") : address(0);
+        bytes32 mentoExchangeId =
+            mentoEnabled ? _chainConfigBytes32(selection, ".torontocoin.mento.exchangeId") : bytes32(0);
+        address mentoUsdcToken =
+            mentoEnabled ? _chainConfigAddress(selection, ".torontocoin.mento.usdcToken") : address(0);
+        address mentoUsdmToken =
+            mentoEnabled ? _chainConfigAddress(selection, ".torontocoin.mento.usdmToken") : address(0);
+        bytes32 mentoUsdcToUsdmExchangeId =
+            mentoEnabled ? _chainConfigBytes32(selection, ".torontocoin.mento.usdcToUsdmExchangeId") : bytes32(0);
+        bytes32 mentoUsdmToCadmExchangeId =
+            mentoEnabled ? _chainConfigBytes32(selection, ".torontocoin.mento.usdmToCadmExchangeId") : bytes32(0);
 
         vm.startBroadcast(privateKey);
 
@@ -176,6 +199,15 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         UserAcceptancePreferencesRegistry acceptancePreferences = new UserAcceptancePreferencesRegistry(tokenAdmin);
         OracleRouter oracleRouter = new OracleRouter(deployer, deployer, address(reserveRegistry));
         StaticCadOracle staticCadOracle = new StaticCadOracle(18, staticCadPrice);
+
+        if (deployReserveToken) {
+            MintableTestReserveToken reserveToken =
+                new MintableTestReserveToken(deployedReserveName, deployedReserveSymbol, cadmTokenDecimals, deployer);
+            if (deployedReserveMintAmount > 0) {
+                reserveToken.mint(scenarioBuyer, deployedReserveMintAmount);
+            }
+            cadmToken = address(reserveToken);
+        }
 
         address sinkAddress = address(treasury);
         GeneroTokenV3 mrTcoin = new GeneroTokenV3(
@@ -234,9 +266,14 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
 
         ManagedPoolAdapter managedPoolAdapter =
             new ManagedPoolAdapter(deployer, deployer, address(poolRegistry), address(mrTcoin), address(cplTcoin));
-        MentoBrokerSwapAdapter mentoAdapter = new MentoBrokerSwapAdapter(deployer, mentoBroker);
+        address reserveSwapAdapter = address(new DirectOnlySwapAdapter());
+        MentoBrokerSwapAdapter mentoAdapter;
+        if (mentoEnabled) {
+            mentoAdapter = new MentoBrokerSwapAdapter(deployer, mentoBroker);
+            reserveSwapAdapter = address(mentoAdapter);
+        }
         ReserveInputRouter reserveInputRouter =
-            new ReserveInputRouter(deployer, deployer, address(treasuryController), address(mentoAdapter), cadmToken);
+            new ReserveInputRouter(deployer, deployer, address(treasuryController), reserveSwapAdapter, cadmToken);
         LiquidityRouter liquidityRouter = new LiquidityRouter(
             deployer,
             deployer,
@@ -270,17 +307,19 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         managedPoolAdapter.setPoolQuoteBps(bootstrapPoolId, bootstrapPoolQuoteBps);
         managedPoolAdapter.setPoolExecutionEnabled(bootstrapPoolId, bootstrapPoolExecutionEnabled);
 
-        mentoAdapter.setDefaultRoute(mentoRouteTokenIn, mentoExchangeProvider, mentoExchangeId);
-        mentoAdapter.setDefaultMultiHopRoute(
-            mentoUsdcToken,
-            mentoUsdmToken,
-            mentoExchangeProvider,
-            mentoUsdcToUsdmExchangeId,
-            mentoExchangeProvider,
-            mentoUsdmToCadmExchangeId
-        );
-        reserveInputRouter.setInputTokenEnabled(mentoRouteTokenIn, true);
-        reserveInputRouter.setInputTokenEnabled(mentoUsdcToken, true);
+        if (mentoEnabled) {
+            mentoAdapter.setDefaultRoute(mentoRouteTokenIn, mentoExchangeProvider, mentoExchangeId);
+            mentoAdapter.setDefaultMultiHopRoute(
+                mentoUsdcToken,
+                mentoUsdmToken,
+                mentoExchangeProvider,
+                mentoUsdcToUsdmExchangeId,
+                mentoExchangeProvider,
+                mentoUsdmToCadmExchangeId
+            );
+            reserveInputRouter.setInputTokenEnabled(mentoRouteTokenIn, true);
+            reserveInputRouter.setInputTokenEnabled(mentoUsdcToken, true);
+        }
 
         liquidityRouter.setCharityTopupBps(charityTopupBps);
         liquidityRouter.setScoringWeights(
@@ -325,9 +364,16 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         oracleRouter.transferOwnership(address(governance));
         treasuryController.transferOwnership(address(governance));
         managedPoolAdapter.transferOwnership(address(governance));
-        mentoAdapter.transferOwnership(address(governance));
+        if (mentoEnabled) {
+            mentoAdapter.transferOwnership(address(governance));
+        }
         reserveInputRouter.transferOwnership(address(governance));
         liquidityRouter.transferOwnership(address(governance));
+
+        address scenarioInputToken = configuredScenarioInputToken;
+        if (scenarioInputToken == address(0)) {
+            scenarioInputToken = deployReserveToken ? cadmToken : (mentoEnabled ? mentoUsdcToken : cadmToken);
+        }
 
         if (governanceOwnsTokens) {
             mrTcoin.transferOwnership(address(governance));
@@ -360,13 +406,16 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
             cplTcoin: address(cplTcoin),
             staticCadOracle: address(staticCadOracle),
             managedPoolAdapter: address(managedPoolAdapter),
-            mentoBrokerSwapAdapter: address(mentoAdapter),
+            reserveSwapAdapter: reserveSwapAdapter,
+            mentoBrokerSwapAdapter: mentoEnabled ? address(mentoAdapter) : address(0),
             reserveInputRouter: address(reserveInputRouter),
             liquidityRouter: address(liquidityRouter),
             governance: address(governance),
             governanceExecutionHelper: address(governanceExecutionHelper),
             governanceProposalHelper: address(governanceProposalHelper),
-            governanceRouterProposalHelper: address(governanceRouterProposalHelper)
+            governanceRouterProposalHelper: address(governanceRouterProposalHelper),
+            reserveAssetToken: cadmToken,
+            scenarioInputToken: scenarioInputToken
         });
 
         _writeSuiteArtifact(selection, artifacts, vaultOwner, tokenAdmin, operationalIndexer, governanceOwnsTokens);
@@ -415,14 +464,16 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         vm.serializeAddress(root, "cplTcoin", artifacts.cplTcoin);
         vm.serializeAddress(root, "staticCadOracle", artifacts.staticCadOracle);
         vm.serializeAddress(root, "managedPoolAdapter", artifacts.managedPoolAdapter);
+        vm.serializeAddress(root, "reserveSwapAdapter", artifacts.reserveSwapAdapter);
         vm.serializeAddress(root, "mentoBrokerSwapAdapter", artifacts.mentoBrokerSwapAdapter);
         vm.serializeAddress(root, "reserveInputRouter", artifacts.reserveInputRouter);
         vm.serializeAddress(root, "liquidityRouter", artifacts.liquidityRouter);
         vm.serializeAddress(root, "governance", artifacts.governance);
         vm.serializeAddress(root, "governanceExecutionHelper", artifacts.governanceExecutionHelper);
         vm.serializeAddress(root, "governanceProposalHelper", artifacts.governanceProposalHelper);
-        string memory json =
-            vm.serializeAddress(root, "governanceRouterProposalHelper", artifacts.governanceRouterProposalHelper);
+        vm.serializeAddress(root, "governanceRouterProposalHelper", artifacts.governanceRouterProposalHelper);
+        vm.serializeAddress(root, "reserveAssetToken", artifacts.reserveAssetToken);
+        string memory json = vm.serializeAddress(root, "scenarioInputToken", artifacts.scenarioInputToken);
 
         vm.writeJson(json, string.concat(deploymentDir, "/suite.json"));
     }
@@ -447,7 +498,8 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         vm.serializeBytes32(root, "bootstrapPoolId", bootstrapPoolId);
         vm.serializeBytes32(root, "bootstrapMerchantId", bootstrapMerchantId);
         vm.serializeAddress(root, "bootstrapCharityWallet", charityWallet);
-        string memory json = vm.serializeAddress(root, "bootstrapSteward", stewardAccount);
+        vm.serializeAddress(root, "bootstrapSteward", stewardAccount);
+        string memory json = vm.serializeAddress(root, "scenarioInputToken", artifacts.scenarioInputToken);
         vm.writeJson(json, string.concat(deploymentDir, "/wiring.json"));
     }
 }

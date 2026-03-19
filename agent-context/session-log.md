@@ -1,3 +1,63 @@
+## v1.58
+### Timestamp
+- 2026-03-19 18:35:00 EDT
+
+### Objective
+- Reintroduce explicit `ethereum-sepolia` and `celo-sepolia` TorontoCoin deployment profiles, then deploy and smoke test them to prove the limited non-Mento and limited non-Transak paths work as designed.
+
+### What Changed
+- Extended `contracts/foundry/deploy-config.json` with two additional TorontoCoin profiles:
+  - `ethereum-sepolia` now runs a limited non-Mento routing posture using a deploy-time `sCAD` reserve asset and a direct-only swap adapter.
+  - `celo-sepolia` now runs a limited Mento-path posture using live testnet `USDC`, `USDm`, `CADm`, broker, provider, and exchange-ID metadata, while defaulting Scenario B to preview-only until a funded test wallet is available.
+- Added `contracts/foundry/src/torontocoin/DirectOnlySwapAdapter.sol` as the explicit `ISwapAdapter` implementation for non-Mento profiles. It keeps the same helper boundary as production while reverting any attempted swap path.
+- Added `contracts/foundry/src/torontocoin/MintableTestReserveToken.sol` so limited non-production profiles can deploy a treasury-accepted reserve asset and mint scenario funding without external token dependencies.
+- Updated `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol` so the suite deploy path is profile-aware. It now conditionally deploys the direct-only swap adapter or the Mento adapter, can optionally deploy and mint a reserve token from config, records `reserveSwapAdapter`, `reserveAssetToken`, and `scenarioInputToken` in the generated manifests, and only seeds Mento routes when the selected profile enables them.
+- Updated `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol` and `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol` so validation and Scenario B follow the selected profile semantics instead of assuming Celo mainnet Mento. Scenario B now respects profile-configured input tokens and can be configured preview-only where live input funding is not guaranteed.
+- Extended `contracts/foundry/script/helpers/DeployChainConfig.sol` with optional integer and boolean readers, and updated `DiscoverMentoExchangeIds.s.sol` to print both the configured route-token path and the `USDC -> USDm` hop for Mento-enabled profiles.
+- Added `contracts/foundry/test/unit/torontocoin/DirectOnlySwapAdapter.t.sol` and ran the full Foundry test suite after the profile work landed.
+- Deployed the full TorontoCoin suite successfully to Ethereum Sepolia and ran a live Scenario B smoke test there. The generated artifact shows a successful direct-reserve buy into `cplTCOIN`:
+  - buyer `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+  - input token `0xA09a2667A878F30107f03399231205e3171eFB68` (`sCAD`)
+  - selected pool `0x7365706f6c69612d67656e657369732d706f6f6c000000000000000000000000`
+  - `executedCplTcoinOut = 1000000000000000000`
+  - `executedCharityTopupOut = 30000000000000000`
+  - `cplBalanceAfter = 1029999999999999999`
+- Attempted the same full-suite deploy on Celo Sepolia, but the deployer had `0` CELO on chain and the broadcast failed with `insufficient funds for gas * price + value`. A follow-up `cast code` check on the reported `LiquidityRouter` address returned `0x`, confirming the Celo Sepolia deployment did not land. The checked-in Mento testnet route IDs were still verified read-only through `DiscoverMentoExchangeIds.s.sol`.
+- Updated Foundry workspace docs, TorontoCoin contract notes, and engineering specs so the source of truth now documents the three-profile deploy model and the limits of the two non-production smoke profiles.
+
+### Verification
+- `forge fmt src/torontocoin/DirectOnlySwapAdapter.sol src/torontocoin/MintableTestReserveToken.sol script/helpers/DeployChainConfig.sol script/helpers/DiscoverMentoExchangeIds.s.sol script/deploy/DeployTorontoCoinSuite.s.sol script/deploy/ValidateTorontoCoinDeployment.s.sol script/deploy/RunTorontoCoinScenarioB.s.sol test/unit/torontocoin/DirectOnlySwapAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/DirectOnlySwapAdapter.t.sol`
+- `forge test`
+- `DEPLOY_TARGET_CHAIN=celo-sepolia forge script script/helpers/DiscoverMentoExchangeIds.s.sol:DiscoverMentoExchangeIds --rpc-url https://forno.celo-sepolia.celo-testnet.org/`
+- `DEPLOY_TARGET_CHAIN=ethereum-sepolia forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url https://ethereum-sepolia-rpc.publicnode.com --broadcast`
+- `DEPLOY_TARGET_CHAIN=ethereum-sepolia forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url https://ethereum-sepolia-rpc.publicnode.com`
+- `DEPLOY_TARGET_CHAIN=ethereum-sepolia forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url https://ethereum-sepolia-rpc.publicnode.com --broadcast`
+- `cast code 0x51663116fC9815BF9E12c820dF5cC260576d57D4 --rpc-url https://ethereum-sepolia-rpc.publicnode.com`
+- `DEPLOY_TARGET_CHAIN=celo-sepolia forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url https://forno.celo-sepolia.celo-testnet.org/ --broadcast`
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo-sepolia.celo-testnet.org/`
+- `cast code 0xFe3aE3c1f9EDDbF74472587893a7f8B84e20D748 --rpc-url https://forno.celo-sepolia.celo-testnet.org/`
+
+### Files Edited
+- `contracts/foundry/.env.example`
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/helpers/DeployChainConfig.sol`
+- `contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+- `contracts/foundry/src/torontocoin/DirectOnlySwapAdapter.sol`
+- `contracts/foundry/src/torontocoin/DirectOnlySwapAdapter.md`
+- `contracts/foundry/src/torontocoin/MintableTestReserveToken.sol`
+- `contracts/foundry/src/torontocoin/MintableTestReserveToken.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/test/unit/torontocoin/DirectOnlySwapAdapter.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.57
 ### Timestamp
 - 2026-03-19 18:05:00 EDT

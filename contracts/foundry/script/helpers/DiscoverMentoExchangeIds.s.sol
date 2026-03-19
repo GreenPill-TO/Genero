@@ -28,6 +28,8 @@ contract DiscoverMentoExchangeIds is DeployChainConfig {
         address cadmToken = _chainConfigAddress(selection, ".torontocoin.mento.cadmToken");
         address tokenIn = _chainConfigAddress(selection, ".torontocoin.mento.routeTokenIn");
         address providerFilter = _chainConfigAddress(selection, ".torontocoin.mento.exchangeProvider");
+        address usdcToken = _chainConfigAddressOrDefault(selection, ".torontocoin.mento.usdcToken", address(0));
+        address usdmToken = _chainConfigAddressOrDefault(selection, ".torontocoin.mento.usdmToken", address(0));
 
         if (broker == address(0)) revert InvalidConfigAddress("torontocoin.mento.broker");
         if (cadmToken == address(0)) revert InvalidConfigAddress("torontocoin.mento.cadmToken");
@@ -62,16 +64,22 @@ contract DiscoverMentoExchangeIds is DeployChainConfig {
                     continue;
                 }
 
-                bool matchesTokenPair =
-                    _containsAsset(exchange.assets, tokenIn) && _containsAsset(exchange.assets, cadmToken);
-                if (!matchesTokenPair) {
-                    continue;
+                if (_containsAsset(exchange.assets, tokenIn) && _containsAsset(exchange.assets, cadmToken)) {
+                    console2.log("Matching routeTokenIn/CADm exchangeId");
+                    console2.logBytes32(exchange.exchangeId);
+                    console2.log("asset[0]", exchange.assets[0]);
+                    console2.log("asset[1]", exchange.assets[1]);
                 }
 
-                console2.log("Matching exchangeId");
-                console2.logBytes32(exchange.exchangeId);
-                console2.log("asset[0]", exchange.assets[0]);
-                console2.log("asset[1]", exchange.assets[1]);
+                if (
+                    usdcToken != address(0) && usdmToken != address(0) && _containsAsset(exchange.assets, usdcToken)
+                        && _containsAsset(exchange.assets, usdmToken)
+                ) {
+                    console2.log("Matching USDC/USDm exchangeId");
+                    console2.logBytes32(exchange.exchangeId);
+                    console2.log("asset[0]", exchange.assets[0]);
+                    console2.log("asset[1]", exchange.assets[1]);
+                }
             }
         }
     }

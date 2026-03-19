@@ -54,9 +54,13 @@ forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImpl
 forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --rpc-url celo-mainnet --broadcast
 ```
 
-## TorontoCoin Mainnet Suite
+## TorontoCoin Suite Profiles
 
-The default TorontoCoin deployment target is now `celo-mainnet`.
+The default TorontoCoin deployment target remains `celo-mainnet`, but the workspace now also ships two explicit limited smoke-test profiles:
+
+- `ethereum-sepolia` for non-Mento retail routing smoke tests using a deployable test reserve token and the direct-only swap adapter.
+- `celo-sepolia` for limited Mento-path validation without assuming a Transak-style on-ramp. The checked-in profile defaults Scenario B to preview-only because funded test input is not guaranteed.
+- `celo-mainnet` for the real production posture, including the `USDC -> USDm -> CADm -> cplTCOIN` path.
 
 Static public input comes from [deploy-config.json](/Users/botmaster/src/greenpill-TO/Genero/contracts/foundry/deploy-config.json):
 
@@ -66,18 +70,22 @@ Static public input comes from [deploy-config.json](/Users/botmaster/src/greenpi
 - treasury/router policy defaults
 - bootstrap charity, steward, pool, and merchant metadata
 
-Generated runtime output is written under:
+Generated runtime output is written under the selected target path:
 
-- `contracts/foundry/deployments/torontocoin/celo-mainnet/suite.json`
-- `contracts/foundry/deployments/torontocoin/celo-mainnet/wiring.json`
-- `contracts/foundry/deployments/torontocoin/celo-mainnet/validation.json`
-- `contracts/foundry/deployments/torontocoin/celo-mainnet/scenario-b-run.json`
+- `contracts/foundry/deployments/torontocoin/<target>/suite.json`
+- `contracts/foundry/deployments/torontocoin/<target>/wiring.json`
+- `contracts/foundry/deployments/torontocoin/<target>/validation.json`
+- `contracts/foundry/deployments/torontocoin/<target>/scenario-b-run.json`
 
 Optional role overrides such as `vaultOwner`, `tokenAdmin`, `operationalIndexer`, and bootstrap wallet/account fields may be omitted from the config. When omitted, the deploy script uses the broadcasting deployer for that role.
 
 ### Main Suite Deployment
 
 ```bash
+DEPLOY_TARGET_CHAIN=ethereum-sepolia forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url ethereum-sepolia --broadcast
+
+DEPLOY_TARGET_CHAIN=celo-sepolia forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url celo-sepolia --broadcast
+
 forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url celo-mainnet --broadcast
 ```
 
@@ -104,6 +112,12 @@ This script deploys and wires:
 - `GovernanceRouterProposalHelper`
 - `Governance`
 
+Profile-specific behaviour:
+
+- `ethereum-sepolia` deploys `DirectOnlySwapAdapter` and a mintable `sCAD` reserve token so `LiquidityRouter` can be smoke-tested without Mento.
+- `celo-sepolia` deploys `MentoBrokerSwapAdapter`, seeds `USDm -> CADm` plus `USDC -> USDm -> CADm`, and expects an already funded on-chain input token rather than a fiat on-ramp.
+- `celo-mainnet` uses the real Celo/Mento production config and the split Scenario A / Scenario B validation model.
+
 The deploy order also bootstraps:
 
 - `CADm` as an active reserve asset
@@ -118,6 +132,10 @@ The deploy order also bootstraps:
 ### Post-Deploy Validation
 
 ```bash
+DEPLOY_TARGET_CHAIN=ethereum-sepolia forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url ethereum-sepolia
+
+DEPLOY_TARGET_CHAIN=celo-sepolia forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url celo-sepolia
+
 forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url celo-mainnet
 ```
 
@@ -143,6 +161,10 @@ Its purpose is to verify that a user can complete the fiat on-ramp and receive s
 ### Scenario B
 
 ```bash
+DEPLOY_TARGET_CHAIN=ethereum-sepolia forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url ethereum-sepolia --broadcast
+
+DEPLOY_TARGET_CHAIN=celo-sepolia forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url celo-sepolia --broadcast
+
 forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url celo-mainnet --broadcast
 ```
 
@@ -155,10 +177,17 @@ This script uses a funded wallet to:
 
 By default it uses `SCENARIO_B_PRIVATE_KEY` when present, otherwise it falls back to `PRIVATE_KEY`.
 
+For limited profiles:
+
+- `ethereum-sepolia` uses the deployer-funded test reserve token directly, so Scenario B executes end to end without Mento.
+- `celo-sepolia` defaults `executeBuy` to `false` in the checked-in config. Change that only after funding the scenario wallet with a supported test token and enough CELO gas.
+
 ## Chain Selection
 
-The deploy/admin scripts now validate `DEPLOY_TARGET_CHAIN` against the connected chain ID. The default comes from `deploy-config.json`, and the repo currently ships only one TorontoCoin production profile:
+The deploy/admin scripts validate `DEPLOY_TARGET_CHAIN` against the connected chain ID. The checked-in profiles are:
 
+- `ethereum-sepolia` => chain ID `11155111`, RPC alias `ethereum-sepolia`, explorer key env `ETHERSCAN_API_KEY`
+- `celo-sepolia` => chain ID `11142220`, RPC alias `celo-sepolia`, explorer key env `CELOSCAN_API_KEY`
 - `celo-mainnet` => chain ID `42220`, RPC alias `celo-mainnet`, explorer key env `CELOSCAN_API_KEY`
 
 ## Public Deploy Config
@@ -172,16 +201,21 @@ The checked-in [deploy-config.json](/Users/botmaster/src/greenpill-TO/Genero/con
 
 Only secrets stay in `.env.example`:
 
+- `SEPOLIA_RPC_URL`
+- `CELO_SEPOLIA_RPC_URL`
 - `CELO_MAINNET_RPC_URL`
 - `PRIVATE_KEY`
 - `SCENARIO_B_PRIVATE_KEY`
+- `ETHERSCAN_API_KEY`
 - `CELOSCAN_API_KEY`
 
 ## Mento Exchange Discovery
 
-To discover the configured route exchange ID for the active chain in `deploy-config.json`, use:
+To discover the configured route exchange ID for a Mento-enabled chain profile, use:
 
 ```bash
+DEPLOY_TARGET_CHAIN=celo-sepolia forge script script/helpers/DiscoverMentoExchangeIds.s.sol:DiscoverMentoExchangeIds --rpc-url celo-sepolia
+
 forge script script/helpers/DiscoverMentoExchangeIds.s.sol:DiscoverMentoExchangeIds --rpc-url celo-mainnet
 ```
 

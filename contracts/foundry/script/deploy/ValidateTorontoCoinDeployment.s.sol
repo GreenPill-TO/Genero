@@ -45,6 +45,7 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         address reserveRegistry = suite.readAddress(".reserveRegistry");
         address oracleRouter = suite.readAddress(".oracleRouter");
         address managedPoolAdapter = suite.readAddress(".managedPoolAdapter");
+        address reserveSwapAdapter = suite.readAddress(".reserveSwapAdapter");
         address mentoAdapter = suite.readAddress(".mentoBrokerSwapAdapter");
         address reserveInputRouter = suite.readAddress(".reserveInputRouter");
         address liquidityRouter = suite.readAddress(".liquidityRouter");
@@ -54,6 +55,9 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         address stewardRegistry = suite.readAddress(".stewardRegistry");
         address userCharityPreferencesRegistry = suite.readAddress(".userCharityPreferencesRegistry");
         address userAcceptancePreferencesRegistry = suite.readAddress(".userAcceptancePreferencesRegistry");
+        address reserveAssetToken = suite.readAddress(".reserveAssetToken");
+        address scenarioInputToken = suite.readAddress(".scenarioInputToken");
+        bool mentoEnabled = _chainConfigBoolOr(selection, ".torontocoin.mento.enabled", true);
 
         bytes32 reserveAssetId = wiring.readBytes32(".reserveAssetId");
         bytes32 bootstrapPoolId = wiring.readBytes32(".bootstrapPoolId");
@@ -64,10 +68,11 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
                 || governanceProposalHelper == address(0) || governanceRouterProposalHelper == address(0)
                 || treasuryController == address(0) || treasury == address(0) || poolRegistry == address(0)
                 || charityRegistry == address(0) || reserveRegistry == address(0) || oracleRouter == address(0)
-                || managedPoolAdapter == address(0) || mentoAdapter == address(0) || reserveInputRouter == address(0)
-                || liquidityRouter == address(0) || mrTcoin == address(0) || cplTcoin == address(0)
-                || staticCadOracle == address(0) || stewardRegistry == address(0)
+                || managedPoolAdapter == address(0) || reserveSwapAdapter == address(0)
+                || reserveInputRouter == address(0) || liquidityRouter == address(0) || mrTcoin == address(0)
+                || cplTcoin == address(0) || staticCadOracle == address(0) || stewardRegistry == address(0)
                 || userCharityPreferencesRegistry == address(0) || userAcceptancePreferencesRegistry == address(0)
+                || reserveAssetToken == address(0) || scenarioInputToken == address(0)
         ) {
             revert ValidationFailed("zero address in suite artifact");
         }
@@ -134,20 +139,26 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
             revert ValidationFailed("bootstrap merchant not linked to pool");
         }
 
-        (
-            address usdcRouteProvider,
-            bytes32 usdcFirstExchangeId,
-            address usdmToken,
-            address secondProvider,
-            bytes32 secondExchangeId,
-            bool configured
-        ) = MentoBrokerSwapAdapter(mentoAdapter)
-            .getDefaultRouteConfig(_chainConfigAddress(selection, ".torontocoin.mento.usdcToken"));
-        if (
-            !configured || usdcRouteProvider == address(0) || usdcFirstExchangeId == bytes32(0)
-                || usdmToken == address(0) || secondProvider == address(0) || secondExchangeId == bytes32(0)
-        ) {
-            revert ValidationFailed("mento usdc route not configured");
+        if (mentoEnabled) {
+            if (mentoAdapter == address(0)) {
+                revert ValidationFailed("mento adapter missing");
+            }
+
+            (
+                address usdcRouteProvider,
+                bytes32 usdcFirstExchangeId,
+                address usdmToken,
+                address secondProvider,
+                bytes32 secondExchangeId,
+                bool configured
+            ) = MentoBrokerSwapAdapter(mentoAdapter)
+                .getDefaultRouteConfig(_chainConfigAddress(selection, ".torontocoin.mento.usdcToken"));
+            if (
+                !configured || usdcRouteProvider == address(0) || usdcFirstExchangeId == bytes32(0)
+                    || usdmToken == address(0) || secondProvider == address(0) || secondExchangeId == bytes32(0)
+            ) {
+                revert ValidationFailed("mento usdc route not configured");
+            }
         }
 
         if (StaticCadOracle(staticCadOracle).latestAnswer() <= 0) {
@@ -162,7 +173,8 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         vm.serializeBool(root, "tokenWriterRoles", true);
         vm.serializeBool(root, "reserveAssetActive", true);
         vm.serializeBool(root, "bootstrapPoolReady", true);
-        string memory json = vm.serializeBool(root, "mentoUsdcRouteConfigured", true);
+        vm.serializeBool(root, "mentoEnabled", mentoEnabled);
+        string memory json = vm.serializeBool(root, "mentoUsdcRouteConfigured", mentoEnabled);
         vm.writeJson(json, string.concat(deploymentDir, "/validation.json"));
     }
 }

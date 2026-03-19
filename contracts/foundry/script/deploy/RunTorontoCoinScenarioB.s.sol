@@ -22,11 +22,18 @@ contract RunTorontoCoinScenarioB is DeployChainConfig {
         string memory suite = vm.readFile(suitePath);
         address liquidityRouter = suite.readAddress(".liquidityRouter");
         address cplTcoin = suite.readAddress(".cplTcoin");
+        address inputTokenFromSuite = suite.readAddress(".scenarioInputToken");
 
-        address inputToken = _chainConfigAddress(selection, ".torontocoin.mento.usdcToken");
+        address inputToken = inputTokenFromSuite == address(0)
+            ? _chainConfigAddressOrDefault(selection, ".torontocoin.scenarioB.inputToken", address(0))
+            : inputTokenFromSuite;
+        if (inputToken == address(0)) {
+            inputToken = _chainConfigAddress(selection, ".torontocoin.mento.usdcToken");
+        }
         uint256 inputAmount = _chainConfigUint(selection, ".torontocoin.scenarioB.inputAmount");
         uint256 minReserveOut = _chainConfigUint(selection, ".torontocoin.scenarioB.minReserveOut");
         uint256 minCplTcoinOut = _chainConfigUint(selection, ".torontocoin.scenarioB.minCplTcoinOut");
+        bool executeBuy = _chainConfigBoolOr(selection, ".torontocoin.scenarioB.executeBuy", true);
 
         uint256 scenarioKey = _scenarioPrivateKey();
         address buyer = vm.addr(scenarioKey);
@@ -43,27 +50,38 @@ contract RunTorontoCoinScenarioB is DeployChainConfig {
         ) = LiquidityRouter(liquidityRouter).previewBuyCplTcoin(buyer, inputToken, inputAmount);
 
         uint256 cplBalanceBefore = GeneroTokenV3(cplTcoin).balanceOf(buyer);
+        bytes32 executedPoolId;
+        bytes32 executedReserveAssetId;
+        uint256 reserveAmountUsed;
+        uint256 mrTcoinUsed;
+        uint256 cplOut;
+        uint256 charityTopupOut;
+        uint256 resolvedCharityId;
+        uint256 cplBalanceAfter = cplBalanceBefore;
 
-        vm.startBroadcast(scenarioKey);
-        IERC20(inputToken).approve(liquidityRouter, inputAmount);
-        (
-            bytes32 executedPoolId,
-            bytes32 executedReserveAssetId,
-            uint256 reserveAmountUsed,
-            uint256 mrTcoinUsed,
-            uint256 cplOut,
-            uint256 charityTopupOut,
-            uint256 resolvedCharityId
-        ) = LiquidityRouter(liquidityRouter).buyCplTcoin(inputToken, inputAmount, minReserveOut, minCplTcoinOut);
-        vm.stopBroadcast();
+        if (executeBuy) {
+            vm.startBroadcast(scenarioKey);
+            IERC20(inputToken).approve(liquidityRouter, inputAmount);
+            (
+                executedPoolId,
+                executedReserveAssetId,
+                reserveAmountUsed,
+                mrTcoinUsed,
+                cplOut,
+                charityTopupOut,
+                resolvedCharityId
+            ) = LiquidityRouter(liquidityRouter).buyCplTcoin(inputToken, inputAmount, minReserveOut, minCplTcoinOut);
+            vm.stopBroadcast();
 
-        uint256 cplBalanceAfter = GeneroTokenV3(cplTcoin).balanceOf(buyer);
+            cplBalanceAfter = GeneroTokenV3(cplTcoin).balanceOf(buyer);
+        }
 
         string memory root = "scenarioB";
         vm.serializeString(root, "target", selection.target);
         vm.serializeAddress(root, "buyer", buyer);
         vm.serializeAddress(root, "inputToken", inputToken);
         vm.serializeUint(root, "inputAmount", inputAmount);
+        vm.serializeBool(root, "executeBuy", executeBuy);
         vm.serializeBytes32(root, "previewSelectedPoolId", selectedPoolId);
         vm.serializeBytes32(root, "previewReserveAssetId", reserveAssetId);
         vm.serializeUint(root, "previewReserveAmountOut", reserveAmountOut);

@@ -58,6 +58,7 @@ This folder is the hardened TorontoCoin contract suite aligned to the Sarafu rea
 - Unsupported direct inputs can be normalized into `mCAD` through the helper when explicitly enabled.
 - `TreasuryController` stays narrow and only resolves accepted reserve assets plus liquidity-route settlement capacity.
 - `MentoBrokerSwapAdapter` is the concrete `ISwapAdapter` implementation for Mento broker routes, with admin-set default single-hop or multihop routes plus optional per-call route overrides for older mint-router flows.
+- `DirectOnlySwapAdapter` is the non-Mento `ISwapAdapter` implementation used by the limited `ethereum-sepolia` smoke profile. It preserves the same helper boundary while reverting any attempted swap.
 - The active Celo mainnet on-ramp posture now supports atomic `USDC -> USDm -> mCAD` normalization while still keeping that multihop logic outside `LiquidityRouter` itself.
 
 ### Deployable retail stack
@@ -66,6 +67,9 @@ The TorontoCoin suite is now deployable as one mainnet-oriented stack:
 - `ValidateTorontoCoinDeployment.s.sol` verifies ownership, wiring, reserve activation, bootstrap pool readiness, and the configured Mento route posture.
 - `RunTorontoCoinScenarioB.s.sol` exercises the protocol half of the retail journey from funded `USDC` to wallet-held `cplTCOIN`.
 - `RecordOnRampScenarioA.md` is the operator runbook for the off-chain fiat on-ramp half of that same journey.
+- Explicit limited profiles now exist for `ethereum-sepolia` and `celo-sepolia`:
+  - `ethereum-sepolia` uses `DirectOnlySwapAdapter` plus a deployable `MintableTestReserveToken` reserve asset for a non-Mento smoke path.
+  - `celo-sepolia` uses the Mento adapter with testnet `USDm`, `USDC`, and `CADm` route metadata, but defaults Scenario B to preview-only until the scenario wallet is funded.
 
 ### Governance deployability
 `Governance` now delegates proposal-construction and proposal-execution logic into helper contracts:
