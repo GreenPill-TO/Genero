@@ -30,7 +30,7 @@ contracts/foundry/
 - Keep script logic deterministic and idempotent.
 - Do not commit secrets; copy `.env.example` to `.env.local` or `.env` locally.
 - Keep public chain and protocol addresses in `deploy-config.json`, not in env files.
-- Treat `deployments/` as generated output from deployment scripts.
+- Treat `deployments/` as generated output from deployment scripts. Do not treat locally generated manifests as canonical chain state.
 
 ## Common Commands
 
@@ -47,41 +47,134 @@ forge snapshot
 # Public addresses come from deploy-config.json.
 # Pass DEPLOY_TARGET_CHAIN as a runtime override when you want something other than the config default.
 
-# Set DEPLOY_TARGET_CHAIN to either celo or sepolia before broadcasting.
-
 # Deploy registry on Celo mainnet (requires PRIVATE_KEY and a configured registry.initialOwner)
-DEPLOY_TARGET_CHAIN=celo forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --rpc-url celo --broadcast
-
-# Deploy registry on Sepolia
-DEPLOY_TARGET_CHAIN=sepolia forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --rpc-url sepolia --broadcast
+forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --rpc-url celo-mainnet --broadcast
 
 # Promote city version from the deployment file configured in deploy-config.json
-DEPLOY_TARGET_CHAIN=celo forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --rpc-url celo --broadcast
-
-# Deploy the TorontoCoin liquidity-routing stack from the configured public addresses
-DEPLOY_TARGET_CHAIN=celo forge script script/deploy/DeployLiquidityRoutingStack.s.sol:DeployLiquidityRoutingStack --rpc-url celo --broadcast
+forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --rpc-url celo-mainnet --broadcast
 ```
 
-The deploy/admin scripts now validate `DEPLOY_TARGET_CHAIN` against the connected chain ID:
+## TorontoCoin Mainnet Suite
 
-- `celo` => chain ID `42220`, RPC alias `celo`, explorer key env `CELOSCAN_API_KEY`
-- `sepolia` => chain ID `11155111`, RPC alias `sepolia`, explorer key env `ETHERSCAN_API_KEY`
+The default TorontoCoin deployment target is now `celo-mainnet`.
+
+Static public input comes from [deploy-config.json](/Users/botmaster/src/greenpill-TO/Genero/contracts/foundry/deploy-config.json):
+
+- chain metadata
+- public Celo/Mento addresses
+- token metadata
+- treasury/router policy defaults
+- bootstrap charity, steward, pool, and merchant metadata
+
+Generated runtime output is written under:
+
+- `contracts/foundry/deployments/torontocoin/celo-mainnet/suite.json`
+- `contracts/foundry/deployments/torontocoin/celo-mainnet/wiring.json`
+- `contracts/foundry/deployments/torontocoin/celo-mainnet/validation.json`
+- `contracts/foundry/deployments/torontocoin/celo-mainnet/scenario-b-run.json`
+
+Optional role overrides such as `vaultOwner`, `tokenAdmin`, `operationalIndexer`, and bootstrap wallet/account fields may be omitted from the config. When omitted, the deploy script uses the broadcasting deployer for that role.
+
+### Main Suite Deployment
+
+```bash
+forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url celo-mainnet --broadcast
+```
+
+This script deploys and wires:
+
+- `ReserveRegistry` proxy
+- `PoolRegistry`
+- `Treasury`
+- `CharityRegistry`
+- `StewardRegistry` proxy
+- `UserCharityPreferencesRegistry`
+- `UserAcceptancePreferencesRegistry`
+- `OracleRouter`
+- `StaticCadOracle`
+- `mrTCOIN`
+- `cplTCOIN`
+- `TreasuryController` proxy
+- `ManagedPoolAdapter`
+- `MentoBrokerSwapAdapter`
+- `ReserveInputRouter`
+- `LiquidityRouter`
+- `GovernanceExecutionHelper`
+- `GovernanceProposalHelper`
+- `GovernanceRouterProposalHelper`
+- `Governance`
+
+The deploy order also bootstraps:
+
+- `CADm` as an active reserve asset
+- one charity and default-steward linkage
+- one pool and one bootstrap merchant
+- managed pool account, quote bps, and execution enablement
+- default Mento routes for `USDm -> CADm` and `USDC -> USDm -> CADm`
+- `ReserveInputRouter` input-token enablement
+- `LiquidityRouter` pool scoring and charity-topup parameters
+- initial `cplTCOIN` pool inventory
+
+### Post-Deploy Validation
+
+```bash
+forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url celo-mainnet
+```
+
+The validator checks:
+
+- all core addresses are nonzero
+- treasury/controller/router/pool-adapter wiring
+- governance pointers and helper pointers
+- token writer roles
+- treasury authorized caller posture
+- reserve activation
+- bootstrap pool readiness
+- configured Mento `USDC -> USDm -> CADm` route presence
+
+### Scenario A
+
+Scenario A is an operational runbook, not a protocol deploy step:
+
+- [RecordOnRampScenarioA.md](/Users/botmaster/src/greenpill-TO/Genero/contracts/foundry/script/deploy/RecordOnRampScenarioA.md)
+
+Its purpose is to verify that a user can complete the fiat on-ramp and receive spendable Celo USDC in the same wallet that will later call `LiquidityRouter`.
+
+### Scenario B
+
+```bash
+forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url celo-mainnet --broadcast
+```
+
+This script uses a funded wallet to:
+
+- preview `USDC -> USDm -> CADm -> cplTCOIN`
+- approve `LiquidityRouter`
+- execute `buyCplTcoin(...)`
+- record the resulting pool choice and `cplTCOIN` balance delta
+
+By default it uses `SCENARIO_B_PRIVATE_KEY` when present, otherwise it falls back to `PRIVATE_KEY`.
+
+## Chain Selection
+
+The deploy/admin scripts now validate `DEPLOY_TARGET_CHAIN` against the connected chain ID. The default comes from `deploy-config.json`, and the repo currently ships only one TorontoCoin production profile:
+
+- `celo-mainnet` => chain ID `42220`, RPC alias `celo-mainnet`, explorer key env `CELOSCAN_API_KEY`
 
 ## Public Deploy Config
 
 The checked-in [deploy-config.json](/Users/botmaster/src/greenpill-TO/Genero/contracts/foundry/deploy-config.json) is the source of truth for:
 
 - chain IDs and RPC/explorer env names
-- public registry addresses
-- public TorontoCoin dependency addresses
-- public Mento addresses and recommended route metadata
+- TorontoCoin token, treasury, router, and governance defaults
+- public Celo/Mento addresses and route metadata
+- bootstrap seed metadata for charities, stewards, pools, and merchants
 
 Only secrets stay in `.env.example`:
 
-- `MAINNET_RPC_URL`
-- `SEPOLIA_RPC_URL`
+- `CELO_MAINNET_RPC_URL`
 - `PRIVATE_KEY`
-- `ETHERSCAN_API_KEY`
+- `SCENARIO_B_PRIVATE_KEY`
 - `CELOSCAN_API_KEY`
 
 ## Mento Exchange Discovery
@@ -89,7 +182,7 @@ Only secrets stay in `.env.example`:
 To discover the configured route exchange ID for the active chain in `deploy-config.json`, use:
 
 ```bash
-DEPLOY_TARGET_CHAIN=celo forge script script/helpers/DiscoverMentoExchangeIds.s.sol:DiscoverMentoExchangeIds --rpc-url celo
+forge script script/helpers/DiscoverMentoExchangeIds.s.sol:DiscoverMentoExchangeIds --rpc-url celo-mainnet
 ```
 
 The script queries `Broker.getExchangeProviders()` and then `provider.getExchanges()` to print matching exchange IDs from live chain state.

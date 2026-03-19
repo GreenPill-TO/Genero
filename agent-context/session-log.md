@@ -1,3 +1,60 @@
+## v1.57
+### Timestamp
+- 2026-03-19 18:05:00 EDT
+
+### Objective
+- Build a mainnet-first TorontoCoin deployment system that can deploy and wire the full current contract suite on Celo mainnet, generate runtime manifests, and validate the retail user journey as two separate scenarios: off-chain USDC on-ramp readiness and on-chain `USDC -> USDm -> CADm -> cplTCOIN` protocol conversion.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/ManagedPoolAdapter.sol` as the missing deployable production pool adapter. It now owns canonical pool settlement accounts, quote-bps execution settings, managed `cplTCOIN` inventory custody, and merchant-to-pool matching for `LiquidityRouter`, while leaving merchant and pool identity canonical in `PoolRegistry`.
+- Added a mainnet-oriented suite deploy script, `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`, that deploys the TorontoCoin stack in dependency order, deploys upgradeable `ReserveRegistry`, `StewardRegistry`, and `TreasuryController` behind `ERC1967Proxy`, wires treasury/router/registry pointers, seeds the bootstrap reserve asset, charity, steward, pool, merchant, and managed pool inventory, configures the default Mento `USDm -> CADm` and multihop `USDC -> USDm -> CADm` routes, and finalizes governance/ownership posture.
+- Added `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol` to validate runtime manifests after deploy. It now checks nonzero core addresses, governance helper wiring, token writer roles, treasury authorized-caller posture, reserve activation, bootstrap pool readiness, and presence of the configured Mento `USDC` route.
+- Added `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol` as the protocol-half validation script. It reads the generated suite manifest, previews and executes `LiquidityRouter.buyCplTcoin(...)` for a funded USDC wallet, and writes a `scenario-b-run.json` artifact with preview/execution outputs and resulting `cplTCOIN` balance deltas.
+- Added `contracts/foundry/script/deploy/RecordOnRampScenarioA.md` as the operator runbook for the off-chain half of the retail journey. It records the wallet, Celo USDC token address, observed post-Transak balance, and transaction references before handing that same wallet into Scenario B.
+- Refactored `contracts/foundry/deploy-config.json` into a static public Celo-mainnet TorontoCoin profile with chain metadata, Celo/Mento addresses, policy defaults, and bootstrap seed metadata only. Deployment outputs are no longer stored in config; runtime manifests are generated under `contracts/foundry/deployments/torontocoin/<target>/`.
+- Tightened `contracts/foundry/script/helpers/DeployChainConfig.sol` so optional role and bootstrap wallet fields can be omitted cleanly and fall back to the broadcasting deployer instead of relying on zero-address sentinels in the checked-in config.
+- Added the governance helper split required to keep the suite deployable under the EIP-170 runtime-size limit: `GovernanceExecutionHelper.sol`, `GovernanceProposalHelper.sol`, and `GovernanceRouterProposalHelper.sol`. `Governance.sol` now keeps the storage, voting, fallback dispatch, and deadline-gated execution entrypoint at the governance address while delegating proposal construction and execution logic into those helper contracts.
+- Added `contracts/foundry/src/torontocoin/StaticCadOracle.sol` as the static CAD price source used by the bootstrap `CADm` reserve asset, and updated `GovernanceDeadline.t.sol` plus the new `ManagedPoolAdapter.t.sol` coverage so the deployable stack and reduced governance surface remain tested.
+- Updated Foundry workspace docs, TorontoCoin contract notes, and engineering specs so the repo now documents the mainnet-first deployment posture, static-config versus generated-manifest split, Scenario A / Scenario B validation model, and the new `ManagedPoolAdapter` plus governance helper structure.
+- Marked `contracts/foundry/deployments/**` as generated output in `contracts/foundry/.gitignore` so local dry runs and Anvil broadcasts do not pollute the repo with non-canonical mainnet artifacts.
+
+### Verification
+- `forge fmt src/torontocoin/Governance.sol src/torontocoin/GovernanceExecutionHelper.sol src/torontocoin/GovernanceProposalHelper.sol src/torontocoin/GovernanceRouterProposalHelper.sol src/torontocoin/ManagedPoolAdapter.sol src/torontocoin/StaticCadOracle.sol script/helpers/DeployChainConfig.sol script/deploy/DeployTorontoCoinSuite.s.sol script/deploy/ValidateTorontoCoinDeployment.s.sol script/deploy/RunTorontoCoinScenarioB.s.sol test/unit/torontocoin/GovernanceDeadline.t.sol test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test --match-path test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `forge test`
+- `anvil --chain-id 42220`
+- `forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url http://127.0.0.1:8545 --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url http://127.0.0.1:8545`
+
+### Files Edited
+- `contracts/foundry/.env.example`
+- `contracts/foundry/.gitignore`
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/helpers/DeployChainConfig.sol`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+- `contracts/foundry/script/deploy/RecordOnRampScenarioA.md`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/Governance.md`
+- `contracts/foundry/src/torontocoin/GovernanceExecutionHelper.sol`
+- `contracts/foundry/src/torontocoin/GovernanceProposalHelper.sol`
+- `contracts/foundry/src/torontocoin/GovernanceRouterProposalHelper.sol`
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.sol`
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.md`
+- `contracts/foundry/src/torontocoin/StaticCadOracle.sol`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `contracts/foundry/test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.56
 ### Timestamp
 - 2026-03-19 14:45:00 EDT

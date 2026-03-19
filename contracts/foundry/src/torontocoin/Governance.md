@@ -17,6 +17,17 @@ It must not hold reserve assets, mint tokens directly, or implement charity, ste
 
 Its job is to make decisions, not to be the thing being governed.
 
+Implementation note:
+
+To stay deployable under the EIP-170 contract-size limit while preserving the explicit proposal surface at the governance address, the live system now splits runtime logic across:
+
+* `Governance` core storage, voting, fallback dispatch, and deadline-gated execution entrypoint
+* `GovernanceExecutionHelper` for delegatecalled proposal execution
+* `GovernanceProposalHelper` for most explicit proposer wrappers
+* `GovernanceRouterProposalHelper` for router-specific proposer wrappers
+
+Operators still interact with the `Governance` address itself. The helper contracts are deployment dependencies, not separate governance entrypoints.
+
 ---
 
 # 1. Role in the System

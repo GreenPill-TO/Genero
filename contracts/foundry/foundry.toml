@@ -19,5 +19,4 @@ fs_permissions = [
 ]
 
 [rpc_endpoints]
-celo = "${MAINNET_RPC_URL}"
-sepolia = "${SEPOLIA_RPC_URL}"
+celo-mainnet = "${CELO_MAINNET_RPC_URL}"

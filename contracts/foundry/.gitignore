@@ -3,4 +3,5 @@ out/
 broadcast/
 coverage/
 *.gas-snapshot
-
+deployments/**
+!deployments/.gitkeep

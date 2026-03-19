@@ -65,7 +65,41 @@ abstract contract DeployChainConfig is Script {
         view
         returns (bytes32)
     {
-        return abi.decode(_deployConfig().parseRaw(string.concat(_chainRoot(selection), suffix)), (bytes32));
+        return _deployConfig().readBytes32(string.concat(_chainRoot(selection), suffix));
+    }
+
+    function _chainConfigUint(ChainSelection memory selection, string memory suffix) internal view returns (uint256) {
+        return _deployConfig().readUint(string.concat(_chainRoot(selection), suffix));
+    }
+
+    function _chainConfigBool(ChainSelection memory selection, string memory suffix) internal view returns (bool) {
+        return _deployConfig().readBool(string.concat(_chainRoot(selection), suffix));
+    }
+
+    function _chainConfigAddressOrDefault(ChainSelection memory selection, string memory suffix, address defaultValue)
+        internal
+        view
+        returns (address)
+    {
+        string memory path = string.concat(_chainRoot(selection), suffix);
+        try vm.parseJsonAddress(_deployConfig(), path) returns (address configured) {
+            return configured == address(0) ? defaultValue : configured;
+        } catch {
+            return defaultValue;
+        }
+    }
+
+    function _chainConfigStringOr(ChainSelection memory selection, string memory suffix, string memory defaultValue)
+        internal
+        view
+        returns (string memory)
+    {
+        string memory path = string.concat(_chainRoot(selection), suffix);
+        try vm.parseJsonString(_deployConfig(), path) returns (string memory configured) {
+            return configured;
+        } catch {
+            return defaultValue;
+        }
     }
 
     function _chainRoot(ChainSelection memory selection) internal pure returns (string memory) {

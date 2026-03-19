@@ -3,6 +3,9 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {Governance} from "../../../src/torontocoin/Governance.sol";
+import {GovernanceExecutionHelper} from "../../../src/torontocoin/GovernanceExecutionHelper.sol";
+import {GovernanceProposalHelper} from "../../../src/torontocoin/GovernanceProposalHelper.sol";
+import {GovernanceRouterProposalHelper} from "../../../src/torontocoin/GovernanceRouterProposalHelper.sol";
 
 contract MockStewardRegistry {
     mapping(address => bool) public isStewardMap;
@@ -343,6 +346,9 @@ contract GovernanceDeadlineTest is Test {
     MockTreasuryController private treasury;
     MockLiquidityRouter private router;
     MockTcoin private tcoin;
+    GovernanceExecutionHelper private governanceExecutionHelper;
+    GovernanceProposalHelper private governanceProposalHelperImplementation;
+    GovernanceRouterProposalHelper private governanceRouterProposalHelperImplementation;
 
     address private steward = address(0x1001);
 
@@ -354,6 +360,9 @@ contract GovernanceDeadlineTest is Test {
         treasury = new MockTreasuryController();
         router = new MockLiquidityRouter();
         tcoin = new MockTcoin();
+        governanceExecutionHelper = new GovernanceExecutionHelper();
+        governanceProposalHelperImplementation = new GovernanceProposalHelper();
+        governanceRouterProposalHelperImplementation = new GovernanceRouterProposalHelper();
 
         governance = new Governance(
             address(this),
@@ -364,6 +373,9 @@ contract GovernanceDeadlineTest is Test {
             address(treasury),
             address(router),
             address(tcoin),
+            address(governanceExecutionHelper),
+            address(governanceProposalHelperImplementation),
+            address(governanceRouterProposalHelperImplementation),
             1 days
         );
 
@@ -390,7 +402,7 @@ contract GovernanceDeadlineTest is Test {
         _wireGovernanceAsOwnerAndGovernance();
 
         vm.prank(steward);
-        uint256 proposalId = governance.proposeUserRedeemRateUpdate(9000, 1 days);
+        uint256 proposalId = GovernanceProposalHelper(address(governance)).proposeUserRedeemRateUpdate(9000, 1 days);
 
         vm.prank(steward);
         governance.voteProposal(proposalId, true);
@@ -408,7 +420,8 @@ contract GovernanceDeadlineTest is Test {
         _wireGovernanceAsOwnerAndGovernance();
 
         vm.prank(steward);
-        uint256 proposalId = governance.proposeOvercollateralizationTargetUpdate(11e17, 1 days);
+        uint256 proposalId =
+            GovernanceProposalHelper(address(governance)).proposeOvercollateralizationTargetUpdate(11e17, 1 days);
 
         _approveAndExecute(proposalId);
 
@@ -419,7 +432,8 @@ contract GovernanceDeadlineTest is Test {
         _wireGovernanceAsOwnerAndGovernance();
 
         vm.prank(steward);
-        uint256 defaultProposalId = governance.proposeMintToDefaultCharity(50e18, 1 days);
+        uint256 defaultProposalId =
+            GovernanceProposalHelper(address(governance)).proposeMintToDefaultCharity(50e18, 1 days);
 
         _approveAndExecute(defaultProposalId);
 
@@ -428,7 +442,8 @@ contract GovernanceDeadlineTest is Test {
         assertTrue(treasury.lastCharityMintUsedDefault());
 
         vm.prank(steward);
-        uint256 specificProposalId = governance.proposeMintToCharity(7, 25e18, 1 days);
+        uint256 specificProposalId =
+            GovernanceProposalHelper(address(governance)).proposeMintToCharity(7, 25e18, 1 days);
 
         _approveAndExecute(specificProposalId);
 
@@ -443,8 +458,8 @@ contract GovernanceDeadlineTest is Test {
         wallets[1] = address(0xAA02);
 
         vm.prank(steward);
-        uint256 proposalId =
-            governance.proposeMerchantApprove(MERCHANT_ID, POOL_ID, "merchant-metadata", wallets, 1 days);
+        uint256 proposalId = GovernanceProposalHelper(address(governance))
+            .proposeMerchantApprove(MERCHANT_ID, POOL_ID, "merchant-metadata", wallets, 1 days);
 
         _approveAndExecute(proposalId);
 
@@ -462,7 +477,7 @@ contract GovernanceDeadlineTest is Test {
         _wireGovernanceAsOwnerAndGovernance();
 
         vm.prank(steward);
-        uint256 proposalId = governance.proposeExpirePeriodUpdate(30 days, 1 days);
+        uint256 proposalId = GovernanceProposalHelper(address(governance)).proposeExpirePeriodUpdate(30 days, 1 days);
 
         _approveAndExecute(proposalId);
 
@@ -473,39 +488,44 @@ contract GovernanceDeadlineTest is Test {
         _wireGovernanceAsOwnerAndGovernance();
 
         vm.prank(steward);
-        uint256 setRouterProposalId = governance.proposeTreasuryControllerSetLiquidityRouter(address(0xBEEF), 1 days);
+        uint256 setRouterProposalId = GovernanceProposalHelper(address(governance))
+            .proposeTreasuryControllerSetLiquidityRouter(address(0xBEEF), 1 days);
         _approveAndExecute(setRouterProposalId);
         assertEq(treasury.liquidityRouter(), address(0xBEEF));
 
         vm.prank(steward);
-        uint256 pauseAssetProposalId = governance.proposeTreasuryControllerPauseAsset(ASSET_ID, 1 days);
+        uint256 pauseAssetProposalId =
+            GovernanceProposalHelper(address(governance)).proposeTreasuryControllerPauseAsset(ASSET_ID, 1 days);
         _approveAndExecute(pauseAssetProposalId);
         assertTrue(treasury.assetPaused(ASSET_ID));
 
         vm.prank(steward);
-        uint256 adminMintToggleProposalId = governance.proposeSetAdminCanMintToCharity(false, 1 days);
+        uint256 adminMintToggleProposalId =
+            GovernanceProposalHelper(address(governance)).proposeSetAdminCanMintToCharity(false, 1 days);
         _approveAndExecute(adminMintToggleProposalId);
         assertFalse(treasury.adminCanMintToCharity());
 
         vm.prank(steward);
-        uint256 topupProposalId = governance.proposeLiquidityRouterSetCharityTopupBps(450, 1 days);
+        uint256 topupProposalId =
+            GovernanceRouterProposalHelper(address(governance)).proposeLiquidityRouterSetCharityTopupBps(450, 1 days);
         _approveAndExecute(topupProposalId);
         assertEq(router.charityTopupBps(), 450);
 
         vm.prank(steward);
-        uint256 acceptanceRegistryProposalId =
-            governance.proposeLiquidityRouterSetAcceptancePreferencesRegistry(address(0xA11CE), 1 days);
+        uint256 acceptanceRegistryProposalId = GovernanceRouterProposalHelper(address(governance))
+            .proposeLiquidityRouterSetAcceptancePreferencesRegistry(address(0xA11CE), 1 days);
         _approveAndExecute(acceptanceRegistryProposalId);
         assertEq(router.acceptancePreferencesRegistry(), address(0xA11CE));
 
         vm.prank(steward);
-        uint256 reserveInputRouterProposalId =
-            governance.proposeLiquidityRouterSetReserveInputRouter(address(0xDADA), 1 days);
+        uint256 reserveInputRouterProposalId = GovernanceRouterProposalHelper(address(governance))
+            .proposeLiquidityRouterSetReserveInputRouter(address(0xDADA), 1 days);
         _approveAndExecute(reserveInputRouterProposalId);
         assertEq(router.reserveInputRouter(), address(0xDADA));
 
         vm.prank(steward);
-        uint256 scoringProposalId = governance.proposeLiquidityRouterSetScoringWeights(11, 22, 33, 44, 1 days);
+        uint256 scoringProposalId = GovernanceRouterProposalHelper(address(governance))
+            .proposeLiquidityRouterSetScoringWeights(11, 22, 33, 44, 1 days);
         _approveAndExecute(scoringProposalId);
 
         assertEq(router.weightLowMrTcoinLiquidity(), 11);
@@ -518,7 +538,8 @@ contract GovernanceDeadlineTest is Test {
         treasury.transferOwnership(address(governance));
 
         vm.prank(steward);
-        uint256 proposalId = governance.proposeOvercollateralizationTargetUpdate(11e17, 1 days);
+        uint256 proposalId =
+            GovernanceProposalHelper(address(governance)).proposeOvercollateralizationTargetUpdate(11e17, 1 days);
 
         vm.prank(steward);
         governance.voteProposal(proposalId, true);
@@ -532,7 +553,8 @@ contract GovernanceDeadlineTest is Test {
         router.setGovernance(address(governance));
 
         vm.prank(steward);
-        uint256 proposalId = governance.proposeLiquidityRouterSetGovernance(address(0xCAFE), 1 days);
+        uint256 proposalId = GovernanceRouterProposalHelper(address(governance))
+            .proposeLiquidityRouterSetGovernance(address(0xCAFE), 1 days);
 
         vm.prank(steward);
         governance.voteProposal(proposalId, true);

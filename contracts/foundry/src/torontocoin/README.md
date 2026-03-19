@@ -60,6 +60,21 @@ This folder is the hardened TorontoCoin contract suite aligned to the Sarafu rea
 - `MentoBrokerSwapAdapter` is the concrete `ISwapAdapter` implementation for Mento broker routes, with admin-set default single-hop or multihop routes plus optional per-call route overrides for older mint-router flows.
 - The active Celo mainnet on-ramp posture now supports atomic `USDC -> USDm -> mCAD` normalization while still keeping that multihop logic outside `LiquidityRouter` itself.
 
+### Deployable retail stack
+The TorontoCoin suite is now deployable as one mainnet-oriented stack:
+- `DeployTorontoCoinSuite.s.sol` deploys the full current suite in dependency order and writes runtime manifests under `contracts/foundry/deployments/torontocoin/<target>/`.
+- `ValidateTorontoCoinDeployment.s.sol` verifies ownership, wiring, reserve activation, bootstrap pool readiness, and the configured Mento route posture.
+- `RunTorontoCoinScenarioB.s.sol` exercises the protocol half of the retail journey from funded `USDC` to wallet-held `cplTCOIN`.
+- `RecordOnRampScenarioA.md` is the operator runbook for the off-chain fiat on-ramp half of that same journey.
+
+### Governance deployability
+`Governance` now delegates proposal-construction and proposal-execution logic into helper contracts:
+- `GovernanceExecutionHelper`
+- `GovernanceProposalHelper`
+- `GovernanceRouterProposalHelper`
+
+This keeps the on-chain governance surface deployable under EIP-170 without changing the explicit proposal model exposed at the governance address itself.
+
 ### Build compatibility hardening
 - OpenZeppelin imports are aligned to installed v4 layout (`security/*` and upgradeable `security/*`).
 - `GeneroToken` uses v4 transfer hooks (`_beforeTokenTransfer`) instead of v5-style `_update`.
