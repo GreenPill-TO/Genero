@@ -10,6 +10,8 @@ import "../../src/torontocoin/interfaces/ITreasuryController.sol";
 import "../helpers/DeployChainConfig.sol";
 
 contract DeployLiquidityRoutingStack is DeployChainConfig {
+    error MissingConfigAddress(string key);
+
     function run()
         external
         returns (address liquidityRouterAddress, address reserveInputRouterAddress, address mentoSwapAdapterAddress)
@@ -18,19 +20,26 @@ contract DeployLiquidityRoutingStack is DeployChainConfig {
         address deployer = vm.addr(privateKey);
         ChainSelection memory selection = _assertDeployTargetChain();
 
-        address governance = vm.envAddress("GOVERNANCE_ADDRESS");
-        address treasuryController = vm.envAddress("TREASURY_CONTROLLER_ADDRESS");
-        address cplTcoin = vm.envAddress("CPL_TCOIN_ADDRESS");
-        address charityPreferencesRegistry = vm.envAddress("CHARITY_PREFERENCES_REGISTRY_ADDRESS");
-        address acceptancePreferencesRegistry = vm.envAddress("ACCEPTANCE_PREFERENCES_REGISTRY_ADDRESS");
-        address poolRegistry = vm.envAddress("POOL_REGISTRY_ADDRESS");
-        address poolAdapter = vm.envAddress("POOL_ADAPTER_ADDRESS");
-        address cadmToken = vm.envAddress("CADM_TOKEN_ADDRESS");
-        address mentoBroker = vm.envAddress("MENTO_BROKER_ADDRESS");
+        address governance = _requiredConfigAddress(selection, ".torontocoin.governance", "torontocoin.governance");
+        address treasuryController =
+            _requiredConfigAddress(selection, ".torontocoin.treasuryController", "torontocoin.treasuryController");
+        address cplTcoin = _requiredConfigAddress(selection, ".torontocoin.cplTcoin", "torontocoin.cplTcoin");
+        address charityPreferencesRegistry = _requiredConfigAddress(
+            selection, ".torontocoin.charityPreferencesRegistry", "torontocoin.charityPreferencesRegistry"
+        );
+        address acceptancePreferencesRegistry = _requiredConfigAddress(
+            selection, ".torontocoin.acceptancePreferencesRegistry", "torontocoin.acceptancePreferencesRegistry"
+        );
+        address poolRegistry =
+            _requiredConfigAddress(selection, ".torontocoin.poolRegistry", "torontocoin.poolRegistry");
+        address poolAdapter = _requiredConfigAddress(selection, ".torontocoin.poolAdapter", "torontocoin.poolAdapter");
+        address cadmToken =
+            _requiredConfigAddress(selection, ".torontocoin.mento.cadmToken", "torontocoin.mento.cadmToken");
+        address mentoBroker = _requiredConfigAddress(selection, ".torontocoin.mento.broker", "torontocoin.mento.broker");
 
-        address mentoRouteTokenIn = _envAddressOrZero("MENTO_ROUTE_TOKEN_IN");
-        address mentoExchangeProvider = _envAddressOrZero("MENTO_EXCHANGE_PROVIDER_ADDRESS");
-        bytes32 mentoExchangeId = _envBytes32OrZero("MENTO_EXCHANGE_ID");
+        address mentoRouteTokenIn = _chainConfigAddress(selection, ".torontocoin.mento.routeTokenIn");
+        address mentoExchangeProvider = _chainConfigAddress(selection, ".torontocoin.mento.exchangeProvider");
+        bytes32 mentoExchangeId = _chainConfigBytes32(selection, ".torontocoin.mento.exchangeId");
 
         vm.startBroadcast(privateKey);
 
@@ -53,7 +62,8 @@ contract DeployLiquidityRoutingStack is DeployChainConfig {
         ITreasuryController(treasuryController).setLiquidityRouter(address(liquidityRouter));
 
         if (mentoRouteTokenIn != address(0)) {
-            require(mentoExchangeProvider != address(0), "MENTO_EXCHANGE_PROVIDER_ADDRESS required");
+            require(mentoExchangeProvider != address(0), "mento.exchangeProvider required");
+            require(mentoExchangeId != bytes32(0), "mento.exchangeId required");
             mentoAdapter.setDefaultRoute(mentoRouteTokenIn, mentoExchangeProvider, mentoExchangeId);
             reserveInputRouter.setInputTokenEnabled(mentoRouteTokenIn, true);
         }
@@ -145,19 +155,12 @@ contract DeployLiquidityRoutingStack is DeployChainConfig {
         console2.log("Deployment artifact", outputPath);
     }
 
-    function _envAddressOrZero(string memory name) internal view returns (address value) {
-        try vm.envAddress(name) returns (address parsed) {
-            return parsed;
-        } catch {
-            return address(0);
-        }
-    }
-
-    function _envBytes32OrZero(string memory name) internal view returns (bytes32 value) {
-        try vm.envBytes32(name) returns (bytes32 parsed) {
-            return parsed;
-        } catch {
-            return bytes32(0);
-        }
+    function _requiredConfigAddress(ChainSelection memory selection, string memory suffix, string memory key)
+        internal
+        view
+        returns (address value)
+    {
+        value = _chainConfigAddress(selection, suffix);
+        if (value == address(0)) revert MissingConfigAddress(key);
     }
 }

@@ -7,10 +7,13 @@ import "../../src/registry/CityImplementationRegistry.sol";
 import "../helpers/DeployChainConfig.sol";
 
 contract DeployCityImplementationRegistry is DeployChainConfig {
+    error MissingConfigAddress(string key);
+
     function run() external returns (address deployedAddress) {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
-        address initialOwner = vm.envAddress("INITIAL_OWNER");
         ChainSelection memory selection = _assertDeployTargetChain();
+        address initialOwner = _chainConfigAddress(selection, ".registry.initialOwner");
+        if (initialOwner == address(0)) revert MissingConfigAddress("registry.initialOwner");
 
         vm.startBroadcast(privateKey);
         CityImplementationRegistry registry = new CityImplementationRegistry(initialOwner);

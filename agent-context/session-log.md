@@ -1,3 +1,39 @@
+## v1.55
+### Timestamp
+- 2026-03-19 14:05:00 EDT
+
+### Objective
+- Move public Foundry deployment parameters out of env files and into a checked-in config, while keeping only real secrets in `.env.example` and recording the verified Celo Mento route metadata for `USDC`, `USDm`, and `CADm`.
+
+### What Changed
+- Added `contracts/foundry/deploy-config.json` as the new checked-in public config for the Foundry workspace. It now holds chain metadata, registry script defaults, TorontoCoin dependency addresses, and the verified Celo mainnet Mento addresses plus exchange IDs.
+- Refactored `contracts/foundry/script/helpers/DeployChainConfig.sol` so scripts now default to the target chain declared in `deploy-config.json`, still accept `DEPLOY_TARGET_CHAIN` as a public runtime override, and read chain metadata from the config instead of hardcoding it separately.
+- Updated `DeployCityImplementationRegistry.s.sol`, `PromoteCityVersion.s.sol`, `DeployLiquidityRoutingStack.s.sol`, and `DiscoverMentoExchangeIds.s.sol` so all public addresses and route metadata come from `deploy-config.json`; only `PRIVATE_KEY` and RPC/explorer secrets remain in env.
+- Tightened `contracts/foundry/.env.example` down to secrets only: `MAINNET_RPC_URL`, `SEPOLIA_RPC_URL`, `PRIVATE_KEY`, `ETHERSCAN_API_KEY`, and `CELOSCAN_API_KEY`.
+- Recorded the verified Celo mainnet Mento route posture in the checked-in config and README: `USDC -> USDm` exists, `USDm -> CADm` exists, and the current single-hop deploy path still seeds `USDm -> CADm` as the active route until a future multihop adapter pass lands.
+- Updated the Foundry README plus the engineering specs/runbook so operator docs now point to `deploy-config.json` for public values and to local env files only for secrets.
+
+### Verification
+- `forge fmt script/helpers/DeployChainConfig.sol script/helpers/DiscoverMentoExchangeIds.s.sol script/deploy/DeployCityImplementationRegistry.s.sol script/deploy/PromoteCityVersion.s.sol script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `forge build`
+- `forge test`
+- `source contracts/foundry/.env.local && DEPLOY_TARGET_CHAIN=celo forge script contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol:DiscoverMentoExchangeIds --rpc-url "$MAINNET_RPC_URL"`
+
+### Files Edited
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/helpers/DeployChainConfig.sol`
+- `contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol`
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `agent-context/session-log.md`
+
 ## v1.54
 ### Timestamp
 - 2026-03-19 11:10:00 EDT

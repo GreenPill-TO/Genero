@@ -13,6 +13,8 @@ contract PromoteCityVersion is DeployChainConfig {
     error InvalidCitySlug();
     error InvalidChainId();
     error InvalidContractAddress(string key);
+    error MissingConfigAddress(string key);
+    error MissingConfigString(string key);
 
     struct DeploymentInput {
         string citySlug;
@@ -23,9 +25,11 @@ contract PromoteCityVersion is DeployChainConfig {
 
     function run() external returns (uint64 promotedVersion) {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
-        address registryAddress = vm.envAddress("REGISTRY_ADDRESS");
-        string memory deploymentFile = vm.envString("DEPLOYMENT_FILE");
         ChainSelection memory selection = _assertDeployTargetChain();
+        address registryAddress = _chainConfigAddress(selection, ".registry.registryAddress");
+        string memory deploymentFile = _chainConfigString(selection, ".registry.deploymentFile");
+        if (registryAddress == address(0)) revert MissingConfigAddress("registry.registryAddress");
+        if (bytes(deploymentFile).length == 0) revert MissingConfigString("registry.deploymentFile");
 
         string memory json = vm.readFile(deploymentFile);
         DeploymentInput memory input = _parseAndValidate(json);

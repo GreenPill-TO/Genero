@@ -19,19 +19,19 @@ interface IMentoExchangeProviderDiscovery {
 }
 
 contract DiscoverMentoExchangeIds is DeployChainConfig {
-    error InvalidAddressEnv(string name);
+    error InvalidConfigAddress(string name);
 
     function run() external view {
         ChainSelection memory selection = _assertDeployTargetChain();
 
-        address broker = vm.envAddress("MENTO_BROKER_ADDRESS");
-        address cadmToken = vm.envAddress("CADM_TOKEN_ADDRESS");
-        address tokenIn = vm.envAddress("MENTO_ROUTE_TOKEN_IN");
-        address providerFilter = _envAddressOrZero("MENTO_EXCHANGE_PROVIDER_ADDRESS");
+        address broker = _chainConfigAddress(selection, ".torontocoin.mento.broker");
+        address cadmToken = _chainConfigAddress(selection, ".torontocoin.mento.cadmToken");
+        address tokenIn = _chainConfigAddress(selection, ".torontocoin.mento.routeTokenIn");
+        address providerFilter = _chainConfigAddress(selection, ".torontocoin.mento.exchangeProvider");
 
-        if (broker == address(0)) revert InvalidAddressEnv("MENTO_BROKER_ADDRESS");
-        if (cadmToken == address(0)) revert InvalidAddressEnv("CADM_TOKEN_ADDRESS");
-        if (tokenIn == address(0)) revert InvalidAddressEnv("MENTO_ROUTE_TOKEN_IN");
+        if (broker == address(0)) revert InvalidConfigAddress("torontocoin.mento.broker");
+        if (cadmToken == address(0)) revert InvalidConfigAddress("torontocoin.mento.cadmToken");
+        if (tokenIn == address(0)) revert InvalidConfigAddress("torontocoin.mento.routeTokenIn");
 
         console2.log("Deploy target chain", selection.target);
         console2.log("Broker", broker);
@@ -83,13 +83,5 @@ contract DiscoverMentoExchangeIds is DeployChainConfig {
             }
         }
         return false;
-    }
-
-    function _envAddressOrZero(string memory name) internal view returns (address value) {
-        try vm.envAddress(name) returns (address parsed) {
-            return parsed;
-        } catch {
-            return address(0);
-        }
     }
 }

@@ -28,28 +28,26 @@ The first city implementation is `tcoin` (Toronto). The bootstrap registry chain
   - promotion only for existing versions
 - Ownership:
   - `Ownable` restricted writes (`onlyOwner`)
-  - deploy script supports setting `INITIAL_OWNER` for multisig/admin ownership at deploy time
+  - deploy script reads `registry.initialOwner` from the checked-in Foundry deploy config for multisig/admin ownership at deploy time
 - Emits:
   - `VersionRegistered`
   - `VersionPromoted`
 
 ### 2) Foundry Deployment/Promotion Scripts
 - Added `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
-  - deploys registry with `INITIAL_OWNER`
+  - deploys registry with `registry.initialOwner` from `contracts/foundry/deploy-config.json`
   - writes deployment artifact to:
     - `contracts/foundry/deployments/registry/<chainId>/registry-deployment.json`
 - Added `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
-  - reads `DEPLOYMENT_FILE` JSON
+  - reads `registry.deploymentFile` plus `registry.registryAddress` from `contracts/foundry/deploy-config.json`
   - computes `cityId = keccak256(bytes(lowercase(citySlug)))`
   - validates fields and required addresses
   - executes `registerAndPromote`
   - writes promotion artifact to:
     - `contracts/foundry/deployments/registry/<chainId>/promotions/<timestamp>.json`
-- Script env contract:
-  - `PRIVATE_KEY`
-  - `REGISTRY_ADDRESS`
-  - `DEPLOYMENT_FILE`
-  - RPC URL supplied via `--rpc-url`
+- Script runtime contract:
+  - checked-in public values come from `contracts/foundry/deploy-config.json`
+  - secrets come from local env (`PRIVATE_KEY`, RPC URL, optional explorer key)
 
 ### 3) App Integration for Runtime Resolution
 - Added shared registry modules:
@@ -110,7 +108,8 @@ The first city implementation is `tcoin` (Toronto). The bootstrap registry chain
 
 ## Deployment and Operations Runbook
 1. Deploy registry:
-   - set `contracts/foundry/.env` `DEPLOY_TARGET_CHAIN` to `celo` or `sepolia`
+   - update `contracts/foundry/deploy-config.json` for the target chain
+   - pass `DEPLOY_TARGET_CHAIN=celo` or `DEPLOY_TARGET_CHAIN=sepolia` at runtime
    - use the matching Foundry RPC alias: `npm run forge:deploy:registry -- --rpc-url celo` or `npm run forge:deploy:registry -- --rpc-url sepolia`
 2. Update bootstrap constant with deployed registry address:
    - `shared/lib/contracts/cityRegistryClient.ts`

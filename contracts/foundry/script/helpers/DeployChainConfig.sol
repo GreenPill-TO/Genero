@@ -2,8 +2,13 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
+import "forge-std/StdJson.sol";
 
 abstract contract DeployChainConfig is Script {
+    using stdJson for string;
+
+    string internal constant _DEPLOY_CONFIG_PATH = "deploy-config.json";
+
     struct ChainSelection {
         string target;
         uint256 chainId;
@@ -15,30 +20,67 @@ abstract contract DeployChainConfig is Script {
     error DeployTargetChainMismatch(string target, uint256 expectedChainId, uint256 actualChainId);
 
     function _resolveDeployChain() internal view returns (ChainSelection memory selection) {
-        string memory target = vm.envOr("DEPLOY_TARGET_CHAIN", string("celo"));
+        string memory json = _deployConfig();
+        string memory target =
+            _envStringOr(_deployConfig().readString(".defaultDeployTargetChain"), "DEPLOY_TARGET_CHAIN");
+        string memory root = string.concat(".chains.", target);
 
-        if (_sameString(target, "celo")) {
+        try vm.parseJsonUint(json, string.concat(root, ".chainId")) returns (uint256 chainId) {
             return ChainSelection({
-                target: "celo", chainId: 42220, rpcEnvVar: "MAINNET_RPC_URL", explorerApiKeyEnvVar: "CELOSCAN_API_KEY"
+                target: target,
+                chainId: chainId,
+                rpcEnvVar: json.readString(string.concat(root, ".rpcEnvVar")),
+                explorerApiKeyEnvVar: json.readString(string.concat(root, ".explorerApiKeyEnvVar"))
             });
+        } catch {
+            revert UnsupportedDeployTargetChain(target);
         }
-
-        if (_sameString(target, "sepolia")) {
-            return ChainSelection({
-                target: "sepolia",
-                chainId: 11155111,
-                rpcEnvVar: "SEPOLIA_RPC_URL",
-                explorerApiKeyEnvVar: "ETHERSCAN_API_KEY"
-            });
-        }
-
-        revert UnsupportedDeployTargetChain(target);
     }
 
     function _assertDeployTargetChain() internal view returns (ChainSelection memory selection) {
         selection = _resolveDeployChain();
         if (block.chainid != selection.chainId) {
             revert DeployTargetChainMismatch(selection.target, selection.chainId, block.chainid);
+        }
+    }
+
+    function _chainConfigAddress(ChainSelection memory selection, string memory suffix)
+        internal
+        view
+        returns (address)
+    {
+        return _deployConfig().readAddress(string.concat(_chainRoot(selection), suffix));
+    }
+
+    function _chainConfigString(ChainSelection memory selection, string memory suffix)
+        internal
+        view
+        returns (string memory)
+    {
+        return _deployConfig().readString(string.concat(_chainRoot(selection), suffix));
+    }
+
+    function _chainConfigBytes32(ChainSelection memory selection, string memory suffix)
+        internal
+        view
+        returns (bytes32)
+    {
+        return abi.decode(_deployConfig().parseRaw(string.concat(_chainRoot(selection), suffix)), (bytes32));
+    }
+
+    function _chainRoot(ChainSelection memory selection) internal pure returns (string memory) {
+        return string.concat(".chains.", selection.target);
+    }
+
+    function _deployConfig() internal view returns (string memory) {
+        return vm.readFile(_DEPLOY_CONFIG_PATH);
+    }
+
+    function _envStringOr(string memory fallbackValue, string memory name) internal view returns (string memory value) {
+        try vm.envString(name) returns (string memory parsed) {
+            return parsed;
+        } catch {
+            return fallbackValue;
         }
     }
 
