@@ -1,3 +1,39 @@
+## v1.61
+### Timestamp
+- 2026-03-20 16:10:00 EDT
+
+### Objective
+- Change the checked-in TorontoCoin deployment posture so newly deployed internal tokens default to `6` decimals instead of `18`, while leaving reserve-side precision and the already-deployed mainnet token addresses untouched.
+
+### What Changed
+- Updated `contracts/foundry/deploy-config.json` so all three TorontoCoin deployment profiles now default both `mrTCOIN` and `cplTCOIN` to `6` decimals instead of `18`.
+- Re-expressed the bootstrap pool seed in each TorontoCoin profile from `5e18` raw units to `5e6`, preserving the same visible `5 cplTCOIN` seed amount under the new token-decimal default.
+- Kept reserve-side config unchanged where it reflects live token truth: external reserve assets such as `CADm`, `USDm`, and `USDC` still use their actual on-chain decimals, and CAD pricing / collateralization math remains `1e18` based.
+- Tightened `ValidateTorontoCoinDeployment.s.sol` so future deployment validation now explicitly fails if the deployed `mrTCOIN` or `cplTCOIN` decimals are not `6`.
+- Updated TorontoCoin unit coverage to match the new internal-token default:
+  - `ManagedPoolAdapter.t.sol` now uses `6`-decimal `mrTCOIN` / `cplTCOIN` mocks and confirms a `1000e6` pool inventory is readable and tradable.
+  - `LiquidityRouter.t.sol` now uses a `6`-decimal internal `mrTCOIN` posture and `6`-decimal `USDC` reserve input while keeping mixed reserve-token decimal coverage for the normalization path.
+  - `GeneroTokenV3.t.sol` now has an explicit regression test proving a `6`-decimal deployment supports a `1000e6` visible balance plus allowance reads without hitting the old practical ceiling.
+- Updated Foundry/docs artefacts to make the rollout posture explicit: future deployments use `6`-decimal internal TorontoCoin tokens by default, while the existing mainnet `18`-decimal deployment remains a known legacy posture until a separate live-token migration pass is done.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `forge test --match-path test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `contracts/foundry/test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/README.md`
+- `contracts/foundry/src/torontocoin/GeneroToken.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.60
 ### Timestamp
 - 2026-03-20 14:20:00 EDT

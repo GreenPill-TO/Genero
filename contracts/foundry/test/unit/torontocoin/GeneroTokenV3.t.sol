@@ -392,6 +392,18 @@ contract GeneroTokenV3Test is Test {
         assertFalse(success);
     }
 
+    function test_SixDecimalDeploymentSupportsLargeVisibleBalances() public {
+        GeneroTokenV3 localToken = _deployToken(6, true);
+        uint256 largeAmount = 1_000e6;
+
+        assertTrue(localToken.mintTo(PAYER, largeAmount));
+        assertEq(localToken.balanceOf(PAYER), largeAmount);
+
+        vm.prank(PAYER);
+        assertTrue(localToken.approve(SPENDER, largeAmount));
+        assertEq(localToken.allowance(PAYER, SPENDER), largeAmount);
+    }
+
     function test_CanResolveCharityForReflectsWalletAndReverts() public {
         assertTrue(token.canResolveCharityFor(PAYER));
 

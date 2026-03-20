@@ -82,3 +82,4 @@ Minimal external surfaces used by the token:
 - `feeExempt` remains the operational mechanism for exempting routers, treasury contracts, adapters, or migration tooling.
 - `supportsInterface()` is unchanged and should not be treated as a full description of merchant-transfer semantics.
 - Registry-pointer sealing is intentionally deferred; treat `poolRegistry` and `charityPreferencesRegistry` updates as privileged launch-stage operations.
+- Future TorontoCoin deployments should instantiate this token at `6` decimals, not `18`, because the inherited Sarafu math has a smallest-unit ceiling near `2^63 - 1`. At `6` decimals that ceiling is operationally safe; at `18` decimals it is not.

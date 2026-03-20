@@ -70,6 +70,13 @@ Static public input comes from [deploy-config.json](/Users/botmaster/src/greenpi
 - treasury/router policy defaults
 - bootstrap charity, steward, pool, and merchant metadata
 
+For TorontoCoin, newly deployed internal protocol tokens now default to `6` decimals:
+
+- `mrTCOIN`
+- `cplTCOIN`
+
+That default is intentional. It avoids the practical single-account limit in the legacy Sarafu math used by `GeneroTokenV3` without changing reserve-side oracle precision or external reserve-token metadata.
+
 Generated runtime output is written under the selected target path:
 
 - `contracts/foundry/deployments/torontocoin/<target>/suite.json`

@@ -119,6 +119,12 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         if (!GeneroTokenV3(cplTcoin).isWriter(liquidityRouter)) {
             revert ValidationFailed("liquidity router missing cplTCOIN writer role");
         }
+        if (GeneroTokenV3(mrTcoin).decimals() != 6) {
+            revert ValidationFailed("mrTCOIN decimals must be 6");
+        }
+        if (GeneroTokenV3(cplTcoin).decimals() != 6) {
+            revert ValidationFailed("cplTCOIN decimals must be 6");
+        }
 
         if (!ReserveRegistry(reserveRegistry).isReserveAssetActive(reserveAssetId)) {
             revert ValidationFailed("reserve asset inactive");
@@ -171,6 +177,7 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         vm.serializeBool(root, "treasuryAuthorizedCaller", true);
         vm.serializeBool(root, "governanceWiring", true);
         vm.serializeBool(root, "tokenWriterRoles", true);
+        vm.serializeBool(root, "tokenDecimalsAreSix", true);
         vm.serializeBool(root, "reserveAssetActive", true);
         vm.serializeBool(root, "bootstrapPoolReady", true);
         vm.serializeBool(root, "mentoEnabled", mentoEnabled);

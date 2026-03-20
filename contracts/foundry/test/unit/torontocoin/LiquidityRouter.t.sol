@@ -284,10 +284,10 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
         LiquidityRouter private router;
 
         function setUp() public {
-            reserveToken = new MockERC20("USD Coin", "USDC", 18);
+            reserveToken = new MockERC20("USD Coin", "USDC", 6);
             daiToken = new MockERC20("Dai Stablecoin", "DAI", 18);
             cadmToken = new MockERC20("Mento CAD", "mCAD", 18);
-            mrTcoin = new MockERC20("mrTCOIN", "MRT", 18);
+            mrTcoin = new MockERC20("mrTCOIN", "MRT", 6);
             cplToken = new MockCplTcoinForRouter();
             treasuryVault = new MockTreasuryVaultForRouter();
             treasury = new MockTreasuryControllerForRouter(address(treasuryVault), address(mrTcoin));
@@ -325,10 +325,10 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             poolRegistry.setPoolActive(POOL_A, true);
             poolRegistry.setPoolActive(POOL_B, true);
 
-            poolAdapter.setPool(POOL_A, POOL_A_ACCOUNT, 10, 1_000e18, true, 10_000, MERCHANT_A);
-            poolAdapter.setPool(POOL_B, POOL_B_ACCOUNT, 10, 1_000e18, true, 10_000, MERCHANT_B);
+            poolAdapter.setPool(POOL_A, POOL_A_ACCOUNT, 10, 1_000e6, true, 10_000, MERCHANT_A);
+            poolAdapter.setPool(POOL_B, POOL_B_ACCOUNT, 10, 1_000e6, true, 10_000, MERCHANT_B);
 
-            reserveToken.mint(USER, 1_000e18);
+            reserveToken.mint(USER, 1_000e6);
             daiToken.mint(USER, 1_000e18);
             vm.prank(USER);
             reserveToken.approve(address(router), type(uint256).max);
@@ -340,32 +340,32 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             vm.prank(USER);
             acceptanceRegistry.setPoolAcceptance(POOL_B, UserAcceptancePreferencesRegistry.AcceptanceStatus.Accepted);
 
-            PreviewResult memory preview = _preview(USER, address(reserveToken), 100e18);
+            PreviewResult memory preview = _preview(USER, address(reserveToken), 100e6);
 
             assertEq(preview.selectedPoolId, POOL_B);
             assertEq(preview.reserveAssetId, RESERVE_ASSET_ID);
-            assertEq(preview.reserveAmountOut, 100e18);
-            assertEq(preview.mrOut, 100e18);
-            assertEq(preview.cplOut, 100e18);
-            assertEq(preview.charityTopupOut, 3e18);
+            assertEq(preview.reserveAmountOut, 100e6);
+            assertEq(preview.mrOut, 100e6);
+            assertEq(preview.cplOut, 100e6);
+            assertEq(preview.charityTopupOut, 3e6);
             assertEq(preview.resolvedCharityId, 1);
             assertEq(preview.charityWallet, CHARITY);
 
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e18, 100e18, 100e18);
+            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
 
             assertEq(purchase.selectedPoolId, POOL_B);
             assertEq(purchase.reserveAssetId, RESERVE_ASSET_ID);
-            assertEq(purchase.reserveAmountUsed, 100e18);
-            assertEq(purchase.mrUsed, 100e18);
-            assertEq(purchase.cplOut, 100e18);
-            assertEq(purchase.charityTopupOut, 3e18);
-            assertEq(cplToken.balanceOf(USER), 100e18);
-            assertEq(cplToken.balanceOf(CHARITY), 3e18);
+            assertEq(purchase.reserveAmountUsed, 100e6);
+            assertEq(purchase.mrUsed, 100e6);
+            assertEq(purchase.cplOut, 100e6);
+            assertEq(purchase.charityTopupOut, 3e6);
+            assertEq(cplToken.balanceOf(USER), 100e6);
+            assertEq(cplToken.balanceOf(CHARITY), 3e6);
             assertEq(reserveToken.balanceOf(address(router)), 0);
-            assertEq(reserveToken.balanceOf(address(treasuryVault)), 100e18);
+            assertEq(reserveToken.balanceOf(address(treasuryVault)), 100e6);
             assertEq(mrTcoin.balanceOf(address(router)), 0);
-            assertEq(mrTcoin.balanceOf(POOL_B_ACCOUNT), 100e18);
+            assertEq(mrTcoin.balanceOf(POOL_B_ACCOUNT), 100e6);
         }
 
         function test_DeniedPoolHardExcludesThatPool() public {
@@ -373,10 +373,10 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             acceptanceRegistry.setPoolAcceptance(POOL_A, UserAcceptancePreferencesRegistry.AcceptanceStatus.Denied);
 
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e18, 100e18, 100e18);
+            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
 
             assertEq(purchase.selectedPoolId, POOL_B);
-            assertEq(mrTcoin.balanceOf(POOL_B_ACCOUNT), 100e18);
+            assertEq(mrTcoin.balanceOf(POOL_B_ACCOUNT), 100e6);
         }
 
         function test_DeniedMerchantHardExcludesMatchingPool() public {
@@ -386,19 +386,19 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             );
 
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e18, 100e18, 100e18);
+            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
 
             assertEq(purchase.selectedPoolId, POOL_A);
         }
 
         function test_BuyCplTcoinNormalizesUnsupportedInputThroughReserveInputRouter() public {
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(daiToken), 100e18, 100e18, 100e18);
+            BuyResult memory purchase = _buy(address(daiToken), 100e6, 100e6, 100e6);
 
             assertEq(purchase.selectedPoolId, POOL_A);
             assertEq(purchase.reserveAssetId, MCAD_ASSET_ID);
-            assertEq(purchase.reserveAmountUsed, 100e18);
-            assertEq(cadmToken.balanceOf(address(treasuryVault)), 100e18);
+            assertEq(purchase.reserveAmountUsed, 100e6);
+            assertEq(cadmToken.balanceOf(address(treasuryVault)), 100e6);
             assertEq(daiToken.balanceOf(address(router)), 0);
             assertEq(daiToken.balanceOf(address(reserveInputRouter)), 0);
         }
@@ -409,7 +409,7 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
 
             vm.prank(USER);
             vm.expectRevert(LiquidityRouter.NoEligiblePool.selector);
-            _buy(address(reserveToken), 100e18, 100e18, 100e18);
+            _buy(address(reserveToken), 100e6, 100e6, 100e6);
         }
 
         function test_StrictModeAllowsEligibilityViaAcceptedMerchantWithoutRanking() public {
@@ -424,7 +424,7 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             vm.stopPrank();
 
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e18, 100e18, 100e18);
+            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
 
             assertEq(purchase.selectedPoolId, POOL_B);
         }
@@ -438,7 +438,7 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             acceptanceRegistry.replacePreferredMerchants(preferred);
 
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e18, 100e18, 100e18);
+            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
 
             assertEq(purchase.selectedPoolId, POOL_B);
 
@@ -448,7 +448,7 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             vm.prank(USER);
             acceptanceRegistry.replacePreferredMerchants(preferred);
 
-            PreviewResult memory preview = _preview(USER, address(reserveToken), 100e18);
+            PreviewResult memory preview = _preview(USER, address(reserveToken), 100e6);
             assertEq(preview.selectedPoolId, POOL_A);
         }
 
@@ -460,14 +460,14 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
 
             vm.prank(USER);
             vm.expectRevert(LiquidityRouter.NoEligiblePool.selector);
-            _buy(address(reserveToken), 100e18, 100e18, 100e18);
+            _buy(address(reserveToken), 100e6, 100e6, 100e6);
         }
 
         function test_SeedAndTopUpMintOnlyToResolvedPoolAccount() public {
-            router.seedPoolWithCplTcoin(POOL_A, 25e18);
-            router.topUpPoolWithCplTcoin(POOL_A, 5e18);
+            router.seedPoolWithCplTcoin(POOL_A, 25e6);
+            router.topUpPoolWithCplTcoin(POOL_A, 5e6);
 
-            assertEq(cplToken.balanceOf(POOL_A_ACCOUNT), 30e18);
+            assertEq(cplToken.balanceOf(POOL_A_ACCOUNT), 30e6);
             assertEq(cplToken.balanceOf(address(router)), 0);
         }
 

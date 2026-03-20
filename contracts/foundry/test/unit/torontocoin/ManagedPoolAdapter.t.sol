@@ -23,8 +23,8 @@ contract ManagedPoolAdapterTest is Test {
         poolRegistry.addPool(POOL_ID, "Pool A", "pool-a");
         poolRegistry.approveMerchant(MERCHANT_ID, POOL_ID, "merchant-a", new address[](0));
 
-        mrTcoin = new MockERC20("mrTCOIN", "MRT", 18);
-        cplTcoin = new MockERC20("cplTCOIN", "CPL", 18);
+        mrTcoin = new MockERC20("mrTCOIN", "MRT", 6);
+        cplTcoin = new MockERC20("cplTCOIN", "CPL", 6);
 
         adapter = new ManagedPoolAdapter(
             address(this), address(this), address(poolRegistry), address(mrTcoin), address(cplTcoin)
@@ -33,35 +33,35 @@ contract ManagedPoolAdapterTest is Test {
         adapter.setPoolQuoteBps(POOL_ID, 9_500);
         adapter.setPoolExecutionEnabled(POOL_ID, true);
 
-        cplTcoin.mint(adapter.getPoolAccount(POOL_ID), 1_000e18);
+        cplTcoin.mint(adapter.getPoolAccount(POOL_ID), 1_000e6);
     }
 
     function test_GetPoolLiquidityStateReadsManagedInventory() public view {
         (uint256 mrLiquidity, uint256 cplLiquidity, bool active) = adapter.getPoolLiquidityState(POOL_ID);
 
         assertEq(mrLiquidity, 0);
-        assertEq(cplLiquidity, 1_000e18);
+        assertEq(cplLiquidity, 1_000e6);
         assertTrue(active);
     }
 
     function test_PreviewBuyClampsToAvailableLiquidity() public {
         adapter.setPoolQuoteBps(POOL_ID, 10_000);
-        uint256 quoted = adapter.previewBuyCplTcoinFromPool(POOL_ID, 1_500e18);
-        assertEq(quoted, 1_000e18);
+        uint256 quoted = adapter.previewBuyCplTcoinFromPool(POOL_ID, 1_500e6);
+        assertEq(quoted, 1_000e6);
     }
 
     function test_BuyTransfersMrTcoinIntoPoolInventoryAndCplTcoinToRecipient() public {
-        mrTcoin.mint(router, 100e18);
+        mrTcoin.mint(router, 100e6);
 
         vm.startPrank(router);
         mrTcoin.approve(address(adapter), type(uint256).max);
-        uint256 cplOut = adapter.buyCplTcoinFromPool(POOL_ID, 100e18, 95e18, recipient);
+        uint256 cplOut = adapter.buyCplTcoinFromPool(POOL_ID, 100e6, 95e6, recipient);
         vm.stopPrank();
 
-        assertEq(cplOut, 95e18);
-        assertEq(cplTcoin.balanceOf(recipient), 95e18);
-        assertEq(mrTcoin.balanceOf(adapter.getPoolAccount(POOL_ID)), 100e18);
-        assertEq(cplTcoin.balanceOf(adapter.getPoolAccount(POOL_ID)), 905e18);
+        assertEq(cplOut, 95e6);
+        assertEq(cplTcoin.balanceOf(recipient), 95e6);
+        assertEq(mrTcoin.balanceOf(adapter.getPoolAccount(POOL_ID)), 100e6);
+        assertEq(cplTcoin.balanceOf(adapter.getPoolAccount(POOL_ID)), 905e6);
     }
 
     function test_PoolMatchesMerchantIdsUsesRegistryMapping() public view {
