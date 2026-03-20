@@ -20,6 +20,62 @@
 - `docs/engineering/technical-spec.md`
 - `docs/engineering/functional-spec.md`
 
+## v1.65
+### Timestamp
+- 2026-03-20 21:55:00 EDT
+
+### Objective
+- Revert the TorontoCoin retail architecture back toward the original Sarafu pool vision by replacing the custom managed-inventory runtime with real Sarafu `SwapPool` execution, while keeping the reserve-backed treasury path and validating that `GeneroTokenV3` can still participate in Sarafu pool flows.
+
+### What Changed
+- Added `SarafuSwapPoolAdapter.sol` as the thin production-facing pool adapter for TorontoCoin. It no longer owns inventory or quote state; instead it resolves a real Sarafu `SwapPool` address from `PoolRegistry`, previews output through `SwapPool.getQuote(...)`, and executes `mrTCOIN -> cplTCOIN` by calling `SwapPool.withdraw(...)`.
+- Refactored `LiquidityRouter.sol` so pool selection is now caller-supplied and off-chain driven. The router no longer ranks pools on-chain; it validates the chosen `poolId` against user acceptance preferences, normalizes reserve input, settles reserve through `TreasuryController`, then executes against the selected Sarafu pool through the adapter.
+- Re-scoped `PoolRegistry.sol` toward identity and allowlisting by adding explicit `poolId -> poolAddress` support. Merchant-to-pool mapping remains, but pool runtime state is no longer assumed to live in a TorontoCoin-managed inventory contract.
+- Refactored the greenfield TorontoCoin deployment scripts to bootstrap Sarafu-native pool infrastructure for the retail path:
+  - deploy `TokenUniqueSymbolIndex`
+  - deploy `Limiter`
+  - deploy `PriceIndexQuoter`
+  - deploy a bootstrap Sarafu `SwapPool`
+  - register `mrTCOIN` and `cplTCOIN` into the Sarafu token registry
+  - set TCOIN limits for the bootstrap pool
+  - point `PoolRegistry` at the real `SwapPool`
+  - wire `LiquidityRouter` to `SarafuSwapPoolAdapter`
+- Updated Scenario B and deployment validation scripts to use the bootstrap pool id explicitly instead of relying on on-chain pool discovery.
+- Added a dedicated Sarafu compatibility regression for `GeneroTokenV3`, proving that the current token implementation can still be registered in `TokenUniqueSymbolIndex`, deposited into a Sarafu `SwapPool`, and withdrawn from that pool successfully in the baseline `6`-decimal posture.
+- Added router and adapter tests that now use real Sarafu `SwapPool`, `Limiter`, `PriceIndexQuoter`, and `TokenUniqueSymbolIndex` contracts instead of the old mock managed-inventory path.
+- Updated the TorontoCoin docs to record the architectural reset:
+  - Sarafu `SwapPool` is the intended runtime pool engine
+  - `ManagedPoolAdapter` is now legacy / migration-only posture
+  - `LiquidityRouter` validates and executes a chosen pool instead of discovering the best one on-chain
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3SarafuCompatibility.t.sol`
+- `forge test --match-path test/unit/torontocoin/SarafuSwapPoolAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/SarafuSwapPoolAdapter.sol`
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+- `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/SarafuSwapPoolAdapter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3SarafuCompatibility.t.sol`
+- `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol`
+- `contracts/foundry/README.md`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.md`
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.md`
+- `contracts/foundry/src/torontocoin/SarafuSwapPoolAdapter.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.64
 ### Timestamp
 - 2026-03-20 22:35:00 EDT

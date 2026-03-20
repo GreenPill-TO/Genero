@@ -61,12 +61,20 @@ This folder is the hardened TorontoCoin contract suite aligned to the Sarafu rea
 - `DirectOnlySwapAdapter` is the non-Mento `ISwapAdapter` implementation used by the limited `ethereum-sepolia` smoke profile. It preserves the same helper boundary while reverting any attempted swap.
 - The active Celo mainnet on-ramp posture now supports atomic `USDC -> USDm -> mCAD` normalization while still keeping that multihop logic outside `LiquidityRouter` itself.
 
+### Sarafu pool runtime
+TorontoCoin is now being steered back toward the original Sarafu pool vision:
+- real Sarafu `SwapPool` contracts are the intended runtime pool engine
+- `SarafuSwapPoolAdapter` is the thin execution adapter for that engine
+- `PoolRegistry` is being narrowed toward pool-address and merchant identity, not pool inventory custody
+- `ManagedPoolAdapter` remains in-repo for older deployments and migration artefacts, but it is no longer the intended production pool backend
+
 ### Deployable retail stack
 The TorontoCoin suite is now deployable as one mainnet-oriented stack:
 - `DeployTorontoCoinSuite.s.sol` deploys the full current suite in dependency order and writes runtime manifests under `contracts/foundry/deployments/torontocoin/<target>/`.
 - `ValidateTorontoCoinDeployment.s.sol` verifies ownership, wiring, reserve activation, bootstrap pool readiness, and the configured Mento route posture.
 - `RunTorontoCoinScenarioB.s.sol` exercises the protocol half of the retail journey from funded `USDC` to wallet-held `cplTCOIN`.
 - `RecordOnRampScenarioA.md` is the operator runbook for the off-chain fiat on-ramp half of that same journey.
+- The bootstrap retail pool is now a real Sarafu `SwapPool`, backed by `TokenUniqueSymbolIndex`, `Limiter`, and `PriceIndexQuoter`, rather than a TorontoCoin-managed inventory account.
 - Explicit limited profiles now exist for `ethereum-sepolia` and `celo-sepolia`:
   - `ethereum-sepolia` uses `DirectOnlySwapAdapter` plus a deployable `MintableTestReserveToken` reserve asset for a non-Mento smoke path.
   - `celo-sepolia` uses the Mento adapter with testnet `USDm`, `USDC`, and `CADm` route metadata, but defaults Scenario B to preview-only until the scenario wallet is funded.

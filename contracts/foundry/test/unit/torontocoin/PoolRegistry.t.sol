@@ -15,12 +15,16 @@ contract PoolRegistryTest is Test {
     address private constant WALLET_A1 = address(0x1001);
     address private constant WALLET_A2 = address(0x1002);
     address private constant WALLET_B1 = address(0x2001);
+    address private constant POOL_A_ADDRESS = address(0x3001);
+    address private constant POOL_B_ADDRESS = address(0x3002);
 
     function setUp() public {
         registry = new PoolRegistry(address(this), governance);
 
         registry.addPool(POOL_A, "Pool A", "pool-a-metadata");
         registry.addPool(POOL_B, "Pool B", "pool-b-metadata");
+        registry.setPoolAddress(POOL_A, POOL_A_ADDRESS);
+        registry.setPoolAddress(POOL_B, POOL_B_ADDRESS);
     }
 
     function test_ApproveMerchantStoresEntityAndWalletConfig() public {
@@ -69,6 +73,7 @@ contract PoolRegistryTest is Test {
         assertTrue(registry.acceptsCplTcoin(WALLET_A1));
         assertTrue(registry.isMerchantApprovedInActivePool(WALLET_A1));
         assertEq(registry.getMerchantPool(WALLET_A1), POOL_A);
+        assertEq(registry.getPoolAddress(POOL_A), POOL_A_ADDRESS);
     }
 
     function test_MerchantFlagsGatePaymentAndPosPredicates() public {

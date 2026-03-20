@@ -21,6 +21,7 @@ interface IPoolRegistry {
     }
 
     function addPool(bytes32 poolId, string calldata name, string calldata metadataRecordId) external;
+    function setPoolAddress(bytes32 poolId, address poolAddress) external;
     function removePool(bytes32 poolId) external;
     function suspendPool(bytes32 poolId) external;
     function unsuspendPool(bytes32 poolId) external;
@@ -65,4 +66,5 @@ interface IPoolRegistry {
 
     function isMerchantApprovedInActivePool(address wallet) external view returns (bool);
     function getMerchantPool(address wallet) external view returns (bytes32);
+    function getPoolAddress(bytes32 poolId) external view returns (address);
 }

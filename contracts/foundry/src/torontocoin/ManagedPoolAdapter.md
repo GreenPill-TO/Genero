@@ -2,6 +2,10 @@
 
 ## Purpose
 
+This contract reflects the earlier TorontoCoin-managed pool model.
+
+It remains relevant for older deployments and migration artefacts, but it is no longer the intended production pool engine after the Sarafu-pool re-alignment. New retail execution should target real Sarafu `SwapPool` contracts through `SarafuSwapPoolAdapter`.
+
 `ManagedPoolAdapter` is the deployable pool-execution module used by `LiquidityRouter`.
 
 It provides the concrete pool surface that the router needs in production:

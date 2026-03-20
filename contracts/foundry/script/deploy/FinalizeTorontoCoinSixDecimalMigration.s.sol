@@ -76,7 +76,9 @@ contract FinalizeTorontoCoinSixDecimalMigration is TorontoCoinSixDecimalMigratio
             uint256 previewCharityTopupOut,
             uint256 previewResolvedCharityId,
             address previewCharityWallet
-        ) = liquidityRouter.previewBuyCplTcoin(deployer, artifact.usdcToken, artifact.smokeInputAmount);
+        ) = liquidityRouter.previewBuyCplTcoin(
+            _BOOTSTRAP_POOL_ID, deployer, artifact.usdcToken, artifact.smokeInputAmount
+        );
         previewReserveAssetId;
         previewCharityTopupOut;
         previewResolvedCharityId;
@@ -96,7 +98,9 @@ contract FinalizeTorontoCoinSixDecimalMigration is TorontoCoinSixDecimalMigratio
             uint256 liveCplTcoinOut,
             uint256 liveCharityTopupOut,
             uint256 liveResolvedCharityId
-        ) = liquidityRouter.buyCplTcoin(artifact.usdcToken, artifact.smokeInputAmount, minReserveOut, minCplTcoinOut);
+        ) = liquidityRouter.buyCplTcoin(
+            _BOOTSTRAP_POOL_ID, artifact.usdcToken, artifact.smokeInputAmount, minReserveOut, minCplTcoinOut
+        );
         liveReserveAssetId;
         liveResolvedCharityId;
         newManagedPoolAdapter.transferOwnership(artifact.governance);

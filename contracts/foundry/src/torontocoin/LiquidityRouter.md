@@ -11,10 +11,10 @@ Its role is to:
 - accept user purchase intent for `cplTCOIN`
 - normalize input tokens into treasury-accepted reserve assets
 - orchestrate treasury-side settlement into mrTCOIN
-- choose the best eligible `cplTCOIN` pool
+- validate one off-chain-selected Sarafu pool
 - acquire `cplTCOIN` atomically for the user
 - mint a configurable charity top-up in `cplTCOIN`
-- expose governance-controlled pool-scoring parameters
+- expose governance-controlled routing and top-up parameters
 
 ## Non-custodial Posture
 
@@ -30,7 +30,7 @@ Current flow:
 6. call `TreasuryController.depositAssetForLiquidityRoute(...)`
 7. receive mrTCOIN minted to the router
 8. approve the pool adapter
-9. buy `cplTCOIN` from the selected pool for the buyer
+9. buy `cplTCOIN` from the selected Sarafu `SwapPool` for the buyer
 10. mint charity top-up `cplTCOIN` directly to the resolved charity wallet
 
 If any downstream step fails, the whole transaction reverts.
@@ -71,11 +71,12 @@ For router purposes:
 - strict mode requires either:
   - the pool itself to be accepted, or
   - the pool to match an accepted merchant voucher
-- preferred merchant order contributes a score bonus
+
+Pool ranking is now primarily off-chain. Sarafu indexers/UI/pathfinding choose the candidate pool, and the router only validates and executes it.
 
 ## Public User Flow
 
-### `buyCplTcoin(address inputToken, uint256 inputAmount, uint256 minReserveOut, uint256 minCplTcoinOut)`
+### `buyCplTcoin(bytes32 targetPoolId, address inputToken, uint256 inputAmount, uint256 minReserveOut, uint256 minCplTcoinOut)`
 
 Uses `msg.sender` as:
 
@@ -94,7 +95,7 @@ It returns:
 - charity top-up output
 - resolved charity id
 
-### `previewBuyCplTcoin(address buyer, address inputToken, uint256 inputAmount)`
+### `previewBuyCplTcoin(bytes32 targetPoolId, address buyer, address inputToken, uint256 inputAmount)`
 
 Uses an explicit `buyer` address so preview logic can deterministically read:
 
@@ -117,33 +118,17 @@ Instead:
 
 Users always receive `cplTCOIN`, never mrTCOIN.
 
-## Pool Selection
+## Pool Execution
 
-Pool selection is deterministic and pool-based.
+`LiquidityRouter` no longer discovers the best pool on-chain.
 
-Hard filters:
+Instead:
 
-- pool active in `PoolRegistry`
-- pool active in `poolAdapter`
-- enough `cplTCOIN` liquidity
-- buyer must accept `cplTCOIN` under current preference rules
-- pool must not be explicitly denied
-- pool must not match any denied merchant id
-- under strict mode, pool must be explicitly accepted or match an accepted merchant id
+- Sarafu indexers/UI/pathfinding pick `targetPoolId` off-chain
+- router validates that the pool is approved and preference-compatible
+- `poolAdapter` translates that `poolId` into a real Sarafu `SwapPool` execution
 
-Score components:
-
-- low mrTCOIN liquidity
-- high `cplTCOIN` liquidity
-- accepted-pool bonus
-- ranked preferred-merchant bonus
-
-Preferred-merchant scoring is rank-sensitive:
-
-- highest-ranked matching merchant gets the largest bonus
-- lower-ranked matches get smaller bonuses
-
-If preferred or accepted candidates do not produce an eligible route, the router still falls back to the best remaining eligible pool.
+That keeps pool discovery in the existing Sarafu off-chain stack while keeping acceptance and treasury settlement on-chain.
 
 ## Charity Top-up
 
@@ -161,7 +146,6 @@ Governance or owner can:
 
 - update dependency pointers
 - update `charityTopupBps`
-- update pool scoring weights
 - seed pools with `cplTCOIN`
 - top up pools with `cplTCOIN`
 
@@ -173,3 +157,4 @@ The intended deployment posture is that on-chain `Governance` owns `LiquidityRou
 - The router is also not the source of truth for user acceptance preferences; `UserAcceptancePreferencesRegistry` is.
 - The router still depends on `TreasuryController` for reserve-asset acceptance and mrTCOIN route pricing. It does not duplicate treasury economics.
 - `ReserveInputRouter` is the only helper that should engage the Mento-style swap path, and only when the input token is not already treasury-accepted.
+- The intended production pool backend is now a Sarafu `SwapPool`, typically reached through `SarafuSwapPoolAdapter`.

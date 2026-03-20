@@ -99,20 +99,16 @@ interface IReserveInputRouterForLiquidityRouter {
         );
 }
 
+interface ISarafuSwapPoolForLiquidityRouter {
+    function deposit(address token, uint256 value) external;
+}
+
 contract LiquidityRouter is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
-    struct PoolSelection {
-        bytes32 poolId;
-        uint256 score;
-        uint256 cplTcoinOut;
-        bool found;
-    }
-
     struct PoolCandidate {
-        uint256 score;
         uint256 cplTcoinOut;
         bool eligible;
     }
@@ -131,6 +127,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
     }
 
     struct BuyRequest {
+        bytes32 targetPoolId;
         address inputToken;
         uint256 inputAmount;
         uint256 minReserveOut;
@@ -263,7 +260,13 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         _;
     }
 
-    function buyCplTcoin(address inputToken, uint256 inputAmount, uint256 minReserveOut, uint256 minCplTcoinOut)
+    function buyCplTcoin(
+        bytes32 targetPoolId,
+        address inputToken,
+        uint256 inputAmount,
+        uint256 minReserveOut,
+        uint256 minCplTcoinOut
+    )
         external
         nonReentrant
         returns (
@@ -277,6 +280,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         )
     {
         BuyRequest memory request = BuyRequest({
+            targetPoolId: targetPoolId,
             inputToken: inputToken,
             inputAmount: inputAmount,
             minReserveOut: minReserveOut,
@@ -295,7 +299,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         );
     }
 
-    function previewBuyCplTcoin(address buyer, address inputToken, uint256 inputAmount)
+    function previewBuyCplTcoin(bytes32 targetPoolId, address buyer, address inputToken, uint256 inputAmount)
         external
         view
         returns (
@@ -310,7 +314,12 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         )
     {
         BuyRequest memory request = BuyRequest({
-            inputToken: inputToken, inputAmount: inputAmount, minReserveOut: 0, minCplTcoinOut: 0, buyer: buyer
+            targetPoolId: targetPoolId,
+            inputToken: inputToken,
+            inputAmount: inputAmount,
+            minReserveOut: 0,
+            minCplTcoinOut: 0,
+            buyer: buyer
         });
         PurchaseResult memory result = _previewBuyCplTcoin(request);
         return (
@@ -330,7 +339,9 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         if (amount == 0) revert ZeroAmount();
 
         address poolAccount = _resolvePoolAccount(poolId);
-        ICplTcoinForLiquidityRouter(cplTcoin).mint(poolAccount, amount, "");
+        ICplTcoinForLiquidityRouter(cplTcoin).mint(address(this), amount, "");
+        _approveExact(cplTcoin, poolAccount, amount);
+        ISarafuSwapPoolForLiquidityRouter(poolAccount).deposit(cplTcoin, amount);
 
         emit PoolSeeded(poolId, amount, msg.sender);
     }
@@ -340,7 +351,9 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         if (amount == 0) revert ZeroAmount();
 
         address poolAccount = _resolvePoolAccount(poolId);
-        ICplTcoinForLiquidityRouter(cplTcoin).mint(poolAccount, amount, "");
+        ICplTcoinForLiquidityRouter(cplTcoin).mint(address(this), amount, "");
+        _approveExact(cplTcoin, poolAccount, amount);
+        ISarafuSwapPoolForLiquidityRouter(poolAccount).deposit(cplTcoin, amount);
 
         emit PoolToppedUp(poolId, amount, msg.sender);
     }
@@ -403,34 +416,6 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         );
     }
 
-    function _selectPool(uint256 mrTcoinOut, uint256 minCplTcoinOut, AcceptanceContext memory acceptance)
-        internal
-        view
-        returns (PoolSelection memory best)
-    {
-        bytes32[] memory poolIds = IPoolRegistryForLiquidityRouter(poolRegistry).listPoolIds();
-
-        for (uint256 i = 0; i < poolIds.length; ++i) {
-            bytes32 poolId = poolIds[i];
-            PoolCandidate memory candidate = _evaluatePoolCandidate(poolId, mrTcoinOut, minCplTcoinOut, acceptance);
-            if (!candidate.eligible) continue;
-
-            if (
-                !best.found || candidate.score > best.score
-                    || (candidate.score == best.score && candidate.cplTcoinOut > best.cplTcoinOut)
-                    || (candidate.score == best.score
-                        && candidate.cplTcoinOut == best.cplTcoinOut
-                        && poolId < best.poolId)
-            ) {
-                best = PoolSelection({
-                    poolId: poolId, score: candidate.score, cplTcoinOut: candidate.cplTcoinOut, found: true
-                });
-            }
-        }
-
-        if (!best.found) revert NoEligiblePool();
-    }
-
     function _evaluatePoolCandidate(
         bytes32 poolId,
         uint256 mrTcoinOut,
@@ -462,8 +447,7 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
             return candidate;
         }
 
-        (uint256 mrLiquidity, uint256 cplLiquidity, bool active) =
-            IPoolAdapter(poolAdapter).getPoolLiquidityState(poolId);
+        (, uint256 cplLiquidity, bool active) = IPoolAdapter(poolAdapter).getPoolLiquidityState(poolId);
         if (!active) {
             return candidate;
         }
@@ -483,7 +467,6 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
             return candidate;
         }
 
-        candidate.score = _scorePool(poolId, mrTcoinOut, mrLiquidity, cplLiquidity, acceptance, poolAccepted);
         candidate.eligible = true;
     }
 
@@ -498,8 +481,10 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         result.reserveAmountUsed = depositContext.reserveAmount;
         result.mrTcoinUsed = depositContext.mrTcoinOut;
 
-        PoolSelection memory selection = _selectPool(result.mrTcoinUsed, request.minCplTcoinOut, acceptance);
-        result.selectedPoolId = selection.poolId;
+        PoolCandidate memory selection =
+            _evaluatePoolCandidate(request.targetPoolId, result.mrTcoinUsed, request.minCplTcoinOut, acceptance);
+        if (!selection.eligible) revert NoEligiblePool();
+        result.selectedPoolId = request.targetPoolId;
         _approveExact(depositContext.mrTcoinToken, poolAdapter, result.mrTcoinUsed);
         result.cplTcoinOut =
             _buyFromPool(result.selectedPoolId, result.mrTcoinUsed, request.minCplTcoinOut, request.buyer);
@@ -541,38 +526,16 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         (result.mrTcoinUsed,,) = ITreasuryControllerForLiquidityRouter(treasuryController)
             .previewDepositAssetForLiquidityRoute(result.reserveAssetId, result.reserveAmountUsed);
 
-        PoolSelection memory selection = _selectPool(result.mrTcoinUsed, request.minCplTcoinOut, acceptance);
-        result.selectedPoolId = selection.poolId;
+        PoolCandidate memory selection =
+            _evaluatePoolCandidate(request.targetPoolId, result.mrTcoinUsed, request.minCplTcoinOut, acceptance);
+        if (!selection.eligible) revert NoEligiblePool();
+        result.selectedPoolId = request.targetPoolId;
         result.cplTcoinOut = selection.cplTcoinOut;
         result.charityTopupOut = (result.cplTcoinOut * charityTopupBps) / BPS_DENOMINATOR;
 
         CharityResolution memory charity = _resolveCharity(request.buyer);
         result.resolvedCharityId = charity.charityId;
         result.charityWallet = charity.charityWallet;
-    }
-
-    function _scorePool(
-        bytes32 poolId,
-        uint256 mrTcoinOut,
-        uint256 mrLiquidity,
-        uint256 cplLiquidity,
-        AcceptanceContext memory acceptance,
-        bool poolAccepted
-    ) internal view returns (uint256 score) {
-        uint256 mrNeed = mrTcoinOut > mrLiquidity ? mrTcoinOut - mrLiquidity : 0;
-
-        score += mrNeed * weightLowMrTcoinLiquidity;
-        score += cplLiquidity * weightHighCplTcoinLiquidity;
-
-        if (poolAccepted) {
-            score += weightUserPoolPreference;
-        }
-
-        (bool rankedMatch, uint256 bestMatchedRank) =
-            _getBestPreferredMerchantRank(poolId, acceptance.preferredMerchantIds);
-        if (rankedMatch) {
-            score += weightUserMerchantPreference * (acceptance.preferredMerchantIds.length - bestMatchedRank);
-        }
     }
 
     function _resolvePoolAccount(bytes32 poolId) internal view returns (address poolAccount) {
@@ -736,20 +699,6 @@ contract LiquidityRouter is Ownable, ReentrancyGuard {
         IERC20 erc20 = IERC20(token);
         erc20.safeApprove(spender, 0);
         erc20.safeApprove(spender, amount);
-    }
-
-    function _getBestPreferredMerchantRank(bytes32 poolId, bytes32[] memory preferredMerchantIds)
-        internal
-        view
-        returns (bool rankedMatch, uint256 rank)
-    {
-        bytes32[] memory singleMerchant = new bytes32[](1);
-        for (uint256 i = 0; i < preferredMerchantIds.length; ++i) {
-            singleMerchant[0] = preferredMerchantIds[i];
-            if (IPoolAdapter(poolAdapter).poolMatchesAnyMerchantIds(poolId, singleMerchant)) {
-                return (true, i);
-            }
-        }
     }
 
     function _isAddressAccepted(

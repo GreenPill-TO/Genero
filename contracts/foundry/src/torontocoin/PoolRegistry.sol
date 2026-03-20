@@ -21,6 +21,7 @@ contract PoolRegistry is Ownable, Pausable {
 
     struct Pool {
         bytes32 poolId;
+        address poolAddress;
         string name;
         string metadataRecordId;
         PoolStatus status;
@@ -41,6 +42,7 @@ contract PoolRegistry is Ownable, Pausable {
 
     error ZeroAddressOwner();
     error ZeroAddressGovernance();
+    error ZeroAddressPool();
     error ZeroAddressWallet();
     error ZeroMerchantId();
     error ZeroPoolId();
@@ -60,6 +62,7 @@ contract PoolRegistry is Ownable, Pausable {
     event GovernanceUpdated(address indexed oldGovernance, address indexed newGovernance);
 
     event PoolAdded(bytes32 indexed poolId, string name, string metadataRecordId, address indexed actor);
+    event PoolAddressUpdated(bytes32 indexed poolId, address indexed oldPoolAddress, address indexed newPoolAddress);
 
     event PoolRemoved(bytes32 indexed poolId, address indexed actor);
     event PoolSuspended(bytes32 indexed poolId, address indexed actor);
@@ -126,6 +129,7 @@ contract PoolRegistry is Ownable, Pausable {
 
         pools[poolId] = Pool({
             poolId: poolId,
+            poolAddress: address(0),
             name: name,
             metadataRecordId: metadataRecordId,
             status: PoolStatus.Active,
@@ -164,6 +168,17 @@ contract PoolRegistry is Ownable, Pausable {
         pool.updatedAt = uint64(block.timestamp);
 
         emit PoolUnsuspended(poolId, msg.sender);
+    }
+
+    function setPoolAddress(bytes32 poolId, address poolAddress) external onlyGovernanceOrOwner {
+        if (poolAddress == address(0)) revert ZeroAddressPool();
+
+        Pool storage pool = _getPoolStorage(poolId);
+        address oldPoolAddress = pool.poolAddress;
+        pool.poolAddress = poolAddress;
+        pool.updatedAt = uint64(block.timestamp);
+
+        emit PoolAddressUpdated(poolId, oldPoolAddress, poolAddress);
     }
 
     function approveMerchant(
@@ -383,6 +398,11 @@ contract PoolRegistry is Ownable, Pausable {
         if (merchantId == bytes32(0)) return bytes32(0);
 
         return merchants[merchantId].poolId;
+    }
+
+    function getPoolAddress(bytes32 poolId) external view returns (address) {
+        if (!poolExists[poolId]) return address(0);
+        return pools[poolId].poolAddress;
     }
 
     function listPoolIds() external view returns (bytes32[] memory) {

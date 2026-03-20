@@ -6,30 +6,40 @@ import {
     LiquidityRouter,
     ITreasuryControllerForLiquidityRouter,
     ICplTcoinForLiquidityRouter,
-    IUserCharityPreferencesRegistryForLiquidityRouter,
-    IPoolRegistryForLiquidityRouter,
-    IPoolAdapter
+    IUserCharityPreferencesRegistryForLiquidityRouter
 } from "../../../src/torontocoin/LiquidityRouter.sol";
+import {PoolRegistry} from "../../../src/torontocoin/PoolRegistry.sol";
 import {ReserveInputRouter} from "../../../src/torontocoin/ReserveInputRouter.sol";
+import {SarafuSwapPoolAdapter} from "../../../src/torontocoin/SarafuSwapPoolAdapter.sol";
 import {UserAcceptancePreferencesRegistry} from "../../../src/torontocoin/UserAcceptancePreferencesRegistry.sol";
+import {Limiter} from "../../../src/sarafu-read-only/Limiter.sol";
+import {PriceIndexQuoter} from "../../../src/sarafu-read-only/PriceIndexQuoter.sol";
+import {SwapPool} from "../../../src/sarafu-read-only/SwapPool.sol";
+import {TokenUniqueSymbolIndex} from "../../../src/sarafu-read-only/TokenUniqueSymbolIndex.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockSwapAdapter} from "./mocks/MockSwapAdapter.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract MockCplTcoinForRouter is ICplTcoinForLiquidityRouter {
-    mapping(address => uint256) public balanceOf;
+contract MockMintableCplTcoin is ERC20, ICplTcoinForLiquidityRouter {
+    uint8 private immutable _tokenDecimals;
+
+    constructor(string memory name_, string memory symbol_, uint8 tokenDecimals_) ERC20(name_, symbol_) {
+        _tokenDecimals = tokenDecimals_;
+    }
+
+    function decimals() public view override returns (uint8) {
+        return _tokenDecimals;
+    }
 
     function mint(address to, uint256 amount, bytes calldata data) external {
         data;
-        balanceOf[to] += amount;
+        _mint(to, amount);
     }
 
-    function transfer(address to, uint256 amount) external returns (bool) {
-        require(balanceOf[msg.sender] >= amount, "INSUFFICIENT");
-        balanceOf[msg.sender] -= amount;
-        balanceOf[to] += amount;
-        return true;
+    function transfer(address to, uint256 amount) public override(ERC20, ICplTcoinForLiquidityRouter) returns (bool) {
+        return super.transfer(to, amount);
     }
 }
 
@@ -120,120 +130,6 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
         }
     }
 
-    contract MockPoolRegistryForRouter is IPoolRegistryForLiquidityRouter {
-        bytes32[] internal poolIds;
-        mapping(bytes32 => bool) internal active;
-
-        function setPools(bytes32[] calldata ids) external {
-            delete poolIds;
-            for (uint256 i = 0; i < ids.length; ++i) {
-                poolIds.push(ids[i]);
-            }
-        }
-
-        function setPoolActive(bytes32 poolId, bool isActive) external {
-            active[poolId] = isActive;
-        }
-
-        function listPoolIds() external view returns (bytes32[] memory) {
-            return poolIds;
-        }
-
-        function isPoolActive(bytes32 poolId) external view returns (bool) {
-            return active[poolId];
-        }
-    }
-
-    contract MockPoolAdapterForRouter is IPoolAdapter {
-        struct PoolState {
-            address poolAccount;
-            uint256 mrLiquidity;
-            uint256 cplLiquidity;
-            bool active;
-            uint256 quoteBps;
-            bytes32 merchantId;
-        }
-
-        mapping(bytes32 => PoolState) internal pools;
-        MockCplTcoinForRouter internal cplToken;
-        MockERC20 internal mrTcoin;
-
-        constructor(address cplToken_, address mrTcoin_) {
-            cplToken = MockCplTcoinForRouter(cplToken_);
-            mrTcoin = MockERC20(mrTcoin_);
-        }
-
-        function setPool(
-            bytes32 poolId,
-            address poolAccount,
-            uint256 mrLiquidity,
-            uint256 cplLiquidity,
-            bool active,
-            uint256 quoteBps,
-            bytes32 merchantId
-        ) external {
-            pools[poolId] = PoolState({
-                poolAccount: poolAccount,
-                mrLiquidity: mrLiquidity,
-                cplLiquidity: cplLiquidity,
-                active: active,
-                quoteBps: quoteBps,
-                merchantId: merchantId
-            });
-        }
-
-        function getPoolLiquidityState(bytes32 poolId)
-            external
-            view
-            returns (uint256 mrTcoinLiquidity, uint256 cplTcoinLiquidity, bool active)
-        {
-            PoolState memory pool = pools[poolId];
-            return (pool.mrLiquidity, pool.cplLiquidity, pool.active);
-        }
-
-        function previewBuyCplTcoinFromPool(bytes32 poolId, uint256 mrTcoinAmountIn)
-            external
-            view
-            returns (uint256 cplTcoinOut)
-        {
-            PoolState memory pool = pools[poolId];
-            cplTcoinOut = (mrTcoinAmountIn * pool.quoteBps) / 10_000;
-        }
-
-        function buyCplTcoinFromPool(bytes32 poolId, uint256 mrTcoinAmountIn, uint256 minCplTcoinOut, address recipient)
-            external
-            returns (uint256 cplTcoinOut)
-        {
-            PoolState storage pool = pools[poolId];
-            cplTcoinOut = (mrTcoinAmountIn * pool.quoteBps) / 10_000;
-            require(pool.active, "INACTIVE");
-            require(cplTcoinOut >= minCplTcoinOut, "MIN_OUT");
-            require(pool.cplLiquidity >= cplTcoinOut, "LOW_LIQ");
-
-            mrTcoin.transferFrom(msg.sender, pool.poolAccount, mrTcoinAmountIn);
-            pool.mrLiquidity += mrTcoinAmountIn;
-            pool.cplLiquidity -= cplTcoinOut;
-            cplToken.mint(recipient, cplTcoinOut, "");
-        }
-
-        function poolMatchesAnyMerchantIds(bytes32 poolId, bytes32[] memory merchantIds)
-            external
-            view
-            returns (bool matches)
-        {
-            PoolState memory pool = pools[poolId];
-            for (uint256 i = 0; i < merchantIds.length; ++i) {
-                if (merchantIds[i] == pool.merchantId) {
-                    return true;
-                }
-            }
-        }
-
-        function getPoolAccount(bytes32 poolId) external view returns (address poolAccount) {
-            return pools[poolId].poolAccount;
-        }
-    }
-
     contract LiquidityRouterTest is Test {
         struct BuyResult {
             bytes32 selectedPoolId;
@@ -265,20 +161,23 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
 
         address private constant USER = address(0x1001);
         address private constant CHARITY = address(0x2001);
-        address private constant POOL_A_ACCOUNT = address(0x3001);
-        address private constant POOL_B_ACCOUNT = address(0x3002);
 
         MockERC20 private reserveToken;
         MockERC20 private daiToken;
         MockERC20 private cadmToken;
         MockERC20 private mrTcoin;
-        MockCplTcoinForRouter private cplToken;
+        MockMintableCplTcoin private cplToken;
         MockTreasuryVaultForRouter private treasuryVault;
         MockTreasuryControllerForRouter private treasury;
         MockCharityPreferencesForRouter private charityPreferences;
         UserAcceptancePreferencesRegistry private acceptanceRegistry;
-        MockPoolRegistryForRouter private poolRegistry;
-        MockPoolAdapterForRouter private poolAdapter;
+        PoolRegistry private poolRegistry;
+        TokenUniqueSymbolIndex private tokenRegistry;
+        Limiter private limiter;
+        PriceIndexQuoter private quoter;
+        SwapPool private swapPoolA;
+        SwapPool private swapPoolB;
+        SarafuSwapPoolAdapter private poolAdapter;
         MockSwapAdapter private swapAdapter;
         ReserveInputRouter private reserveInputRouter;
         LiquidityRouter private router;
@@ -288,13 +187,20 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             daiToken = new MockERC20("Dai Stablecoin", "DAI", 18);
             cadmToken = new MockERC20("Mento CAD", "mCAD", 18);
             mrTcoin = new MockERC20("mrTCOIN", "MRT", 6);
-            cplToken = new MockCplTcoinForRouter();
+            cplToken = new MockMintableCplTcoin("cplTCOIN", "CPL", 6);
             treasuryVault = new MockTreasuryVaultForRouter();
             treasury = new MockTreasuryControllerForRouter(address(treasuryVault), address(mrTcoin));
             charityPreferences = new MockCharityPreferencesForRouter();
             acceptanceRegistry = new UserAcceptancePreferencesRegistry(address(this));
-            poolRegistry = new MockPoolRegistryForRouter();
-            poolAdapter = new MockPoolAdapterForRouter(address(cplToken), address(mrTcoin));
+            poolRegistry = new PoolRegistry(address(this), address(this));
+            tokenRegistry = new TokenUniqueSymbolIndex();
+            limiter = new Limiter();
+            quoter = new PriceIndexQuoter();
+            swapPoolA = new SwapPool("Pool A", "PA", 6, address(tokenRegistry), address(limiter));
+            swapPoolB = new SwapPool("Pool B", "PB", 6, address(tokenRegistry), address(limiter));
+            poolAdapter = new SarafuSwapPoolAdapter(
+                address(this), address(this), address(poolRegistry), address(mrTcoin), address(cplToken)
+            );
             swapAdapter = new MockSwapAdapter();
             reserveInputRouter = new ReserveInputRouter(
                 address(this), address(this), address(treasury), address(swapAdapter), address(cadmToken)
@@ -314,19 +220,30 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             reserveInputRouter.setLiquidityRouter(address(router));
             reserveInputRouter.setInputTokenEnabled(address(daiToken), true);
 
+            tokenRegistry.addWriter(address(this));
+            tokenRegistry.register(address(mrTcoin));
+            tokenRegistry.register(address(cplToken));
+            swapPoolA.setQuoter(address(quoter));
+            swapPoolB.setQuoter(address(quoter));
+
+            poolRegistry.addPool(POOL_A, "Pool A", "pool-a");
+            poolRegistry.addPool(POOL_B, "Pool B", "pool-b");
+            poolRegistry.setPoolAddress(POOL_A, address(swapPoolA));
+            poolRegistry.setPoolAddress(POOL_B, address(swapPoolB));
+            poolRegistry.approveMerchant(MERCHANT_A, POOL_A, "merchant-a", new address[](0));
+            poolRegistry.approveMerchant(MERCHANT_B, POOL_B, "merchant-b", new address[](0));
+
+            limiter.setLimitFor(address(mrTcoin), address(swapPoolA), 1_000_000e6);
+            limiter.setLimitFor(address(cplToken), address(swapPoolA), 1_000_000e6);
+            limiter.setLimitFor(address(mrTcoin), address(swapPoolB), 1_000_000e6);
+            limiter.setLimitFor(address(cplToken), address(swapPoolB), 1_000_000e6);
+
             treasury.setReserveAsset(RESERVE_ASSET_ID, address(reserveToken), 10_000);
             treasury.setReserveAsset(MCAD_ASSET_ID, address(cadmToken), 10_000);
             charityPreferences.setResolvedCharity(1, CHARITY);
 
-            bytes32[] memory poolIds = new bytes32[](2);
-            poolIds[0] = POOL_A;
-            poolIds[1] = POOL_B;
-            poolRegistry.setPools(poolIds);
-            poolRegistry.setPoolActive(POOL_A, true);
-            poolRegistry.setPoolActive(POOL_B, true);
-
-            poolAdapter.setPool(POOL_A, POOL_A_ACCOUNT, 10, 1_000e6, true, 10_000, MERCHANT_A);
-            poolAdapter.setPool(POOL_B, POOL_B_ACCOUNT, 10, 1_000e6, true, 10_000, MERCHANT_B);
+            router.seedPoolWithCplTcoin(POOL_A, 1_000e6);
+            router.seedPoolWithCplTcoin(POOL_B, 1_000e6);
 
             reserveToken.mint(USER, 1_000e6);
             daiToken.mint(USER, 1_000e18);
@@ -336,13 +253,10 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             daiToken.approve(address(router), type(uint256).max);
         }
 
-        function test_BuyCplTcoinUsesStoredAcceptedPoolPreferenceAndMintsCharityTopup() public {
-            vm.prank(USER);
-            acceptanceRegistry.setPoolAcceptance(POOL_B, UserAcceptancePreferencesRegistry.AcceptanceStatus.Accepted);
+        function test_BuyCplTcoinExecutesAgainstSelectedSarafuPoolAndMintsCharityTopup() public {
+            PreviewResult memory preview = _preview(POOL_A, USER, address(reserveToken), 100e6);
 
-            PreviewResult memory preview = _preview(USER, address(reserveToken), 100e6);
-
-            assertEq(preview.selectedPoolId, POOL_B);
+            assertEq(preview.selectedPoolId, POOL_A);
             assertEq(preview.reserveAssetId, RESERVE_ASSET_ID);
             assertEq(preview.reserveAmountOut, 100e6);
             assertEq(preview.mrOut, 100e6);
@@ -352,9 +266,9 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             assertEq(preview.charityWallet, CHARITY);
 
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
+            BuyResult memory purchase = _buy(POOL_A, address(reserveToken), 100e6, 100e6, 100e6);
 
-            assertEq(purchase.selectedPoolId, POOL_B);
+            assertEq(purchase.selectedPoolId, POOL_A);
             assertEq(purchase.reserveAssetId, RESERVE_ASSET_ID);
             assertEq(purchase.reserveAmountUsed, 100e6);
             assertEq(purchase.mrUsed, 100e6);
@@ -364,55 +278,42 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             assertEq(cplToken.balanceOf(CHARITY), 3e6);
             assertEq(reserveToken.balanceOf(address(router)), 0);
             assertEq(reserveToken.balanceOf(address(treasuryVault)), 100e6);
-            assertEq(mrTcoin.balanceOf(address(router)), 0);
-            assertEq(mrTcoin.balanceOf(POOL_B_ACCOUNT), 100e6);
+            assertEq(mrTcoin.balanceOf(address(swapPoolA)), 100e6);
+            assertEq(cplToken.balanceOf(address(swapPoolA)), 900e6);
         }
 
-        function test_DeniedPoolHardExcludesThatPool() public {
+        function test_DeniedPoolHardExcludesSelectedSarafuPool() public {
             vm.prank(USER);
             acceptanceRegistry.setPoolAcceptance(POOL_A, UserAcceptancePreferencesRegistry.AcceptanceStatus.Denied);
 
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
-
-            assertEq(purchase.selectedPoolId, POOL_B);
-            assertEq(mrTcoin.balanceOf(POOL_B_ACCOUNT), 100e6);
+            vm.expectRevert(LiquidityRouter.NoEligiblePool.selector);
+            _buy(POOL_A, address(reserveToken), 100e6, 100e6, 100e6);
         }
 
-        function test_DeniedMerchantHardExcludesMatchingPool() public {
+        function test_DeniedMerchantHardExcludesSelectedSarafuPool() public {
             vm.prank(USER);
             acceptanceRegistry.setMerchantAcceptance(
                 MERCHANT_B, UserAcceptancePreferencesRegistry.AcceptanceStatus.Denied
             );
 
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
-
-            assertEq(purchase.selectedPoolId, POOL_A);
+            vm.expectRevert(LiquidityRouter.NoEligiblePool.selector);
+            _buy(POOL_B, address(reserveToken), 100e6, 100e6, 100e6);
         }
 
-        function test_BuyCplTcoinNormalizesUnsupportedInputThroughReserveInputRouter() public {
+        function test_BuyCplTcoinNormalizesUnsupportedInputBeforeSarafuPoolSwap() public {
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(daiToken), 100e6, 100e6, 100e6);
+            BuyResult memory purchase = _buy(POOL_A, address(daiToken), 100e6, 100e6, 100e6);
 
             assertEq(purchase.selectedPoolId, POOL_A);
             assertEq(purchase.reserveAssetId, MCAD_ASSET_ID);
             assertEq(purchase.reserveAmountUsed, 100e6);
             assertEq(cadmToken.balanceOf(address(treasuryVault)), 100e6);
-            assertEq(daiToken.balanceOf(address(router)), 0);
-            assertEq(daiToken.balanceOf(address(reserveInputRouter)), 0);
+            assertEq(mrTcoin.balanceOf(address(swapPoolA)), 100e6);
         }
 
-        function test_StrictModeRequiresAcceptedCplTcoin() public {
-            vm.prank(USER);
-            acceptanceRegistry.setStrictAcceptedOnly(true);
-
-            vm.prank(USER);
-            vm.expectRevert(LiquidityRouter.NoEligiblePool.selector);
-            _buy(address(reserveToken), 100e6, 100e6, 100e6);
-        }
-
-        function test_StrictModeAllowsEligibilityViaAcceptedMerchantWithoutRanking() public {
+        function test_StrictModeRequiresAcceptedTokenAndAcceptedPoolOrMerchant() public {
             vm.startPrank(USER);
             acceptanceRegistry.setStrictAcceptedOnly(true);
             acceptanceRegistry.setTokenAcceptance(
@@ -424,57 +325,29 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
             vm.stopPrank();
 
             vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
-
-            assertEq(purchase.selectedPoolId, POOL_B);
-        }
-
-        function test_PreferredMerchantOrderChangesScoringDeterministically() public {
-            bytes32[] memory preferred = new bytes32[](2);
-            preferred[0] = MERCHANT_B;
-            preferred[1] = MERCHANT_A;
-
-            vm.prank(USER);
-            acceptanceRegistry.replacePreferredMerchants(preferred);
-
-            vm.prank(USER);
-            BuyResult memory purchase = _buy(address(reserveToken), 100e6, 100e6, 100e6);
-
-            assertEq(purchase.selectedPoolId, POOL_B);
-
-            preferred[0] = MERCHANT_A;
-            preferred[1] = MERCHANT_B;
-
-            vm.prank(USER);
-            acceptanceRegistry.replacePreferredMerchants(preferred);
-
-            PreviewResult memory preview = _preview(USER, address(reserveToken), 100e6);
-            assertEq(preview.selectedPoolId, POOL_A);
-        }
-
-        function test_DenyingCplTcoinMakesAllRoutesIneligible() public {
-            vm.prank(USER);
-            acceptanceRegistry.setTokenAcceptance(
-                address(cplToken), UserAcceptancePreferencesRegistry.AcceptanceStatus.Denied
-            );
-
-            vm.prank(USER);
             vm.expectRevert(LiquidityRouter.NoEligiblePool.selector);
-            _buy(address(reserveToken), 100e6, 100e6, 100e6);
+            _buy(POOL_A, address(reserveToken), 100e6, 100e6, 100e6);
+
+            vm.prank(USER);
+            BuyResult memory purchase = _buy(POOL_B, address(reserveToken), 100e6, 100e6, 100e6);
+            assertEq(purchase.selectedPoolId, POOL_B);
         }
 
-        function test_SeedAndTopUpMintOnlyToResolvedPoolAccount() public {
+        function test_SeedAndTopUpDepositIntoRealSarafuPool() public {
             router.seedPoolWithCplTcoin(POOL_A, 25e6);
             router.topUpPoolWithCplTcoin(POOL_A, 5e6);
 
-            assertEq(cplToken.balanceOf(POOL_A_ACCOUNT), 30e6);
+            assertEq(cplToken.balanceOf(address(swapPoolA)), 1_030e6);
             assertEq(cplToken.balanceOf(address(router)), 0);
         }
 
-        function _buy(address inputToken, uint256 inputAmount, uint256 minReserveOut, uint256 minCplTcoinOut)
-            internal
-            returns (BuyResult memory result)
-        {
+        function _buy(
+            bytes32 poolId,
+            address inputToken,
+            uint256 inputAmount,
+            uint256 minReserveOut,
+            uint256 minCplTcoinOut
+        ) internal returns (BuyResult memory result) {
             (
                 result.selectedPoolId,
                 result.reserveAssetId,
@@ -483,10 +356,10 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
                 result.cplOut,
                 result.charityTopupOut,
                 result.resolvedCharityId
-            ) = router.buyCplTcoin(inputToken, inputAmount, minReserveOut, minCplTcoinOut);
+            ) = router.buyCplTcoin(poolId, inputToken, inputAmount, minReserveOut, minCplTcoinOut);
         }
 
-        function _preview(address buyer, address inputToken, uint256 inputAmount)
+        function _preview(bytes32 poolId, address buyer, address inputToken, uint256 inputAmount)
             internal
             view
             returns (PreviewResult memory result)
@@ -500,6 +373,6 @@ contract MockTreasuryControllerForRouter is ITreasuryControllerForLiquidityRoute
                 result.charityTopupOut,
                 result.resolvedCharityId,
                 result.charityWallet
-            ) = router.previewBuyCplTcoin(buyer, inputToken, inputAmount);
+            ) = router.previewBuyCplTcoin(poolId, buyer, inputToken, inputAmount);
         }
     }

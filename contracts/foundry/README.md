@@ -77,6 +77,13 @@ For TorontoCoin, newly deployed internal protocol tokens now default to `6` deci
 
 That default is intentional. It avoids the practical single-account limit in the legacy Sarafu math used by `GeneroTokenV3` without changing reserve-side oracle precision or external reserve-token metadata.
 
+The current TorontoCoin refactor now targets real Sarafu pool runtime:
+
+- `SwapPool` is the canonical pool engine
+- `SarafuSwapPoolAdapter` is the thin router-facing adapter
+- `PoolRegistry` carries pool identity plus the real Sarafu pool address
+- `ManagedPoolAdapter` is no longer the intended production pool backend
+
 Generated runtime output is written under the selected target path:
 
 - `contracts/foundry/deployments/torontocoin/<target>/suite.json`
@@ -110,7 +117,11 @@ This script deploys and wires:
 - `mrTCOIN`
 - `cplTCOIN`
 - `TreasuryController` proxy
-- `ManagedPoolAdapter`
+- `TokenUniqueSymbolIndex`
+- `Limiter`
+- `PriceIndexQuoter`
+- bootstrap `SwapPool`
+- `SarafuSwapPoolAdapter`
 - `MentoBrokerSwapAdapter`
 - `ReserveInputRouter`
 - `LiquidityRouter`
@@ -130,11 +141,11 @@ The deploy order also bootstraps:
 - `CADm` as an active reserve asset
 - one charity and default-steward linkage
 - one pool and one bootstrap merchant
-- managed pool account, quote bps, and execution enablement
+- Sarafu token registration, pool limits, and quoter wiring for TCOIN
 - default Mento routes for `USDm -> CADm` and `USDC -> USDm -> CADm`
 - `ReserveInputRouter` input-token enablement
-- `LiquidityRouter` pool scoring and charity-topup parameters
-- initial `cplTCOIN` pool inventory
+- `LiquidityRouter` charity-topup parameters
+- initial `cplTCOIN` liquidity deposited into the real Sarafu pool
 
 ### Post-Deploy Validation
 
@@ -154,7 +165,7 @@ The validator checks:
 - token writer roles
 - treasury authorized caller posture
 - reserve activation
-- bootstrap pool readiness
+- bootstrap Sarafu pool readiness
 - configured Mento `USDC -> USDm -> CADm` route presence
 
 ### Six-Decimal Migration Tooling
@@ -207,7 +218,7 @@ forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB
 
 This script uses a funded wallet to:
 
-- preview `USDC -> USDm -> CADm -> cplTCOIN`
+- preview `USDC -> USDm -> CADm -> mrTCOIN -> SwapPool -> cplTCOIN`
 - approve `LiquidityRouter`
 - execute `buyCplTcoin(...)`
 - record the resulting pool choice and `cplTCOIN` balance delta

@@ -17,12 +17,16 @@ contract RunTorontoCoinScenarioB is DeployChainConfig {
         ChainSelection memory selection = _assertDeployTargetChain();
         string memory deploymentDir = string.concat("deployments/torontocoin/", selection.target);
         string memory suitePath = string.concat(deploymentDir, "/suite.json");
+        string memory wiringPath = string.concat(deploymentDir, "/wiring.json");
         if (!vm.exists(suitePath)) revert MissingDeploymentArtifact(suitePath);
+        if (!vm.exists(wiringPath)) revert MissingDeploymentArtifact(wiringPath);
 
         string memory suite = vm.readFile(suitePath);
+        string memory wiring = vm.readFile(wiringPath);
         address liquidityRouter = suite.readAddress(".liquidityRouter");
         address cplTcoin = suite.readAddress(".cplTcoin");
         address inputTokenFromSuite = suite.readAddress(".scenarioInputToken");
+        bytes32 targetPoolId = wiring.readBytes32(".bootstrapPoolId");
 
         address inputToken = inputTokenFromSuite == address(0)
             ? _chainConfigAddressOrDefault(selection, ".torontocoin.scenarioB.inputToken", address(0))
@@ -47,7 +51,7 @@ contract RunTorontoCoinScenarioB is DeployChainConfig {
             uint256 previewCharityTopupOut,
             uint256 previewResolvedCharityId,
             address previewCharityWallet
-        ) = LiquidityRouter(liquidityRouter).previewBuyCplTcoin(buyer, inputToken, inputAmount);
+        ) = LiquidityRouter(liquidityRouter).previewBuyCplTcoin(targetPoolId, buyer, inputToken, inputAmount);
 
         uint256 cplBalanceBefore = GeneroTokenV3(cplTcoin).balanceOf(buyer);
         bytes32 executedPoolId;
@@ -70,7 +74,9 @@ contract RunTorontoCoinScenarioB is DeployChainConfig {
                 cplOut,
                 charityTopupOut,
                 resolvedCharityId
-            ) = LiquidityRouter(liquidityRouter).buyCplTcoin(inputToken, inputAmount, minReserveOut, minCplTcoinOut);
+            ) =
+                LiquidityRouter(liquidityRouter)
+                    .buyCplTcoin(targetPoolId, inputToken, inputAmount, minReserveOut, minCplTcoinOut);
             vm.stopBroadcast();
 
             cplBalanceAfter = GeneroTokenV3(cplTcoin).balanceOf(buyer);
@@ -79,6 +85,7 @@ contract RunTorontoCoinScenarioB is DeployChainConfig {
         string memory root = "scenarioB";
         vm.serializeString(root, "target", selection.target);
         vm.serializeAddress(root, "buyer", buyer);
+        vm.serializeBytes32(root, "targetPoolId", targetPoolId);
         vm.serializeAddress(root, "inputToken", inputToken);
         vm.serializeUint(root, "inputAmount", inputAmount);
         vm.serializeBool(root, "executeBuy", executeBuy);

@@ -12,19 +12,23 @@ import {GovernanceExecutionHelper} from "../../src/torontocoin/GovernanceExecuti
 import {GovernanceProposalHelper} from "../../src/torontocoin/GovernanceProposalHelper.sol";
 import {GovernanceRouterProposalHelper} from "../../src/torontocoin/GovernanceRouterProposalHelper.sol";
 import {LiquidityRouter} from "../../src/torontocoin/LiquidityRouter.sol";
-import {ManagedPoolAdapter} from "../../src/torontocoin/ManagedPoolAdapter.sol";
 import {MentoBrokerSwapAdapter} from "../../src/torontocoin/MentoBrokerSwapAdapter.sol";
 import {MintableTestReserveToken} from "../../src/torontocoin/MintableTestReserveToken.sol";
 import {OracleRouter} from "../../src/torontocoin/OracleRouter.sol";
 import {PoolRegistry} from "../../src/torontocoin/PoolRegistry.sol";
 import {ReserveInputRouter} from "../../src/torontocoin/ReserveInputRouter.sol";
 import {ReserveRegistry} from "../../src/torontocoin/ReserveRegistry.sol";
+import {SarafuSwapPoolAdapter} from "../../src/torontocoin/SarafuSwapPoolAdapter.sol";
 import {StaticCadOracle} from "../../src/torontocoin/StaticCadOracle.sol";
 import {StewardRegistry} from "../../src/torontocoin/StewardRegistry.sol";
 import {Treasury} from "../../src/torontocoin/Treasury.sol";
 import {TreasuryController} from "../../src/torontocoin/TreasuryController.sol";
 import {UserAcceptancePreferencesRegistry} from "../../src/torontocoin/UserAcceptancePreferencesRegistry.sol";
 import {UserCharityPreferencesRegistry} from "../../src/torontocoin/UserCharityPreferencesRegistry.sol";
+import {Limiter} from "../../src/sarafu-read-only/Limiter.sol";
+import {PriceIndexQuoter} from "../../src/sarafu-read-only/PriceIndexQuoter.sol";
+import {SwapPool} from "../../src/sarafu-read-only/SwapPool.sol";
+import {TokenUniqueSymbolIndex} from "../../src/sarafu-read-only/TokenUniqueSymbolIndex.sol";
 import "../helpers/DeployChainConfig.sol";
 
 contract DeployTorontoCoinSuite is DeployChainConfig {
@@ -46,7 +50,11 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         address mrTcoin;
         address cplTcoin;
         address staticCadOracle;
-        address managedPoolAdapter;
+        address tokenUniqueSymbolIndex;
+        address limiter;
+        address priceIndexQuoter;
+        address bootstrapSwapPool;
+        address sarafuSwapPoolAdapter;
         address reserveSwapAdapter;
         address mentoBrokerSwapAdapter;
         address reserveInputRouter;
@@ -132,13 +140,22 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         string memory bootstrapPoolName = _chainConfigString(selection, ".torontocoin.bootstrap.pool.name");
         string memory bootstrapPoolMetadata =
             _chainConfigString(selection, ".torontocoin.bootstrap.pool.metadataRecordId");
+        string memory bootstrapSwapPoolName =
+            _chainConfigStringOr(selection, ".torontocoin.bootstrap.swapPool.name", "Toronto Swap Pool");
+        string memory bootstrapSwapPoolSymbol =
+            _chainConfigStringOr(selection, ".torontocoin.bootstrap.swapPool.symbol", "TCSWAP");
+        uint8 bootstrapSwapPoolDecimals =
+            uint8(_chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.decimals", cplDecimals));
+        uint256 bootstrapSwapPoolFeePpm = _chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.feePpm", 0);
+        uint256 bootstrapPoolMrTcoinLimit =
+            _chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.mrTcoinLimit", 1_000_000_000_000);
+        uint256 bootstrapPoolCplTcoinLimit =
+            _chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.cplTcoinLimit", 1_000_000_000_000);
         bytes32 bootstrapMerchantId = _chainConfigBytes32(selection, ".torontocoin.bootstrap.merchant.merchantId");
         address bootstrapMerchantWallet =
             _chainConfigAddressOrDefault(selection, ".torontocoin.bootstrap.merchant.wallet", deployer);
         string memory bootstrapMerchantMetadata =
             _chainConfigString(selection, ".torontocoin.bootstrap.merchant.metadataRecordId");
-        uint256 bootstrapPoolQuoteBps = _chainConfigUint(selection, ".torontocoin.bootstrap.poolQuoteBps");
-        bool bootstrapPoolExecutionEnabled = _chainConfigBool(selection, ".torontocoin.bootstrap.poolExecutionEnabled");
         uint256 bootstrapPoolSeed = _chainConfigUint(selection, ".torontocoin.bootstrap.initialPoolSeed");
         address scenarioBuyer = _chainConfigAddressOrDefault(selection, ".torontocoin.scenarioB.buyer", deployer);
         address configuredScenarioInputToken =
@@ -264,8 +281,27 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         treasury.setAuthorizedCaller(address(treasuryController), true);
         mrTcoin.addWriter(address(treasuryController));
 
-        ManagedPoolAdapter managedPoolAdapter =
-            new ManagedPoolAdapter(deployer, deployer, address(poolRegistry), address(mrTcoin), address(cplTcoin));
+        TokenUniqueSymbolIndex tokenUniqueSymbolIndex = new TokenUniqueSymbolIndex();
+        tokenUniqueSymbolIndex.addWriter(deployer);
+        tokenUniqueSymbolIndex.register(address(mrTcoin));
+        tokenUniqueSymbolIndex.register(address(cplTcoin));
+
+        Limiter limiter = new Limiter();
+        PriceIndexQuoter priceIndexQuoter = new PriceIndexQuoter();
+        SwapPool bootstrapSwapPool = new SwapPool(
+            bootstrapSwapPoolName,
+            bootstrapSwapPoolSymbol,
+            bootstrapSwapPoolDecimals,
+            address(tokenUniqueSymbolIndex),
+            address(limiter)
+        );
+        bootstrapSwapPool.setQuoter(address(priceIndexQuoter));
+        if (bootstrapSwapPoolFeePpm > 0) {
+            bootstrapSwapPool.setFee(bootstrapSwapPoolFeePpm);
+        }
+
+        SarafuSwapPoolAdapter sarafuSwapPoolAdapter =
+            new SarafuSwapPoolAdapter(deployer, deployer, address(poolRegistry), address(mrTcoin), address(cplTcoin));
         address reserveSwapAdapter = address(new DirectOnlySwapAdapter());
         MentoBrokerSwapAdapter mentoAdapter;
         if (mentoEnabled) {
@@ -283,7 +319,7 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
             address(charityPreferences),
             address(acceptancePreferences),
             address(poolRegistry),
-            address(managedPoolAdapter)
+            address(sarafuSwapPoolAdapter)
         );
 
         reserveInputRouter.setLiquidityRouter(address(liquidityRouter));
@@ -299,13 +335,12 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         charityRegistry.assignSteward(1, stewardAccount);
 
         poolRegistry.addPool(bootstrapPoolId, bootstrapPoolName, bootstrapPoolMetadata);
+        poolRegistry.setPoolAddress(bootstrapPoolId, address(bootstrapSwapPool));
         address[] memory merchantWallets = new address[](1);
         merchantWallets[0] = bootstrapMerchantWallet;
         poolRegistry.approveMerchant(bootstrapMerchantId, bootstrapPoolId, bootstrapMerchantMetadata, merchantWallets);
-
-        managedPoolAdapter.createPoolAccount(bootstrapPoolId);
-        managedPoolAdapter.setPoolQuoteBps(bootstrapPoolId, bootstrapPoolQuoteBps);
-        managedPoolAdapter.setPoolExecutionEnabled(bootstrapPoolId, bootstrapPoolExecutionEnabled);
+        limiter.setLimitFor(address(mrTcoin), address(bootstrapSwapPool), bootstrapPoolMrTcoinLimit);
+        limiter.setLimitFor(address(cplTcoin), address(bootstrapSwapPool), bootstrapPoolCplTcoinLimit);
 
         if (mentoEnabled) {
             mentoAdapter.setDefaultRoute(mentoRouteTokenIn, mentoExchangeProvider, mentoExchangeId);
@@ -322,12 +357,6 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         }
 
         liquidityRouter.setCharityTopupBps(charityTopupBps);
-        liquidityRouter.setScoringWeights(
-            weightLowMrTcoinLiquidity,
-            weightHighCplTcoinLiquidity,
-            weightUserPoolPreference,
-            weightUserMerchantPreference
-        );
         liquidityRouter.seedPoolWithCplTcoin(bootstrapPoolId, bootstrapPoolSeed);
 
         GovernanceExecutionHelper governanceExecutionHelper = new GovernanceExecutionHelper();
@@ -354,7 +383,7 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         charityRegistry.setGovernance(address(governance));
         oracleRouter.setGovernance(address(governance));
         treasuryController.setGovernance(address(governance));
-        managedPoolAdapter.setGovernance(address(governance));
+        sarafuSwapPoolAdapter.setGovernance(address(governance));
         liquidityRouter.setGovernance(address(governance));
 
         reserveRegistry.transferOwnership(address(governance));
@@ -363,7 +392,7 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         charityRegistry.transferOwnership(address(governance));
         oracleRouter.transferOwnership(address(governance));
         treasuryController.transferOwnership(address(governance));
-        managedPoolAdapter.transferOwnership(address(governance));
+        sarafuSwapPoolAdapter.transferOwnership(address(governance));
         if (mentoEnabled) {
             mentoAdapter.transferOwnership(address(governance));
         }
@@ -405,7 +434,11 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
             mrTcoin: address(mrTcoin),
             cplTcoin: address(cplTcoin),
             staticCadOracle: address(staticCadOracle),
-            managedPoolAdapter: address(managedPoolAdapter),
+            tokenUniqueSymbolIndex: address(tokenUniqueSymbolIndex),
+            limiter: address(limiter),
+            priceIndexQuoter: address(priceIndexQuoter),
+            bootstrapSwapPool: address(bootstrapSwapPool),
+            sarafuSwapPoolAdapter: address(sarafuSwapPoolAdapter),
             reserveSwapAdapter: reserveSwapAdapter,
             mentoBrokerSwapAdapter: mentoEnabled ? address(mentoAdapter) : address(0),
             reserveInputRouter: address(reserveInputRouter),
@@ -463,7 +496,11 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         vm.serializeAddress(root, "mrTcoin", artifacts.mrTcoin);
         vm.serializeAddress(root, "cplTcoin", artifacts.cplTcoin);
         vm.serializeAddress(root, "staticCadOracle", artifacts.staticCadOracle);
-        vm.serializeAddress(root, "managedPoolAdapter", artifacts.managedPoolAdapter);
+        vm.serializeAddress(root, "tokenUniqueSymbolIndex", artifacts.tokenUniqueSymbolIndex);
+        vm.serializeAddress(root, "limiter", artifacts.limiter);
+        vm.serializeAddress(root, "priceIndexQuoter", artifacts.priceIndexQuoter);
+        vm.serializeAddress(root, "bootstrapSwapPool", artifacts.bootstrapSwapPool);
+        vm.serializeAddress(root, "sarafuSwapPoolAdapter", artifacts.sarafuSwapPoolAdapter);
         vm.serializeAddress(root, "reserveSwapAdapter", artifacts.reserveSwapAdapter);
         vm.serializeAddress(root, "mentoBrokerSwapAdapter", artifacts.mentoBrokerSwapAdapter);
         vm.serializeAddress(root, "reserveInputRouter", artifacts.reserveInputRouter);

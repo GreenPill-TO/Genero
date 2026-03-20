@@ -4,11 +4,11 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 import {LiquidityRouter} from "../../src/torontocoin/LiquidityRouter.sol";
-import {ManagedPoolAdapter} from "../../src/torontocoin/ManagedPoolAdapter.sol";
 import {MentoBrokerSwapAdapter} from "../../src/torontocoin/MentoBrokerSwapAdapter.sol";
 import {PoolRegistry} from "../../src/torontocoin/PoolRegistry.sol";
 import {ReserveInputRouter} from "../../src/torontocoin/ReserveInputRouter.sol";
 import {ReserveRegistry} from "../../src/torontocoin/ReserveRegistry.sol";
+import {SarafuSwapPoolAdapter} from "../../src/torontocoin/SarafuSwapPoolAdapter.sol";
 import {StaticCadOracle} from "../../src/torontocoin/StaticCadOracle.sol";
 import {Treasury} from "../../src/torontocoin/Treasury.sol";
 import {TreasuryController} from "../../src/torontocoin/TreasuryController.sol";
@@ -44,7 +44,11 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         address charityRegistry = suite.readAddress(".charityRegistry");
         address reserveRegistry = suite.readAddress(".reserveRegistry");
         address oracleRouter = suite.readAddress(".oracleRouter");
-        address managedPoolAdapter = suite.readAddress(".managedPoolAdapter");
+        address tokenUniqueSymbolIndex = suite.readAddress(".tokenUniqueSymbolIndex");
+        address limiter = suite.readAddress(".limiter");
+        address priceIndexQuoter = suite.readAddress(".priceIndexQuoter");
+        address bootstrapSwapPool = suite.readAddress(".bootstrapSwapPool");
+        address sarafuSwapPoolAdapter = suite.readAddress(".sarafuSwapPoolAdapter");
         address reserveSwapAdapter = suite.readAddress(".reserveSwapAdapter");
         address mentoAdapter = suite.readAddress(".mentoBrokerSwapAdapter");
         address reserveInputRouter = suite.readAddress(".reserveInputRouter");
@@ -68,11 +72,13 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
                 || governanceProposalHelper == address(0) || governanceRouterProposalHelper == address(0)
                 || treasuryController == address(0) || treasury == address(0) || poolRegistry == address(0)
                 || charityRegistry == address(0) || reserveRegistry == address(0) || oracleRouter == address(0)
-                || managedPoolAdapter == address(0) || reserveSwapAdapter == address(0)
-                || reserveInputRouter == address(0) || liquidityRouter == address(0) || mrTcoin == address(0)
-                || cplTcoin == address(0) || staticCadOracle == address(0) || stewardRegistry == address(0)
-                || userCharityPreferencesRegistry == address(0) || userAcceptancePreferencesRegistry == address(0)
-                || reserveAssetToken == address(0) || scenarioInputToken == address(0)
+                || tokenUniqueSymbolIndex == address(0) || limiter == address(0) || priceIndexQuoter == address(0)
+                || bootstrapSwapPool == address(0) || sarafuSwapPoolAdapter == address(0)
+                || reserveSwapAdapter == address(0) || reserveInputRouter == address(0) || liquidityRouter == address(0)
+                || mrTcoin == address(0) || cplTcoin == address(0) || staticCadOracle == address(0)
+                || stewardRegistry == address(0) || userCharityPreferencesRegistry == address(0)
+                || userAcceptancePreferencesRegistry == address(0) || reserveAssetToken == address(0)
+                || scenarioInputToken == address(0)
         ) {
             revert ValidationFailed("zero address in suite artifact");
         }
@@ -87,8 +93,8 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         if (LiquidityRouter(liquidityRouter).governance() != governance) {
             revert ValidationFailed("liquidity router governance mismatch");
         }
-        if (ManagedPoolAdapter(managedPoolAdapter).governance() != governance) {
-            revert ValidationFailed("managed pool adapter governance mismatch");
+        if (SarafuSwapPoolAdapter(sarafuSwapPoolAdapter).governance() != governance) {
+            revert ValidationFailed("sarafu swap pool adapter governance mismatch");
         }
         if (Governance(payable(governance)).executionHelper() != governanceExecutionHelper) {
             revert ValidationFailed("governance execution helper mismatch");
@@ -106,7 +112,7 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         if (address(LiquidityRouter(liquidityRouter).treasuryController()) != treasuryController) {
             revert ValidationFailed("liquidity router treasury pointer mismatch");
         }
-        if (address(LiquidityRouter(liquidityRouter).poolAdapter()) != managedPoolAdapter) {
+        if (address(LiquidityRouter(liquidityRouter).poolAdapter()) != sarafuSwapPoolAdapter) {
             revert ValidationFailed("liquidity router adapter pointer mismatch");
         }
         if (address(ReserveInputRouter(reserveInputRouter).liquidityRouter()) != liquidityRouter) {
@@ -133,15 +139,19 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
             revert ValidationFailed("bootstrap pool inactive");
         }
 
-        ManagedPoolAdapter.PoolConfig memory poolConfig =
-            ManagedPoolAdapter(managedPoolAdapter).getPoolConfig(bootstrapPoolId);
-        if (poolConfig.poolAccount == address(0) || poolConfig.quoteBps == 0 || !poolConfig.executionEnabled) {
-            revert ValidationFailed("bootstrap pool config incomplete");
+        if (PoolRegistry(poolRegistry).getPoolAddress(bootstrapPoolId) != bootstrapSwapPool) {
+            revert ValidationFailed("bootstrap swap pool address mismatch");
+        }
+
+        (uint256 mrLiquidity, uint256 cplLiquidity, bool poolActive) =
+            SarafuSwapPoolAdapter(sarafuSwapPoolAdapter).getPoolLiquidityState(bootstrapPoolId);
+        if (!poolActive || cplLiquidity == 0) {
+            revert ValidationFailed("bootstrap sarafu pool not ready");
         }
 
         bytes32[] memory merchantIds = new bytes32[](1);
         merchantIds[0] = bootstrapMerchantId;
-        if (!ManagedPoolAdapter(managedPoolAdapter).poolMatchesAnyMerchantIds(bootstrapPoolId, merchantIds)) {
+        if (!SarafuSwapPoolAdapter(sarafuSwapPoolAdapter).poolMatchesAnyMerchantIds(bootstrapPoolId, merchantIds)) {
             revert ValidationFailed("bootstrap merchant not linked to pool");
         }
 
@@ -180,6 +190,8 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         vm.serializeBool(root, "tokenDecimalsAreSix", true);
         vm.serializeBool(root, "reserveAssetActive", true);
         vm.serializeBool(root, "bootstrapPoolReady", true);
+        vm.serializeUint(root, "bootstrapPoolMrLiquidity", mrLiquidity);
+        vm.serializeUint(root, "bootstrapPoolCplLiquidity", cplLiquidity);
         vm.serializeBool(root, "mentoEnabled", mentoEnabled);
         string memory json = vm.serializeBool(root, "mentoUsdcRouteConfigured", mentoEnabled);
         vm.writeJson(json, string.concat(deploymentDir, "/validation.json"));
