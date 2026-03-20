@@ -157,6 +157,36 @@ The validator checks:
 - bootstrap pool readiness
 - configured Mento `USDC -> USDm -> CADm` route presence
 
+### Six-Decimal Migration Tooling
+
+For the already-deployed Celo mainnet TorontoCoin stack, the workspace now also ships a targeted staged migration flow:
+
+```bash
+forge script script/deploy/StageTorontoCoinSixDecimalMigration.s.sol:StageTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast
+
+forge script script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol:ProposeTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast
+
+forge script script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol:FinalizeTorontoCoinSixDecimalMigration --rpc-url celo-mainnet
+
+forge script script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol:AbortTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast
+```
+
+Those scripts:
+
+- stage fresh `6`-decimal `mrTCOIN` and `cplTCOIN` deployments
+- stage a fresh `ManagedPoolAdapter`
+- record the staged addresses in `contracts/foundry/deployments/torontocoin/celo-mainnet/six-decimal-migration.json`
+- propose controller/router rewiring through governance
+- either finalize the cutover or cancel the proposals cleanly
+
+Important live result:
+
+- the first real mainnet run proved that the current live `TreasuryController` and retail-routing path still scale internal token amounts as if `mrTCOIN` and `cplTCOIN` were `18` decimals
+- because of that, a pure token-address swap to `6`-decimal deployments fails pool-liquidity checks before cutover
+- proposals `17`, `18`, and `19` from the first staged migration were cancelled, and the live TorontoCoin mainnet pointers remain unchanged
+
+So the checked-in `6`-decimal default is safe for fresh deployments, but a real live migration still requires code-level amount-scaling fixes before `FinalizeTorontoCoinSixDecimalMigration.s.sol` can succeed on mainnet.
+
 ### Scenario A
 
 Scenario A is an operational runbook, not a protocol deploy step:

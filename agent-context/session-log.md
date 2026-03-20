@@ -1,3 +1,68 @@
+## v1.64
+### Timestamp
+- 2026-03-20 22:35:00 EDT
+
+### Objective
+- Implement a targeted live TorontoCoin `6`-decimal migration path for Celo mainnet, execute it only if the existing live controller/router stack can safely accept the new token scale, and leave the live system unchanged if that assumption proves false.
+
+### What Changed
+- Added reusable TorontoCoin mainnet migration tooling under `contracts/foundry/script/deploy/`:
+  - `TorontoCoinSixDecimalMigrationBase.s.sol`
+  - `StageTorontoCoinSixDecimalMigration.s.sol`
+  - `ProposeTorontoCoinSixDecimalMigration.s.sol`
+  - `FinalizeTorontoCoinSixDecimalMigration.s.sol`
+  - `AbortTorontoCoinSixDecimalMigration.s.sol`
+- `StageTorontoCoinSixDecimalMigration.s.sol` now deploys a fresh `6`-decimal `mrTCOIN`, a fresh `6`-decimal `cplTCOIN`, and a fresh `ManagedPoolAdapter`, then clones the live bootstrap pool execution settings into a clean pool account and records the staged addresses in `contracts/foundry/deployments/torontocoin/celo-mainnet/six-decimal-migration.json`.
+- The live stage broadcast on Celo mainnet succeeded and produced these staged-but-not-live addresses:
+  - `newMrTcoin = 0xE735e11f38b4dBafEd71C7a70d24F6316612504B`
+  - `newCplTcoin = 0x6e0C7A71ff70C34BCB3Fa42e244aDeA93566E6cd`
+  - `newManagedPoolAdapter = 0x64Dc884C37DfCBDa438c78E706B8515B8ABF6bE5`
+  - `newPoolAccount = 0x718DE5aC75738B9B2EA6C28aE8B0FD0cA9349b5e`
+- `ProposeTorontoCoinSixDecimalMigration.s.sol` then submitted and approved three governance proposals against the live mainnet governance contract:
+  - proposal `17`: `TreasuryController.setTcoinToken(newMrTcoin)`
+  - proposal `18`: `LiquidityRouter.setCplTcoin(newCplTcoin)`
+  - proposal `19`: `LiquidityRouter.setPoolAdapter(newManagedPoolAdapter)`
+- `FinalizeTorontoCoinSixDecimalMigration.s.sol` exposed a real compatibility blocker before any cutover transaction was broadcast: the live TorontoCoin controller/router/adapter path still assumes `18`-decimal-scaled internal token amounts. With only the token decimals changed, the fresh `6`-decimal pool inventory was treated as far too small and the router path reverted with `InsufficientPoolLiquidity(...)`.
+- Because of that blocker, the live cutover was intentionally aborted. `AbortTorontoCoinSixDecimalMigration.s.sol` cancelled proposals `17`, `18`, and `19`, leaving the live TorontoCoin mainnet stack unchanged:
+  - `TreasuryController.tcoinToken()` still points to the old `18`-decimal `mrTCOIN`
+  - `LiquidityRouter.cplTcoin()` still points to the old `18`-decimal `cplTCOIN`
+  - `LiquidityRouter.poolAdapter()` still points to the previously live `ManagedPoolAdapter`
+- The practical conclusion is now explicit: changing deployment defaults to `6` decimals is safe for fresh environments, but live TorontoCoin cannot be migrated by token replacement alone. A real live migration still requires code-level scaling changes in `TreasuryController`, router accounting, and pool-liquidity reads.
+
+### Deployer Balance Tracker
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- End balance: `9.797287038945049075 CELO`
+- Previous tracked session balance: `10.066034561180316480 CELO`
+- Delta from previous tracked session: `-0.268747522235267405 CELO`
+- Transaction-cost breakdown this session:
+  - `StageTorontoCoinSixDecimalMigration.s.sol`: `0.242750878455020330 CELO`
+  - `ProposeTorontoCoinSixDecimalMigration.s.sol`: `0.023656690827783027 CELO`
+  - `AbortTorontoCoinSixDecimalMigration.s.sol`: `0.002339952952464060 CELO`
+  - Total spent: `0.268747522235267405 CELO`
+
+### Verification
+- `forge test`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/StageTorontoCoinSixDecimalMigration.s.sol:StageTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol:ProposeTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol:FinalizeTorontoCoinSixDecimalMigration --rpc-url celo-mainnet`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol:AbortTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast`
+- `cast call 0x8cBd51D726d7D8851bdD3aC003c0Fb20c26ef6E1 'getProposal(uint256)((uint8,address,address,uint256,uint64,uint64,bool,bool,bytes32,string,string))' 17 --rpc-url https://forno.celo.org`
+- `cast call 0x8cBd51D726d7D8851bdD3aC003c0Fb20c26ef6E1 'getProposal(uint256)((uint8,address,address,uint256,uint64,uint64,bool,bool,bytes32,string,string))' 18 --rpc-url https://forno.celo.org`
+- `cast call 0x8cBd51D726d7D8851bdD3aC003c0Fb20c26ef6E1 'getProposal(uint256)((uint8,address,address,uint256,uint64,uint64,bool,bool,bytes32,string,string))' 19 --rpc-url https://forno.celo.org`
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo.org`
+
+### Files Edited
+- `contracts/foundry/script/deploy/TorontoCoinSixDecimalMigrationBase.s.sol`
+- `contracts/foundry/script/deploy/StageTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.63
 ### Timestamp
 - 2026-03-20 16:53:59 EDT
