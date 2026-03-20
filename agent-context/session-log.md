@@ -1,3 +1,36 @@
+## v1.62
+### Timestamp
+- 2026-03-20 18:20:00 EDT
+
+### Objective
+- Formalize deployer-balance tracking in the session log for TorontoCoin chain work, record the current deployer balance baseline, and assess whether the just-landed `6`-decimal default pass requires any cost-effective on-chain deployment.
+
+### What Changed
+- Added a workflow rule in `agent-context/workflow.md` requiring TorontoCoin sessions that touch live or testnet chain state to record the deployer wallet end-balance, delta from the prior tracked session, and a transaction-cost breakdown when the balance changes.
+- Added the first explicit deployer-balance tracker entry to this session log for the TorontoCoin deployer `0x1B7489bE5C572041b682749F7B25B84E30cF9271` on Celo mainnet.
+- Verified that the most recent implementation commit `e8185f1` changes only checked-in defaults, validator logic, tests, and docs. It does not change any deployable production contract bytecode under `contracts/foundry/src/torontocoin/`.
+- As a result, the cost-effective deployment action for this session is a deliberate no-op:
+  - no contracts were redeployed
+  - no governance rewiring was sent
+  - no mainnet balance was spent in this session
+- This remains consistent with the implemented `6`-decimal posture, which is forward-looking for fresh deployments only and intentionally does not migrate the already-deployed mainnet token addresses.
+
+### Deployer Balance Tracker
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- End balance: `10.066034561180316480 CELO`
+- Previous tracked session balance: none; this entry establishes the baseline tracker
+- Delta from previous tracked session: not applicable
+- Transaction-cost breakdown this session: none; no on-chain transactions were broadcast
+
+### Verification
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo.org`
+- `git diff --name-only HEAD^ HEAD | rg '^contracts/foundry/src/torontocoin/.*\\.sol$|^contracts/foundry/script/deploy/.*\\.sol$'`
+
+### Files Edited
+- `agent-context/workflow.md`
+- `agent-context/session-log.md`
+
 ## v1.61
 ### Timestamp
 - 2026-03-20 16:10:00 EDT
