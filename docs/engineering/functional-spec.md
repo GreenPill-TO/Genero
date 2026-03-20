@@ -4,7 +4,7 @@
 
 Genero is a multi-city, modular platform enabling the creation and operation of local digital currencies—"CityCoins"—that reinforce community wealth and sustainable economies. The first implementation is Toronto Coin (T-Coin).
 
-Internal engineering notes and architecture artefacts may be accompanied by Mermaid diagrams generated through the shared Mermaid authoring workflow, with editable source retained alongside preview exports for review.
+Internal engineering notes and architecture artefacts may be accompanied by Mermaid diagrams generated through the shared local Mermaid authoring workflow, with editable source retained alongside local preview exports for review.
 
 ## Apps
 

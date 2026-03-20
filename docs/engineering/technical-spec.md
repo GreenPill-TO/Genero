@@ -11,7 +11,7 @@
 - **Testing**: Vitest with tsconfig path resolution for unit tests
   - Tests run in a jsdom environment to provide DOM APIs
   - React Query hooks in tests are wrapped with `QueryClientProvider` and external modules are mocked as needed
-- **Documentation tooling**: Internal engineering notes may include Mermaid diagrams generated through the shared local `mermaid-chart` Codex skill, which keeps Mermaid source editable and uses browser-rendered previews for visual checks and image exports
+- **Documentation tooling**: Internal engineering notes may include Mermaid diagrams generated through the shared local `mermaid-chart` Codex skill, which keeps Mermaid source editable and uses local HTML previews plus browser screenshots for visual checks and image exports
 - **Authentication**: Twilio SMS OTP via API routes
 - **Storage**: Supabase (Postgres + Auth)
   - Browser storage (e.g. `localStorage`) is accessed inside `useEffect` hooks with window guards to avoid Node build-time warnings

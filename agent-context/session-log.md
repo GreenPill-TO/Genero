@@ -1,3 +1,25 @@
+## v1.65
+### Timestamp
+- 2026-03-20 17:13:00 EDT
+
+### Objective
+- Simplify the Mermaid chart skill so local HTML preview is the only validation path and make the skill validator work without temporary dependency shims.
+
+### What Changed
+- Removed the optional `mermaid.ai` hosted-editor refinement path from the local `mermaid-chart` skill instructions and browser reference notes.
+- Tightened the skill guidance so local HTML preview plus browser screenshot export is now the sole refinement workflow.
+- Installed `PyYAML 6.0.3` into the user Python site-packages so `quick_validate.py` runs directly in future sessions.
+- Updated the repo engineering notes to describe the Mermaid workflow as local-preview-first.
+
+### Verification
+- `python3 -m pip show pyyaml`
+- `python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py ~/.codex/skills/mermaid-chart`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.64
 ### Timestamp
 - 2026-03-20 22:35:00 EDT
