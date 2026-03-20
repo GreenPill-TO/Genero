@@ -1,3 +1,27 @@
+## v1.63
+### Timestamp
+- 2026-03-20 16:53:59 EDT
+
+### Objective
+- Create a reusable Codex skill for drafting, refining, and exporting Mermaid diagrams so engineering notes can pair editable Mermaid source with visually checked image artefacts.
+
+### What Changed
+- Added a new local Codex skill at `~/.codex/skills/mermaid-chart/`.
+- Wrote the skill workflow so Mermaid work now starts from a minimal valid block, renders locally first, iterates structurally for readability, and uses `mermaid.ai` only when the user explicitly wants the hosted workspace.
+- Added `scripts/render_mermaid_html.py` to convert raw Mermaid or Markdown-embedded Mermaid into a local HTML preview page suitable for browser inspection and screenshot export.
+- Added focused Mermaid authoring and browser-refinement references covering chart selection, layout heuristics, screenshot guidance, and the guard-rail that Google sign-in must stay user-driven.
+- Updated the engineering specs to note the shared Mermaid-diagram documentation workflow for internal technical notes and architecture diagrams.
+
+### Verification
+- `python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py ~/.codex/skills/mermaid-chart`
+- `python3 ~/.codex/skills/mermaid-chart/scripts/render_mermaid_html.py /tmp/mermaid-chart-demo.md --output /tmp/mermaid-chart-demo.html --title "Mermaid Chart Skill Demo"`
+- Browser preview of `file:///tmp/mermaid-chart-demo.html` with screenshot export to JPEG
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.62
 ### Timestamp
 - 2026-03-20 18:20:00 EDT
