@@ -1,3 +1,28 @@
+## v1.59
+### Timestamp
+- 2026-03-20 11:10:00 EDT
+
+### Objective
+- Update the checked-in TorontoCoin deployment defaults so future deployments start at the intended `3.3 CAD/TCOIN` peg, and verify whether the already-deployed Celo mainnet stack can be moved from the legacy `1.0 CAD/TCOIN` peg to `3.3 CAD/TCOIN` under the live governance constraints before executing a live `1 USDC` retail router buy.
+
+### What Changed
+- Updated `contracts/foundry/deploy-config.json` so all checked-in TorontoCoin deployment profiles now initialize `TreasuryController.cadPeg18` at `3300000000000000000` (`3.3 CAD/TCOIN`) instead of the legacy `1000000000000000000` (`1.0 CAD/TCOIN`) default. This ensures future suite deployments start at the intended reserve-backed mint rate without an immediate post-deploy governance correction.
+- Updated the engineering specs to record that fresh TorontoCoin deployments now start at `3.3 CAD/TCOIN`, aligning the static deployment config with the intended retail economics.
+- Re-verified the live Celo mainnet stack before sending funds. The deployed `TreasuryController` still has `cadPeg18 = 1e18`, the live router still has `charityTopupBps = 300`, and the live `LiquidityRouter` is already a `cplTCOIN` writer.
+- Confirmed that the requested `1.0 -> 3.3` mainnet peg change cannot be completed in 12 governance proposals. The live `TreasuryController` enforces a maximum `10%` peg move per update, so the largest reachable peg after 12 steps is about `3.1384283767`. Reaching `3.3` from `1.0` requires at least 13 governance proposals under the deployed rules.
+
+### Verification
+- `cast call 0x4AAf282aE14A437163d9D8fDD44aAcD4fB65244c 'cadPeg18()(uint256)' --rpc-url "$MAINNET_RPC_URL"`
+- `cast call 0xFe3aE3c1f9EDDbF74472587893a7f8B84e20D748 'charityTopupBps()(uint256)' --rpc-url "$MAINNET_RPC_URL"`
+- `cast call 0x3fBcBA716c9C2Bb230Ed02d2C41A93C71c8243DD 'isWriter(address)(bool)' 0xFe3aE3c1f9EDDbF74472587893a7f8B84e20D748 --rpc-url "$MAINNET_RPC_URL"`
+- `python3` check of the 10% compounding path from `1.0` to `3.3`, confirming 12 steps are insufficient and 13 are required.
+
+### Files Edited
+- `contracts/foundry/deploy-config.json`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.58
 ### Timestamp
 - 2026-03-19 18:35:00 EDT

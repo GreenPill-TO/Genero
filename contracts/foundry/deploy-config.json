@@ -13,7 +13,7 @@
           "defaultVotingWindow": 604800
         },
         "treasuryController": {
-          "cadPeg18": 1000000000000000000,
+          "cadPeg18": 3300000000000000000,
           "userRedeemRateBps": 8000,
           "merchantRedeemRateBps": 9700,
           "charityMintRateBps": 300,
@@ -112,7 +112,7 @@
           "defaultVotingWindow": 604800
         },
         "treasuryController": {
-          "cadPeg18": 1000000000000000000,
+          "cadPeg18": 3300000000000000000,
           "userRedeemRateBps": 8000,
           "merchantRedeemRateBps": 9700,
           "charityMintRateBps": 300,
@@ -204,7 +204,7 @@
           "defaultVotingWindow": 604800
         },
         "treasuryController": {
-          "cadPeg18": 1000000000000000000,
+          "cadPeg18": 3300000000000000000,
           "userRedeemRateBps": 8000,
           "merchantRedeemRateBps": 9700,
           "charityMintRateBps": 300,
