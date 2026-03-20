@@ -1,3 +1,38 @@
+## v1.60
+### Timestamp
+- 2026-03-20 14:20:00 EDT
+
+### Objective
+- Complete the live Celo mainnet TorontoCoin peg ramp to `3.3 CAD/TCOIN`, restore a working retail router path after discovering the current `cplTCOIN` single-account balance ceiling, and execute a live `1 USDC` router buy against the recovered pool.
+
+### What Changed
+- Executed 13 live governance proposals on Celo mainnet to move the deployed `TreasuryController.cadPeg18` from `1.0e18` to `3.3e18`. The first attempt with 1-second windows exposed Celo sequencer nonce and visibility races, so the successful ramp used longer voting windows and explicit nonce management.
+- Confirmed the live router already had `charityTopupBps = 300` (3%), and added the deployer EOA as a `cplTCOIN` writer so pool inventory could be seeded directly from the token contract.
+- Discovered an operationally critical limitation in the current live `GeneroTokenV3` / `cplTCOIN` implementation: once a single account balance grows much beyond roughly `9.22` visible tokens, Sarafu-era `ABDKMath64x64.fromUInt` conversions begin reverting on `balanceOf(...)`. This broke the original bootstrap adapter path after an attempted large pool top-up, because `ManagedPoolAdapter` reads pool inventory through `IERC20.balanceOf(poolAccount)`.
+- Recovered the live retail path by deploying a fresh `ManagedPoolAdapter` at `0xD2Ef61a2Cc17F44e5b5E41bE0F52a0DBa70Ffdf0`, creating a new bootstrap pool account `0x8054e75AfBbEDa1D0d3c3CA6c2e941627b821cCC`, seeding that safe pool with `5 cplTCOIN`, and switching `LiquidityRouter` to the new adapter through governance proposal `16`.
+- Executed a live `1 USDC` buy through `LiquidityRouter` on Celo mainnet after the recovery. The protocol path completed successfully through `USDC -> USDm -> CADm -> TreasuryController -> LiquidityRouter -> cplTCOIN`.
+- The live post-buy state on the recovered pool was:
+  - deployer `USDC`: `4.000000`
+  - deployer `cplTCOIN`: `0.427885999479212629`
+  - recovered pool `cplTCOIN`: `4.584567346438253997`
+  - recovered pool `mrTCOIN`: `0.415423300465254980`
+- The difference between the pool-side `mrTCOIN` inflow and the deployer’s total `cplTCOIN` receipt reflects the 3% charity top-up mint, which still resolves to the deployer wallet under the current bootstrap charity configuration.
+- This session leaves one clear engineering follow-up: patch or replace the current `cplTCOIN` visible/base conversion math so large single-account pool inventories do not break `balanceOf(...)`, router previews, and pool accounting.
+
+### Verification
+- `cast call 0x4AAf282aE14A437163d9D8fDD44aAcD4fB65244c 'cadPeg18()(uint256)' --rpc-url "$MAINNET_RPC_URL"`
+- 13 live `Governance.proposeCadPegUpdate(...)` / `voteProposal(...)` / `executeProposal(...)` transactions on Celo mainnet
+- `cast call 0x3fBcBA716c9C2Bb230Ed02d2C41A93C71c8243DD 'isWriter(address)(bool)' 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url "$MAINNET_RPC_URL"`
+- `forge create src/torontocoin/ManagedPoolAdapter.sol:ManagedPoolAdapter --broadcast ...`
+- live governance proposal `16` to switch `LiquidityRouter.poolAdapter` to `0xD2Ef61a2Cc17F44e5b5E41bE0F52a0DBa70Ffdf0`
+- live `cast send ... 'buyCplTcoin(address,uint256,uint256,uint256)' ...` call against `LiquidityRouter`
+- post-trade balance reads on deployer, recovered pool, `TreasuryController`, and `LiquidityRouter`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.59
 ### Timestamp
 - 2026-03-20 11:10:00 EDT
