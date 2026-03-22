@@ -1,3 +1,58 @@
+## v1.69
+### Timestamp
+- 2026-03-22 18:35:00 EDT
+
+### Objective
+- Deploy a fresh Celo mainnet TorontoCoin suite with the updated `GeneroTokenV3` pool-fee bypass and `PoolRegistry` reverse lookup, then validate the canonical Sarafu `SwapPool` deposit path and bounded `1 USDC -> cplTCOIN` retail smoke on chain.
+
+### What Changed
+- Deployed a fresh canonical TorontoCoin suite to Celo mainnet using the current Sarafu-first runtime and `6`-decimal internal token defaults.
+- The new live mainnet entrypoints are:
+  - `Governance`: `0x0Ae274e0898499C48832149266A6625a4D20c581`
+  - `TreasuryController`: `0x5A860da554bf1301708db7c41C4e540135e3FCE4`
+  - `LiquidityRouter`: `0x6BBa692FC6b2F7F19a925a11EEbfc4Dd67C424a7`
+  - `ReserveInputRouter`: `0xdCD1419C195e95dBe6BD5494597d5aF0568Ba1a3`
+  - `SarafuSwapPoolAdapter`: `0x9EBEedA7c8a98fc58775f088A3210fAC781A1e47`
+  - `PoolRegistry`: `0x3e9926Ff48b84f6E625E833219353b9cfb473A74`
+  - `mrTCOIN`: `0x63ed4CFAD21E9F4a30Ad93a199f382f98CAf59C3`
+  - `cplTCOIN`: `0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19`
+  - bootstrap `SwapPool`: `0xDe2a979EC49811aD27730e451651e52b4540c594`
+- The fresh deploy successfully seeded the bootstrap Sarafu pool through the canonical pool-deposit path. The earlier workaround of minting to the deployer and transferring directly into the pool is no longer required on this suite.
+- Re-ran the post-deploy validator after final state settled. The validator now passes against the new suite and confirms:
+  - `tokenDecimalsAreSix = true`
+  - `governanceWiring = true`
+  - `bootstrapPoolReady = true`
+  - `scenarioPoolLiquiditySufficient = true`
+  - `mentoUsdcRouteConfigured = true`
+- Ran the bounded live Scenario B smoke on the fresh suite with `1 USDC` from the deployer wallet. The on-chain result was:
+  - reserve used: `999450005010000000`
+  - `mrTCOIN` used: `414923183898090909`
+  - pool `cplTCOIN` out: `414923183898090908`
+  - charity top-up: `12447695516942727`
+  - buyer `cplTCOIN` balance after execution: `427370879415033633`
+- The refreshed generated deployment artefacts now live under `contracts/foundry/deployments/torontocoin/celo-mainnet/`. By current repo policy they remain runtime outputs rather than checked-in static config; `deploy-config.json` continues to hold only public deployment inputs.
+
+### Deployer Balance Tracker
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- End balance: `6.247118087577593885 CELO`
+- Previous tracked session balance: `7.438596040537245886 CELO`
+- Delta from previous tracked session: `-1.191477952959652001 CELO`
+- Transaction-cost breakdown this session:
+  - Fresh Celo mainnet suite deploy batch: `1.160099447387488446 CELO`
+  - Live Scenario B smoke batch: `0.031378505572163555 CELO`
+
+### Verification
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url https://forno.celo.org --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url https://forno.celo.org`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url https://forno.celo.org --broadcast`
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo.org`
+
+### Files Edited
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.68
 ### Timestamp
 - 2026-03-22 17:10:00 EDT
