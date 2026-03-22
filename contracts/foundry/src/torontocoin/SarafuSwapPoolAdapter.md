@@ -48,5 +48,4 @@ The intended deployment posture is:
 
 ## Notes
 
-- `ManagedPoolAdapter` may still exist in the repo for older experiments and migration artefacts, but it is no longer the intended production pool engine.
 - Merchant matching still comes from `PoolRegistry`, so acceptance-preference enforcement remains compatible with the existing TorontoCoin preference surfaces.

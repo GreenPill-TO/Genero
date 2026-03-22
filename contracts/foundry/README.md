@@ -82,7 +82,6 @@ The current TorontoCoin refactor now targets real Sarafu pool runtime:
 - `SwapPool` is the canonical pool engine
 - `SarafuSwapPoolAdapter` is the thin router-facing adapter
 - `PoolRegistry` carries pool identity plus the real Sarafu pool address
-- `ManagedPoolAdapter` is no longer the intended production pool backend
 
 Generated runtime output is written under the selected target path:
 
@@ -169,22 +168,6 @@ The validator checks:
 - configured Mento route presence for the selected reserve asset
 - configured Scenario B preview liquidity sufficiency against the seeded bootstrap Sarafu pool
 
-### Deprecated Managed-Pool Migration Scripts
-
-The old staged `6`-decimal migration scripts are now explicitly deprecated:
-
-```bash
-forge script script/deploy/StageTorontoCoinSixDecimalMigration.s.sol:StageTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast
-
-forge script script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol:ProposeTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast
-
-forge script script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol:FinalizeTorontoCoinSixDecimalMigration --rpc-url celo-mainnet
-
-forge script script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol:AbortTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast
-```
-
-They now revert intentionally because they target the superseded `ManagedPoolAdapter` architecture.
-
 Current operator posture:
 
 - use `DeployTorontoCoinSuite.s.sol` for a fresh Sarafu-pool-aligned deployment
@@ -195,7 +178,7 @@ This matches the current TorontoCoin posture:
 
 - `6`-decimal internal tokens by default
 - real Sarafu `SwapPool` execution
-- greenfield redeploys rather than in-place rewiring of the older managed-pool prototype
+- greenfield redeploys rather than legacy in-place rewiring
 - bootstrap pool limits default high enough for the current six-decimal / legacy-controller raw-unit mix, and the validator now proves the configured smoke path can clear against seeded liquidity before any live buy
 
 ### Scenario A

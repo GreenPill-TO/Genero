@@ -1,3 +1,50 @@
+## v1.67
+### Timestamp
+- 2026-03-22 16:40:00 EDT
+
+### Objective
+- Remove obsolete TorontoCoin managed-pool contracts, migration scripts, and superseded deployment surfaces after the Sarafu-first runtime reset and the fresh-deploy-only six-decimal posture.
+
+### What Changed
+- Deleted the obsolete managed-pool execution contract and its stale review artefacts:
+  - `contracts/foundry/src/torontocoin/ManagedPoolAdapter.sol`
+  - `contracts/foundry/src/torontocoin/ManagedPoolAdapter.md`
+  - `contracts/foundry/test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- Deleted the old in-place six-decimal migration script set because that flow targeted the superseded managed-pool architecture and had already been reduced to intentional reverts:
+  - `contracts/foundry/script/deploy/TorontoCoinSixDecimalMigrationBase.s.sol`
+  - `contracts/foundry/script/deploy/StageTorontoCoinSixDecimalMigration.s.sol`
+  - `contracts/foundry/script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol`
+  - `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+  - `contracts/foundry/script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol`
+- Deleted the superseded `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol` entrypoint because the active deployment surface is now `DeployTorontoCoinSuite.s.sol`.
+- Updated the Foundry and TorontoCoin docs so they no longer describe managed-pool execution or deprecated in-place migration tooling as part of the active architecture.
+- Updated the engineering specs to reflect the cleaned posture:
+  - Sarafu `SwapPool` is the only active pool runtime described in current specs
+  - greenfield redeploys are the canonical operational posture
+  - the old managed-pool migration path is removed from the repo, not merely deprecated
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/README.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/src/torontocoin/SarafuSwapPoolAdapter.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+### Files Deleted
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.sol`
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.md`
+- `contracts/foundry/test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `contracts/foundry/script/deploy/TorontoCoinSixDecimalMigrationBase.s.sol`
+- `contracts/foundry/script/deploy/StageTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+
 ## v1.66
 ### Timestamp
 - 2026-03-22 16:25:00 EDT

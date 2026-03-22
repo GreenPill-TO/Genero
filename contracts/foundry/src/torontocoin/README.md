@@ -66,7 +66,6 @@ TorontoCoin is now being steered back toward the original Sarafu pool vision:
 - real Sarafu `SwapPool` contracts are the intended runtime pool engine
 - `SarafuSwapPoolAdapter` is the thin execution adapter for that engine
 - `PoolRegistry` is being narrowed toward pool-address and merchant identity, not pool inventory custody
-- `ManagedPoolAdapter` remains in-repo for older deployments and migration artefacts, but it is no longer the intended production pool backend
 
 ### Deployable retail stack
 The TorontoCoin suite is now deployable as one mainnet-oriented stack:
