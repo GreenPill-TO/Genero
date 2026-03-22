@@ -49,12 +49,12 @@
         },
         "reserves": {
           "cadm": {
-            "assetId": "0x4341444d00000000000000000000000000000000000000000000000000000000",
-            "token": "0xff4Ab19391af240c311c54200a492233052B6325",
-            "code": "CADm",
+            "assetId": "0x5553444d00000000000000000000000000000000000000000000000000000000",
+            "token": "0x765DE816845861e75A25fCA122bb6898B8B1282a",
+            "code": "USDm",
             "tokenDecimals": 18,
             "staleAfter": 86400,
-            "staticCadPrice18": 1000000000000000000
+            "staticCadPrice18": 1370000000000000000
           }
         },
         "mento": {
@@ -89,7 +89,7 @@
           },
           "poolQuoteBps": 10000,
           "poolExecutionEnabled": true,
-          "initialPoolSeed": 5000000
+          "initialPoolSeed": 1000000000000000000
         },
         "scenarioB": {
           "inputToken": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
@@ -182,7 +182,7 @@
           },
           "poolQuoteBps": 10000,
           "poolExecutionEnabled": true,
-          "initialPoolSeed": 5000000
+          "initialPoolSeed": 1000000000000000000
         },
         "scenarioB": {
           "inputAmount": 1000000000000000000,
@@ -280,7 +280,7 @@
           },
           "poolQuoteBps": 10000,
           "poolExecutionEnabled": true,
-          "initialPoolSeed": 5000000
+          "initialPoolSeed": 1000000000000000000
         },
         "scenarioB": {
           "inputToken": "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b",

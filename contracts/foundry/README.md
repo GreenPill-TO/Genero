@@ -60,7 +60,7 @@ The default TorontoCoin deployment target remains `celo-mainnet`, but the worksp
 
 - `ethereum-sepolia` for non-Mento retail routing smoke tests using a deployable test reserve token and the direct-only swap adapter.
 - `celo-sepolia` for limited Mento-path validation without assuming a Transak-style on-ramp. The checked-in profile defaults Scenario B to preview-only because funded test input is not guaranteed.
-- `celo-mainnet` for the real production posture, including the `USDC -> USDm -> CADm -> cplTCOIN` path.
+- `celo-mainnet` for the real production posture, currently using `USDm` as the active reserve asset so the bounded retail smoke path is `USDC -> USDm -> mrTCOIN -> SwapPool -> cplTCOIN`.
 
 Static public input comes from [deploy-config.json](/Users/botmaster/src/greenpill-TO/Genero/contracts/foundry/deploy-config.json):
 
@@ -134,15 +134,15 @@ Profile-specific behaviour:
 
 - `ethereum-sepolia` deploys `DirectOnlySwapAdapter` and a mintable `sCAD` reserve token so `LiquidityRouter` can be smoke-tested without Mento.
 - `celo-sepolia` deploys `MentoBrokerSwapAdapter`, seeds `USDm -> CADm` plus `USDC -> USDm -> CADm`, and expects an already funded on-chain input token rather than a fiat on-ramp.
-- `celo-mainnet` uses the real Celo/Mento production config and the split Scenario A / Scenario B validation model.
+- `celo-mainnet` uses the real Celo/Mento production config, the split Scenario A / Scenario B validation model, and a direct `USDC -> USDm` normalization leg because the active mainnet reserve asset is currently `USDm`.
 
 The deploy order also bootstraps:
 
-- `CADm` as an active reserve asset
+- one active reserve asset, which is currently `USDm` on Celo mainnet
 - one charity and default-steward linkage
 - one pool and one bootstrap merchant
 - Sarafu token registration, pool limits, and quoter wiring for TCOIN
-- default Mento routes for `USDm -> CADm` and `USDC -> USDm -> CADm`
+- default Mento routes needed for the selected reserve asset, including `USDC -> USDm` on Celo mainnet and `USDm -> CADm` plus `USDC -> USDm -> CADm` on Celo Sepolia
 - `ReserveInputRouter` input-token enablement
 - `LiquidityRouter` charity-topup parameters
 - initial `cplTCOIN` liquidity deposited into the real Sarafu pool
@@ -166,11 +166,12 @@ The validator checks:
 - treasury authorized caller posture
 - reserve activation
 - bootstrap Sarafu pool readiness
-- configured Mento `USDC -> USDm -> CADm` route presence
+- configured Mento route presence for the selected reserve asset
+- configured Scenario B preview liquidity sufficiency against the seeded bootstrap Sarafu pool
 
-### Six-Decimal Migration Tooling
+### Deprecated Managed-Pool Migration Scripts
 
-For the already-deployed Celo mainnet TorontoCoin stack, the workspace now also ships a targeted staged migration flow:
+The old staged `6`-decimal migration scripts are now explicitly deprecated:
 
 ```bash
 forge script script/deploy/StageTorontoCoinSixDecimalMigration.s.sol:StageTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast
@@ -182,21 +183,20 @@ forge script script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol:Finalize
 forge script script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol:AbortTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast
 ```
 
-Those scripts:
+They now revert intentionally because they target the superseded `ManagedPoolAdapter` architecture.
 
-- stage fresh `6`-decimal `mrTCOIN` and `cplTCOIN` deployments
-- stage a fresh `ManagedPoolAdapter`
-- record the staged addresses in `contracts/foundry/deployments/torontocoin/celo-mainnet/six-decimal-migration.json`
-- propose controller/router rewiring through governance
-- either finalize the cutover or cancel the proposals cleanly
+Current operator posture:
 
-Important live result:
+- use `DeployTorontoCoinSuite.s.sol` for a fresh Sarafu-pool-aligned deployment
+- use `ValidateTorontoCoinDeployment.s.sol` immediately after deploy
+- use `RunTorontoCoinScenarioB.s.sol` for the bounded retail smoke test
 
-- the first real mainnet run proved that the current live `TreasuryController` and retail-routing path still scale internal token amounts as if `mrTCOIN` and `cplTCOIN` were `18` decimals
-- because of that, a pure token-address swap to `6`-decimal deployments fails pool-liquidity checks before cutover
-- proposals `17`, `18`, and `19` from the first staged migration were cancelled, and the live TorontoCoin mainnet pointers remain unchanged
+This matches the current TorontoCoin posture:
 
-So the checked-in `6`-decimal default is safe for fresh deployments, but a real live migration still requires code-level amount-scaling fixes before `FinalizeTorontoCoinSixDecimalMigration.s.sol` can succeed on mainnet.
+- `6`-decimal internal tokens by default
+- real Sarafu `SwapPool` execution
+- greenfield redeploys rather than in-place rewiring of the older managed-pool prototype
+- bootstrap pool limits default high enough for the current six-decimal / legacy-controller raw-unit mix, and the validator now proves the configured smoke path can clear against seeded liquidity before any live buy
 
 ### Scenario A
 
@@ -218,7 +218,7 @@ forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB
 
 This script uses a funded wallet to:
 
-- preview `USDC -> USDm -> CADm -> mrTCOIN -> SwapPool -> cplTCOIN`
+- preview the configured reserve path, which is currently `USDC -> USDm -> mrTCOIN -> SwapPool -> cplTCOIN` on Celo mainnet
 - approve `LiquidityRouter`
 - execute `buyCplTcoin(...)`
 - record the resulting pool choice and `cplTCOIN` balance delta
@@ -279,5 +279,7 @@ For Celo mainnet, the checked-in config currently records:
 
 The current adapter deploy path now seeds both:
 
-- direct `USDm -> CADm`
-- atomic `USDC -> USDm -> CADm`
+- direct `USDm -> CADm` where `CADm` is the active reserve asset
+- atomic `USDC -> USDm -> CADm` where a multihop into `CADm` is required
+
+The current Celo mainnet config still records both exchange IDs, but the active mainnet reserve asset is `USDm`, so the live retail route seeded by `DeployTorontoCoinSuite.s.sol` is the direct `USDC -> USDm` normalization leg.

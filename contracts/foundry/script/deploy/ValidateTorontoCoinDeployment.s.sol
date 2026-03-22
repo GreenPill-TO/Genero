@@ -14,6 +14,7 @@ import {Treasury} from "../../src/torontocoin/Treasury.sol";
 import {TreasuryController} from "../../src/torontocoin/TreasuryController.sol";
 import {GeneroTokenV3} from "../../src/torontocoin/GeneroTokenV3.sol";
 import {Governance} from "../../src/torontocoin/Governance.sol";
+import {SwapPool} from "../../src/sarafu-read-only/SwapPool.sol";
 import "../helpers/DeployChainConfig.sol";
 
 contract ValidateTorontoCoinDeployment is DeployChainConfig {
@@ -21,6 +22,8 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
 
     error MissingDeploymentArtifact(string path);
     error ValidationFailed(string reason);
+
+    uint256 private constant SWAP_POOL_FEE_DENOMINATOR = 1_000_000;
 
     function run() external {
         ChainSelection memory selection = _assertDeployTargetChain();
@@ -62,10 +65,15 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         address reserveAssetToken = suite.readAddress(".reserveAssetToken");
         address scenarioInputToken = suite.readAddress(".scenarioInputToken");
         bool mentoEnabled = _chainConfigBoolOr(selection, ".torontocoin.mento.enabled", true);
+        address configuredUsdmToken =
+            mentoEnabled ? _chainConfigAddress(selection, ".torontocoin.mento.usdmToken") : address(0);
 
         bytes32 reserveAssetId = wiring.readBytes32(".reserveAssetId");
         bytes32 bootstrapPoolId = wiring.readBytes32(".bootstrapPoolId");
         bytes32 bootstrapMerchantId = wiring.readBytes32(".bootstrapMerchantId");
+        address scenarioBuyer =
+            _chainConfigAddressOrDefault(selection, ".torontocoin.scenarioB.buyer", suite.readAddress(".tokenAdmin"));
+        uint256 scenarioInputAmount = _chainConfigUint(selection, ".torontocoin.scenarioB.inputAmount");
 
         if (
             governance == address(0) || governanceExecutionHelper == address(0)
@@ -169,16 +177,36 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
                 bool configured
             ) = MentoBrokerSwapAdapter(mentoAdapter)
                 .getDefaultRouteConfig(_chainConfigAddress(selection, ".torontocoin.mento.usdcToken"));
-            if (
-                !configured || usdcRouteProvider == address(0) || usdcFirstExchangeId == bytes32(0)
-                    || usdmToken == address(0) || secondProvider == address(0) || secondExchangeId == bytes32(0)
-            ) {
-                revert ValidationFailed("mento usdc route not configured");
+            if (!configured || usdcRouteProvider == address(0) || usdcFirstExchangeId == bytes32(0)) {
+                revert ValidationFailed("mento usdc route missing");
+            }
+
+            if (reserveAssetToken == configuredUsdmToken) {
+                if (usdmToken != address(0) || secondProvider != address(0) || secondExchangeId != bytes32(0)) {
+                    revert ValidationFailed("mento usdc direct route expected");
+                }
+            } else {
+                if (usdmToken == address(0) || secondProvider == address(0) || secondExchangeId == bytes32(0)) {
+                    revert ValidationFailed("mento usdc multihop route not configured");
+                }
             }
         }
 
         if (StaticCadOracle(staticCadOracle).latestAnswer() <= 0) {
             revert ValidationFailed("static cad oracle invalid");
+        }
+
+        (bytes32 scenarioPoolId,,, uint256 scenarioMrTcoinOut,,,,) = LiquidityRouter(liquidityRouter)
+            .previewBuyCplTcoin(bootstrapPoolId, scenarioBuyer, scenarioInputToken, scenarioInputAmount);
+        if (scenarioPoolId != bootstrapPoolId) {
+            revert ValidationFailed("scenario preview selected unexpected pool");
+        }
+
+        uint256 scenarioQuotedOut = SwapPool(bootstrapSwapPool).getQuote(cplTcoin, mrTcoin, scenarioMrTcoinOut);
+        uint256 scenarioFee = (scenarioQuotedOut * SwapPool(bootstrapSwapPool).feePpm()) / SWAP_POOL_FEE_DENOMINATOR;
+        uint256 scenarioQuotedOutAfterFee = scenarioQuotedOut - scenarioFee;
+        if (scenarioQuotedOutAfterFee > cplLiquidity) {
+            revert ValidationFailed("bootstrap pool insufficient for configured scenario");
         }
 
         string memory root = "validation";
@@ -192,6 +220,10 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         vm.serializeBool(root, "bootstrapPoolReady", true);
         vm.serializeUint(root, "bootstrapPoolMrLiquidity", mrLiquidity);
         vm.serializeUint(root, "bootstrapPoolCplLiquidity", cplLiquidity);
+        vm.serializeUint(root, "scenarioInputAmount", scenarioInputAmount);
+        vm.serializeUint(root, "scenarioPreviewMrTcoinOut", scenarioMrTcoinOut);
+        vm.serializeUint(root, "scenarioRequiredCplLiquidity", scenarioQuotedOutAfterFee);
+        vm.serializeBool(root, "scenarioPoolLiquiditySufficient", true);
         vm.serializeBool(root, "mentoEnabled", mentoEnabled);
         string memory json = vm.serializeBool(root, "mentoUsdcRouteConfigured", mentoEnabled);
         vm.writeJson(json, string.concat(deploymentDir, "/validation.json"));

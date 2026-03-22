@@ -64,6 +64,7 @@ abstract contract TorontoCoinSixDecimalMigrationBase is Script, DeployChainConfi
     error UnsupportedTarget(string target);
     error MissingArtifact(string path);
     error ExistingArtifact(string path);
+    error DeprecatedManagedPoolMigration();
 
     function _assertCeloMainnet() internal view returns (ChainSelection memory selection) {
         selection = _assertDeployTargetChain();
@@ -188,5 +189,9 @@ abstract contract TorontoCoinSixDecimalMigrationBase is Script, DeployChainConfi
 
     function _requireFreshArtifact() internal view {
         if (vm.exists(_ARTIFACT_PATH)) revert ExistingArtifact(_ARTIFACT_PATH);
+    }
+
+    function _revertDeprecatedManagedPoolMigration() internal pure {
+        revert DeprecatedManagedPoolMigration();
     }
 }

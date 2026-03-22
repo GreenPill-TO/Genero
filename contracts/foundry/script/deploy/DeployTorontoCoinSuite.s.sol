@@ -148,9 +148,9 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
             uint8(_chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.decimals", cplDecimals));
         uint256 bootstrapSwapPoolFeePpm = _chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.feePpm", 0);
         uint256 bootstrapPoolMrTcoinLimit =
-            _chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.mrTcoinLimit", 1_000_000_000_000);
+            _chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.mrTcoinLimit", MAX_GENERO_VISIBLE_AMOUNT);
         uint256 bootstrapPoolCplTcoinLimit =
-            _chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.cplTcoinLimit", 1_000_000_000_000);
+            _chainConfigUintOr(selection, ".torontocoin.bootstrap.swapPool.cplTcoinLimit", MAX_GENERO_VISIBLE_AMOUNT);
         bytes32 bootstrapMerchantId = _chainConfigBytes32(selection, ".torontocoin.bootstrap.merchant.merchantId");
         address bootstrapMerchantWallet =
             _chainConfigAddressOrDefault(selection, ".torontocoin.bootstrap.merchant.wallet", deployer);
@@ -343,17 +343,26 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         limiter.setLimitFor(address(cplTcoin), address(bootstrapSwapPool), bootstrapPoolCplTcoinLimit);
 
         if (mentoEnabled) {
-            mentoAdapter.setDefaultRoute(mentoRouteTokenIn, mentoExchangeProvider, mentoExchangeId);
-            mentoAdapter.setDefaultMultiHopRoute(
-                mentoUsdcToken,
-                mentoUsdmToken,
-                mentoExchangeProvider,
-                mentoUsdcToUsdmExchangeId,
-                mentoExchangeProvider,
-                mentoUsdmToCadmExchangeId
-            );
-            reserveInputRouter.setInputTokenEnabled(mentoRouteTokenIn, true);
-            reserveInputRouter.setInputTokenEnabled(mentoUsdcToken, true);
+            if (mentoRouteTokenIn != address(0) && mentoRouteTokenIn != cadmToken) {
+                mentoAdapter.setDefaultRoute(mentoRouteTokenIn, mentoExchangeProvider, mentoExchangeId);
+                reserveInputRouter.setInputTokenEnabled(mentoRouteTokenIn, true);
+            }
+
+            if (mentoUsdcToken != address(0) && mentoUsdcToken != cadmToken) {
+                if (mentoUsdmToken == cadmToken) {
+                    mentoAdapter.setDefaultRoute(mentoUsdcToken, mentoExchangeProvider, mentoUsdcToUsdmExchangeId);
+                } else {
+                    mentoAdapter.setDefaultMultiHopRoute(
+                        mentoUsdcToken,
+                        mentoUsdmToken,
+                        mentoExchangeProvider,
+                        mentoUsdcToUsdmExchangeId,
+                        mentoExchangeProvider,
+                        mentoUsdmToCadmExchangeId
+                    );
+                }
+                reserveInputRouter.setInputTokenEnabled(mentoUsdcToken, true);
+            }
         }
 
         liquidityRouter.setCharityTopupBps(charityTopupBps);

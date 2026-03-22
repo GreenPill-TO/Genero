@@ -1,3 +1,98 @@
+## v1.66
+### Timestamp
+- 2026-03-22 16:25:00 EDT
+
+### Objective
+- Bring the TorontoCoin mainnet deployment and migration tooling in line with the Sarafu `SwapPool` runtime plus `6`-decimal token posture, then complete a fresh Celo mainnet deployment and bounded Scenario B smoke test in the most cost-effective way.
+
+### What Changed
+- Deprecated the old staged `6`-decimal migration scripts under `contracts/foundry/script/deploy/` by making them revert intentionally through `TorontoCoinSixDecimalMigrationBase.s.sol`, because they target the superseded `ManagedPoolAdapter` architecture rather than the current Sarafu-pool runtime.
+- Updated `DeployTorontoCoinSuite.s.sol` so Sarafu `Limiter` defaults now use the full safe Genero raw-unit ceiling instead of the old `1e12` placeholder, which keeps fresh `6`-decimal bootstrap pools compatible with the still-legacy controller raw-unit output scale.
+- Updated the checked-in TorontoCoin deploy config so fresh bootstrap Sarafu pools seed `1e18` raw `cplTCOIN` by default instead of a tiny `1e9` / `5e6` seed that cannot clear the configured retail smoke route.
+- Switched the Celo mainnet reserve posture in `deploy-config.json` from `CADm` to `USDm` as the active reserve asset. The current mainnet bounded retail route is therefore `USDC -> USDm -> mrTCOIN -> SwapPool -> cplTCOIN`, while `USDm -> CADm` route metadata remains in config for other environments and future reserve-target changes.
+- Tightened `ValidateTorontoCoinDeployment.s.sol` so it no longer stops at “pool exists and has some balance”. It now:
+  - previews the configured Scenario B route,
+  - computes the bootstrap Sarafu `SwapPool` quote plus fees,
+  - fails if the seeded pool cannot actually clear that smoke path,
+  - records the required `cplTCOIN` liquidity in `validation.json`.
+- Deployed two fresh Sarafu-pool-aligned TorontoCoin suites on Celo mainnet this session:
+  - the first greenfield deploy proved the original `CADm`-backed mainnet reserve route was not smoke-safe because live `USDm -> CADm` quoting failed with `no valid median`,
+  - the second greenfield deploy, using `USDm` as the active reserve asset, became the canonical fresh mainnet suite.
+- The current canonical fresh mainnet suite addresses are:
+  - `Governance`: `0xF123231dcAc7908B7b0DdbE704DA99d38B690D66`
+  - `TreasuryController`: `0x3858537E4EC14eF47AF883aDAB4c0C353Dfbc3D9`
+  - `LiquidityRouter`: `0xFA0AA07a1c22d938E7bD2AA0e25E5539A220C367`
+  - `ReserveInputRouter`: `0xec32Aaa2fD15Cd6cD0C0b862e4B0dbE696375b5F`
+  - `SarafuSwapPoolAdapter`: `0x4f318dDCb61189857C0280Fd65A4f8c196F74a59`
+  - `MentoBrokerSwapAdapter`: `0x13387d31713dE1B64a31167fCDDB3c28A377DF0C`
+  - `ReserveRegistry`: `0x1dE6e888B83cA130e7be6b2b35af503B4726725c`
+  - `PoolRegistry`: `0x9397d14E83a6DD4ca0b540fb7c587C00723D97DC`
+  - `Treasury`: `0xB872569930d8624494FE75CCf45E9c3A10c6D72b`
+  - `mrTCOIN`: `0xf1eb1436034DFdDD3C31851120CfabEa05fF3910`
+  - `cplTCOIN`: `0x2e1008Ae6506852578c5Ec3475B21B2A4b9ceFaD`
+  - bootstrap `SwapPool`: `0x6cd584E9b3ed40618c2B2E9FD3F998174487dB04`
+- Reused that second fresh suite rather than paying for a third redeploy. To make the bounded smoke pass, I applied the minimum compatible live fixes:
+  - raised the bootstrap Sarafu `Limiter` caps for both `mrTCOIN` and `cplTCOIN` to `5e18` raw,
+  - temporarily added the deployer as a `cplTCOIN` writer,
+  - minted fresh `cplTCOIN` to the deployer and transferred it into the bootstrap `SwapPool`,
+  - ran the live bounded Scenario B buy with `1 USDC`,
+  - revoked the temporary deployer writer role afterward.
+- The bounded mainnet Scenario B smoke is now successful on the fresh suite:
+  - input: `1 USDC`
+  - normalized reserve used: `999542988495000000` raw `USDm`
+  - `mrTCOIN` used: `414961786132772727`
+  - pool `cplTCOIN` out: `414961786132772726`
+  - charity top-up: `12448853583983181`
+  - deployer `cplTCOIN` balance delta captured in `scenario-b-run.json`
+  - remaining bootstrap pool balances after smoke:
+    - `cplTCOIN`: `585035732367737225`
+    - `mrTCOIN`: `414961398014828642`
+
+### Deployer Balance Tracker
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- End balance: `7.438596040537245886 CELO`
+- Previous tracked session balance: `9.797287038945049075 CELO`
+- Delta from previous tracked session: `-2.358690998407803189 CELO`
+- Transaction-cost breakdown this session:
+  - First fresh Celo mainnet Sarafu-pool suite deploy plus failed `CADm`-backed retail smoke attempt: `1.159319276245643200 CELO`
+  - Second fresh Celo mainnet Sarafu-pool suite deploy plus pre-fix insufficient-liquidity smoke attempt: `1.159341949387073801 CELO`
+  - Live limiter/top-up/successful-smoke/cleanup transactions on the canonical fresh suite: `0.040029772775086188 CELO`
+  - Recent live fix breakdown:
+    - `Limiter.setLimitFor(cplTCOIN, bootstrapSwapPool, 5e18)`: `0.000808335564779684 CELO`
+    - `Limiter.setLimitFor(mrTCOIN, bootstrapSwapPool, 5e18)`: `0.000808335564779684 CELO`
+    - `cplTCOIN.addWriter(deployer)`: `0.001245173996454050 CELO`
+    - `cplTCOIN.mintTo(deployer, 1e18)`: `0.002369561693655118 CELO`
+    - `cplTCOIN.approve(bootstrapSwapPool, 1e18)`: `0.001744211653805056 CELO`
+    - `cplTCOIN.transfer(bootstrapSwapPool, 999999000000000000)`: `0.002078341441919310 CELO`
+    - Scenario B `USDC.approve(liquidityRouter, 1e6)`: `0.001385985979979319 CELO`
+    - Scenario B `LiquidityRouter.buyCplTcoin(...)`: `0.028916872271363888 CELO`
+    - `cplTCOIN.deleteWriter(deployer)`: `0.000672954608350079 CELO`
+
+### Verification
+- `forge build`
+- `forge test`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url https://forno.celo.org --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url https://forno.celo.org`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url https://forno.celo.org --broadcast`
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo.org`
+- `cast call 0x2e1008Ae6506852578c5Ec3475B21B2A4b9ceFaD 'balanceOf(address)(uint256)' 0x6cd584E9b3ed40618c2B2E9FD3F998174487dB04 --rpc-url https://forno.celo.org`
+- `cast call 0xf1eb1436034DFdDD3C31851120CfabEa05fF3910 'balanceOf(address)(uint256)' 0x6cd584E9b3ed40618c2B2E9FD3F998174487dB04 --rpc-url https://forno.celo.org`
+
+### Files Edited
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/script/deploy/TorontoCoinSixDecimalMigrationBase.s.sol`
+- `contracts/foundry/script/deploy/StageTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.65
 ### Timestamp
 - 2026-03-20 17:13:00 EDT
