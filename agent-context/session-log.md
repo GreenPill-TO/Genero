@@ -1,3 +1,39 @@
+## v1.68
+### Timestamp
+- 2026-03-22 17:10:00 EDT
+
+### Objective
+- Fix the Sarafu `SwapPool.deposit(...)` compatibility gap by making registered pool addresses bypass `GeneroTokenV3` merchant-fee routing through canonical `PoolRegistry` state instead of per-token manual fee-exemption lists.
+
+### What Changed
+- Extended `contracts/foundry/src/torontocoin/PoolRegistry.sol` with canonical pool-address lookup:
+  - tracks `poolAddress -> poolId`
+  - exposes `getPoolIdByAddress(address)`
+  - exposes `isRegisteredPoolAddress(address)`
+  - clears stale reverse mappings when a pool address changes
+- Updated `contracts/foundry/src/torontocoin/GeneroTokenV3.sol` so `feeApplies(...)` now returns `false` for any address that `PoolRegistry` reports as a registered pool before checking merchant POS eligibility.
+- Added regressions in `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol` for the new reverse lookup and address-replacement behaviour.
+- Added a `GeneroTokenV3` regression in `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol` that mimics the real Sarafu deposit path:
+  - the pool is simultaneously linked as a merchant wallet and as a registered pool
+  - the pool calls `transferFrom(...)` into itself using an exact allowance
+  - no merchant fee is charged because the registered-pool predicate short-circuits first
+- Updated the engineering specs to record the new canonical pool-address fee-bypass rule.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/PoolRegistry.t.sol`
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3SarafuCompatibility.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`
+- `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.67
 ### Timestamp
 - 2026-03-22 16:40:00 EDT

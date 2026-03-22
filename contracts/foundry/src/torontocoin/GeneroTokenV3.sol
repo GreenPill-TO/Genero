@@ -5,6 +5,7 @@ import {ABDKMath64x64} from "../sarafu-read-only/DemurrageTokenSingleNocap.sol";
 
 interface IPoolRegistryForCplTCOIN {
     function isMerchantPosFeeTarget(address wallet) external view returns (bool);
+    function isRegisteredPoolAddress(address wallet) external view returns (bool);
     function getMerchantPaymentConfig(address wallet)
         external
         view
@@ -335,6 +336,7 @@ contract GeneroTokenV3 {
     function feeApplies(address payer, address to) public view returns (bool) {
         if (!merchantFeesEnabled) return false;
         if (feeExempt[payer] || feeExempt[to]) return false;
+        if (IPoolRegistryForCplTCOIN(poolRegistry).isRegisteredPoolAddress(to)) return false;
         return IPoolRegistryForCplTCOIN(poolRegistry).isMerchantPosFeeTarget(to);
     }
 

@@ -74,6 +74,8 @@ contract PoolRegistryTest is Test {
         assertTrue(registry.isMerchantApprovedInActivePool(WALLET_A1));
         assertEq(registry.getMerchantPool(WALLET_A1), POOL_A);
         assertEq(registry.getPoolAddress(POOL_A), POOL_A_ADDRESS);
+        assertEq(registry.getPoolIdByAddress(POOL_A_ADDRESS), POOL_A);
+        assertTrue(registry.isRegisteredPoolAddress(POOL_A_ADDRESS));
     }
 
     function test_MerchantFlagsGatePaymentAndPosPredicates() public {
@@ -133,5 +135,19 @@ contract PoolRegistryTest is Test {
 
         registry.unsuspendMerchant(MERCHANT_A);
         assertTrue(registry.isMerchantApprovedWallet(WALLET_A1));
+    }
+
+    function test_SetPoolAddressUpdatesCanonicalPoolAddressLookup() public {
+        address replacementPoolAddress = address(0x3003);
+
+        assertEq(registry.getPoolIdByAddress(POOL_A_ADDRESS), POOL_A);
+        assertTrue(registry.isRegisteredPoolAddress(POOL_A_ADDRESS));
+
+        registry.setPoolAddress(POOL_A, replacementPoolAddress);
+
+        assertEq(registry.getPoolIdByAddress(POOL_A_ADDRESS), bytes32(0));
+        assertFalse(registry.isRegisteredPoolAddress(POOL_A_ADDRESS));
+        assertEq(registry.getPoolIdByAddress(replacementPoolAddress), POOL_A);
+        assertTrue(registry.isRegisteredPoolAddress(replacementPoolAddress));
     }
 }

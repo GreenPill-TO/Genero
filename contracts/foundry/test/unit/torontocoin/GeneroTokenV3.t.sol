@@ -20,6 +20,7 @@ contract MockPoolRegistryForGeneroToken is IPoolRegistryForCplTCOIN {
     }
 
     mapping(address => MerchantConfig) internal configs;
+    mapping(address => bool) internal registeredPools;
 
     function setMerchant(
         address wallet,
@@ -44,6 +45,14 @@ contract MockPoolRegistryForGeneroToken is IPoolRegistryForCplTCOIN {
     function isMerchantPosFeeTarget(address wallet) external view returns (bool) {
         MerchantConfig memory config = configs[wallet];
         return config.exists_ && config.approved_ && config.poolActive_ && config.acceptsCpl_ && config.posFeeEligible_;
+    }
+
+    function setRegisteredPool(address pool, bool registered) external {
+        registeredPools[pool] = registered;
+    }
+
+    function isRegisteredPoolAddress(address wallet) external view returns (bool) {
+        return registeredPools[wallet];
     }
 
     function getMerchantPaymentConfig(address wallet)
@@ -130,6 +139,7 @@ contract GeneroTokenV3Test is Test {
     address private constant MERCHANT = address(0x2001);
     address private constant CHARITY = address(0x3001);
     address private constant PLAIN_RECIPIENT = address(0x4001);
+    address private constant SARAFU_POOL = address(0x5001);
 
     GeneroTokenV3 private token;
     MockPoolRegistryForGeneroToken private poolRegistry;
@@ -318,6 +328,31 @@ contract GeneroTokenV3Test is Test {
         assertEq(token.balanceOf(PAYER), 50e6);
         assertEq(token.balanceOf(MERCHANT), 100e6);
         assertEq(token.balanceOf(CHARITY), 0);
+    }
+
+    function test_RegisteredPoolAddressBypassesMerchantFeeLogic() public {
+        poolRegistry.setMerchant(SARAFU_POOL, MERCHANT_ID, true, true, true, true, POOL_ID);
+        poolRegistry.setRegisteredPool(SARAFU_POOL, true);
+        token.mintTo(PAYER, 150e6);
+
+        (uint256 payerDebit, uint256 recipientCredit, uint256 charityCredit, bool feeApplies_) =
+            token.previewTransfer(PAYER, SARAFU_POOL, 100e6);
+
+        assertEq(payerDebit, 100e6);
+        assertEq(recipientCredit, 100e6);
+        assertEq(charityCredit, 0);
+        assertFalse(feeApplies_);
+
+        vm.prank(PAYER);
+        assertTrue(token.approve(SARAFU_POOL, 100e6));
+
+        vm.prank(SARAFU_POOL);
+        assertTrue(token.transferFrom(PAYER, SARAFU_POOL, 100e6));
+
+        assertEq(token.balanceOf(PAYER), 50e6);
+        assertEq(token.balanceOf(SARAFU_POOL), 100e6);
+        assertEq(token.balanceOf(CHARITY), 0);
+        assertEq(token.allowance(PAYER, SARAFU_POOL), 0);
     }
 
     function test_MerchantOverrideLowersEffectiveBaseFeeAndExposesConfig() public {

@@ -90,6 +90,7 @@ contract PoolRegistry is Ownable, Pausable {
     mapping(bytes32 => Pool) private pools;
     bytes32[] private poolIds;
     mapping(bytes32 => bool) private poolExists;
+    mapping(address => bytes32) private poolIdByAddress;
 
     mapping(bytes32 => MerchantEntity) private merchants;
     mapping(bytes32 => bool) private merchantExists;
@@ -175,7 +176,11 @@ contract PoolRegistry is Ownable, Pausable {
 
         Pool storage pool = _getPoolStorage(poolId);
         address oldPoolAddress = pool.poolAddress;
+        if (oldPoolAddress != address(0)) {
+            delete poolIdByAddress[oldPoolAddress];
+        }
         pool.poolAddress = poolAddress;
+        poolIdByAddress[poolAddress] = poolId;
         pool.updatedAt = uint64(block.timestamp);
 
         emit PoolAddressUpdated(poolId, oldPoolAddress, poolAddress);
@@ -403,6 +408,17 @@ contract PoolRegistry is Ownable, Pausable {
     function getPoolAddress(bytes32 poolId) external view returns (address) {
         if (!poolExists[poolId]) return address(0);
         return pools[poolId].poolAddress;
+    }
+
+    function getPoolIdByAddress(address poolAddress) external view returns (bytes32) {
+        return poolIdByAddress[poolAddress];
+    }
+
+    function isRegisteredPoolAddress(address poolAddress) external view returns (bool) {
+        bytes32 poolId = poolIdByAddress[poolAddress];
+        if (poolId == bytes32(0)) return false;
+
+        return pools[poolId].poolAddress == poolAddress;
     }
 
     function listPoolIds() external view returns (bytes32[] memory) {
