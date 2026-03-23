@@ -219,6 +219,7 @@ type TorontoCoinOpsStatus = {
     reserveAssetId: string;
     reserveAssetToken: string;
     scenarioInputToken: string;
+    trackedPoolCount: number;
   };
   ownership: {
     liquidityRouter: { owner: string; healthy: boolean };
@@ -226,22 +227,62 @@ type TorontoCoinOpsStatus = {
     poolRegistry: { owner: string; healthy: boolean };
     sarafuSwapPoolAdapter: { owner: string; healthy: boolean };
   };
-  poolLiquidity: {
-    cplTcoinFormatted: string;
-    mrTcoinFormatted: string;
-  };
-  scenarioPreview: {
-    cplTcoinOutFormatted: string;
-    mrTcoinOutFormatted: string;
-    reserveAmountOutFormatted: string;
-    charityTopupOutFormatted: string;
-    selectedPoolId: string;
-  };
+  pools: Array<{
+    poolId: string;
+    poolAddress: string;
+    name: string;
+    expectedIndexerVisibility: boolean;
+    previewEnabled: boolean;
+    acceptanceEnabled: boolean;
+    registration: {
+      registryAddressMatches: boolean;
+      active: boolean;
+      feeBypassEligible: boolean;
+    };
+    components: {
+      tokenRegistry: string | null;
+      tokenLimiter: string | null;
+      quoter: string | null;
+      feePpm: string | null;
+    };
+    tokensStatus: Array<{
+      address: string;
+      symbol: string;
+      balanceFormatted: string;
+      limitFormatted: string | null;
+    }>;
+    limiter: {
+      configured: boolean;
+      healthy: boolean;
+    };
+    quoteChecks: Array<{
+      label: string;
+      outputAmountFormatted: string | null;
+      healthy: boolean;
+    }>;
+    scenarioPreview: {
+      healthy: boolean;
+      cplTcoinOutFormatted: string | null;
+      reserveAmountOutFormatted: string | null;
+      error: string | null;
+    } | null;
+  }>;
   reserveRouteHealth: {
     reserveAssetActive: boolean;
     mentoUsdcRouteConfigured: boolean;
     liquidityRouterPointerHealthy: boolean;
     treasuryControllerPointerHealthy: boolean;
+  };
+  indexer: {
+    requiredTokenAddress: string;
+    cplTcoinTracked: boolean;
+    trackedPools: Array<{
+      poolId: string;
+      poolAddress: string;
+      tracked: boolean;
+      healthy: boolean;
+      tokenAddresses: string[];
+    }>;
   };
   artifactTimestamps: {
     deployedAt: number;
@@ -1357,12 +1398,11 @@ export default function AdminDashboardPage() {
                   <p>cplTCOIN: {torontoCoinOps.addresses.cplTcoin}</p>
                   <p>mrTCOIN: {torontoCoinOps.addresses.mrTcoin}</p>
                   <p>Bootstrap pool: {torontoCoinOps.addresses.bootstrapSwapPool}</p>
+                  <p>Tracked pools: {torontoCoinOps.addresses.trackedPoolCount}</p>
                 </div>
                 <div className="rounded-md border p-3 text-xs text-muted-foreground space-y-1">
-                  <p>cplTCOIN pool liquidity: {torontoCoinOps.poolLiquidity.cplTcoinFormatted}</p>
-                  <p>mrTCOIN pool liquidity: {torontoCoinOps.poolLiquidity.mrTcoinFormatted}</p>
-                  <p>Preview cplTCOIN out: {torontoCoinOps.scenarioPreview.cplTcoinOutFormatted}</p>
-                  <p>Preview reserve out: {torontoCoinOps.scenarioPreview.reserveAmountOutFormatted}</p>
+                  <p>Indexer cplTCOIN tracked: {torontoCoinOps.indexer.cplTcoinTracked ? "yes" : "no"}</p>
+                  <p>Indexer tracked pools: {torontoCoinOps.indexer.trackedPools.length}</p>
                   <p>Validated: {formatDateTime(new Date(torontoCoinOps.artifactTimestamps.validatedAt * 1000).toISOString())}</p>
                 </div>
               </div>
@@ -1391,6 +1431,78 @@ export default function AdminDashboardPage() {
                 <p>
                   TreasuryController pointer healthy: {torontoCoinOps.reserveRouteHealth.treasuryControllerPointerHealthy ? "yes" : "no"}
                 </p>
+              </div>
+              <div className="space-y-3">
+                {torontoCoinOps.pools.map((pool) => {
+                  const indexerStatus = torontoCoinOps.indexer.trackedPools.find(
+                    (trackedPool) => trackedPool.poolId.toLowerCase() === pool.poolId.toLowerCase()
+                  );
+
+                  return (
+                    <div key={pool.poolId} className="rounded-md border p-3 text-xs text-muted-foreground space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-foreground">{pool.name}</p>
+                          <p>{pool.poolAddress}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge variant={pool.registration.active ? "secondary" : "outline"}>
+                            {pool.registration.active ? "active" : "inactive"}
+                          </Badge>
+                          <Badge variant={indexerStatus?.healthy ? "secondary" : "outline"}>
+                            {indexerStatus?.tracked ? "indexed" : "not indexed"}
+                          </Badge>
+                          <Badge variant={pool.limiter.healthy ? "secondary" : "outline"}>
+                            {pool.limiter.configured ? "limiter set" : "no limiter"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <p>Fee bypass eligible: {pool.registration.feeBypassEligible ? "yes" : "no"}</p>
+                        <p>Registry address healthy: {pool.registration.registryAddressMatches ? "yes" : "no"}</p>
+                        <p>Quoter: {pool.components.quoter ?? "unset"}</p>
+                        <p>Fee ppm: {pool.components.feePpm ?? "unset"}</p>
+                        <p>
+                          Preview ready: {pool.scenarioPreview?.healthy ? "yes" : pool.previewEnabled ? "no" : "disabled"}
+                        </p>
+                        <p>
+                          Acceptance enabled: {pool.acceptanceEnabled ? "yes" : "no"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">Token balances</p>
+                        {pool.tokensStatus.map((token) => (
+                          <p key={token.address}>
+                            {token.symbol}: {token.balanceFormatted}
+                            {token.limitFormatted ? ` / limit ${token.limitFormatted}` : ""}
+                          </p>
+                        ))}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">Quotes</p>
+                        {pool.quoteChecks.length === 0 ? (
+                          <p>No quote checks available.</p>
+                        ) : (
+                          pool.quoteChecks.map((quote) => (
+                            <p key={`${pool.poolId}-${quote.label}`}>
+                              {quote.label}: {quote.outputAmountFormatted ?? quote.outputAmountFormatted === "0" ? quote.outputAmountFormatted : "n/a"} ({quote.healthy ? "ok" : "failed"})
+                            </p>
+                          ))
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">Scenario preview</p>
+                        <p>
+                          cplTCOIN out: {pool.scenarioPreview?.cplTcoinOutFormatted ?? "n/a"}
+                        </p>
+                        <p>
+                          reserve out: {pool.scenarioPreview?.reserveAmountOutFormatted ?? "n/a"}
+                        </p>
+                        {pool.scenarioPreview?.error ? <p>preview error: {pool.scenarioPreview.error}</p> : null}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

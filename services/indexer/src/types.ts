@@ -46,6 +46,11 @@ export type TorontoCoinRuntimeEnrichment = {
   cplTcoin: Address;
   bootstrapPoolId: `0x${string}`;
   bootstrapSwapPool: Address;
+  trackedPools: Array<{
+    poolId: `0x${string}`;
+    poolAddress: Address;
+    name: string;
+  }>;
 };
 
 export type CityContractSet = {
@@ -121,10 +126,16 @@ export type IndexerScopeStatus = {
   biaSummary: BiaScopeSummary;
   voucherSummary: VoucherScopeSummary;
   torontoCoinTracking?: {
-    requiredPoolAddress: Address;
     requiredTokenAddress: Address;
-    bootstrapPoolTracked: boolean;
     cplTcoinTracked: boolean;
+    trackedPools: Array<{
+      poolId: `0x${string}`;
+      poolAddress: Address;
+      expected: boolean;
+      tracked: boolean;
+      tokenAddresses: Address[];
+      healthy: boolean;
+    }>;
   };
 };
 

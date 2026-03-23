@@ -85,6 +85,11 @@ export async function resolveCityContractSet(options: {
               cplTcoin: torontoCoinRuntime.cplTcoin.address,
               bootstrapPoolId: torontoCoinRuntime.bootstrapPoolId,
               bootstrapSwapPool: torontoCoinRuntime.bootstrapSwapPool,
+              trackedPools: torontoCoinRuntime.trackedPools.map((pool) => ({
+                poolId: pool.poolId,
+                poolAddress: pool.poolAddress,
+                name: pool.name,
+              })),
             }
           : undefined,
       };
@@ -147,6 +152,11 @@ export async function resolveCityContractSet(options: {
           cplTcoin: torontoCoinRuntime.cplTcoin.address,
           bootstrapPoolId: torontoCoinRuntime.bootstrapPoolId,
           bootstrapSwapPool: torontoCoinRuntime.bootstrapSwapPool,
+          trackedPools: torontoCoinRuntime.trackedPools.map((pool) => ({
+            poolId: pool.poolId,
+            poolAddress: pool.poolAddress,
+            name: pool.name,
+          })),
         }
       : undefined,
   };

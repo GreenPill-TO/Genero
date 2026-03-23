@@ -10,6 +10,9 @@
     "lint:next": "next lint",
     "lint:edge-boundary": "node scripts/check-no-direct-supabase-db.mjs",
     "test": "vitest run",
+    "ops:torontocoin": "tsx scripts/torontocoin-ops-check.ts",
+    "ops:torontocoin:pools": "tsx scripts/torontocoin-pool-compatibility-check.ts",
+    "ops:torontocoin:acceptance": "tsx scripts/torontocoin-pool-acceptance.ts",
     "forge:deploy:registry": "cd contracts/foundry && forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --broadcast",
     "forge:promote:city": "cd contracts/foundry && forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --broadcast"
   },
@@ -98,17 +101,18 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.0.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/react-select-country-list": "^2.2.3",
-    "@testing-library/react": "^16.0.0",
     "daisyui": "^4.12.13",
     "eslint": "^8",
     "eslint-config-next": "14.2.16",
     "jsdom": "^26.1.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"

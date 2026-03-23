@@ -51,6 +51,7 @@
   - `public.wallet_list.public_key` is now the only canonical recipient-wallet source for Buy TCOIN checkout. The create-session contract returns explicit product states (`ready`, `needs_wallet`, `disabled`, `misconfigured`) instead of relying on fallback wallet fields or transport-level failures.
   - TorontoCoin retail runtime on Celo mainnet now resolves from a dedicated runtime bridge in `shared/lib/contracts/torontocoinRuntime.ts`, sourced from the fresh Foundry deployment artefacts rather than legacy city-registry bundles or `deploy-config.json`.
   - The canonical wallet-facing TorontoCoin spend asset is now live `cplTCOIN` at `6` decimals; `mrTCOIN` remains internal settlement inventory and should not be surfaced as the primary wallet token.
+  - TorontoCoin operator monitoring is now pool-matrix based rather than bootstrap-only: the runtime and ops helpers resolve the configured bootstrap pool plus any additional Sarafu pools already registered in `PoolRegistry`, then expose registration, liquidity, limiter, quoter, preview, and indexer-visibility status per pool.
   - The current TorontoCoin runtime bridge points at:
     - `Governance`: `0x0Ae274e0898499C48832149266A6625a4D20c581`
     - `TreasuryController`: `0x5A860da554bf1301708db7c41C4e540135e3FCE4`
@@ -89,6 +90,7 @@
 
 - The TorontoCoin `PoolRegistry` now models merchants as merchant entities keyed by `bytes32 merchantId`, allowing multiple wallets per merchant, merchant-level `acceptsCplTcoin` / `posFeeEligible` flags, and compact wallet-resolution helpers for `cplTCOIN` payment-path checks.
 - `PoolRegistry` now also serves as the canonical on-chain pool-address directory for fee classification: `poolId -> SwapPool address` is tracked bidirectionally so tokens and routers can distinguish registered Sarafu pools from merchant POS wallets without maintaining duplicate exemption lists.
+- The operator-facing TorontoCoin ops path now consumes that same `PoolRegistry` directory to discover live registered Sarafu pools dynamically. The admin UI, `/api/tcoin/ops/status`, and the CLI scripts all render the same per-pool compatibility matrix rather than a hardcoded bootstrap summary.
 - `GeneroTokenV3` is now the Sarafu-family `cplTCOIN` demurrage token design: it preserves Sarafu-style base-balance demurrage, writer/mint/seal/expiry/max-supply/sink controls, and adds merchant-target fee routing on ordinary `transfer` / `transferFrom` using `PoolRegistry` plus `UserCharityPreferencesRegistry`.
 - `GeneroTokenV3.feeApplies(...)` now short-circuits for registered pool addresses before consulting merchant POS fee predicates. That lets `SwapPool.deposit(...)` remain a plain liquidity-transfer path while preserving merchant fee routing for actual merchant wallets.
 - A fresh Celo mainnet suite has now validated that rule operationally: bootstrap `cplTCOIN` seeding succeeds through the canonical `SwapPool.deposit(...)` path with no per-token manual `feeExempt` entries for the pool.

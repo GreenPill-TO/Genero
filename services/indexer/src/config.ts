@@ -19,7 +19,7 @@ export const SARAFU_POOL_INDEX_ADDRESS =
   "0x01eD8Fe01a2Ca44Cb26D00b1309d7D777471D00C" as Address;
 
 export const REQUIRED_POOL_ADDRESSES: readonly Address[] = [
-  TORONTOCOIN_RUNTIME.bootstrapSwapPool,
+  ...TORONTOCOIN_RUNTIME.trackedPools.map((pool) => pool.poolAddress),
 ] as const;
 
 export const REQUIRED_POOL_COMPONENTS = {

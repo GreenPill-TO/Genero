@@ -1,4 +1,9 @@
-import { createPublicClient, formatUnits, getAddress, http, type Address, type Hex } from "viem";
+import { createPublicClient, getAddress, type Address } from "viem";
+import {
+  createTorontoCoinPublicClient,
+  getTorontoCoinTrackedPoolStatuses,
+  type TorontoCoinTrackedPoolStatus,
+} from "./torontocoinPools";
 import {
   getTorontoCoinRpcUrl,
   TORONTOCOIN_RUNTIME,
@@ -9,57 +14,6 @@ const ownableAbi = [
   {
     type: "function",
     name: "owner",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }],
-  },
-] as const;
-
-const erc20ReadAbi = [
-  {
-    type: "function",
-    name: "balanceOf",
-    stateMutability: "view",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-] as const;
-
-const liquidityRouterReadAbi = [
-  {
-    type: "function",
-    name: "reserveInputRouter",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }],
-  },
-  {
-    type: "function",
-    name: "previewBuyCplTcoin",
-    stateMutability: "view",
-    inputs: [
-      { name: "targetPoolId", type: "bytes32" },
-      { name: "buyer", type: "address" },
-      { name: "inputToken", type: "address" },
-      { name: "inputAmount", type: "uint256" },
-    ],
-    outputs: [
-      { name: "selectedPoolId", type: "bytes32" },
-      { name: "reserveAssetId", type: "bytes32" },
-      { name: "reserveAmountOut", type: "uint256" },
-      { name: "mrTcoinOut", type: "uint256" },
-      { name: "cplTcoinOut", type: "uint256" },
-      { name: "charityTopupOut", type: "uint256" },
-      { name: "resolvedCharityId", type: "uint256" },
-      { name: "charityWallet", type: "address" },
-    ],
-  },
-] as const;
-
-const treasuryControllerReadAbi = [
-  {
-    type: "function",
-    name: "liquidityRouter",
     stateMutability: "view",
     inputs: [],
     outputs: [{ name: "", type: "address" }],
@@ -86,6 +40,16 @@ const reserveInputRouterReadAbi = [
   },
 ] as const;
 
+const treasuryControllerReadAbi = [
+  {
+    type: "function",
+    name: "liquidityRouter",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+] as const;
+
 const mentoBrokerSwapAdapterReadAbi = [
   {
     type: "function",
@@ -103,7 +67,7 @@ const mentoBrokerSwapAdapterReadAbi = [
   },
 ] as const;
 
-export type TorontoCoinOpsStatus = {
+export type TorontoCoinOpsCoreStatus = {
   addresses: {
     chainId: number;
     governance: Address;
@@ -117,10 +81,11 @@ export type TorontoCoinOpsStatus = {
     mrTcoin: Address;
     cplTcoin: Address;
     bootstrapSwapPool: Address;
-    bootstrapPoolId: Hex;
-    reserveAssetId: Hex;
+    bootstrapPoolId: `0x${string}`;
+    reserveAssetId: `0x${string}`;
     reserveAssetToken: Address;
     scenarioInputToken: Address;
+    trackedPoolCount: number;
   };
   ownership: {
     liquidityRouter: { owner: Address; healthy: boolean };
@@ -128,27 +93,7 @@ export type TorontoCoinOpsStatus = {
     poolRegistry: { owner: Address; healthy: boolean };
     sarafuSwapPoolAdapter: { owner: Address; healthy: boolean };
   };
-  poolLiquidity: {
-    cplTcoinRaw: string;
-    cplTcoinFormatted: string;
-    mrTcoinRaw: string;
-    mrTcoinFormatted: string;
-  };
-  scenarioPreview: {
-    inputAmount: string;
-    selectedPoolId: Hex;
-    reserveAssetId: Hex;
-    reserveAmountOut: string;
-    reserveAmountOutFormatted: string;
-    mrTcoinOut: string;
-    mrTcoinOutFormatted: string;
-    cplTcoinOut: string;
-    cplTcoinOutFormatted: string;
-    charityTopupOut: string;
-    charityTopupOutFormatted: string;
-    resolvedCharityId: string;
-    charityWallet: Address;
-  };
+  pools: TorontoCoinTrackedPoolStatus[];
   reserveRouteHealth: {
     reserveAssetActive: boolean;
     mentoUsdcRouteConfigured: boolean;
@@ -178,40 +123,24 @@ async function readOwner(
 
 export async function getTorontoCoinOpsStatus(
   runtime: TorontoCoinRuntimeConfig = TORONTOCOIN_RUNTIME
-): Promise<TorontoCoinOpsStatus> {
-  const client = createPublicClient({
-    transport: http(getTorontoCoinRpcUrl()),
-  });
+): Promise<TorontoCoinOpsCoreStatus> {
+  const client = createTorontoCoinPublicClient(runtime);
 
   const [
     liquidityRouterOwner,
     treasuryControllerOwner,
     poolRegistryOwner,
     sarafuSwapPoolAdapterOwner,
-    cplTcoinBalance,
-    mrTcoinBalance,
     reserveAssetActive,
     reserveInputRouterPointer,
     treasuryControllerLiquidityRouter,
     mentoRouteConfig,
-    preview,
+    pools,
   ] = await Promise.all([
     readOwner(client, runtime.liquidityRouter, runtime.governance),
     readOwner(client, runtime.treasuryController, runtime.governance),
     readOwner(client, runtime.poolRegistry, runtime.governance),
     readOwner(client, runtime.sarafuSwapPoolAdapter, runtime.governance),
-    client.readContract({
-      address: runtime.cplTcoin.address,
-      abi: erc20ReadAbi,
-      functionName: "balanceOf",
-      args: [runtime.bootstrapSwapPool],
-    }),
-    client.readContract({
-      address: runtime.mrTcoin.address,
-      abi: erc20ReadAbi,
-      functionName: "balanceOf",
-      args: [runtime.bootstrapSwapPool],
-    }),
     client.readContract({
       address: runtime.reserveRegistry,
       abi: reserveRegistryReadAbi,
@@ -234,29 +163,9 @@ export async function getTorontoCoinOpsStatus(
       functionName: "getDefaultRouteConfig",
       args: [runtime.scenarioInputToken],
     }),
-    client.readContract({
-      address: runtime.liquidityRouter,
-      abi: liquidityRouterReadAbi,
-      functionName: "previewBuyCplTcoin",
-      args: [
-        runtime.bootstrapPoolId,
-        runtime.governance,
-        runtime.scenarioInputToken,
-        runtime.scenarioInputAmount,
-      ],
-    }),
+    getTorontoCoinTrackedPoolStatuses({ client, runtime }),
   ]);
 
-  const [
-    selectedPoolId,
-    reserveAssetId,
-    reserveAmountOut,
-    mrTcoinOut,
-    cplTcoinOut,
-    charityTopupOut,
-    resolvedCharityId,
-    charityWallet,
-  ] = preview;
   const [, , , , , mentoConfigured] = mentoRouteConfig;
 
   return {
@@ -277,6 +186,7 @@ export async function getTorontoCoinOpsStatus(
       reserveAssetId: runtime.reserveAssetId,
       reserveAssetToken: runtime.reserveAssetToken,
       scenarioInputToken: runtime.scenarioInputToken,
+      trackedPoolCount: pools.length,
     },
     ownership: {
       liquidityRouter: liquidityRouterOwner,
@@ -284,27 +194,7 @@ export async function getTorontoCoinOpsStatus(
       poolRegistry: poolRegistryOwner,
       sarafuSwapPoolAdapter: sarafuSwapPoolAdapterOwner,
     },
-    poolLiquidity: {
-      cplTcoinRaw: cplTcoinBalance.toString(),
-      cplTcoinFormatted: formatUnits(cplTcoinBalance, runtime.cplTcoin.decimals),
-      mrTcoinRaw: mrTcoinBalance.toString(),
-      mrTcoinFormatted: formatUnits(mrTcoinBalance, runtime.mrTcoin.decimals),
-    },
-    scenarioPreview: {
-      inputAmount: runtime.scenarioInputAmount.toString(),
-      selectedPoolId,
-      reserveAssetId,
-      reserveAmountOut: reserveAmountOut.toString(),
-      reserveAmountOutFormatted: formatUnits(reserveAmountOut, 18),
-      mrTcoinOut: mrTcoinOut.toString(),
-      mrTcoinOutFormatted: formatUnits(mrTcoinOut, runtime.mrTcoin.decimals),
-      cplTcoinOut: cplTcoinOut.toString(),
-      cplTcoinOutFormatted: formatUnits(cplTcoinOut, runtime.cplTcoin.decimals),
-      charityTopupOut: charityTopupOut.toString(),
-      charityTopupOutFormatted: formatUnits(charityTopupOut, runtime.cplTcoin.decimals),
-      resolvedCharityId: resolvedCharityId.toString(),
-      charityWallet: getAddress(charityWallet),
-    },
+    pools,
     reserveRouteHealth: {
       reserveAssetActive,
       mentoUsdcRouteConfigured: mentoConfigured,

@@ -116,6 +116,23 @@ export const tokenRegistryAbi = [
   },
 ] as const;
 
+export const poolRegistryAbi = [
+  {
+    type: "function",
+    name: "listPoolIds",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "bytes32[]" }],
+  },
+  {
+    type: "function",
+    name: "getPoolAddress",
+    stateMutability: "view",
+    inputs: [{ name: "poolId", type: "bytes32" }],
+    outputs: [{ type: "address" }],
+  },
+] as const;
+
 export const erc20MetadataAbi = [
   {
     type: "function",

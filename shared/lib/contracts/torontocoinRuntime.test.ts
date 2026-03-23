@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   TORONTOCOIN_RUNTIME,
+  getConfiguredTorontoCoinTrackedPools,
   getTorontoCoinRuntimeConfig,
   getTorontoCoinWalletToken,
   isTorontoCoinRuntimeScope,
@@ -22,5 +23,17 @@ describe("torontocoinRuntime", () => {
     );
     expect(isTorontoCoinRuntimeScope({ citySlug: "tcoin", chainId: 42220 })).toBe(true);
     expect(isTorontoCoinRuntimeScope({ citySlug: "other", chainId: 42220 })).toBe(false);
+  });
+
+  it("exposes the configured tracked bootstrap pool", () => {
+    const trackedPools = getConfiguredTorontoCoinTrackedPools({
+      citySlug: "tcoin",
+      chainId: 42220,
+    });
+
+    expect(trackedPools).toHaveLength(1);
+    expect(trackedPools[0]?.poolId).toBe(TORONTOCOIN_RUNTIME.bootstrapPoolId);
+    expect(trackedPools[0]?.poolAddress).toBe(TORONTOCOIN_RUNTIME.bootstrapSwapPool);
+    expect(trackedPools[0]?.expectedIndexerVisibility).toBe(true);
   });
 });

@@ -8,6 +8,16 @@ export type TorontoCoinTokenMetadata = {
   explorerPath: string;
 };
 
+export type TrackedTorontoCoinPool = {
+  poolId: Hex;
+  poolAddress: Address;
+  name: string;
+  tokens: Address[];
+  expectedIndexerVisibility: boolean;
+  previewEnabled: boolean;
+  acceptanceEnabled: boolean;
+};
+
 export type TorontoCoinRuntimeConfig = {
   target: "celo-mainnet";
   citySlug: "tcoin";
@@ -26,6 +36,7 @@ export type TorontoCoinRuntimeConfig = {
   cplTcoin: TorontoCoinTokenMetadata;
   bootstrapPoolId: Hex;
   bootstrapSwapPool: Address;
+  trackedPools: readonly TrackedTorontoCoinPool[];
   scenarioInputToken: Address;
   scenarioInputAmount: bigint;
   reserveAssetId: Hex;
@@ -69,6 +80,21 @@ export const TORONTOCOIN_RUNTIME: TorontoCoinRuntimeConfig = {
   bootstrapPoolId:
     "0x746f726f6e746f2d67656e657369732d706f6f6c000000000000000000000000",
   bootstrapSwapPool: getAddress("0xDe2a979EC49811aD27730e451651e52b4540c594"),
+  trackedPools: [
+    {
+      poolId:
+        "0x746f726f6e746f2d67656e657369732d706f6f6c000000000000000000000000",
+      poolAddress: getAddress("0xDe2a979EC49811aD27730e451651e52b4540c594"),
+      name: "Toronto Genesis Pool",
+      tokens: [
+        getAddress("0x63ed4CFAD21E9F4a30Ad93a199f382f98CAf59C3"),
+        getAddress("0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19"),
+      ],
+      expectedIndexerVisibility: true,
+      previewEnabled: true,
+      acceptanceEnabled: true,
+    },
+  ],
   scenarioInputToken: getAddress("0xcebA9300f2b948710d2653dD7B07f33A8B32118C"),
   scenarioInputAmount: BigInt(1_000_000),
   reserveAssetId:
@@ -111,4 +137,11 @@ export function getTorontoCoinWalletToken(input?: {
   chainId?: number | null;
 }): TorontoCoinTokenMetadata | null {
   return isTorontoCoinRuntimeScope(input) ? TORONTOCOIN_RUNTIME.cplTcoin : null;
+}
+
+export function getConfiguredTorontoCoinTrackedPools(input?: {
+  citySlug?: string | null;
+  chainId?: number | null;
+}): readonly TrackedTorontoCoinPool[] {
+  return isTorontoCoinRuntimeScope(input) ? TORONTOCOIN_RUNTIME.trackedPools : [];
 }

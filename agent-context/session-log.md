@@ -1,3 +1,68 @@
+## v1.73
+### Timestamp
+- 2026-03-23 01:10:00 EDT
+
+### Objective
+- Expand TorontoCoin Sarafu compatibility monitoring beyond the bootstrap pool by making the runtime, ops surface, indexer status, and operator scripts work against the live set of pools already registered in `PoolRegistry`.
+
+### What Changed
+- Extended `shared/lib/contracts/torontocoinRuntime.ts` with configured tracked-pool metadata for the canonical bootstrap pool and added a shared `TrackedTorontoCoinPool` type for runtime consumers.
+- Added `shared/lib/contracts/torontocoinPools.ts` as the new shared TorontoCoin pool-matrix helper. It now:
+  - resolves live registered pool ids and addresses from `PoolRegistry`
+  - merges them with the configured bootstrap pool
+  - reads real Sarafu `SwapPool` components (`tokenRegistry`, `tokenLimiter`, `quoter`, `feePpm`, owner)
+  - collects token balances, limiter limits, price-index values, quote checks, and router preview readiness per pool
+- Refactored `shared/lib/contracts/torontocoinOps.ts` from a bootstrap-only summary into a broader core status contract with:
+  - live address summary
+  - governance ownership checks
+  - reserve-route health
+  - a per-pool compatibility matrix
+- Extended `app/api/tcoin/ops/status/route.ts` so the operator payload now merges the on-chain TorontoCoin matrix with TorontoCoin-specific indexer tracking state from `getIndexerScopeStatus(...)`.
+- Updated `app/tcoin/wallet/admin/page.tsx` so the admin dashboard now renders a pool-by-pool TorontoCoin ops matrix instead of a single bootstrap-liquidity summary.
+- Refactored indexer TorontoCoin assumptions beyond the bootstrap pool:
+  - `services/indexer/src/discovery/pools.ts` now includes live TorontoCoin-registered Sarafu pools from `PoolRegistry` in discovery, even when they would not be reached by plain token-overlap heuristics alone
+  - `services/indexer/src/index.ts` now reports TorontoCoin tracking per pool instead of only `bootstrapPoolTracked`
+  - `services/indexer/src/types.ts` and `shared/lib/indexer/types.ts` now model that richer per-pool tracking payload
+- Added new operator scripts and package commands:
+  - `pnpm ops:torontocoin`
+  - `pnpm ops:torontocoin:pools`
+  - `pnpm ops:torontocoin:acceptance`
+- Added `tsx` as a dev dependency so those checked-in TypeScript scripts can execute with repo path aliases and `.ts` imports intact.
+- Updated the TorontoCoin ops runbook plus the technical and functional specs to document the new live registered-pool compatibility posture.
+
+### Verification
+- `pnpm test`
+- `pnpm lint`
+- `pnpm build`
+- `pnpm exec tsx scripts/torontocoin-ops-check.ts`
+- `pnpm exec tsx scripts/torontocoin-pool-compatibility-check.ts`
+- `pnpm exec tsx scripts/torontocoin-pool-acceptance.ts`
+
+### Files Edited
+- `shared/lib/contracts/torontocoinRuntime.ts`
+- `shared/lib/contracts/torontocoinPools.ts`
+- `shared/lib/contracts/torontocoinOps.ts`
+- `services/indexer/src/config.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/types.ts`
+- `services/indexer/src/discovery/abis.ts`
+- `services/indexer/src/discovery/pools.ts`
+- `services/indexer/src/discovery/cityContracts.ts`
+- `shared/lib/indexer/types.ts`
+- `app/api/tcoin/ops/status/route.ts`
+- `app/api/tcoin/ops/status/route.test.ts`
+- `app/tcoin/wallet/admin/page.tsx`
+- `shared/lib/contracts/torontocoinRuntime.test.ts`
+- `scripts/torontocoin-ops-check.ts`
+- `scripts/torontocoin-pool-compatibility-check.ts`
+- `scripts/torontocoin-pool-acceptance.ts`
+- `package.json`
+- `pnpm-lock.yaml`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.72
 ### Timestamp
 - 2026-03-23 00:20:00 EDT

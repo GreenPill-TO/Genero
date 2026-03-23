@@ -11,7 +11,7 @@ import {
   REQUIRED_POOL_COMPONENTS,
   SARAFU_POOL_INDEX_ADDRESS,
 } from "../config";
-import { erc20MetadataAbi, poolAbi, poolIndexAbi, tokenRegistryAbi } from "./abis";
+import { erc20MetadataAbi, poolAbi, poolIndexAbi, poolRegistryAbi, tokenRegistryAbi } from "./abis";
 import type { CityContractSet, TrackedPoolLink } from "../types";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -259,6 +259,44 @@ async function readPoolAddresses(client: PublicClient, limit: number): Promise<A
   return Array.from(new Set(poolAddresses));
 }
 
+async function readTorontoCoinRegisteredPoolAddresses(
+  client: PublicClient,
+  cityContracts: CityContractSet
+): Promise<Address[]> {
+  const poolRegistryAddress = cityContracts.torontoCoinRuntime?.poolRegistry;
+  if (!poolRegistryAddress) {
+    return [];
+  }
+
+  try {
+    const poolIds = await client.readContract({
+      address: poolRegistryAddress,
+      abi: poolRegistryAbi,
+      functionName: "listPoolIds",
+    });
+
+    const addresses = await Promise.all(
+      poolIds.map(async (poolId) => {
+        try {
+          const poolAddress = await client.readContract({
+            address: poolRegistryAddress,
+            abi: poolRegistryAbi,
+            functionName: "getPoolAddress",
+            args: [poolId],
+          });
+          return toAddress(poolAddress);
+        } catch {
+          return undefined;
+        }
+      })
+    );
+
+    return Array.from(new Set(addresses.filter((value): value is Address => Boolean(value))));
+  } catch {
+    return [];
+  }
+}
+
 async function upsertTokenMetadata(options: {
   supabase: SupabaseClient<any, any, any>;
   client: PublicClient;
@@ -340,9 +378,15 @@ export async function discoverTrackedPools(options: {
     cityContracts.contracts.TCOIN,
     cityContracts.contracts.TTC,
     cityContracts.contracts.CAD,
+    cityContracts.torontoCoinRuntime?.mrTcoin,
+    cityContracts.torontoCoinRuntime?.cplTcoin,
   ].filter((value): value is Address => Boolean(value));
 
-  const poolAddresses = await readPoolAddresses(client, poolLimit);
+  const [indexedPoolAddresses, registeredTorontoCoinPools] = await Promise.all([
+    readPoolAddresses(client, poolLimit),
+    readTorontoCoinRegisteredPoolAddresses(client, cityContracts),
+  ]);
+  const poolAddresses = Array.from(new Set([...indexedPoolAddresses, ...registeredTorontoCoinPools]));
   for (const requiredPool of REQUIRED_POOL_ADDRESSES) {
     if (!poolAddresses.some((existing) => existing.toLowerCase() === requiredPool.toLowerCase())) {
       poolAddresses.push(requiredPool);
