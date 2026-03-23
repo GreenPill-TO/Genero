@@ -72,6 +72,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Buy/onramp session status now exposes TorontoCoin-specific delivery metadata, including router transaction hash, delivered token address/symbol/decimals, target `poolId`, and reserve asset used, while keeping the older session fields available for compatibility.
 - The current automated onramp still buys from the service deposit wallet and then forwards the resulting `cplTCOIN` to the recipient wallet because the live router settles to `msg.sender`. Users still receive `cplTCOIN`, but user-specific on-chain acceptance and charity preferences are not yet natively applied inside that automated router call.
 - Wallet pages that previously depended on `/api/control-plane/access`, `/api/user_requests`, `/api/merchant/application/*`, `/api/bias/*`, `/api/stores*`, `/api/city-manager/stores*`, `/api/redemptions/*`, and `/api/vouchers/preferences` now talk to typed edge clients instead; the old Next routes remain temporarily for compatibility with non-wallet or not-yet-migrated consumers.
+- Wallet and SpareChange runtime data flows are now expected to go through typed Supabase edge clients rather than direct browser table/RPC reads. Contacts, recents, transaction history, QR/manual connections, wallet custody persistence/recovery, legacy top-up/off-ramp mutations, voucher portfolio/route/payment recording, merchant slug checks, and store risk writes all now sit behind edge-function contracts.
 - Wallet buy-checkout now uses the canonical `onramp` edge function for session creation, checkout-status polling, widget-open tracking, and user-triggered settlement touches instead of the older `/api/onramp/*` transport.
 - Wallet admin, merchant, and home screens now read BIA mapping health and voucher merchant liquidity through stable app-facing read models instead of depending on raw indexer-table shapes.
 - Wallet and SpareChange no longer depend on a hidden `control_variables` table for CAD conversion. They now resolve a city-scoped exchange rate through the `citycoin-market` edge function, which reads the latest indexed oracle snapshot for the active city coin.
@@ -91,6 +92,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Donors scan and pay instantly via the wallet.
 - Sign-in modal mirrors the wallet with six auto-advancing verification inputs.
 - SpareChange request flows now use the same city-scoped `payment-requests` backend as Wallet, so targeted requests created in one app appear in the other when both are operating on the same city coin.
+- SpareChange now follows the same edge-only DB posture as Wallet for app runtime flows: onboarding/custody, contacts, QR connection, legacy cash ops, and user profile/settings writes no longer depend on direct browser Supabase table access.
 
 ## Key User Flows
 

@@ -63,3 +63,30 @@ export async function settleRedemptionRequest(
     appContext,
   });
 }
+
+export async function createLegacyOfframpRequest(
+  payload: Record<string, unknown>,
+  appContext?: AppScopeInput | null
+): Promise<Record<string, unknown>> {
+  return invokeEdgeFunction<Record<string, unknown>>("redemptions", "/legacy/offramp/request", {
+    method: "POST",
+    body: payload,
+    appContext,
+  });
+}
+
+export async function updateLegacyOfframpAdminRequest(
+  requestId: number,
+  payload: Record<string, unknown>,
+  appContext?: AppScopeInput | null
+): Promise<Record<string, unknown>> {
+  return invokeEdgeFunction<Record<string, unknown>>(
+    "redemptions",
+    `/legacy/offramp/request/${requestId}`,
+    {
+      method: "PATCH",
+      body: payload,
+      appContext,
+    }
+  );
+}

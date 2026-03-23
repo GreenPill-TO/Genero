@@ -1,3 +1,101 @@
+## v1.71
+### Timestamp
+- 2026-03-22 23:58:00 EDT
+
+### Objective
+- Finish the Supabase edge-function migration so wallet/sparechange app runtime and retained DB-backed Next routes no longer own direct Supabase table or RPC logic.
+
+### What Changed
+- Extended the shared `user-settings` edge function to own the remaining authenticated bootstrap/profile and custody endpoints:
+  - `POST /auth/ensure-user`
+  - `GET /personas`
+  - `POST /wallet/register-custody`
+  - `GET /wallet/custody-material`
+  - legacy Cubid data read/write compatibility endpoints
+- Added a new `wallet-operations` edge function plus typed client wrappers for:
+  - contacts
+  - contact connection/state changes
+  - recents
+  - transaction history
+  - contact transaction history
+  - user lookup by identifier
+  - transfer recording
+  - user/admin notifications
+- Added a new `voucher-runtime` edge function plus typed client wrappers for:
+  - portfolio reads
+  - voucher route reads
+  - payment-record writes
+- Extended existing edge domains so the remaining DB mutations moved behind canonical function boundaries:
+  - `onramp` now owns legacy Interac reference/confirm flows, pool purchase request creation, admin request edits, and Transak webhook persistence handoff
+  - `redemptions` now owns legacy off-ramp request creation and admin edits
+  - `merchant-applications` now serves slug availability
+  - `store-operations` now serves risk writes
+- Refactored wallet and sparechange runtime surfaces to consume the new typed edge clients instead of direct `supabase.from(...)` / `supabase.rpc(...)` calls, including:
+  - welcome/custody bootstrap
+  - contacts and QR connect flows
+  - recents and transaction history
+  - send-money custody-material recovery
+  - legacy top-up/off-ramp mutations
+  - voucher runtime flows
+  - admin legacy ramp edits
+- Converted the retained DB-backed Next routes into compatibility proxies with `proxyEdgeRequest(...)` or explicit edge forwarding, including:
+  - `/api/vouchers/portfolio`
+  - `/api/vouchers/route`
+  - `/api/vouchers/payment-record`
+  - `/api/pools/buy`
+  - `/api/merchant/slug-availability`
+  - `/api/stores/risk`
+  - `/api/onramp/webhooks/transak`
+- Added `scripts/check-no-direct-supabase-db.mjs` and wired `pnpm lint` to fail when new direct Supabase table/RPC access is introduced in guarded app-facing paths.
+- Updated tests so the app now asserts edge-client and route-proxy contracts rather than the retired direct DB logic.
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+
+### Files Edited
+- `supabase/functions/user-settings/index.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/wallet-operations/index.ts`
+- `supabase/functions/_shared/walletOperations.ts`
+- `supabase/functions/voucher-runtime/index.ts`
+- `supabase/functions/_shared/voucherRuntime.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/_shared/onramp.ts`
+- `supabase/functions/redemptions/index.ts`
+- `supabase/functions/_shared/redemptions.ts`
+- `supabase/functions/merchant-applications/index.ts`
+- `supabase/functions/_shared/merchantApplications.ts`
+- `supabase/functions/store-operations/index.ts`
+- `supabase/functions/_shared/storeOperations.ts`
+- `shared/lib/edge/userSettingsClient.ts`
+- `shared/lib/edge/walletOperations.ts`
+- `shared/lib/edge/walletOperationsClient.ts`
+- `shared/lib/edge/voucherRuntime.ts`
+- `shared/lib/edge/voucherRuntimeClient.ts`
+- `shared/lib/edge/onrampClient.ts`
+- `shared/lib/edge/redemptionsClient.ts`
+- `shared/lib/edge/merchantApplicationsClient.ts`
+- `shared/lib/edge/storeOperationsClient.ts`
+- `shared/api/services/supabaseService.ts`
+- `shared/api/services/supabaseService.test.ts`
+- `shared/utils/insertNotification.ts`
+- `app/api/pools/buy/route.ts`
+- `app/api/pools/buy/route.test.ts`
+- `app/api/vouchers/route/route.ts`
+- `app/api/vouchers/route/route.test.ts`
+- `app/api/vouchers/portfolio/route.ts`
+- `app/api/vouchers/payment-record/route.ts`
+- `app/api/merchant/slug-availability/route.ts`
+- `app/api/stores/risk/route.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `app/tcoin/wallet/**`
+- `app/tcoin/sparechange/**`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.70
 ### Timestamp
 - 2026-03-22 21:05:00 EDT

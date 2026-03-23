@@ -9,8 +9,7 @@ import {
 } from "@shared/api/services/supabaseService";
 import { Hypodata, contactRecordToHypodata } from "./types";
 import { useModal } from "@shared/contexts/ModalContext";
-import { createClient } from "@shared/lib/supabase/client";
-import { listWalletPublicKeysForUser } from "@shared/lib/supabase/walletIdentities";
+import { getWalletContactTransactionHistory } from "@shared/lib/edge/walletOperationsClient";
 
 type SortOrder = "alphabetical" | "recents";
 
@@ -67,7 +66,6 @@ export function ContactsTab({
   const [contactTransactions, setContactTransactions] = useState<
     Record<number, ContactTransactions>
   >({});
-  const [userWallets, setUserWallets] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (!initialContacts) return;
@@ -105,38 +103,6 @@ export function ContactsTab({
 
   useEffect(() => {
     let isMounted = true;
-    const ownerId = userData?.cubidData?.id;
-    if (!ownerId) {
-      setUserWallets([]);
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    const supabase = createClient();
-
-    const loadWallets = async () => {
-      try {
-        const wallets = await listWalletPublicKeysForUser(ownerId, supabase);
-        if (!isMounted) return;
-        setUserWallets(wallets);
-      } catch (error) {
-        console.error("Failed to load user wallets", error);
-        if (isMounted) {
-          setUserWallets([]);
-        }
-      }
-    };
-
-    void loadWallets();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [userData?.cubidData?.id]);
-
-  useEffect(() => {
-    let isMounted = true;
     if (contacts.length === 0) {
       setContactTransactions({});
       return () => {
@@ -144,110 +110,20 @@ export function ContactsTab({
       };
     }
 
-    if (userWallets == null) {
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    if (userWallets.length === 0) {
-      const emptyState: Record<number, ContactTransactions> = {};
-      contacts.forEach((contact) => {
-        emptyState[contact.id] = { lastTransactionAt: null, entries: [] };
-      });
-      setContactTransactions(emptyState);
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    const supabase = createClient();
-
     const loadTransactions = async () => {
       const results = await Promise.all(
         contacts.map(async (contact) => {
           try {
-            const contactWallets = await listWalletPublicKeysForUser(contact.id, supabase);
-
-            if (contactWallets.length === 0) {
-              return {
-                contactId: contact.id,
-                info: { lastTransactionAt: null, entries: [] as ContactTransactionEntry[] },
-              };
-            }
-
-            const fetchEntries = async (
-              column: "wallet_account_to" | "wallet_account_from"
-            ) => {
-              const { data, error } = await supabase
-                .from("act_transaction_entries")
-                .select("id, wallet_account_to, wallet_account_from, amount, created_at")
-                .eq("currency", "TCOIN")
-                .in(column, contactWallets)
-                .order("created_at", { ascending: false })
-                .limit(50);
-              if (error) throw error;
-              return data ?? [];
-            };
-
-            const [toRows, fromRows] = await Promise.all([
-              fetchEntries("wallet_account_to"),
-              fetchEntries("wallet_account_from"),
-            ]);
-
-            const combined = [...toRows, ...fromRows];
-            const seen = new Set<number>();
-            const entries: ContactTransactionEntry[] = [];
-
-            combined.forEach((row: any) => {
-              const rowId =
-                typeof row.id === "number"
-                  ? row.id
-                  : Number.parseInt(String(row.id ?? ""), 10);
-              if (!Number.isFinite(rowId) || seen.has(rowId)) return;
-              seen.add(rowId);
-
-              const from =
-                typeof row.wallet_account_from === "string"
-                  ? row.wallet_account_from
-                  : null;
-              const to =
-                typeof row.wallet_account_to === "string"
-                  ? row.wallet_account_to
-                  : null;
-
-              const amountRaw = row.amount;
-              const numericAmount =
-                typeof amountRaw === "number"
-                  ? amountRaw
-                  : Number.parseFloat(typeof amountRaw === "string" ? amountRaw : "");
-
-              if (!Number.isFinite(numericAmount)) {
-                return;
-              }
-
-              const contactSent =
-                from != null && contactWallets.includes(from) && to != null && userWallets.includes(to);
-              const contactReceived =
-                to != null && contactWallets.includes(to) && from != null && userWallets.includes(from);
-
-              if (!contactSent && !contactReceived) {
-                return;
-              }
-
-              entries.push({
-                id: rowId,
-                amount: numericAmount,
-                created_at: typeof row.created_at === "string" ? row.created_at : null,
-                direction: contactSent ? "sent" : "received",
-              });
+            const response = await getWalletContactTransactionHistory(contact.id, {
+              appContext: { citySlug: "tcoin" },
             });
 
-            entries.sort((a, b) => {
-              const aTime = a.created_at ? Date.parse(a.created_at) : 0;
-              const bTime = b.created_at ? Date.parse(b.created_at) : 0;
-              return bTime - aTime;
-            });
+            const entries: ContactTransactionEntry[] = (response.transactions ?? []).map((row: any) => ({
+              id: Number(row.id),
+              amount: Number(row.amount),
+              created_at: typeof row.createdAt === "string" ? row.createdAt : null,
+              direction: row.direction === "received" ? "received" : "sent",
+            }));
 
             return {
               contactId: contact.id,
@@ -280,7 +156,7 @@ export function ContactsTab({
     return () => {
       isMounted = false;
     };
-  }, [contacts, userWallets]);
+  }, [contacts]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();

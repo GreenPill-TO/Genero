@@ -3,16 +3,15 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { createClient } from "@shared/lib/supabase/client";
 
 // Import all the step components
 import { useAuth } from "@shared/api/hooks/useAuth";
 import {
-  getActiveAppInstance,
   normaliseDeviceInfo,
   serialiseUserShare,
   updateCubidDataInSupabase,
 } from "@shared/api/services/supabaseService";
+import { registerWalletCustody } from "@shared/lib/edge/userSettingsClient";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
 import { TCubidData } from "@shared/types/cubid";
@@ -39,8 +38,6 @@ const CubidWidget = dynamic(
   () => import('cubid-sdk').then((mod) => mod.CubidWidget),
   { ssr: false }
 );
-
-const supabase = createClient();
 
 const stepHeadings = [
   "Introduction",
@@ -285,64 +282,16 @@ const WelcomeFlow: React.FC = () => {
     }
   }, [userData?.cubidData, userFormData.current_step]);
 
-  const upsertWalletKey = async (userId: number, payload: Record<string, unknown> = {}) => {
-    const namespace = (payload.namespace as string) || "EVM";
-    const { data: keyData, error } = await supabase
-      .from("wallet_keys")
-      .upsert(
-        {
-          user_id: userId,
-          namespace,
-          ...payload,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,namespace" }
-      )
-      .select("id")
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    return keyData.id as number;
-  }
-
   const insertOrUpdateDataInWallet = async (userId: number, add: Record<string, unknown>) => {
-    const walletKeyId =
-      (add.wallet_key_id as number | undefined) ??
-      (await upsertWalletKey(userId, {
-        namespace: (add.namespace as string) || "EVM",
-        ...(typeof add.app_share === "string" ? { app_share: add.app_share } : {}),
-      }));
+    const result = await registerWalletCustody({
+      namespace: (add.namespace as string) || "EVM",
+      publicKey: typeof add.public_key === "string" ? add.public_key : undefined,
+      isGenerated: typeof add.is_generated === "boolean" ? add.is_generated : undefined,
+      appShare: typeof add.app_share === "string" ? add.app_share : undefined,
+      walletKeyId: typeof add.wallet_key_id === "number" ? add.wallet_key_id : undefined,
+    });
 
-    const walletPayload: Record<string, unknown> = {
-      ...add,
-      wallet_key_id: walletKeyId,
-    };
-    delete walletPayload.app_share;
-
-    const { data } = await supabase
-      .from("wallet_list")
-      .select("id")
-      .match({ user_id: userId, namespace: (walletPayload.namespace as string) || "EVM" })
-      .order("id", { ascending: false })
-      .limit(1);
-
-    if (data?.[0]) {
-      await supabase
-        .from("wallet_list")
-        .update(walletPayload)
-        .match({ id: data[0].id })
-    } else {
-      await supabase.from("wallet_list").insert({
-        user_id: userId,
-        namespace: (walletPayload.namespace as string) || "EVM",
-        ...walletPayload,
-      })
-    }
-
-    return walletKeyId;
+    return result.walletKeyId;
   }
 
 
@@ -496,36 +445,16 @@ const WelcomeFlow: React.FC = () => {
                 }}
                 onUserShare={async (usershare: any) => {
                   const serialisedShare = serialiseUserShare(usershare);
-                  const walletKeyId = await upsertWalletKey(userData?.cubidData?.id, {
-                    namespace: "EVM",
-                  });
-                  const activeAppInstance = await getActiveAppInstance();
-                  if (!activeAppInstance?.id) {
-                    const citycoinSlug = process.env.NEXT_PUBLIC_CITYCOIN ?? "unknown";
-                    const appSlug = process.env.NEXT_PUBLIC_APP_NAME ?? "unknown";
-                    throw new Error(
-                      `Unable to resolve active app instance for encrypted share storage (citycoin="${citycoinSlug}", app="${appSlug}"). ` +
-                      "Verify that NEXT_PUBLIC_CITYCOIN and NEXT_PUBLIC_APP_NAME are set correctly and that a matching app instance exists."
-                    );
-                  }
                   const deviceInfo = getDeviceMetadata(deviceLabel.trim() || undefined);
                   if (serialisedShare.credentialId) {
                     window.localStorage.setItem("tcoin_wallet_activeWalletCredentialId", serialisedShare.credentialId);
                   }
-                  const { error: insertError } = await supabase.from("user_encrypted_share").insert({
-                    user_share_encrypted: serialisedShare.userShareEncrypted,
-                    user_id: userData?.cubidData?.id,
-                    wallet_key_id: walletKeyId,
-                    credential_id: serialisedShare.credentialId,
-                    app_instance_id: activeAppInstance.id,
-                    device_info: deviceInfo,
-                    last_used_at: new Date().toISOString(),
+                  await registerWalletCustody({
+                    namespace: "EVM",
+                    userShareEncrypted: serialisedShare.userShareEncrypted,
+                    credentialId: serialisedShare.credentialId,
+                    deviceInfo,
                   });
-                  
-                  if (insertError) {
-                    console.error('Failed to store encrypted share:', insertError);
-                    throw new Error(`Failed to store encrypted wallet share: ${insertError.message}`);
-                  }
                 }}
                 onAppShare={async (share: any) => {
                   if (share) {

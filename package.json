@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "pnpm lint:next && pnpm lint:edge-boundary",
+    "lint:next": "next lint",
+    "lint:edge-boundary": "node scripts/check-no-direct-supabase-db.mjs",
     "test": "vitest run",
     "forge:deploy:registry": "cd contracts/foundry && forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --broadcast",
     "forge:promote:city": "cd contracts/foundry && forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --broadcast"

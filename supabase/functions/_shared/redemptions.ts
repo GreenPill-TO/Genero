@@ -554,3 +554,111 @@ export async function settleRedemption(
     settlement: settlementRow,
   };
 }
+
+export async function createLegacyOfframpRequest(
+  options: RedemptionContext & { payload: Record<string, unknown> }
+) {
+  const body = options.payload;
+  const etransferTarget = String(body.etransferTarget ?? "").trim();
+  const tokensBurned = toNumber(body.tokensBurned, 0);
+  const exchangeRate = toNumber(body.exchangeRate, 3.3);
+
+  if (!etransferTarget) {
+    throw new Error("etransferTarget is required.");
+  }
+
+  if (!(tokensBurned > 0)) {
+    throw new Error("tokensBurned must be a positive number.");
+  }
+
+  const { error: requestError } = await options.supabase.rpc("create_off_ramp_request", {
+    p_current_token_balance: String(body.currentTokenBalance ?? ""),
+    p_etransfer_target: etransferTarget,
+    p_exchange_rate: exchangeRate,
+    p_is_store: Number(body.isStore ?? 0),
+    p_tokens_burned: tokensBurned,
+    p_user_id: options.userId,
+    p_wallet_account_from:
+      typeof body.walletAccountFrom === "string" && body.walletAccountFrom.trim() !== ""
+        ? body.walletAccountFrom.trim()
+        : null,
+    p_wallet_account_to:
+      typeof body.walletAccountTo === "string" && body.walletAccountTo.trim() !== ""
+        ? body.walletAccountTo.trim()
+        : null,
+  });
+
+  if (requestError) {
+    throw new Error(`Failed to create legacy off-ramp request: ${requestError.message}`);
+  }
+
+  const { data: requestRow, error: requestRowError } = await options.supabase
+    .from("off_ramp_req")
+    .select("*")
+    .eq("user_id", options.userId)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (requestRowError) {
+    throw new Error(`Failed to load legacy off-ramp request: ${requestRowError.message}`);
+  }
+
+  if (!requestRow?.id) {
+    throw new Error("Legacy off-ramp request was created but could not be reloaded.");
+  }
+
+  const { error: finalizeError } = await options.supabase.rpc("accounting_after_offramp_burn", {
+    p_offramp_req_id: requestRow.id,
+  });
+
+  if (finalizeError) {
+    throw new Error(`Failed to finalize off-ramp bookkeeping: ${finalizeError.message}`);
+  }
+
+  return {
+    request: requestRow,
+  };
+}
+
+export async function updateLegacyOfframpAdminRequest(
+  options: RedemptionContext & { requestId: number; payload: Record<string, unknown> }
+) {
+  await assertAdminOrOperator({
+    supabase: options.supabase,
+    userId: options.userId,
+    appInstanceId: options.appContext.appInstanceId,
+  });
+
+  const patch = {
+    admin_notes:
+      typeof options.payload.admin_notes === "string" && options.payload.admin_notes.trim() !== ""
+        ? options.payload.admin_notes.trim()
+        : null,
+    bank_reference_number:
+      typeof options.payload.bank_reference_number === "string" &&
+      options.payload.bank_reference_number.trim() !== ""
+        ? options.payload.bank_reference_number.trim()
+        : null,
+    cad_off_ramp_fee:
+      options.payload.cad_off_ramp_fee == null ? null : toNumber(options.payload.cad_off_ramp_fee, 0),
+    status:
+      typeof options.payload.status === "string" && options.payload.status.trim() !== ""
+        ? options.payload.status.trim()
+        : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await options.supabase
+    .from("off_ramp_req")
+    .update(patch)
+    .eq("id", options.requestId)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to update legacy off-ramp request: ${error.message}`);
+  }
+
+  return { request: data };
+}

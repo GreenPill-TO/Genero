@@ -14,6 +14,25 @@ function toNullableString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function toNullableNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function toNullableInteger(value: unknown): number | null {
+  const parsed = toNullableNumber(value);
+  if (parsed == null) {
+    return null;
+  }
+  return Number.isInteger(parsed) ? parsed : Math.trunc(parsed);
+}
+
 function splitFullName(fullName: string | null): { firstName: string; lastName: string } {
   if (!fullName) {
     return { firstName: "", lastName: "" };
@@ -1007,4 +1026,472 @@ export async function completeSignup(options: {
     userId: options.userId,
     appContext: options.appContext,
   });
+}
+
+function mapBootstrapToCubidData(bootstrap: Awaited<ReturnType<typeof getUserSettingsBootstrap>>): any {
+  return {
+    id: bootstrap.user.id,
+    cubid_id: bootstrap.user.cubidId,
+    username: bootstrap.user.username,
+    email: bootstrap.user.email,
+    phone: bootstrap.user.phone,
+    full_name: bootstrap.user.fullName,
+    address: null,
+    bio: null,
+    profile_image_url: bootstrap.user.profileImageUrl,
+    has_completed_intro: bootstrap.user.hasCompletedIntro,
+    is_new_user: bootstrap.user.isNewUser,
+    is_admin: null,
+    auth_user_id: null,
+    cubid_score: null,
+    cubid_identity: null,
+    cubid_score_details: null,
+    updated_at: null,
+    created_at: null,
+    user_identifier: null,
+    given_names: bootstrap.user.firstName || null,
+    family_name: bootstrap.user.lastName || null,
+    nickname: bootstrap.user.nickname,
+    country: bootstrap.user.country,
+    profiles: {
+      [bootstrap.app.appSlug]: {
+        appInstanceId: bootstrap.app.appInstanceId,
+        slug: bootstrap.app.appSlug,
+        persona: null,
+        tippingPreferences: {
+          preferredDonationAmount: null,
+          goodTip: null,
+          defaultTip: null,
+        },
+        charityPreferences: {
+          selectedCause: bootstrap.preferences.selectedCause,
+          charity: bootstrap.preferences.charity,
+        },
+        onboardingState: {
+          currentStep: bootstrap.signup.currentStep,
+          category: null,
+          style: null,
+        },
+        metadata: null,
+        createdAt: null,
+        updatedAt: null,
+      },
+    },
+    activeProfileKey: bootstrap.app.appSlug,
+    activeProfile: {
+      appInstanceId: bootstrap.app.appInstanceId,
+      slug: bootstrap.app.appSlug,
+      persona: null,
+      tippingPreferences: {
+        preferredDonationAmount: null,
+        goodTip: null,
+        defaultTip: null,
+      },
+      charityPreferences: {
+        selectedCause: bootstrap.preferences.selectedCause,
+        charity: bootstrap.preferences.charity,
+      },
+      onboardingState: {
+        currentStep: bootstrap.signup.currentStep,
+        category: null,
+        style: null,
+      },
+      metadata: null,
+      createdAt: null,
+      updatedAt: null,
+    },
+  };
+}
+
+export async function ensureAuthenticatedUserRecord(options: {
+  supabase: any;
+  authUser: { id: string; email?: string | null; phone?: string | null };
+  appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
+  authMethod?: string | null;
+  fullContact?: string | null;
+  cubidId?: string | null;
+}) {
+  const contact = toNullableString(options.fullContact);
+  const authMethod = toNullableString(options.authMethod)?.toLowerCase();
+
+  const lookupQueries = [
+    options.supabase.from("users").select("id").eq("auth_user_id", options.authUser.id).limit(1).maybeSingle(),
+    options.authUser.email
+      ? options.supabase.from("users").select("id").eq("email", options.authUser.email).limit(1).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    authMethod === "phone" && contact
+      ? options.supabase.from("users").select("id").eq("phone", contact).limit(1).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    authMethod !== "phone" && contact
+      ? options.supabase.from("users").select("id").eq("email", contact).limit(1).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ];
+
+  const results = await Promise.all(lookupQueries);
+  for (const result of results) {
+    if (result.error) {
+      throw new Error(`Failed to resolve user row: ${result.error.message}`);
+    }
+  }
+
+  const existing = results.map((result) => result.data).find((row) => row?.id);
+  let userId = toInteger(existing?.id);
+  let created = false;
+
+  if (userId == null) {
+    const cubidId = toNullableString(options.cubidId);
+    if (!cubidId) {
+      throw new Error("cubidId is required when creating a new authenticated user.");
+    }
+
+    const payload: Record<string, unknown> = {
+      cubid_id: cubidId,
+      has_completed_intro: false,
+      is_new_user: true,
+      auth_user_id: options.authUser.id,
+    };
+
+    if (authMethod === "phone" && contact) {
+      payload.phone = contact;
+    } else if (contact) {
+      payload.email = contact;
+    } else if (options.authUser.email) {
+      payload.email = options.authUser.email;
+    }
+
+    const { data: inserted, error: insertError } = await options.supabase
+      .from("users")
+      .insert(payload)
+      .select("id")
+      .single();
+
+    if (insertError) {
+      throw new Error(`Failed to create user row: ${insertError.message}`);
+    }
+
+    userId = toInteger(inserted?.id);
+    created = true;
+  } else {
+    const patch: Record<string, unknown> = {
+      auth_user_id: options.authUser.id,
+    };
+    if (options.authUser.email) {
+      patch.email = options.authUser.email;
+    }
+    if (authMethod === "phone" && contact) {
+      patch.phone = contact;
+    }
+
+    const { error: updateError } = await options.supabase.from("users").update(patch).eq("id", userId);
+    if (updateError) {
+      throw new Error(`Failed to update authenticated user row: ${updateError.message}`);
+    }
+  }
+
+  if (userId == null) {
+    throw new Error("Unable to resolve authenticated user id.");
+  }
+
+  const bootstrap = await getUserSettingsBootstrap({
+    supabase: options.supabase,
+    userId,
+    appContext: options.appContext,
+  });
+
+  return {
+    created,
+    user: mapBootstrapToCubidData(bootstrap),
+  };
+}
+
+export async function listPersonas(options: { supabase: any }) {
+  const { data, error } = await options.supabase.from("ref_personas").select("*").order("sequential_id", { ascending: true });
+  if (error) {
+    throw new Error(`Failed to load personas: ${error.message}`);
+  }
+  return {
+    personas: data ?? [],
+  };
+}
+
+export async function registerWalletCustody(options: {
+  supabase: any;
+  userId: number;
+  appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
+  payload: JsonRecord;
+}) {
+  const walletKeyPayload = isRecord(options.payload.walletKey) ? { ...options.payload.walletKey } : {};
+  const walletPayload = isRecord(options.payload.wallet) ? { ...options.payload.wallet } : {};
+  const userSharePayload = isRecord(options.payload.userShare) ? { ...options.payload.userShare } : {};
+  const namespace = toNullableString(walletPayload.namespace ?? walletKeyPayload.namespace) ?? "EVM";
+
+  const nowIso = new Date().toISOString();
+  const walletKeyInsert = {
+    user_id: options.userId,
+    namespace,
+    ...walletKeyPayload,
+    updated_at: nowIso,
+  };
+
+  const { data: walletKeyRow, error: walletKeyError } = await options.supabase
+    .from("wallet_keys")
+    .upsert(walletKeyInsert, { onConflict: "user_id,namespace" })
+    .select("id")
+    .single();
+
+  if (walletKeyError) {
+    throw new Error(`Failed to upsert wallet key: ${walletKeyError.message}`);
+  }
+
+  const walletKeyId = walletKeyRow?.id;
+  if (walletKeyId == null) {
+    throw new Error("Wallet key id is missing after upsert.");
+  }
+
+  const walletWritePayload: Record<string, unknown> = {
+    user_id: options.userId,
+    namespace,
+    wallet_key_id: walletKeyId,
+    ...walletPayload,
+  };
+  delete walletWritePayload.app_share;
+
+  const { data: existingWallet, error: existingWalletError } = await options.supabase
+    .from("wallet_list")
+    .select("id")
+    .eq("user_id", options.userId)
+    .eq("namespace", namespace)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingWalletError) {
+    throw new Error(`Failed to resolve wallet list row: ${existingWalletError.message}`);
+  }
+
+  let walletId: number | string | null = existingWallet?.id ?? null;
+  if (walletId != null) {
+    const { error: walletUpdateError } = await options.supabase
+      .from("wallet_list")
+      .update(walletWritePayload)
+      .eq("id", walletId);
+    if (walletUpdateError) {
+      throw new Error(`Failed to update wallet list: ${walletUpdateError.message}`);
+    }
+  } else {
+    const { data: insertedWallet, error: walletInsertError } = await options.supabase
+      .from("wallet_list")
+      .insert(walletWritePayload)
+      .select("id")
+      .single();
+    if (walletInsertError) {
+      throw new Error(`Failed to insert wallet list row: ${walletInsertError.message}`);
+    }
+    walletId = insertedWallet?.id ?? null;
+  }
+
+  const credentialId = toNullableString(userSharePayload.credential_id);
+  const encryptedShare =
+    userSharePayload.user_share_encrypted && isRecord(userSharePayload.user_share_encrypted)
+      ? userSharePayload.user_share_encrypted
+      : null;
+
+  if (!encryptedShare) {
+    throw new Error("user_share_encrypted is required.");
+  }
+
+  const { error: shareError } = await options.supabase
+    .from("user_encrypted_share")
+    .upsert(
+      {
+        user_share_encrypted: encryptedShare,
+        user_id: options.userId,
+        wallet_key_id: walletKeyId,
+        credential_id: credentialId,
+        app_instance_id: options.appContext.appInstanceId,
+        device_info:
+          userSharePayload.device_info && isRecord(userSharePayload.device_info)
+            ? userSharePayload.device_info
+            : null,
+        revoked_at: null,
+        last_used_at: nowIso,
+      },
+      { onConflict: "wallet_key_id,app_instance_id,credential_id" }
+    );
+
+  if (shareError) {
+    throw new Error(`Failed to upsert encrypted user share: ${shareError.message}`);
+  }
+
+  const bootstrap = await getUserSettingsBootstrap({
+    supabase: options.supabase,
+    userId: options.userId,
+    appContext: options.appContext,
+  });
+
+  return {
+    walletKeyId,
+    walletId,
+    bootstrap,
+  };
+}
+
+export async function getWalletCustodyMaterial(options: {
+  supabase: any;
+  userId: number;
+  appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
+}) {
+  const [{ data: walletRow, error: walletError }, { data: shareRows, error: shareError }] = await Promise.all([
+    options.supabase
+      .from("wallet_list")
+      .select("id,public_key,wallet_key_id")
+      .eq("user_id", options.userId)
+      .eq("namespace", "EVM")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    options.supabase
+      .from("user_encrypted_share")
+      .select("id,user_share_encrypted,credential_id,app_instance_id,last_used_at,created_at,revoked_at")
+      .eq("user_id", options.userId)
+      .eq("app_instance_id", options.appContext.appInstanceId)
+      .is("revoked_at", null)
+      .order("last_used_at", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  if (walletError) {
+    throw new Error(`Failed to load wallet custody: ${walletError.message}`);
+  }
+  if (shareError) {
+    throw new Error(`Failed to load encrypted user shares: ${shareError.message}`);
+  }
+
+  const walletKeyId = walletRow?.wallet_key_id;
+  if (!walletKeyId) {
+    throw new Error("No wallet_key_id found for this user.");
+  }
+
+  const { data: walletKey, error: walletKeyError } = await options.supabase
+    .from("wallet_keys")
+    .select("app_share")
+    .eq("id", walletKeyId)
+    .single();
+
+  if (walletKeyError) {
+    throw new Error(`Failed to load wallet key: ${walletKeyError.message}`);
+  }
+
+  return {
+    appInstanceId: options.appContext.appInstanceId,
+    appSlug: options.appContext.appSlug,
+    primaryWallet: toNullableString(walletRow?.public_key),
+    walletKeyId,
+    appShare: toNullableString(walletKey?.app_share),
+    shares: (shareRows ?? []).map((row: any) => ({
+      id: row.id,
+      credentialId: toNullableString(row.credential_id),
+      appInstanceId: toInteger(row.app_instance_id),
+      lastUsedAt: toNullableString(row.last_used_at),
+      createdAt: toNullableString(row.created_at),
+      userShareEncrypted: isRecord(row.user_share_encrypted) ? row.user_share_encrypted : null,
+    })),
+  };
+}
+
+export async function getLegacyCubidData(options: {
+  supabase: any;
+  userId: number;
+  appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
+}) {
+  const bootstrap = await getUserSettingsBootstrap({
+    supabase: options.supabase,
+    userId: options.userId,
+    appContext: options.appContext,
+  });
+
+  return mapBootstrapToCubidData(bootstrap);
+}
+
+export async function updateLegacyCubidData(options: {
+  supabase: any;
+  userId: number;
+  appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
+  payload: JsonRecord;
+}) {
+  const payload = ensureObject(options.payload);
+  const userPayload = ensureObject(payload.user);
+  const profilePayload = ensureObject(payload.profile);
+
+  if (Object.keys(userPayload).length > 0) {
+    const { error: updateError } = await options.supabase.from("users").update(userPayload).eq("id", options.userId);
+    if (updateError) {
+      throw new Error(`Failed to update legacy user data: ${updateError.message}`);
+    }
+  }
+
+  if (Object.keys(profilePayload).length > 0) {
+    const profileUpdatePayload: JsonRecord = {};
+
+    if ("persona" in profilePayload) {
+      profileUpdatePayload.persona = toNullableString(profilePayload.persona);
+    }
+
+    if ("tippingPreferences" in profilePayload) {
+      const tipping = ensureObject(profilePayload.tippingPreferences);
+      profileUpdatePayload.tipping_preferences = {
+        preferred_donation_amount:
+          "preferredDonationAmount" in tipping ? toNullableNumber(tipping.preferredDonationAmount) : null,
+        good_tip: "goodTip" in tipping ? toNullableInteger(tipping.goodTip) : null,
+        default_tip: "defaultTip" in tipping ? toNullableInteger(tipping.defaultTip) : null,
+      };
+    }
+
+    if ("charityPreferences" in profilePayload) {
+      const charity = ensureObject(profilePayload.charityPreferences);
+      profileUpdatePayload.charity_preferences = {
+        selected_cause: "selectedCause" in charity ? toNullableString(charity.selectedCause) : null,
+        charity: "charity" in charity ? toNullableString(charity.charity) : null,
+      };
+    }
+
+    if ("onboardingState" in profilePayload) {
+      const onboarding = ensureObject(profilePayload.onboardingState);
+      profileUpdatePayload.onboarding_state = {
+        current_step: "currentStep" in onboarding ? toNullableInteger(onboarding.currentStep) : null,
+        category: "category" in onboarding ? toNullableString(onboarding.category) : null,
+        style: "style" in onboarding ? toNullableInteger(onboarding.style) : null,
+      };
+    }
+
+    if ("metadata" in profilePayload) {
+      profileUpdatePayload.metadata = isRecord(profilePayload.metadata)
+        ? (profilePayload.metadata as JsonRecord)
+        : null;
+    }
+
+    if (Object.keys(profileUpdatePayload).length > 0) {
+      const appProfile = await ensureAppProfile({
+        supabase: options.supabase,
+        userId: options.userId,
+        appInstanceId: options.appContext.appInstanceId,
+      });
+
+      const { error: profileError } = await options.supabase
+        .from("app_user_profiles")
+        .update({
+          ...profileUpdatePayload,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", options.userId)
+        .eq("app_instance_id", appProfile.app_instance_id);
+
+      if (profileError) {
+        throw new Error(`Failed to update legacy profile data: ${profileError.message}`);
+      }
+    }
+  }
+
+  return getLegacyCubidData(options);
 }

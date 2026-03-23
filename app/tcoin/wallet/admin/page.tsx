@@ -21,6 +21,7 @@ import {
   getAdminOnrampSessions,
   getOnrampAdminRequests,
   retryOnrampSession,
+  updateLegacyInteracAdminRequest,
 } from "@shared/lib/edge/onrampClient";
 import {
   getVoucherCompatibilityRules,
@@ -29,7 +30,6 @@ import {
 } from "@shared/lib/edge/voucherPreferencesClient";
 import type { OperationalState } from "@shared/lib/edge/types";
 import { useRouter } from "next/navigation";
-import { createClient } from "@shared/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Button } from "@shared/components/ui/Button";
 import { Badge } from "@shared/components/ui/badge";
@@ -44,6 +44,7 @@ import { Input } from "@shared/components/ui/Input";
 import { Textarea } from "@shared/components/ui/TextArea";
 import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui/alert";
 import { toast } from "react-toastify";
+import { updateLegacyOfframpAdminRequest } from "@shared/lib/edge/redemptionsClient";
 
 type OnRampRequest = {
   id: number;
@@ -406,7 +407,6 @@ const fetchJson = async <T,>(input: RequestInfo | URL, init?: RequestInit): Prom
 export default function AdminDashboardPage() {
   const { userData, isLoading } = useAuth();
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const controlPlaneAccess = useControlPlaneAccess("tcoin", !isLoading);
   const isMountedRef = useRef(true);
 
@@ -1170,12 +1170,7 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      const { error } = await supabase
-        .from("interac_transfer")
-        .update(payload)
-        .eq("id", request.id);
-
-      if (error) throw error;
+      await updateLegacyInteracAdminRequest(request.id, payload, { citySlug: "tcoin" });
 
       toast.success(`On-ramp request #${request.id} updated.`);
       await loadRequests();
@@ -1211,12 +1206,7 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      const { error } = await supabase
-        .from("off_ramp_req")
-        .update(payload)
-        .eq("id", request.id);
-
-      if (error) throw error;
+      await updateLegacyOfframpAdminRequest(request.id, payload, { citySlug: "tcoin" });
 
       toast.success(`Off-ramp request #${request.id} updated.`);
       await loadRequests();

@@ -3,9 +3,11 @@ import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appC
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   approveRedemption,
+  createLegacyOfframpRequest,
   createRedemptionRequest,
   listRedemptionRequests,
   settleRedemption,
+  updateLegacyOfframpAdminRequest,
 } from "../_shared/redemptions.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { toNumber } from "../_shared/validation.ts";
@@ -52,6 +54,21 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/request") {
       return jsonResponse(req, await createRedemptionRequest({ ...base, payload: body ?? {} }));
+    }
+
+    if (req.method === "POST" && pathname === "/legacy/offramp/request") {
+      return jsonResponse(req, await createLegacyOfframpRequest({ ...base, payload: body ?? {} }));
+    }
+
+    if (req.method === "PATCH" && /^\/legacy\/offramp\/request\/\d+$/.test(pathname)) {
+      return jsonResponse(
+        req,
+        await updateLegacyOfframpAdminRequest({
+          ...base,
+          requestId: Number(pathname.split("/")[4]),
+          payload: body ?? {},
+        })
+      );
     }
 
     if (req.method === "GET" && pathname === "/list") {

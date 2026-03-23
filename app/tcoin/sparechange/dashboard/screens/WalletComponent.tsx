@@ -40,10 +40,19 @@ import QRCode from "react-qr-code";
 import { toast } from "react-toastify";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import useDarkMode from "@shared/hooks/useDarkMode";
-import { createClient } from "@shared/lib/supabase/client";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { adminInsertNotification, insertSuccessNotification } from "@shared/utils/insertNotification";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
+import {
+  confirmLegacyInteracReference,
+  createLegacyInteracReference,
+} from "@shared/lib/edge/onrampClient";
+import {
+  connectWalletContact,
+  lookupWalletUserByIdentifier,
+  updateWalletContactState,
+  getWalletContactDetail,
+} from "@shared/lib/edge/walletOperationsClient";
 import { FiDollarSign, FiTrendingUp, FiList, FiHeart } from 'react-icons/fi';
 import { cn } from "@shared/utils/classnames";
 
@@ -416,22 +425,13 @@ function SendCard({
   useEffect(() => {
     if (toSendData?.id) {
       const fetchConnections = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from("connections")
-          .select("*")
-          .match({
-            connected_user_id: toSendData?.id,
-            owner_user_id: userData?.cubidData?.id,
-          })
-          .neq("state", "new");
-        setConnections(data?.[0]);
+        const { contact } = await getWalletContactDetail(toSendData.id, { citySlug: "tcoin" });
+        const state = contact?.state?.toLowerCase() ?? null;
+        setConnections(state && state !== "new" ? [contact] : null);
       };
       fetchConnections();
     }
   }, [toSendData, userData]);
-
-  const supabase = createClient();
 
   // Convert input strings to numbers.
   const tcoinValue = parseFloat(tcoinAmount);
@@ -601,14 +601,11 @@ function SendCard({
                     <Button
                       size="sm"
                       onClick={async () => {
-                        await supabase
-                          .from("connections")
-                          .update({ state: "added" })
-                          .match({ connected_user_id: toSendData?.id, owner_user_id: userData?.cubidData?.id });
-                        await supabase
-                          .from("connections")
-                          .update({ state: "added" })
-                          .match({ owner_user_id: toSendData?.id, connected_user_id: userData?.cubidData?.id });
+                        await updateWalletContactState(
+                          { connectedUserId: toSendData?.id, state: "added" },
+                          { citySlug: "tcoin" }
+                        );
+                        setConnections([{ state: "added" }]);
                         toast.success("Contact added!");
                       }}
                     >
@@ -618,14 +615,11 @@ function SendCard({
                       variant="outline"
                       size="sm"
                       onClick={async () => {
-                        await supabase
-                          .from("connections")
-                          .update({ state: "removed" })
-                          .match({ connected_user_id: toSendData?.id, owner_user_id: userData?.cubidData?.id });
-                        await supabase
-                          .from("connections")
-                          .update({ state: "removed" })
-                          .match({ owner_user_id: toSendData?.id, connected_user_id: userData?.cubidData?.id });
+                        await updateWalletContactState(
+                          { connectedUserId: toSendData?.id, state: "removed" },
+                          { citySlug: "tcoin" }
+                        );
+                        setConnections([{ state: "removed" }]);
                         toast.success("Contact removed!");
                       }}
                     >
@@ -879,7 +873,6 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
   const [amount, setAmount] = useState("");
   const [refCode, setRefCode] = useState(generateReferenceCode());
   const { userData } = useAuth();
-  const supabase = createClient();
 
   // Move to confirmation if a valid amount is entered.
   const handleNext = async () => {
@@ -888,12 +881,10 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
       return;
     }
 
-    await supabase.from("interac_transfer").insert({
-      user_id: userData?.cubidData?.id,
-      interac_code: refCode,
-      is_sent: false,
-      amount: amount,
-    });
+    await createLegacyInteracReference(
+      { amount, refCode },
+      { citySlug: "tcoin" }
+    );
     setStep("confirmation");
   };
 
@@ -910,21 +901,16 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
   // Simulate saving the top up info and generate a new reference code.
   const handleConfirm = async () => {
     try {
-      // Replace with your actual API call.
-      await supabase
-        .from("interac_transfer")
-        .update({ is_sent: true })
-        .match({ interac_code: refCode })
-      const { data: interac_transfer_id } = await supabase.from("interac_transfer").select("*").match({ interac_code: refCode })
-      const { data: acc_transactions } = await supabase.from("act_transactions").insert({
-        transaction_category: "transfer",
-        created_by: userData?.cubidData.id,
-        onramp_request_id: interac_transfer_id?.[0]?.id
-      }).select("*")
+      const confirmation = await confirmLegacyInteracReference(
+        { refCode },
+        { citySlug: "tcoin" }
+      );
+      const interacTransfer = confirmation?.transfer;
+      const accountingTransaction = confirmation?.transaction;
       toast.success("Top up recorded successfully!");
       await insertSuccessNotification({
         user_id: userData?.cubidData.id, notification: `${amount} topped up successfully into ${tokenLabel} Wallet`, additionalData: {
-          trx_entry_id: acc_transactions?.[0]?.id
+          trx_entry_id: accountingTransaction?.id ?? null
         }
       })
       await adminInsertNotification({
@@ -1097,19 +1083,28 @@ export function MobileWalletDashboardComponent({
   const handleScan = useCallback(async (data: any) => {
     const { ...rest } = extractAndDecodeBase64(data)
     console.log({ rest })
-    const supabase = createClient()
     toast.success("Scanned User Successfully")
     if (rest?.nano_id) {
-      const { data: userDataFromSupabaseTable } = await supabase.from("users").select("*").match({
-        user_identifier: rest?.nano_id
-      })
-      await supabase.from("connections").insert({
-        owner_user_id: (userData as any)?.cubidData?.id,
-        connected_user_id: userDataFromSupabaseTable?.[0]?.id,
-        state: "new"
-      })
+      const lookup = await lookupWalletUserByIdentifier(
+        { userIdentifier: rest.nano_id },
+        { citySlug: "tcoin" }
+      )
+      if (!lookup.user) {
+        throw new Error("No user matched the scanned QR code.")
+      }
+      await connectWalletContact(
+        { connectedUserId: lookup.user.id, state: "new" },
+        { citySlug: "tcoin" }
+      )
 
-      setToSendData(userDataFromSupabaseTable?.[0])
+      setToSendData({
+        id: lookup.user.id,
+        full_name: lookup.user.fullName,
+        username: lookup.user.username,
+        profile_image_url: lookup.user.profileImageUrl,
+        wallet_address: lookup.user.walletAddress,
+        state: lookup.user.state,
+      })
       if (rest?.qrTcoinAmount) {
         setTcoin(rest?.qrTcoinAmount)
         setCad(extractDecimalFromString(rest?.qrTcoinAmount) * exchangeRate)

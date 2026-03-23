@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
-import { createClient } from "@shared/lib/supabase/client";
 import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
+import { updateUserProfile } from "@shared/lib/userSettings/client";
 
 interface UserProfileModalProps {
   closeModal: () => void;
@@ -27,8 +27,6 @@ const EditProfileContent = ({ onCancel }: EditProfileContentProps) => {
   };
 
   const handleSave = async () => {
-    const supabase = createClient();
-
     let profileImageUrl = profilePicture; // Default to existing profile picture
 
     // Upload new profile picture if a file was selected
@@ -46,15 +44,14 @@ const EditProfileContent = ({ onCancel }: EditProfileContentProps) => {
     }
 
     // Update user profile in the database
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({
-        full_name: displayName,
-        profile_image_url: profileImageUrl,
-      })
-      .eq("id", userData?.cubidData?.id);
-
-    if (updateError) {
+    const [firstName, ...restNames] = displayName.trim().split(/\s+/);
+    try {
+      await updateUserProfile({
+        firstName: firstName ?? "",
+        lastName: restNames.join(" "),
+        profileImageUrl: profileImageUrl,
+      });
+    } catch (updateError) {
       console.error("Error updating profile:", updateError);
       return;
     }

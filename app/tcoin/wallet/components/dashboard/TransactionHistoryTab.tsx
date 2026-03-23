@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { LuArrowLeft } from "react-icons/lu";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
-import { createClient } from "@shared/lib/supabase/client";
-import { listWalletPublicKeysForUser } from "@shared/lib/supabase/walletIdentities";
+import { getWalletTransactionHistory } from "@shared/lib/edge/walletOperationsClient";
 
 type TransactionRow = {
   id: number;
@@ -12,6 +11,7 @@ type TransactionRow = {
   walletFrom: string | null;
   walletTo: string | null;
   createdAt: string | null;
+  direction: "sent" | "received" | "internal";
 };
 
 type DisplayRow = {
@@ -71,10 +71,10 @@ export function TransactionHistoryTab({
       setErrorMessage(null);
 
       try {
-        const supabase = createClient();
-        const myWallets = await listWalletPublicKeysForUser(userId, supabase);
+        const response = await getWalletTransactionHistory({ appContext: { citySlug: "tcoin" } });
+        const sourceRows = Array.isArray(response.entries) ? response.entries : [];
 
-        if (myWallets.length === 0) {
+        if (sourceRows.length === 0) {
           if (isMounted) {
             setRows([]);
             setIsLoading(false);
@@ -82,34 +82,9 @@ export function TransactionHistoryTab({
           return;
         }
 
-        const [toResult, fromResult] = await Promise.all([
-          supabase
-            .from("act_transaction_entries")
-            .select("id, amount, currency, wallet_account_from, wallet_account_to, created_at")
-            .eq("currency", "TCOIN")
-            .in("wallet_account_to", myWallets)
-            .order("created_at", { ascending: false })
-            .limit(120),
-          supabase
-            .from("act_transaction_entries")
-            .select("id, amount, currency, wallet_account_from, wallet_account_to, created_at")
-            .eq("currency", "TCOIN")
-            .in("wallet_account_from", myWallets)
-            .order("created_at", { ascending: false })
-            .limit(120),
-        ]);
-
-        if (toResult.error) {
-          throw new Error(toResult.error.message);
-        }
-        if (fromResult.error) {
-          throw new Error(fromResult.error.message);
-        }
-
-        const myWalletSet = new Set(myWallets.map((wallet) => wallet.toLowerCase()));
         const deduped = new Map<number, TransactionRow>();
 
-        [...(toResult.data ?? []), ...(fromResult.data ?? [])].forEach((row: any) => {
+        sourceRows.forEach((row: any) => {
           const id = Number(row.id);
           if (!Number.isFinite(id)) return;
 
@@ -121,34 +96,24 @@ export function TransactionHistoryTab({
             typeof row.currency === "string" && row.currency.trim() !== ""
               ? row.currency
               : "TCOIN";
-          const walletFrom =
-            typeof row.wallet_account_from === "string" ? row.wallet_account_from : null;
-          const walletTo =
-            typeof row.wallet_account_to === "string" ? row.wallet_account_to : null;
+          const walletFrom = typeof row.wallet_account_from === "string" ? row.wallet_account_from : null;
+          const walletTo = typeof row.wallet_account_to === "string" ? row.wallet_account_to : null;
           const createdAt =
             typeof row.created_at === "string" ? row.created_at : null;
+          const direction =
+            row.direction === "received" || row.direction === "internal" ? row.direction : "sent";
 
           if (!Number.isFinite(amount)) return;
 
           const previous = deduped.get(id);
           if (!previous || (createdAt ?? "") > (previous.createdAt ?? "")) {
-            deduped.set(id, { id, amount, currency, walletFrom, walletTo, createdAt });
+            deduped.set(id, { id, amount, currency, walletFrom, walletTo, createdAt, direction });
           }
         });
 
         const nextRows: DisplayRow[] = Array.from(deduped.values())
           .map((row) => {
-            const from = row.walletFrom?.toLowerCase() ?? null;
-            const to = row.walletTo?.toLowerCase() ?? null;
-            const fromIsMine = from ? myWalletSet.has(from) : false;
-            const toIsMine = to ? myWalletSet.has(to) : false;
-
-            const direction: DisplayRow["direction"] =
-              fromIsMine && toIsMine
-                ? "internal"
-                : fromIsMine
-                  ? "sent"
-                  : "received";
+            const direction: DisplayRow["direction"] = row.direction;
 
             const counterpartyWallet =
               direction === "sent"

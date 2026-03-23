@@ -9,7 +9,7 @@ import {
   getIncomingPaymentRequests,
   markPaymentRequestPaid,
 } from "@shared/lib/edge/paymentRequestsClient";
-import { createClient } from "@shared/lib/supabase/client";
+import { lookupWalletUserByIdentifier } from "@shared/lib/edge/walletOperationsClient";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Hypodata, InvoicePayRequest, contactRecordToHypodata } from "./types";
@@ -652,13 +652,22 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       return;
     }
     try {
-      const supabase = createClient();
-      const { data: userDataFromSupabaseTable, error } = await supabase
-        .from("users")
-        .select("*")
-        .match({ user_identifier: nano_id });
-      if (error) throw error;
-      updateRecipient(userDataFromSupabaseTable?.[0] ?? null);
+      const lookup = await lookupWalletUserByIdentifier(
+        { userIdentifier: nano_id },
+        { citySlug: "tcoin" }
+      );
+      updateRecipient(
+        lookup.user
+          ? {
+              id: lookup.user.id,
+              full_name: lookup.user.fullName,
+              username: lookup.user.username,
+              profile_image_url: lookup.user.profileImageUrl,
+              wallet_address: lookup.user.walletAddress,
+              state: lookup.user.state,
+            }
+          : null
+      );
       if (qrTcoinAmount) {
         const sanitized = sanitizeNumeric(String(qrTcoinAmount));
         if (sanitized) {

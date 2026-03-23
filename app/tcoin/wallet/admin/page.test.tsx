@@ -35,6 +35,8 @@ const edgeMocks = vi.hoisted(() => ({
   })),
   getAdminOnrampSessions: vi.fn(async () => ({ sessions: [] })),
   retryOnrampSession: vi.fn(async () => ({ sessionId: "session-1", result: { skipped: false, status: "mint_complete" } })),
+  updateLegacyInteracAdminRequest: vi.fn(async () => ({ request: {} })),
+  updateLegacyOfframpAdminRequest: vi.fn(async () => ({ request: {} })),
   getVoucherCompatibilityRules: vi.fn(async () => ({ rules: [] })),
   getVoucherMerchants: vi.fn(async () => ({ state: "empty", merchants: [] })),
   saveVoucherCompatibilityRule: vi.fn(async () => ({ rule: {} })),
@@ -86,6 +88,7 @@ vi.mock("@shared/lib/edge/redemptionsClient", () => ({
   getRedemptionRequests: edgeMocks.getRedemptionRequests,
   approveRedemptionRequest: edgeMocks.approveRedemptionRequest,
   settleRedemptionRequest: edgeMocks.settleRedemptionRequest,
+  updateLegacyOfframpAdminRequest: edgeMocks.updateLegacyOfframpAdminRequest,
 }));
 vi.mock("@shared/lib/edge/governanceClient", () => ({
   getGovernanceActions: edgeMocks.getGovernanceActions,
@@ -94,6 +97,7 @@ vi.mock("@shared/lib/edge/onrampClient", () => ({
   getOnrampAdminRequests: edgeMocks.getOnrampAdminRequests,
   getAdminOnrampSessions: edgeMocks.getAdminOnrampSessions,
   retryOnrampSession: edgeMocks.retryOnrampSession,
+  updateLegacyInteracAdminRequest: edgeMocks.updateLegacyInteracAdminRequest,
 }));
 vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
   getVoucherCompatibilityRules: edgeMocks.getVoucherCompatibilityRules,
@@ -146,6 +150,8 @@ describe("AdminDashboardPage", () => {
       statuses: selectResponses.ref_request_statuses.data,
     }));
     edgeMocks.getAdminOnrampSessions.mockResolvedValue({ sessions: [] });
+    edgeMocks.updateLegacyInteracAdminRequest.mockResolvedValue({ request: {} });
+    edgeMocks.updateLegacyOfframpAdminRequest.mockResolvedValue({ request: {} });
     edgeMocks.getVoucherCompatibilityRules.mockResolvedValue({ rules: [] });
     edgeMocks.getVoucherMerchants.mockResolvedValue({ state: "empty", merchants: [] });
     const responses = getResponses();
@@ -307,16 +313,18 @@ describe("AdminDashboardPage", () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(updateCalls.length).toBeGreaterThan(0);
+      expect(edgeMocks.updateLegacyInteracAdminRequest).toHaveBeenCalledTimes(1);
     });
 
-    expect(updateCalls[0]).toMatchObject({
-      table: "interac_transfer",
-      payload: {
+    expect(edgeMocks.updateLegacyInteracAdminRequest).toHaveBeenCalledWith(
+      9,
+      {
         admin_notes: "Manual verification complete",
         bank_reference: null,
+        amount_override: null,
         status: "requested",
       },
-    });
+      { citySlug: "tcoin" }
+    );
   });
 });

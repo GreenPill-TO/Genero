@@ -1,10 +1,9 @@
 // @ts-nocheck
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { updateCubidDataInSupabase } from "@shared/api/services/supabaseService";
 import { Button } from "@shared/components/ui/Button";
 import { Radio } from "@shared/components/ui/Radio";
-import { createClient } from "@shared/lib/supabase/client";
 import { useState, useEffect } from "react";
+import { getUserSettingsBootstrap, updateUserPreferences } from "@shared/lib/userSettings/client";
 
 interface Charity {
   id: string;
@@ -25,39 +24,37 @@ const CharitySelectModal = ({
 }: CharitySelectModalProps) => {
   const [charity, setCharity] = useState(selectedCharity);
   const [charities, setCharities] = useState<Charity[]>([]);
-  const supabase = createClient();
   const { userData } = useAuth();
 
   useEffect(() => {
     const fetchCharities = async () => {
-      const { data, error } = await supabase
-        .from("charities")
-        .select("*");
-      if (error) {
-        console.error("Error fetching charities:", error);
-      } else if (data) {
+      try {
+        const bootstrap = await getUserSettingsBootstrap();
+        const data = bootstrap.options.charities.map((entry) => ({
+          id: entry.id,
+          name: entry.name,
+          value: entry.value ?? entry.name,
+        }));
         setCharities(data);
+      } catch (error) {
+        console.error("Error fetching charities:", error);
       }
     };
 
     fetchCharities();
-  }, [supabase]);
+  }, []);
 
   const handleSelect = async () => {
     setSelectedCharity(charity);
 
     const cubidId = userData?.user?.cubid_id;
     if (cubidId) {
-      const { error } = await updateCubidDataInSupabase(cubidId, {
-        profile: {
-          charityPreferences: {
-            charity,
-            selectedCause: charity,
-          },
-        },
-      });
-
-      if (error) {
+      try {
+        await updateUserPreferences({
+          charity,
+          selectedCause: charity,
+        });
+      } catch (error) {
         console.error("Error updating user's charity:", error);
       }
     }

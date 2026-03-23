@@ -1430,6 +1430,51 @@ export async function listLegacyRampAdminRequests(options: {
   };
 }
 
+export async function updateLegacyInteracAdminRequest(options: {
+  supabase: any;
+  userId: number;
+  appInstanceId: number;
+  requestId: number;
+  payload: Record<string, unknown>;
+}) {
+  await assertAdminOrOperator({
+    supabase: options.supabase,
+    userId: options.userId,
+    appInstanceId: options.appInstanceId,
+  });
+
+  const patch = {
+    admin_notes:
+      typeof options.payload.admin_notes === "string" && options.payload.admin_notes.trim() !== ""
+        ? options.payload.admin_notes.trim()
+        : null,
+    bank_reference:
+      typeof options.payload.bank_reference === "string" && options.payload.bank_reference.trim() !== ""
+        ? options.payload.bank_reference.trim()
+        : null,
+    amount_override:
+      options.payload.amount_override == null ? null : toNumber(options.payload.amount_override, 0),
+    status:
+      typeof options.payload.status === "string" && options.payload.status.trim() !== ""
+        ? options.payload.status.trim()
+        : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await options.supabase
+    .from("interac_transfer")
+    .update(patch)
+    .eq("id", options.requestId)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to update Interac request: ${error.message}`);
+  }
+
+  return { request: data };
+}
+
 export async function runSessionSettlement(options: {
   supabase: any;
   sessionId: string;
@@ -2026,5 +2071,355 @@ export async function retryOnrampSession(options: {
       sessionId: options.sessionId,
       result,
     },
+  };
+}
+
+function normalizeOptionalAddress(value: unknown): Address | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!isAddress(trimmed)) {
+    return null;
+  }
+  const checksummed = getAddress(trimmed);
+  if (checksummed.toLowerCase() === "0x0000000000000000000000000000000000000000") {
+    return null;
+  }
+  return checksummed;
+}
+
+export async function createLegacyInteracReference(options: {
+  supabase: any;
+  userId: number;
+  amount: number | string;
+  refCode: string;
+}) {
+  const amount = toNumber(options.amount, 0);
+  if (!(amount > 0)) {
+    throw new Error("amount must be a positive number.");
+  }
+
+  const { data, error } = await options.supabase
+    .from("interac_transfer")
+    .insert({
+      user_id: options.userId,
+      interac_code: options.refCode,
+      is_sent: false,
+      amount,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create Interac reference: ${error.message}`);
+  }
+
+  return { transfer: data };
+}
+
+export async function confirmLegacyInteracReference(options: {
+  supabase: any;
+  userId: number;
+  refCode: string;
+}) {
+  const nowIso = new Date().toISOString();
+  const { error: updateError } = await options.supabase
+    .from("interac_transfer")
+    .update({ is_sent: true, updated_at: nowIso })
+    .eq("interac_code", options.refCode)
+    .eq("user_id", options.userId);
+
+  if (updateError) {
+    throw new Error(`Failed to confirm Interac reference: ${updateError.message}`);
+  }
+
+  const { data: transfer, error: transferError } = await options.supabase
+    .from("interac_transfer")
+    .select("*")
+    .eq("interac_code", options.refCode)
+    .eq("user_id", options.userId)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (transferError) {
+    throw new Error(`Failed to reload Interac reference: ${transferError.message}`);
+  }
+
+  const { data: transaction, error: transactionError } = await options.supabase
+    .from("act_transactions")
+    .insert({
+      transaction_category: "transfer",
+      created_by: options.userId,
+      onramp_request_id: transfer?.id ?? null,
+    })
+    .select("*")
+    .single();
+
+  if (transactionError) {
+    throw new Error(`Failed to record accounting transaction: ${transactionError.message}`);
+  }
+
+  return {
+    transfer,
+    transaction,
+  };
+}
+
+export async function createPoolPurchaseRequest(options: {
+  supabase: any;
+  userId: number;
+  appInstanceId: number;
+  citySlug: string;
+  payload: Record<string, unknown>;
+}) {
+  const body = options.payload;
+  const chainId = Math.max(1, Math.trunc(toNumber(body.chainId, TORONTOCOIN_RUNTIME.chainId)));
+  const fiatAmount = toNumber(body.fiatAmount, 0);
+  const tokenAmount = toNumber(body.tokenAmount, 0);
+
+  if (!(fiatAmount > 0) || !(tokenAmount > 0)) {
+    throw new Error("fiatAmount and tokenAmount must both be positive numbers.");
+  }
+
+  const selectedBiaId =
+    typeof body.biaId === "string" && body.biaId.trim() !== ""
+      ? body.biaId.trim()
+      : await resolveActiveUserBia({
+          supabase: options.supabase,
+          userId: options.userId,
+          appInstanceId: options.appInstanceId,
+        });
+
+  if (!selectedBiaId) {
+    throw new Error("No active BIA affiliation found. Select a BIA before purchasing TCOIN.");
+  }
+
+  const { data: mapping, error: mappingError } = await options.supabase
+    .from("bia_pool_mappings")
+    .select("pool_address,mapping_status,effective_to")
+    .eq("bia_id", selectedBiaId)
+    .eq("chain_id", chainId)
+    .eq("mapping_status", "active")
+    .is("effective_to", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (mappingError) {
+    throw new Error(`Failed to resolve active BIA pool mapping: ${mappingError.message}`);
+  }
+
+  if (!mapping?.pool_address) {
+    throw new Error("No active BIA pool mapping found. Select a BIA before purchasing TCOIN.");
+  }
+
+  const { data: biaRow, error: biaError } = await options.supabase
+    .from("bia_registry")
+    .select("id,city_slug,status")
+    .eq("id", selectedBiaId)
+    .eq("city_slug", options.citySlug)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  if (biaError) {
+    throw new Error(`Failed to validate selected BIA: ${biaError.message}`);
+  }
+
+  if (!biaRow) {
+    throw new Error("Selected BIA is not active in this city.");
+  }
+
+  const { data: controlRow, error: controlError } = await options.supabase
+    .from("bia_pool_controls")
+    .select("is_frozen")
+    .eq("bia_id", selectedBiaId)
+    .limit(1)
+    .maybeSingle();
+
+  if (controlError) {
+    throw new Error(`Failed to validate BIA pool controls: ${controlError.message}`);
+  }
+
+  if (controlRow?.is_frozen === true) {
+    throw new Error("This BIA pool is currently frozen.");
+  }
+
+  const runtime =
+    getTorontoCoinRuntimeConfig({ citySlug: options.citySlug, chainId }) ?? TORONTOCOIN_RUNTIME;
+  const tokenAddress =
+    normalizeOptionalAddress(body.tokenAddress) ?? runtime.cplTcoin.address;
+  const txHash =
+    typeof body.txHash === "string" && /^0x[a-fA-F0-9]{64}$/.test(body.txHash.trim()) ? body.txHash.trim() : null;
+  const nowIso = new Date().toISOString();
+
+  const { data: inserted, error: insertError } = await options.supabase
+    .from("pool_purchase_requests")
+    .insert({
+      user_id: options.userId,
+      app_instance_id: options.appInstanceId,
+      bia_id: selectedBiaId,
+      chain_id: chainId,
+      pool_address: String(mapping.pool_address),
+      token_address: tokenAddress,
+      fiat_amount: fiatAmount,
+      token_amount: tokenAmount,
+      tx_hash: txHash,
+      status: txHash ? "submitted" : "processing",
+      metadata: {
+        ...(body.metadata && typeof body.metadata === "object" ? body.metadata : {}),
+        execution_mode: "request_queue",
+        routing_source: typeof body.biaId === "string" ? "request_bia" : "active_user_bia",
+      },
+      created_at: nowIso,
+      updated_at: nowIso,
+    })
+    .select("*")
+    .single();
+
+  if (insertError) {
+    throw new Error(`Failed to create pool purchase request: ${insertError.message}`);
+  }
+
+  await options.supabase.from("governance_actions_log").insert({
+    action_type: "pool_purchase_requested",
+    city_slug: options.citySlug,
+    bia_id: selectedBiaId,
+    actor_user_id: options.userId,
+    reason: "Pool-aware purchase request created",
+    payload: {
+      appInstanceId: options.appInstanceId,
+      chainId,
+      poolAddress: String(mapping.pool_address),
+      tokenAddress,
+      fiatAmount,
+      tokenAmount,
+    },
+  });
+
+  return {
+    request: inserted,
+    routing: {
+      citySlug: options.citySlug,
+      appInstanceId: options.appInstanceId,
+      chainId,
+      biaId: selectedBiaId,
+      poolAddress: String(mapping.pool_address),
+      tokenAddress,
+    },
+  };
+}
+
+export async function ingestTransakWebhook(options: {
+  supabase: any;
+  event: {
+    providerEventId?: string | null;
+    providerOrderId?: string | null;
+    providerSessionId?: string | null;
+    eventType?: string | null;
+    statusHint?: string | null;
+    txHash?: string | null;
+    payload?: Record<string, unknown> | null;
+    signatureMode?: string | null;
+  };
+}) {
+  const normalized = options.event;
+  let sessionId: string | null = null;
+
+  if (normalized.providerOrderId) {
+    const byOrder = await options.supabase
+      .from("onramp_checkout_sessions")
+      .select("id")
+      .eq("provider", "transak")
+      .eq("provider_order_id", normalized.providerOrderId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (byOrder.data?.id) {
+      sessionId = String(byOrder.data.id);
+    }
+  }
+
+  if (!sessionId && normalized.providerSessionId) {
+    const bySession = await options.supabase
+      .from("onramp_checkout_sessions")
+      .select("id")
+      .eq("provider", "transak")
+      .eq("provider_session_id", normalized.providerSessionId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (bySession.data?.id) {
+      sessionId = String(bySession.data.id);
+    }
+  }
+
+  const insertEventResult = await options.supabase
+    .from("onramp_provider_events")
+    .upsert(
+      {
+        session_id: sessionId,
+        provider: "transak",
+        provider_event_id: normalized.providerEventId ?? null,
+        event_type: normalized.eventType ?? "unknown",
+        payload: normalized.payload ?? {},
+        signature_valid: normalized.signatureMode !== "none",
+      },
+      {
+        onConflict: "provider,provider_event_id",
+        ignoreDuplicates: true,
+      }
+    )
+    .select("id")
+    .maybeSingle();
+
+  if (insertEventResult.error) {
+    throw new Error(`Failed to persist webhook event: ${insertEventResult.error.message}`);
+  }
+
+  if (!sessionId) {
+    return { ok: true, matchedSession: false };
+  }
+
+  const updatePatch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (normalized.statusHint) {
+    updatePatch.status = normalized.statusHint;
+  }
+
+  if (normalized.txHash) {
+    updatePatch.incoming_usdc_tx_hash = normalized.txHash;
+  }
+
+  const updateResult = await options.supabase
+    .from("onramp_checkout_sessions")
+    .update(updatePatch)
+    .eq("id", sessionId);
+
+  if (updateResult.error) {
+    throw new Error(`Failed to update onramp session from webhook: ${updateResult.error.message}`);
+  }
+
+  let settlementResult: unknown = null;
+  if (["crypto_sent", "usdc_received", "mint_started", "mint_complete"].includes(normalized.statusHint ?? "")) {
+    settlementResult = await runSessionSettlement({
+      supabase: options.supabase,
+      sessionId,
+      mode: "auto",
+      trigger: "webhook",
+      actorUserId: null,
+    });
+  }
+
+  return {
+    ok: true,
+    matchedSession: true,
+    sessionId,
+    settlementResult,
   };
 }

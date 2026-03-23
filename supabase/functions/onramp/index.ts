@@ -3,13 +3,19 @@ import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appC
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   createOnrampSession,
+  createLegacyInteracReference,
+  createPoolPurchaseRequest,
+  confirmLegacyInteracReference,
   getOnrampSessionStatus,
+  ingestTransakWebhook,
   listLegacyRampAdminRequests,
   listOnrampAdminSessions,
   markOnrampSessionAction,
   retryOnrampSession,
   touchOnrampSessionsForUser,
+  updateLegacyInteracAdminRequest,
 } from "../_shared/onramp.ts";
+import { createServiceRoleClient } from "../_shared/auth.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { toNumber } from "../_shared/validation.ts";
 
@@ -37,6 +43,32 @@ export async function handleRequest(req: Request): Promise<Response> {
   }
 
   try {
+    const rawPathname = new URL(req.url).pathname;
+    const pathname = rawPathname.replace(/^\/functions\/v1\/onramp/, "").replace(/^\/onramp/, "") || "/";
+
+    if (req.method === "POST" && pathname === "/webhooks/transak") {
+      const body = await readBody(req);
+      return jsonResponse(
+        req,
+        await ingestTransakWebhook({
+          supabase: createServiceRoleClient(),
+          event: {
+            providerEventId: typeof body?.providerEventId === "string" ? body.providerEventId : null,
+            providerOrderId: typeof body?.providerOrderId === "string" ? body.providerOrderId : null,
+            providerSessionId: typeof body?.providerSessionId === "string" ? body.providerSessionId : null,
+            eventType: typeof body?.eventType === "string" ? body.eventType : null,
+            statusHint: typeof body?.statusHint === "string" ? body.statusHint : null,
+            txHash: typeof body?.txHash === "string" ? body.txHash : null,
+            payload:
+              body?.payload && typeof body.payload === "object"
+                ? (body.payload as Record<string, unknown>)
+                : null,
+            signatureMode: typeof body?.signatureMode === "string" ? body.signatureMode : "none",
+          },
+        })
+      );
+    }
+
     const body = await readBody(req);
     const auth = await resolveAuthenticatedUser(req);
     const appContext = await resolveActiveAppContext({
@@ -44,8 +76,6 @@ export async function handleRequest(req: Request): Promise<Response> {
       input: resolveAppContextInput(req, body),
     });
 
-    const rawPathname = new URL(req.url).pathname;
-    const pathname = rawPathname.replace(/^\/functions\/v1\/onramp/, "").replace(/^\/onramp/, "") || "/";
     const url = new URL(req.url);
 
     if (req.method === "POST" && pathname === "/session") {
@@ -59,6 +89,42 @@ export async function handleRequest(req: Request): Promise<Response> {
         countryCode: typeof body?.countryCode === "string" ? body.countryCode : null,
       });
       return jsonResponse(req, result.body, { status: result.status });
+    }
+
+    if (req.method === "POST" && pathname === "/legacy/interac/reference") {
+      return jsonResponse(
+        req,
+        await createLegacyInteracReference({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          amount: body?.amount ?? 0,
+          refCode: typeof body?.refCode === "string" ? body.refCode : "",
+        })
+      );
+    }
+
+    if (req.method === "POST" && pathname === "/legacy/interac/confirm") {
+      return jsonResponse(
+        req,
+        await confirmLegacyInteracReference({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          refCode: typeof body?.refCode === "string" ? body.refCode : "",
+        })
+      );
+    }
+
+    if (req.method === "POST" && pathname === "/pool-purchase-request") {
+      return jsonResponse(
+        req,
+        await createPoolPurchaseRequest({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          appInstanceId: appContext.appInstanceId,
+          citySlug: appContext.citySlug,
+          payload: body ?? {},
+        })
+      );
     }
 
     if (req.method === "GET" && /^\/session\/[^/]+$/.test(pathname)) {
@@ -128,6 +194,19 @@ export async function handleRequest(req: Request): Promise<Response> {
         citySlug: appContext.citySlug,
       });
       return jsonResponse(req, result.body, { status: result.status });
+    }
+
+    if (req.method === "PATCH" && /^\/admin\/requests\/interac\/\d+$/.test(pathname)) {
+      return jsonResponse(
+        req,
+        await updateLegacyInteracAdminRequest({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          appInstanceId: appContext.appInstanceId,
+          requestId: Number(pathname.split("/")[4]),
+          payload: body ?? {},
+        })
+      );
     }
 
     return jsonResponse(req, { error: "Not found." }, { status: 404 });

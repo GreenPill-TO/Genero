@@ -2,10 +2,13 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { createClient } from "@shared/lib/supabase/client";
 import { toast } from "react-toastify";
 import { insertSuccessNotification, adminInsertNotification } from "@shared/utils/insertNotification";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
+import {
+  confirmLegacyInteracReference,
+  createLegacyInteracReference,
+} from "@shared/lib/edge/onrampClient";
 
 const generateReferenceCode = () => {
   const base = "TCOIN-REF";
@@ -41,13 +44,13 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
       toast.error("Please enter a valid amount.");
       return;
     }
-    const supabase = createClient();
-    await supabase.from("interac_transfer").insert({
-      user_id: userData?.cubidData?.id,
-      interac_code: refCode,
-      is_sent: false,
-      amount: amount,
-    });
+    await createLegacyInteracReference(
+      {
+        amount,
+        refCode,
+      },
+      { citySlug: "tcoin" }
+    );
     setStep("confirmation");
   };
 
@@ -67,23 +70,12 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
         throw new Error("Could not resolve your user id for top-up routing.");
       }
 
-      const supabase = createClient();
-      await supabase
-        .from("interac_transfer")
-        .update({ is_sent: true })
-        .match({ interac_code: refCode });
-      const { data: interac_transfer_id } = await supabase
-        .from("interac_transfer")
-        .select("*")
-        .match({ interac_code: refCode });
-      const { data: acc_transactions } = await supabase
-        .from("act_transactions")
-        .insert({
-          transaction_category: "transfer",
-          created_by: userId,
-          onramp_request_id: interac_transfer_id?.[0]?.id,
-        })
-        .select("*");
+      const confirmation = await confirmLegacyInteracReference(
+        { refCode },
+        { citySlug: "tcoin" }
+      );
+      const interacTransfer = (confirmation as { transfer?: { id?: number } }).transfer;
+      const accountingTransaction = (confirmation as { transaction?: { id?: number } }).transaction;
 
       const tokenAmount = Number.parseFloat(amount);
       const fiatAmount = calculateFiatAmount(tokenAmount, exchangeRate);
@@ -99,8 +91,8 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
             fiatAmount,
             metadata: {
               interacCode: refCode,
-              interacTransferId: interac_transfer_id?.[0]?.id ?? null,
-              accountingTransactionId: acc_transactions?.[0]?.id ?? null,
+              interacTransferId: interacTransfer?.id ?? null,
+              accountingTransactionId: accountingTransaction?.id ?? null,
             },
           }),
         });
@@ -118,8 +110,8 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
       await insertSuccessNotification({
         user_id: userId,
         notification: `${amount} topped up successfully into ${tokenLabel} Wallet`,
-        additionalData: {
-          trx_entry_id: acc_transactions?.[0]?.id,
+          additionalData: {
+          trx_entry_id: accountingTransaction?.id ?? null,
         },
       });
       await adminInsertNotification({

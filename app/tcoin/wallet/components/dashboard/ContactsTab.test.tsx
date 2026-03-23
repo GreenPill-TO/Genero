@@ -7,26 +7,19 @@ import { ContactsTab } from "./ContactsTab";
 const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn());
 const openModalMock = vi.hoisted(() => vi.fn());
 const closeModalMock = vi.hoisted(() => vi.fn());
-
-const ownerWalletRows = [{ public_key: "0xabc", wallet_key_id: "1" }];
-const contactWalletMap = new Map<number, Array<{ public_key: string; wallet_key_id: string }>>([
-  [11, [{ public_key: "0x1111", wallet_key_id: "11" }]],
-  [12, [{ public_key: "0x2222", wallet_key_id: "12" }]],
-]);
+const getWalletContactTransactionHistoryMock = vi.hoisted(() => vi.fn());
 const actEntryRows = [
   {
     id: 100,
-    wallet_account_from: "0xabc",
-    wallet_account_to: "0x1111",
     amount: 5,
-    created_at: "2024-03-01T12:00:00Z",
+    createdAt: "2024-03-01T12:00:00Z",
+    direction: "received",
   },
   {
     id: 101,
-    wallet_account_from: "0x1111",
-    wallet_account_to: "0xabc",
     amount: 2,
-    created_at: "2024-02-01T10:00:00Z",
+    createdAt: "2024-02-01T10:00:00Z",
+    direction: "sent",
   },
 ];
 
@@ -41,80 +34,14 @@ vi.mock("@shared/api/services/supabaseService", () => ({
 vi.mock("@shared/contexts/ModalContext", () => ({
   useModal: () => ({ openModal: openModalMock, closeModal: closeModalMock }),
 }));
-
-const createClientMock = vi.hoisted(() =>
-  vi.fn(() => ({
-    from: (table: string) => {
-      if (table === "v_wallet_identities_v1") {
-        return {
-          select: () => ({
-            eq: (_column: string, value: any) => {
-              const id = Number(value);
-              const data = id === 1 ? ownerWalletRows : contactWalletMap.get(id) ?? [];
-              return Promise.resolve({
-                data: data.map((row) => ({
-                  user_id: id,
-                  public_key: row.public_key,
-                  wallet_key_id: row.wallet_key_id,
-                  wallet_ready: true,
-                  has_encrypted_share: true,
-                })),
-                error: null,
-              });
-            },
-            in: (_column: string, values: any[]) =>
-              Promise.resolve({
-                data: values.flatMap((value) => {
-                  const id = Number(value);
-                  const rows = id === 1 ? ownerWalletRows : contactWalletMap.get(id) ?? [];
-                  return rows.map((row) => ({
-                    user_id: id,
-                    public_key: row.public_key,
-                    wallet_key_id: row.wallet_key_id,
-                    wallet_ready: true,
-                    has_encrypted_share: true,
-                  }));
-                }),
-                error: null,
-              }),
-          }),
-        };
-      }
-
-      if (table === "act_transaction_entries") {
-        return {
-          select: () => ({
-            eq: (_column: string, _value: any) => ({
-              in: (column: string, values: any[]) => ({
-                order: () => ({
-                  limit: () => {
-                    const needles = values.map((value) => String(value));
-                    const data = actEntryRows.filter((row: any) =>
-                      needles.includes(String(row[column as keyof typeof row] ?? ""))
-                    );
-                    return Promise.resolve({ data, error: null });
-                  },
-                }),
-              }),
-            }),
-          }),
-        };
-      }
-
-      return {
-        select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
-      };
-    },
-  }))
-);
-
-vi.mock("@shared/lib/supabase/client", () => ({
-  createClient: createClientMock,
+vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
+  getWalletContactTransactionHistory: getWalletContactTransactionHistoryMock,
 }));
 
 describe("ContactsTab", () => {
   beforeEach(() => {
     fetchContactsForOwnerMock.mockReset();
+    getWalletContactTransactionHistoryMock.mockReset();
     fetchContactsForOwnerMock.mockResolvedValue([
       {
         id: 11,
@@ -135,6 +62,9 @@ describe("ContactsTab", () => {
         last_interaction: "2024-01-03T00:00:00.000Z",
       },
     ]);
+    getWalletContactTransactionHistoryMock.mockImplementation(async (contactId: number) => ({
+      transactions: contactId === 11 ? actEntryRows : [],
+    }));
   });
 
   afterEach(() => {
