@@ -1,3 +1,28 @@
+## v1.72
+### Timestamp
+- 2026-03-23 00:20:00 EDT
+
+### Objective
+- Clear the stale Next.js build warnings caused by the indexer importing required TorontoCoin pool/token constants from the wrong module, and confirm how the indexer is actually hosted in the app runtime.
+
+### What Changed
+- Fixed `services/indexer/src/index.ts` so `REQUIRED_POOL_ADDRESSES` and `REQUIRED_TCOIN_TOKEN` are imported from `services/indexer/src/config.ts` instead of `services/indexer/src/state/runControl.ts`.
+- Confirmed the indexer is not a Supabase edge function and not a Supabase function at all. It is a server-side TypeScript service under `services/indexer/src` that runs inside the Next.js app runtime and is invoked through:
+  - `POST /api/indexer/touch`
+  - `GET /api/indexer/status`
+- Re-ran lint autofix, tests, and build after the import fix. `next lint --fix` left existing warnings untouched because they are not auto-fixable, while the stale indexer build warnings disappeared.
+
+### Verification
+- `pnpm exec next lint --fix`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `services/indexer/src/index.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.71
 ### Timestamp
 - 2026-03-22 23:58:00 EDT

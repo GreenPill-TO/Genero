@@ -11,6 +11,9 @@ import { ingestCityExchangeRate } from "./rates";
 import {
   REQUIRED_POOL_ADDRESSES,
   REQUIRED_TCOIN_TOKEN,
+  resolveIndexerConfig,
+} from "./config";
+import {
   buildScopeKey,
   completeRun,
   getCheckpoint,
@@ -19,7 +22,6 @@ import {
   tryStartRun,
   upsertCheckpoint,
 } from "./state/runControl";
-import { resolveIndexerConfig } from "./config";
 import type { IndexerScopeStatus, IndexerTouchResult, IndexerSource, NormalizedEvent } from "./types";
 
 function pickBlockRange(options: {
