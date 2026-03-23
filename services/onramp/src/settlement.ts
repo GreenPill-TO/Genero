@@ -11,7 +11,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { resolveActiveUserBia, resolveActiveBiaPoolMapping } from "@shared/lib/sarafu/routing";
-import { getActiveCityContracts } from "@shared/lib/contracts/cityContracts";
+import { TORONTOCOIN_RUNTIME } from "@shared/lib/contracts/torontocoinRuntime";
 import { resolveOnrampConfig } from "./config";
 import { deriveWalletAtIndex } from "./depositWallets";
 import type { OnrampAttemptMode, OnrampCheckoutSessionRow, OnrampSessionStatus } from "./types";
@@ -41,38 +41,70 @@ const erc20ReadWriteAbi = [
     inputs: [],
     outputs: [{ name: "", type: "uint8" }],
   },
-] as const;
-
-const tcoinMintRouterAbi = [
   {
     type: "function",
-    name: "previewMintTcoinWithToken",
+    name: "transfer",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+] as const;
+
+const poolRegistryReadAbi = [
+  {
+    type: "function",
+    name: "getPoolIdByAddress",
+    stateMutability: "view",
+    inputs: [{ name: "poolAddress", type: "address" }],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+] as const;
+
+const liquidityRouterAbi = [
+  {
+    type: "function",
+    name: "previewBuyCplTcoin",
     stateMutability: "view",
     inputs: [
-      { name: "tokenIn", type: "address" },
-      { name: "amountIn", type: "uint256" },
-      { name: "requestedCharityId", type: "uint256" },
-      { name: "swapData", type: "bytes" },
+      { name: "targetPoolId", type: "bytes32" },
+      { name: "buyer", type: "address" },
+      { name: "inputToken", type: "address" },
+      { name: "inputAmount", type: "uint256" },
     ],
     outputs: [
-      { name: "cadmOut", type: "uint256" },
-      { name: "tcoinOut", type: "uint256" },
+      { name: "selectedPoolId", type: "bytes32" },
+      { name: "reserveAssetId", type: "bytes32" },
+      { name: "reserveAmountOut", type: "uint256" },
+      { name: "mrTcoinOut", type: "uint256" },
+      { name: "cplTcoinOut", type: "uint256" },
+      { name: "charityTopupOut", type: "uint256" },
+      { name: "resolvedCharityId", type: "uint256" },
+      { name: "charityWallet", type: "address" },
     ],
   },
   {
     type: "function",
-    name: "mintTcoinWithUSDC",
+    name: "buyCplTcoin",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "usdcAmountIn", type: "uint256" },
-      { name: "minCadmOut", type: "uint256" },
-      { name: "minTcoinOut", type: "uint256" },
-      { name: "deadline", type: "uint256" },
-      { name: "recipient", type: "address" },
-      { name: "requestedCharityId", type: "uint256" },
-      { name: "swapData", type: "bytes" },
+      { name: "targetPoolId", type: "bytes32" },
+      { name: "inputToken", type: "address" },
+      { name: "inputAmount", type: "uint256" },
+      { name: "minReserveOut", type: "uint256" },
+      { name: "minCplTcoinOut", type: "uint256" },
     ],
-    outputs: [{ name: "tcoinOut", type: "uint256" }],
+    outputs: [
+      { name: "selectedPoolId", type: "bytes32" },
+      { name: "reserveAssetId", type: "bytes32" },
+      { name: "reserveAmountUsed", type: "uint256" },
+      { name: "mrTcoinUsed", type: "uint256" },
+      { name: "cplTcoinOut", type: "uint256" },
+      { name: "charityTopupOut", type: "uint256" },
+      { name: "resolvedCharityId", type: "uint256" },
+    ],
   },
 ] as const;
 
@@ -82,20 +114,8 @@ type SettlementResult = {
   skipped: boolean;
   reason?: string;
   mintTxHash?: string;
+  routerTxHash?: string;
 };
-
-function asNumber(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string") {
-    const parsed = Number.parseFloat(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-  return 0;
-}
 
 function clampMin(value: bigint, slippageBps: number): bigint {
   const bps = BigInt(Math.max(0, Math.min(9_999, slippageBps)));
@@ -251,27 +271,44 @@ async function releaseLock(options: {
   });
 }
 
-async function resolveRequestedCharityId(options: {
+async function resolveTargetPoolId(options: {
   supabase: SupabaseClient<any, any, any>;
-  userId: number;
-  appInstanceId: number;
-}): Promise<number> {
-  const { data, error } = await options.supabase
-    .from("app_user_profiles")
-    .select("charity_preferences")
-    .eq("user_id", options.userId)
-    .eq("app_instance_id", options.appInstanceId)
-    .limit(1)
-    .maybeSingle();
+  publicClient: ReturnType<typeof createPublicClient>;
+  session: OnrampCheckoutSessionRow;
+  chainId: number;
+}): Promise<`0x${string}`> {
+  const activeBia = await resolveActiveUserBia({
+    supabase: options.supabase,
+    userId: Number(options.session.user_id),
+    appInstanceId: Number(options.session.app_instance_id),
+  });
 
-  if (error || !data || typeof data.charity_preferences !== "object" || !data.charity_preferences) {
-    return 0;
+  if (activeBia) {
+    const mapping = await resolveActiveBiaPoolMapping({
+      supabase: options.supabase,
+      biaId: activeBia,
+      chainId: options.chainId,
+    });
+
+    if (mapping?.poolAddress) {
+      try {
+        const poolId = await options.publicClient.readContract({
+          address: resolveOnrampConfig().poolRegistryAddress,
+          abi: poolRegistryReadAbi,
+          functionName: "getPoolIdByAddress",
+          args: [getAddress(mapping.poolAddress)],
+        });
+
+        if (poolId !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+          return poolId;
+        }
+      } catch {
+        // Fall through to the bootstrap pool if the active BIA mapping is not yet registered on-chain.
+      }
+    }
   }
 
-  const prefs = data.charity_preferences as Record<string, unknown>;
-  const candidate = prefs.charityId ?? prefs.charity_id ?? prefs.selectedCauseId ?? prefs.selected_cause_id;
-  const parsed = asNumber(candidate);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 0;
+  return resolveOnrampConfig().bootstrapPoolId;
 }
 
 async function ensureDepositWalletGas(options: {
@@ -493,13 +530,13 @@ export async function runSessionSettlement(options: {
     });
 
     const usdcDecimals = await publicClient.readContract({
-      address: config.usdcTokenAddress,
+      address: config.inputTokenAddress,
       abi: erc20ReadWriteAbi,
       functionName: "decimals",
     });
 
     const usdcBalance = await publicClient.readContract({
-      address: config.usdcTokenAddress,
+      address: config.inputTokenAddress,
       abi: erc20ReadWriteAbi,
       functionName: "balanceOf",
       args: [depositAddress],
@@ -543,25 +580,30 @@ export async function runSessionSettlement(options: {
       },
     });
 
-    const requestedCharityId =
-      typeof session.requested_charity_id === "number" && session.requested_charity_id > 0
-        ? session.requested_charity_id
-        : await resolveRequestedCharityId({
-            supabase: options.supabase,
-            userId: Number(session.user_id),
-            appInstanceId: Number(session.app_instance_id),
-          });
-
-    const swapData = config.defaultSwapData;
-
-    const [quoteCadmOut, quoteTcoinOut] = await publicClient.readContract({
-      address: config.routerAddress,
-      abi: tcoinMintRouterAbi,
-      functionName: "previewMintTcoinWithToken",
-      args: [config.usdcTokenAddress, usdcBalance, BigInt(requestedCharityId), swapData],
+    const targetPoolId = await resolveTargetPoolId({
+      supabase: options.supabase,
+      publicClient,
+      session,
+      chainId: config.targetChainId,
     });
 
-    if (quoteCadmOut <= BigInt(0) || quoteTcoinOut <= BigInt(0)) {
+    const [
+      previewSelectedPoolId,
+      previewReserveAssetId,
+      quoteReserveOut,
+      quoteMrTcoinOut,
+      quoteCplTcoinOut,
+      quoteCharityTopupOut,
+      previewResolvedCharityId,
+      previewCharityWallet,
+    ] = await publicClient.readContract({
+      address: config.routerAddress,
+      abi: liquidityRouterAbi,
+      functionName: "previewBuyCplTcoin",
+      args: [targetPoolId, recipientWallet, config.inputTokenAddress, usdcBalance],
+    });
+
+    if (quoteReserveOut <= BigInt(0) || quoteCplTcoinOut <= BigInt(0)) {
       await updateSession({
         supabase: options.supabase,
         sessionId: session.id,
@@ -579,9 +621,8 @@ export async function runSessionSettlement(options: {
       };
     }
 
-    const minCadmOut = clampMin(quoteCadmOut, config.slippageBps);
-    const minTcoinOut = clampMin(quoteTcoinOut, config.slippageBps);
-    const deadlineUnix = Math.trunc(Date.now() / 1000) + config.deadlineSeconds;
+    const minReserveOut = clampMin(quoteReserveOut, config.slippageBps);
+    const minCplTcoinOut = clampMin(quoteCplTcoinOut, config.slippageBps);
 
     const attemptNo = await nextAttemptNo({
       supabase: options.supabase,
@@ -597,14 +638,12 @@ export async function runSessionSettlement(options: {
       state: "started",
       routerAddress: config.routerAddress,
       routerCallPayload: {
-        functionName: "mintTcoinWithUSDC",
+        functionName: "buyCplTcoin",
         usdcAmountIn: usdcBalance.toString(),
-        requestedCharityId,
-        swapAdapterId: config.swapAdapterId,
+        poolId: targetPoolId,
       },
-      minCadmOut: minCadmOut.toString(),
-      minTcoinOut: minTcoinOut.toString(),
-      deadlineUnix,
+      minCadmOut: minReserveOut.toString(),
+      minTcoinOut: minCplTcoinOut.toString(),
     });
 
     await updateSession({
@@ -613,14 +652,19 @@ export async function runSessionSettlement(options: {
       patch: {
         status: "mint_started",
         status_reason: null,
-        requested_charity_id: requestedCharityId > 0 ? requestedCharityId : null,
         quote_payload: {
-          quoteCadmOut: quoteCadmOut.toString(),
-          quoteTcoinOut: quoteTcoinOut.toString(),
-          minCadmOut: minCadmOut.toString(),
-          minTcoinOut: minTcoinOut.toString(),
+          quoteReserveOut: quoteReserveOut.toString(),
+          quoteMrTcoinOut: quoteMrTcoinOut.toString(),
+          quoteCplTcoinOut: quoteCplTcoinOut.toString(),
+          quoteCharityTopupOut: quoteCharityTopupOut.toString(),
+          minReserveOut: minReserveOut.toString(),
+          minCplTcoinOut: minCplTcoinOut.toString(),
           slippageBps: config.slippageBps,
-          deadlineUnix,
+          targetPoolId,
+          previewSelectedPoolId,
+          previewReserveAssetId,
+          previewResolvedCharityId: previewResolvedCharityId.toString(),
+          previewCharityWallet,
         },
       },
     });
@@ -663,7 +707,7 @@ export async function runSessionSettlement(options: {
     });
 
     const approvalHash = await walletClient.writeContract({
-      address: config.usdcTokenAddress,
+      address: config.inputTokenAddress,
       abi: erc20ReadWriteAbi,
       functionName: "approve",
       args: [config.routerAddress, usdcBalance],
@@ -671,53 +715,58 @@ export async function runSessionSettlement(options: {
 
     await publicClient.waitForTransactionReceipt({ hash: approvalHash });
 
-    const activeContracts = await getActiveCityContracts({
-      citySlug: session.city_slug,
-      forceRefresh: true,
-    });
-    const tcoinAddress = getAddress(activeContracts.contracts.TCOIN);
-
     const tcoinDecimals = await publicClient.readContract({
-      address: tcoinAddress,
+      address: config.cplTcoinAddress,
       abi: erc20ReadWriteAbi,
       functionName: "decimals",
     });
 
-    const recipientBalanceBefore = await publicClient.readContract({
-      address: tcoinAddress,
+    const depositWalletBalanceBefore = await publicClient.readContract({
+      address: config.cplTcoinAddress,
       abi: erc20ReadWriteAbi,
       functionName: "balanceOf",
-      args: [recipientWallet],
+      args: [depositAddress],
     });
 
-    const mintHash = await walletClient.writeContract({
+    const routerHash = await walletClient.writeContract({
       address: config.routerAddress,
-      abi: tcoinMintRouterAbi,
-      functionName: "mintTcoinWithUSDC",
+      abi: liquidityRouterAbi,
+      functionName: "buyCplTcoin",
       args: [
+        targetPoolId,
+        config.inputTokenAddress,
         usdcBalance,
-        minCadmOut,
-        minTcoinOut,
-        BigInt(deadlineUnix),
-        recipientWallet,
-        BigInt(requestedCharityId),
-        swapData,
+        minReserveOut,
+        minCplTcoinOut,
       ],
     } as any);
 
-    await publicClient.waitForTransactionReceipt({ hash: mintHash });
+    await publicClient.waitForTransactionReceipt({ hash: routerHash });
 
-    const recipientBalanceAfter = await publicClient.readContract({
-      address: tcoinAddress,
+    const depositWalletBalanceAfter = await publicClient.readContract({
+      address: config.cplTcoinAddress,
       abi: erc20ReadWriteAbi,
       functionName: "balanceOf",
-      args: [recipientWallet],
+      args: [depositAddress],
     });
 
-    const tcoinDelta = recipientBalanceAfter > recipientBalanceBefore
-      ? recipientBalanceAfter - recipientBalanceBefore
+    const tcoinDelta = depositWalletBalanceAfter > depositWalletBalanceBefore
+      ? depositWalletBalanceAfter - depositWalletBalanceBefore
       : BigInt(0);
     const tcoinOutAmount = formatUnits(tcoinDelta, tcoinDecimals);
+
+    let deliveryTxHash = routerHash;
+    if (tcoinDelta > BigInt(0) && depositAddress.toLowerCase() !== recipientWallet.toLowerCase()) {
+      const transferHash = await walletClient.writeContract({
+        address: config.cplTcoinAddress,
+        abi: erc20ReadWriteAbi,
+        functionName: "transfer",
+        args: [recipientWallet, tcoinDelta],
+      } as any);
+
+      await publicClient.waitForTransactionReceipt({ hash: transferHash });
+      deliveryTxHash = transferHash;
+    }
 
     await updateSession({
       supabase: options.supabase,
@@ -726,14 +775,24 @@ export async function runSessionSettlement(options: {
         status: "mint_complete",
         status_reason: null,
         incoming_usdc_tx_hash: session.incoming_usdc_tx_hash ?? null,
-        mint_tx_hash: mintHash,
-        tcoin_delivery_tx_hash: mintHash,
+        mint_tx_hash: routerHash,
+        tcoin_delivery_tx_hash: deliveryTxHash,
         tcoin_out_amount: tcoinOutAmount,
         metadata: {
           ...(session.metadata ?? {}),
           settlement_trigger: options.trigger ?? "touch",
           settlement_mode: mode,
           approval_tx_hash: approvalHash,
+          routerTxHash: routerHash,
+          finalTokenAddress: config.cplTcoinAddress,
+          finalTokenSymbol: TORONTOCOIN_RUNTIME.cplTcoin.symbol,
+          finalTokenDecimals: Number(tcoinDecimals),
+          poolId: previewSelectedPoolId,
+          reserveAssetUsed: previewReserveAssetId,
+          reserveAmountUsed: quoteReserveOut.toString(),
+          mrTcoinUsed: quoteMrTcoinOut.toString(),
+          finalTokenAmount: tcoinOutAmount,
+          deliveryTxHash,
           completed_at: new Date().toISOString(),
         },
       },
@@ -745,16 +804,17 @@ export async function runSessionSettlement(options: {
       attemptNo,
       patch: {
         state: "succeeded",
-        mint_tx_hash: mintHash,
+        mint_tx_hash: routerHash,
         error_message: null,
         router_address: config.routerAddress,
         router_call_payload: {
-          functionName: "mintTcoinWithUSDC",
+          functionName: "buyCplTcoin",
           approvalTxHash: approvalHash,
+          poolId: targetPoolId,
+          deliveryTxHash,
         },
-        min_cadm_out: minCadmOut.toString(),
-        min_tcoin_out: minTcoinOut.toString(),
-        deadline_unix: deadlineUnix,
+        min_cadm_out: minReserveOut.toString(),
+        min_tcoin_out: minCplTcoinOut.toString(),
       },
     });
 
@@ -762,21 +822,23 @@ export async function runSessionSettlement(options: {
       supabase: options.supabase,
       session,
       chainId: config.targetChainId,
-      tcoinAddress,
-      mintTxHash: mintHash,
+      tcoinAddress: config.cplTcoinAddress,
+      mintTxHash: routerHash,
       tokenOutAmount: tcoinOutAmount,
     });
 
     await options.supabase.from("governance_actions_log").insert({
-      action_type: "onramp_mint_completed",
+      action_type: "onramp_router_buy_completed",
       city_slug: session.city_slug,
       actor_user_id: options.actorUserId ?? null,
-      reason: "Onramp auto-mint completed",
+      reason: "Onramp liquidity-router buy completed",
       payload: {
         sessionId: session.id,
-        mintTxHash: mintHash,
+        routerTxHash: routerHash,
         usdcReceivedAmount: usdcAmountString,
         tcoinOutAmount,
+        poolId: targetPoolId,
+        reserveAssetUsed: previewReserveAssetId,
       },
     });
 
@@ -784,7 +846,8 @@ export async function runSessionSettlement(options: {
       sessionId: session.id,
       status: "mint_complete",
       skipped: false,
-      mintTxHash: mintHash,
+      mintTxHash: routerHash,
+      routerTxHash: routerHash,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown onramp settlement error";

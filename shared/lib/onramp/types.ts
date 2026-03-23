@@ -29,9 +29,15 @@ export type OnrampCheckoutSession = {
   recipientWallet: `0x${string}`;
   incomingUsdcTxHash: `0x${string}` | null;
   mintTxHash: `0x${string}` | null;
+  routerTxHash: `0x${string}` | null;
   tcoinDeliveryTxHash: `0x${string}` | null;
   usdcReceivedAmount: string | null;
   tcoinOutAmount: string | null;
+  finalTokenAddress: `0x${string}` | null;
+  finalTokenSymbol: string | null;
+  finalTokenDecimals: number | null;
+  poolId: `0x${string}` | null;
+  reserveAssetUsed: `0x${string}` | null;
   timeline: OnrampSessionTimelineStep[];
   createdAt: string;
   updatedAt: string;
@@ -92,7 +98,11 @@ export type OnrampAdminSessionSummary = {
   recipientWallet: string;
   incomingUsdcTxHash: string | null;
   mintTxHash: string | null;
+  routerTxHash?: string | null;
   tcoinOutAmount: string | null;
+  finalTokenSymbol?: string | null;
+  poolId?: string | null;
+  reserveAssetUsed?: string | null;
   latestAttemptNo: number | null;
   latestAttemptMode: string | null;
   latestAttemptState: string | null;

@@ -34,12 +34,27 @@ export type VoucherScopeSummary = {
 
 export type CityContracts = Partial<Record<ContractKey, Address>>;
 
+export type TorontoCoinRuntimeEnrichment = {
+  chainId: number;
+  liquidityRouter: Address;
+  poolRegistry: Address;
+  reserveRegistry: Address;
+  reserveInputRouter: Address;
+  sarafuSwapPoolAdapter: Address;
+  mentoBrokerSwapAdapter: Address;
+  mrTcoin: Address;
+  cplTcoin: Address;
+  bootstrapPoolId: `0x${string}`;
+  bootstrapSwapPool: Address;
+};
+
 export type CityContractSet = {
   citySlug: string;
   cityVersion: number;
   chainId: number;
   contracts: CityContracts;
   metadataURI?: string;
+  torontoCoinRuntime?: TorontoCoinRuntimeEnrichment;
 };
 
 export type TrackedPoolLink = {
@@ -105,6 +120,12 @@ export type IndexerScopeStatus = {
   activeTokenCount: number;
   biaSummary: BiaScopeSummary;
   voucherSummary: VoucherScopeSummary;
+  torontoCoinTracking?: {
+    requiredPoolAddress: Address;
+    requiredTokenAddress: Address;
+    bootstrapPoolTracked: boolean;
+    cplTcoinTracked: boolean;
+  };
 };
 
 export type IndexerTouchResult = {

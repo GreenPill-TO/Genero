@@ -28,6 +28,7 @@ export type RetryOnrampSessionResponse = {
     skipped: boolean;
     reason?: string;
     mintTxHash?: string;
+    routerTxHash?: string;
   };
 };
 
@@ -97,7 +98,11 @@ export type OnrampCheckoutSessionSummary = {
   recipientWallet: string;
   incomingUsdcTxHash: string | null;
   mintTxHash: string | null;
+  routerTxHash?: string | null;
   tcoinOutAmount: string | null;
+  finalTokenSymbol?: string | null;
+  poolId?: string | null;
+  reserveAssetUsed?: string | null;
   latestAttemptNo: number | null;
   latestAttemptMode: string | null;
   latestAttemptState: string | null;

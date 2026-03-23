@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAddress, type Address } from "viem";
 import { getActiveCityContracts } from "@shared/lib/contracts/cityContracts";
+import { getTorontoCoinRuntimeConfig } from "@shared/lib/contracts/torontocoinRuntime";
 import type { CityContractSet, ContractKey } from "../types";
 
 function maybeAddress(value: unknown): Address | undefined {
@@ -50,6 +51,10 @@ export async function resolveCityContractSet(options: {
 }): Promise<CityContractSet> {
   const { supabase, citySlug, chainId } = options;
   const normalizedSlug = citySlug.trim().toLowerCase();
+  const torontoCoinRuntime = getTorontoCoinRuntimeConfig({
+    citySlug: normalizedSlug,
+    chainId,
+  });
 
   try {
     const activeContracts = await getActiveCityContracts({ citySlug: normalizedSlug, forceRefresh: true });
@@ -67,6 +72,21 @@ export async function resolveCityContractSet(options: {
           VOTING: activeContracts.contracts.VOTING,
         },
         metadataURI: activeContracts.metadataURI,
+        torontoCoinRuntime: torontoCoinRuntime
+          ? {
+              chainId: torontoCoinRuntime.chainId,
+              liquidityRouter: torontoCoinRuntime.liquidityRouter,
+              poolRegistry: torontoCoinRuntime.poolRegistry,
+              reserveRegistry: torontoCoinRuntime.reserveRegistry,
+              reserveInputRouter: torontoCoinRuntime.reserveInputRouter,
+              sarafuSwapPoolAdapter: torontoCoinRuntime.sarafuSwapPoolAdapter,
+              mentoBrokerSwapAdapter: torontoCoinRuntime.mentoBrokerSwapAdapter,
+              mrTcoin: torontoCoinRuntime.mrTcoin.address,
+              cplTcoin: torontoCoinRuntime.cplTcoin.address,
+              bootstrapPoolId: torontoCoinRuntime.bootstrapPoolId,
+              bootstrapSwapPool: torontoCoinRuntime.bootstrapSwapPool,
+            }
+          : undefined,
       };
     }
   } catch {
@@ -114,5 +134,20 @@ export async function resolveCityContractSet(options: {
     cityVersion: Number(data.city_version ?? 1),
     contracts,
     metadataURI: data.metadata_uri ?? undefined,
+    torontoCoinRuntime: torontoCoinRuntime
+      ? {
+          chainId: torontoCoinRuntime.chainId,
+          liquidityRouter: torontoCoinRuntime.liquidityRouter,
+          poolRegistry: torontoCoinRuntime.poolRegistry,
+          reserveRegistry: torontoCoinRuntime.reserveRegistry,
+          reserveInputRouter: torontoCoinRuntime.reserveInputRouter,
+          sarafuSwapPoolAdapter: torontoCoinRuntime.sarafuSwapPoolAdapter,
+          mentoBrokerSwapAdapter: torontoCoinRuntime.mentoBrokerSwapAdapter,
+          mrTcoin: torontoCoinRuntime.mrTcoin.address,
+          cplTcoin: torontoCoinRuntime.cplTcoin.address,
+          bootstrapPoolId: torontoCoinRuntime.bootstrapPoolId,
+          bootstrapSwapPool: torontoCoinRuntime.bootstrapSwapPool,
+        }
+      : undefined,
   };
 }

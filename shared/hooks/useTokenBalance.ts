@@ -1,11 +1,16 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from "react";
 import Web3 from "web3";
+import { formatUnits } from "viem";
 import { tokenAbi } from "./abi";
 import {
   getActiveCityContracts,
   getRpcUrlForChainId,
 } from "@shared/lib/contracts/cityContracts";
+import {
+  getTorontoCoinRuntimeConfig,
+  TORONTOCOIN_RUNTIME,
+} from "@shared/lib/contracts/torontocoinRuntime";
 
 export const useTokenBalance = (walletAddress: string | null) => {
   const [balance, setBalance] = useState<string>("0");
@@ -21,16 +26,34 @@ export const useTokenBalance = (walletAddress: string | null) => {
     setError(null);
 
     try {
-      const activeContracts = await getActiveCityContracts();
-      const tokenAddress = activeContracts.contracts.TCOIN;
-      const rpcUrl = getRpcUrlForChainId(activeContracts.chainId);
+      let tokenAddress: string;
+      let rpcUrl: string;
+      let tokenDecimals = 18;
+
+      const torontoCoinRuntime = getTorontoCoinRuntimeConfig({
+        citySlug: process.env.NEXT_PUBLIC_CITYCOIN ?? "tcoin",
+        chainId: TORONTOCOIN_RUNTIME.chainId,
+      });
+
+      if (torontoCoinRuntime) {
+        tokenAddress = torontoCoinRuntime.cplTcoin.address;
+        rpcUrl = torontoCoinRuntime.rpcUrl;
+        tokenDecimals = torontoCoinRuntime.cplTcoin.decimals;
+      } else {
+        const activeContracts = await getActiveCityContracts();
+        tokenAddress = activeContracts.contracts.TCOIN;
+        rpcUrl = getRpcUrlForChainId(activeContracts.chainId);
+      }
 
       const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
 
       const tokenContract = new web3.eth.Contract(tokenAbi as any, tokenAddress);
 
-      const balanceWei = await tokenContract.methods.balanceOf(walletAddress).call();
-      const formattedBalance = web3.utils.fromWei(balanceWei, "ether");
+      const balanceRaw = await tokenContract.methods.balanceOf(walletAddress).call();
+      const decimalsRaw = tokenContract.methods.decimals
+        ? await tokenContract.methods.decimals().call().catch(() => String(tokenDecimals))
+        : String(tokenDecimals);
+      const formattedBalance = formatUnits(BigInt(balanceRaw), Number(decimalsRaw));
 
       setBalance(formattedBalance);
     } catch (err: any) {

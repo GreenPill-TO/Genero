@@ -80,6 +80,9 @@ const h = vi.hoisted(() => {
         TCOIN: "0x298A698031e2fD7D8F0c830F3FD887601b40058C",
       },
     })),
+    getTorontoCoinRuntimeConfigMock: vi.fn(() => ({
+      cplTcoin: { address: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19" },
+    })),
     assertActiveMappingMock: vi.fn(),
     assertBiaPoolNotFrozenMock: vi.fn(async () => undefined),
     assertPoolTokenSupportMock: vi.fn(async () => undefined),
@@ -112,6 +115,10 @@ vi.mock("@shared/lib/contracts/cityContracts", () => ({
   getActiveCityContracts: h.getActiveCityContractsMock,
 }));
 
+vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
+  getTorontoCoinRuntimeConfig: h.getTorontoCoinRuntimeConfigMock,
+}));
+
 vi.mock("@shared/lib/sarafu/guards", () => ({
   assertActiveMapping: h.assertActiveMappingMock,
   assertBiaPoolNotFrozen: h.assertBiaPoolNotFrozenMock,
@@ -140,6 +147,7 @@ describe("POST /api/pools/buy", () => {
     h.resolveActiveUserBiaMock.mockClear();
     h.resolveActiveBiaPoolMappingMock.mockClear();
     h.getActiveCityContractsMock.mockClear();
+    h.getTorontoCoinRuntimeConfigMock.mockClear();
     h.assertActiveMappingMock.mockClear();
     h.assertBiaPoolNotFrozenMock.mockClear();
     h.assertPoolTokenSupportMock.mockClear();
@@ -168,6 +176,7 @@ describe("POST /api/pools/buy", () => {
     expect(h.state.insertedPurchases[0]).toMatchObject({
       bia_id: "bia-1",
       pool_address: h.state.mapping.poolAddress,
+      token_address: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
       fiat_amount: 30,
       token_amount: 10,
       app_instance_id: h.state.appInstanceId,

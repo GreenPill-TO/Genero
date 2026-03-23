@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAddress, isAddress, type Address } from "viem";
 import { getActiveCityContracts } from "@shared/lib/contracts/cityContracts";
+import { getTorontoCoinRuntimeConfig } from "@shared/lib/contracts/torontocoinRuntime";
 import { resolveApiAuthContext } from "@shared/lib/bia/apiAuth";
 import { resolveActiveAppInstanceId, resolveCitySlug, toNumber } from "@shared/lib/bia/server";
 import { resolveActiveBiaPoolMapping, resolveActiveUserBia } from "@shared/lib/sarafu/routing";
@@ -97,6 +98,13 @@ export async function POST(req: Request) {
     });
 
     let tokenAddress = normalizeOptionalAddress(body.tokenAddress);
+
+    if (!tokenAddress) {
+      const torontoCoinRuntime = getTorontoCoinRuntimeConfig({ citySlug, chainId });
+      if (torontoCoinRuntime) {
+        tokenAddress = torontoCoinRuntime.cplTcoin.address;
+      }
+    }
 
     if (!tokenAddress) {
       try {

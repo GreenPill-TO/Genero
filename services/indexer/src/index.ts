@@ -9,6 +9,8 @@ import { persistNormalizedEvents } from "./normalize/persist";
 import { deriveVoucherState } from "./vouchers";
 import { ingestCityExchangeRate } from "./rates";
 import {
+  REQUIRED_POOL_ADDRESSES,
+  REQUIRED_TCOIN_TOKEN,
   buildScopeKey,
   completeRun,
   getCheckpoint,
@@ -330,11 +332,23 @@ export async function getIndexerScopeStatus(options: {
   const config = resolveIndexerConfig();
   const citySlug = normaliseCitySlug(options.citySlug ?? config.citySlug);
   const scopeKey = buildScopeKey(citySlug, config.chainId);
-
-  return getScopeStatus({
+  const status = await getScopeStatus({
     supabase: options.supabase,
     scopeKey,
     citySlug,
     chainId: config.chainId,
   });
+
+  return {
+    ...status,
+    torontoCoinTracking:
+      citySlug === "tcoin" && config.chainId === 42220
+        ? {
+            requiredPoolAddress: REQUIRED_POOL_ADDRESSES[0],
+            requiredTokenAddress: REQUIRED_TCOIN_TOKEN,
+            bootstrapPoolTracked: status.activePoolCount > 0,
+            cplTcoinTracked: status.activeTokenCount > 0,
+          }
+        : undefined,
+  };
 }

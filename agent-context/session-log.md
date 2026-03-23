@@ -1,3 +1,53 @@
+## v1.70
+### Timestamp
+- 2026-03-22 21:05:00 EDT
+
+### Objective
+- Switch the app runtime onto the fresh Celo mainnet TorontoCoin suite for wallet buy, transfer, merchant-payment, indexer, and operator visibility flows while preserving the legacy city-registry path for older contract-management surfaces.
+
+### What Changed
+- Added a canonical TorontoCoin app-runtime bridge in `shared/lib/contracts/torontocoinRuntime.ts`, backed by the fresh Celo mainnet deployment artefacts rather than legacy city-registry resolution or `deploy-config.json`.
+- Added a TorontoCoin ops status helper in `shared/lib/contracts/torontocoinOps.ts`, a read-only API route at `app/api/tcoin/ops/status/route.ts`, a terminal operator script at `scripts/torontocoin-ops-check.ts`, and a concise runbook at `docs/engineering/torontocoin-ops-runbook.md`.
+- Switched wallet-facing TCOIN runtime consumers to the live `cplTCOIN` address and `6`-decimal token settings:
+  - `shared/hooks/useTokenBalance.ts`
+  - `shared/hooks/useSendMoney.tsx`
+  - `app/api/pools/buy/route.ts`
+  - wallet dashboard buy copy
+- Switched buy/onramp settlement from the legacy mint-router flow to `LiquidityRouter.previewBuyCplTcoin(...)` and `LiquidityRouter.buyCplTcoin(...)`, with the current runtime bootstrap `poolId` and reserve metadata resolved from the TorontoCoin runtime bridge.
+- Extended onramp session/status payloads so they remain backward-compatible while now carrying TorontoCoin-specific delivery metadata:
+  - `routerTxHash`
+  - `finalTokenAddress`
+  - `finalTokenSymbol`
+  - `finalTokenDecimals`
+  - `poolId`
+  - `reserveAssetUsed`
+- Updated Transak and wallet buy copy to describe acquiring `cplTCOIN` through the TorontoCoin liquidity router rather than minting TCOIN directly from USDC.
+- Updated the indexer configuration so required pool/token tracking now points at the fresh TorontoCoin bootstrap `SwapPool` and live `cplTCOIN`, while still leaving city-registry discovery intact for legacy contract-family reads.
+- Added a read-only TorontoCoin ops status card to the wallet admin page covering live addresses, governance ownership checks, bootstrap pool liquidity, canonical scenario preview output, reserve-route health, and validator timestamps.
+- Added unit coverage for the runtime loader and ops status route and updated wallet/onramp tests to assert the new `cplTCOIN` runtime path.
+- The current automated onramp delivery path still executes the router buy from the service deposit wallet, then forwards resulting `cplTCOIN` to the recipient wallet because the live router settles to `msg.sender`. That caveat is now documented rather than hidden.
+
+### Verification
+- `pnpm test`
+- `pnpm lint`
+- `node --experimental-strip-types scripts/torontocoin-ops-check.ts`
+
+### Files Edited
+- `shared/lib/contracts/torontocoinRuntime.ts`
+- `shared/lib/contracts/torontocoinOps.ts`
+- `app/api/tcoin/ops/status/route.ts`
+- `scripts/torontocoin-ops-check.ts`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `services/onramp/src/config.ts`
+- `services/onramp/src/settlement.ts`
+- `shared/hooks/useTokenBalance.ts`
+- `shared/hooks/useSendMoney.tsx`
+- `services/indexer/src/config.ts`
+- `app/tcoin/wallet/admin/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.69
 ### Timestamp
 - 2026-03-22 18:35:00 EDT

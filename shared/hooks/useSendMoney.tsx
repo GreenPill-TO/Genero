@@ -11,6 +11,7 @@ import { normaliseTransferResult, TransferRecordSnapshot } from '@shared/utils/t
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
 import { getActiveAppInstance, normaliseCredentialId } from '@shared/api/services/supabaseService';
 import { getActiveCityContracts, getRpcUrlForChainId } from '@shared/lib/contracts/cityContracts';
+import { getTorontoCoinRuntimeConfig, TORONTOCOIN_RUNTIME } from '@shared/lib/contracts/torontocoinRuntime';
 import { executeVoucherSwapAndTransfer } from '@shared/lib/vouchers/onchain';
 import { listWalletIdentitiesForUser } from '@shared/lib/supabase/walletIdentities';
 
@@ -100,19 +101,35 @@ const decodeUserShare = async (jsonData: any): Promise<string> => {
 };
 
 async function resolveTokenRuntimeConfig() {
+        const torontoCoinRuntime = getTorontoCoinRuntimeConfig({
+                citySlug: process.env.NEXT_PUBLIC_CITYCOIN ?? 'tcoin',
+                chainId: TORONTOCOIN_RUNTIME.chainId,
+        });
+
+        if (torontoCoinRuntime) {
+                return {
+                        tokenAddress: torontoCoinRuntime.cplTcoin.address,
+                        rpcUrl: torontoCoinRuntime.rpcUrl,
+                        chainId: torontoCoinRuntime.chainId,
+                        decimals: torontoCoinRuntime.cplTcoin.decimals,
+                };
+        }
+
         try {
                 const activeContracts = await getActiveCityContracts();
                 return {
                         tokenAddress: activeContracts.contracts.TCOIN,
                         rpcUrl: getRpcUrlForChainId(activeContracts.chainId),
                         chainId: activeContracts.chainId,
+                        decimals: 18,
                 };
         } catch (error) {
-                console.warn('Falling back to default TCOIN runtime config.', error);
+                console.warn('Falling back to default TorontoCoin runtime config.', error);
                 return {
-                        tokenAddress: '0x298a698031e2fd7d8f0c830f3fd887601b40058c',
+                        tokenAddress: TORONTOCOIN_RUNTIME.cplTcoin.address,
                         rpcUrl: getRpcUrlForChainId(42220),
                         chainId: 42220,
+                        decimals: TORONTOCOIN_RUNTIME.cplTcoin.decimals,
                 };
         }
 }
@@ -448,7 +465,7 @@ export const useSendMoney = ({
 			if (isNaN(numAmount) || numAmount <= 0) {
 				throw new Error('Invalid transfer amount');
 			}
-			const parsedAmount = ethers.utils.parseUnits(numAmount.toString(), 'ether');
+			const parsedAmount = ethers.utils.parseUnits(numAmount.toString(), runtimeConfig.decimals);
 
 			// Optional: Perform a static call to see if the transfer would succeed.
 
@@ -559,7 +576,7 @@ export const useSendMoney = ({
                         if (isNaN(numAmount) || numAmount <= 0) {
                                 throw new Error('Invalid transfer amount');
                         }
-                        const parsedAmount = ethers.utils.parseUnits(numAmount.toString(), 'ether');
+                        const parsedAmount = ethers.utils.parseUnits(numAmount.toString(), runtimeConfig.decimals);
 
                         let gasLimit;
                         try {
@@ -682,6 +699,7 @@ export const useSendMoney = ({
                                 recipientAddress: recipientWalletAddress as `0x${string}`,
                                 amountInTcoin: amount,
                                 minAmountOut: minAmountOut ?? amount,
+                                inputTokenDecimals: runtimeConfig.decimals,
                                 outputTokenDecimals: tokenDecimals,
                         });
 

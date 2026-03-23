@@ -457,7 +457,7 @@ export function WalletHome({
     openModal({
       content: <BuyTcoinModal closeModal={closeModal} />,
       title: "Buy TCOIN",
-      description: "Checkout with fiat to mint TCOIN automatically from USDC on Celo.",
+      description: "Checkout with fiat to acquire cplTCOIN from USDC on Celo through the TorontoCoin liquidity router.",
     });
   };
 

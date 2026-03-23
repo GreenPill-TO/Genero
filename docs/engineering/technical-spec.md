@@ -49,6 +49,19 @@
   - The canonical `onramp` edge function now owns checkout session creation, session status reads, widget-open tracking, user touch settlement, admin session listing, manual retry, and the legacy Interac admin request read-model that still feeds the wallet admin page.
   - Wallet/admin consumers should use `public.v_wallet_identities_v1` for operational wallet reads instead of querying `wallet_list` directly; `wallet_list.public_key` remains the underlying canonical source, while readiness/share metadata is layered on top in the view.
   - `public.wallet_list.public_key` is now the only canonical recipient-wallet source for Buy TCOIN checkout. The create-session contract returns explicit product states (`ready`, `needs_wallet`, `disabled`, `misconfigured`) instead of relying on fallback wallet fields or transport-level failures.
+  - TorontoCoin retail runtime on Celo mainnet now resolves from a dedicated runtime bridge in `shared/lib/contracts/torontocoinRuntime.ts`, sourced from the fresh Foundry deployment artefacts rather than legacy city-registry bundles or `deploy-config.json`.
+  - The canonical wallet-facing TorontoCoin spend asset is now live `cplTCOIN` at `6` decimals; `mrTCOIN` remains internal settlement inventory and should not be surfaced as the primary wallet token.
+  - The current TorontoCoin runtime bridge points at:
+    - `Governance`: `0x0Ae274e0898499C48832149266A6625a4D20c581`
+    - `TreasuryController`: `0x5A860da554bf1301708db7c41C4e540135e3FCE4`
+    - `LiquidityRouter`: `0x6BBa692FC6b2F7F19a925a11EEbfc4Dd67C424a7`
+    - `PoolRegistry`: `0x3e9926Ff48b84f6E625E833219353b9cfb473A74`
+    - `mrTCOIN`: `0x63ed4CFAD21E9F4a30Ad93a199f382f98CAf59C3`
+    - `cplTCOIN`: `0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19`
+    - bootstrap `SwapPool`: `0xDe2a979EC49811aD27730e451651e52b4540c594`
+  - Buy/onramp settlement now uses `LiquidityRouter.previewBuyCplTcoin(...)` and `LiquidityRouter.buyCplTcoin(...)` against that runtime, with session payloads carrying router transaction hash, final token metadata, `poolId`, and reserve asset used.
+  - Because the live `LiquidityRouter` settles to `msg.sender`, the current automated onramp buys through the service deposit wallet and then forwards resulting `cplTCOIN` to the recipient wallet, recording both router and delivery transaction hashes.
+  - TorontoCoin operator health is now exposed consistently through `shared/lib/contracts/torontocoinOps.ts`, `/api/tcoin/ops/status`, `scripts/torontocoin-ops-check.ts`, and the wallet admin panel, all reading from the same live runtime bridge.
   - App-facing BIA and voucher reads now sit on stable SQL read models: `public.v_bia_mappings_v1`, `public.v_bia_mapping_health_v1`, `public.v_voucher_liquidity_rows_v1`, and `public.get_voucher_merchants_v1(...)`. The `bia-service` and `voucher-preferences` edge functions read those contracts instead of shaping wallet/admin payloads directly from raw `indexer.*` tables.
   - Where a required read model or RPC is not present, edge functions should return explicit operational states (`ready`, `empty`, `setup_required`) with setup guidance rather than throwing generic 400-series errors for the frontend to guess at.
   - The `voucher-preferences` edge function now also serves voucher compatibility reads/writes and voucher merchant liquidity reads, allowing wallet admin, wallet home, and merchant dashboards to stop calling the old `/api/vouchers/compatibility` and `/api/vouchers/merchants` routes directly.

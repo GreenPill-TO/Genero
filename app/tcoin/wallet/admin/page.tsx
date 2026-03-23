@@ -187,13 +187,65 @@ type OnrampCheckoutSessionSummary = {
   recipientWallet: string;
   incomingUsdcTxHash: string | null;
   mintTxHash: string | null;
+  routerTxHash?: string | null;
   tcoinOutAmount: string | null;
+  finalTokenSymbol?: string | null;
+  poolId?: string | null;
+  reserveAssetUsed?: string | null;
   latestAttemptNo: number | null;
   latestAttemptMode: string | null;
   latestAttemptState: string | null;
   latestAttemptError: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type TorontoCoinOpsStatus = {
+  addresses: {
+    chainId: number;
+    governance: string;
+    treasuryController: string;
+    liquidityRouter: string;
+    poolRegistry: string;
+    reserveRegistry: string;
+    reserveInputRouter: string;
+    sarafuSwapPoolAdapter: string;
+    mentoBrokerSwapAdapter: string;
+    mrTcoin: string;
+    cplTcoin: string;
+    bootstrapSwapPool: string;
+    bootstrapPoolId: string;
+    reserveAssetId: string;
+    reserveAssetToken: string;
+    scenarioInputToken: string;
+  };
+  ownership: {
+    liquidityRouter: { owner: string; healthy: boolean };
+    treasuryController: { owner: string; healthy: boolean };
+    poolRegistry: { owner: string; healthy: boolean };
+    sarafuSwapPoolAdapter: { owner: string; healthy: boolean };
+  };
+  poolLiquidity: {
+    cplTcoinFormatted: string;
+    mrTcoinFormatted: string;
+  };
+  scenarioPreview: {
+    cplTcoinOutFormatted: string;
+    mrTcoinOutFormatted: string;
+    reserveAmountOutFormatted: string;
+    charityTopupOutFormatted: string;
+    selectedPoolId: string;
+  };
+  reserveRouteHealth: {
+    reserveAssetActive: boolean;
+    mentoUsdcRouteConfigured: boolean;
+    liquidityRouterPointerHealthy: boolean;
+    treasuryControllerPointerHealthy: boolean;
+  };
+  artifactTimestamps: {
+    deployedAt: number;
+    validatedAt: number;
+  };
 };
 
 type SettlementDraft = {
@@ -386,6 +438,7 @@ export default function AdminDashboardPage() {
   const [voucherMerchantState, setVoucherMerchantState] = useState<OperationalState>("empty");
   const [voucherMerchantSetupMessage, setVoucherMerchantSetupMessage] = useState<string | null>(null);
   const [onrampCheckoutSessions, setOnrampCheckoutSessions] = useState<OnrampCheckoutSessionSummary[]>([]);
+  const [torontoCoinOps, setTorontoCoinOps] = useState<TorontoCoinOpsStatus | null>(null);
   const [controlPlaneError, setControlPlaneError] = useState<string | null>(null);
   const [isControlPlaneLoading, setIsControlPlaneLoading] = useState(false);
   const [biaCreateForm, setBiaCreateForm] = useState({
@@ -598,6 +651,7 @@ export default function AdminDashboardPage() {
         voucherRuleList,
         voucherMerchants,
         onrampAdminList,
+        torontoCoinOpsStatus,
       ] = await Promise.all([
         getBiaList({
           includeMappings: true,
@@ -640,11 +694,16 @@ export default function AdminDashboardPage() {
           limit: 50,
           appContext: { citySlug: "tcoin" },
         }) as Promise<{ sessions?: OnrampCheckoutSessionSummary[] }>,
+        fetchJson<TorontoCoinOpsStatus>("/api/tcoin/ops/status"),
       ]);
 
       if (!isMountedRef.current) return;
 
       const nextBias = biaList.bias ?? [];
+      const nextTorontoCoinOps =
+        torontoCoinOpsStatus && typeof torontoCoinOpsStatus === "object" && "addresses" in torontoCoinOpsStatus
+          ? torontoCoinOpsStatus
+          : null;
       setBiaRecords(nextBias);
       setBiaControls(controlsList.controls ?? biaList.controls ?? []);
       setBiaMappingsState(mappingList.state ?? (mappingList.health ? "ready" : "empty"));
@@ -657,6 +716,7 @@ export default function AdminDashboardPage() {
       setVoucherMerchantSetupMessage(voucherMerchants.setupMessage ?? null);
       setMerchantLiquidityRows(voucherMerchants.merchants ?? []);
       setOnrampCheckoutSessions(onrampAdminList.sessions ?? []);
+      setTorontoCoinOps(nextTorontoCoinOps);
       setLastSyncedAt(new Date());
 
       if (nextBias.length > 0) {
@@ -1293,7 +1353,63 @@ export default function AdminDashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Buy TCOIN Checkout Sessions</CardTitle>
+          <CardTitle>TorontoCoin Ops Status</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!torontoCoinOps ? (
+            <p className="text-sm text-muted-foreground">TorontoCoin ops status is unavailable.</p>
+          ) : (
+            <>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-md border p-3 text-xs text-muted-foreground space-y-1">
+                  <p>Liquidity router: {torontoCoinOps.addresses.liquidityRouter}</p>
+                  <p>Pool registry: {torontoCoinOps.addresses.poolRegistry}</p>
+                  <p>cplTCOIN: {torontoCoinOps.addresses.cplTcoin}</p>
+                  <p>mrTCOIN: {torontoCoinOps.addresses.mrTcoin}</p>
+                  <p>Bootstrap pool: {torontoCoinOps.addresses.bootstrapSwapPool}</p>
+                </div>
+                <div className="rounded-md border p-3 text-xs text-muted-foreground space-y-1">
+                  <p>cplTCOIN pool liquidity: {torontoCoinOps.poolLiquidity.cplTcoinFormatted}</p>
+                  <p>mrTCOIN pool liquidity: {torontoCoinOps.poolLiquidity.mrTcoinFormatted}</p>
+                  <p>Preview cplTCOIN out: {torontoCoinOps.scenarioPreview.cplTcoinOutFormatted}</p>
+                  <p>Preview reserve out: {torontoCoinOps.scenarioPreview.reserveAmountOutFormatted}</p>
+                  <p>Validated: {formatDateTime(new Date(torontoCoinOps.artifactTimestamps.validatedAt * 1000).toISOString())}</p>
+                </div>
+              </div>
+              <div className="grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
+                <p>
+                  Router owner healthy: {torontoCoinOps.ownership.liquidityRouter.healthy ? "yes" : "no"}
+                </p>
+                <p>
+                  Treasury owner healthy: {torontoCoinOps.ownership.treasuryController.healthy ? "yes" : "no"}
+                </p>
+                <p>
+                  Pool registry owner healthy: {torontoCoinOps.ownership.poolRegistry.healthy ? "yes" : "no"}
+                </p>
+                <p>
+                  Swap adapter owner healthy: {torontoCoinOps.ownership.sarafuSwapPoolAdapter.healthy ? "yes" : "no"}
+                </p>
+                <p>
+                  Reserve asset active: {torontoCoinOps.reserveRouteHealth.reserveAssetActive ? "yes" : "no"}
+                </p>
+                <p>
+                  Mento USDC route configured: {torontoCoinOps.reserveRouteHealth.mentoUsdcRouteConfigured ? "yes" : "no"}
+                </p>
+                <p>
+                  ReserveInputRouter pointer healthy: {torontoCoinOps.reserveRouteHealth.liquidityRouterPointerHealthy ? "yes" : "no"}
+                </p>
+                <p>
+                  TreasuryController pointer healthy: {torontoCoinOps.reserveRouteHealth.treasuryControllerPointerHealthy ? "yes" : "no"}
+                </p>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Buy cplTCOIN Checkout Sessions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {onrampCheckoutSessions.length === 0 ? (
@@ -1322,8 +1438,10 @@ export default function AdminDashboardPage() {
                     <p>Deposit: {session.depositAddress}</p>
                     <p>Recipient: {session.recipientWallet}</p>
                     <p>USDC tx: {session.incomingUsdcTxHash ?? "n/a"}</p>
-                    <p>Mint tx: {session.mintTxHash ?? "n/a"}</p>
-                    <p>TCOIN out: {session.tcoinOutAmount ?? "n/a"}</p>
+                    <p>Router tx: {session.routerTxHash ?? session.mintTxHash ?? "n/a"}</p>
+                    <p>{session.finalTokenSymbol ?? "cplTCOIN"} out: {session.tcoinOutAmount ?? "n/a"}</p>
+                    <p>Pool id: {session.poolId ?? "n/a"}</p>
+                    <p>Reserve asset: {session.reserveAssetUsed ?? "n/a"}</p>
                     <p>
                       Attempt: {session.latestAttemptNo ?? "n/a"} ({session.latestAttemptMode ?? "n/a"} /{" "}
                       {session.latestAttemptState ?? "n/a"})
