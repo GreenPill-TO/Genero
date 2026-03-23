@@ -52,6 +52,7 @@
   - TorontoCoin retail runtime on Celo mainnet now resolves from a dedicated runtime bridge in `shared/lib/contracts/torontocoinRuntime.ts`, sourced from the fresh Foundry deployment artefacts rather than legacy city-registry bundles or `deploy-config.json`.
   - The canonical wallet-facing TorontoCoin spend asset is now live `cplTCOIN` at `6` decimals; `mrTCOIN` remains internal settlement inventory and should not be surfaced as the primary wallet token.
   - TorontoCoin operator monitoring is now pool-matrix based rather than bootstrap-only: the runtime and ops helpers resolve the configured bootstrap pool plus any additional Sarafu pools already registered in `PoolRegistry`, then expose registration, liquidity, limiter, quoter, preview, and indexer-visibility status per pool.
+  - External Sarafu pools can now be registered into the live TorontoCoin mainnet `PoolRegistry`, but there is still one governance-surface gap: `Governance` has a native proposal type for `addPool` but not for `setPoolAddress`. Until a first-class proposal type exists, binding a newly added pool id to its live `SwapPool` address requires a narrow temporary governance helper that executes `PoolRegistry.setPoolAddress(...)` through `Governance.delegatecall`, then restores the canonical proposal helper.
   - The current TorontoCoin runtime bridge points at:
     - `Governance`: `0x0Ae274e0898499C48832149266A6625a4D20c581`
     - `TreasuryController`: `0x5A860da554bf1301708db7c41C4e540135e3FCE4`

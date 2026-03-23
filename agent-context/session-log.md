@@ -1,3 +1,56 @@
+## v1.74
+### Timestamp
+- 2026-03-23 19:25:00 EDT
+
+### Objective
+- Register the live Sarafu pool at `0xA6f024Ad53766d332057d5e40215b695522ee3dE` in the TorontoCoin mainnet `PoolRegistry` and close the governance admin gap that currently prevents `setPoolAddress(...)` from being executed through the native proposal surface.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/GovernancePoolRegistryAdminHelper.sol` as a narrow governance fallback helper that preserves the normal proposal surface and adds only the missing `setPoolAddress(bytes32,address)` admin call through `Governance.delegatecall`.
+- Added `contracts/foundry/test/unit/torontocoin/GovernancePoolRegistryAdminHelper.t.sol` to prove that, once `PoolRegistry` ownership/governance are held by the `Governance` contract, the helper can update a registered pool address through the governance fallback path and have `PoolRegistry` accept the call from `Governance`.
+- Broadcast the helper to Celo mainnet at `0x9886f6034A1cdcE73C21602Ec9acd928593bbA05`, temporarily pointed `Governance.proposalHelper` at it, and restored the original helper at `0xEDAFCef37590305709E174787AB59D347B7BA8E6` after registration.
+- Registered the pool id `0x746f726f6e746f2d63697263756c61722d65636f6e6f6d790000000000000000` with the name `Toronto's Circular Economy` and metadata record id `0xA6f024Ad53766d332057d5e40215b695522ee3dE` through the normal governance proposal flow:
+  - proposal `1` expired because a `1` second voting window was too short on live Celo mainnet
+  - proposal `2` succeeded with a `60` second window, then executed cleanly
+- Bound the registered pool id to the live Sarafu `SwapPool` at `0xA6f024Ad53766d332057d5e40215b695522ee3dE` through the temporary helper, then verified:
+  - `PoolRegistry.listPoolIds()` now returns both the bootstrap pool and `toronto-circular-economy`
+  - `PoolRegistry.getPoolAddress(poolId)` returns `0xA6f024Ad53766d332057d5e40215b695522ee3dE`
+  - `PoolRegistry.isRegisteredPoolAddress(0xA6f024Ad53766d332057d5e40215b695522ee3dE)` returns `true`
+- Re-ran the TorontoCoin ops scripts. They now discover two tracked pools on mainnet. The newly added pool is registered and fee-bypass eligible, but its preview path still fails because it currently has zero `mrTCOIN` and zero `cplTCOIN` liquidity from TorontoCoin’s point of view.
+- Added a technical/functional spec note that the current governance surface still lacks a native `setPoolAddress` proposal path, so manual external-pool registration presently requires the temporary helper pattern until governance grows a first-class proposal type for pool-address binding.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GovernancePoolRegistryAdminHelper.t.sol`
+- `forge build`
+- `cast call 0x3e9926Ff48b84f6E625E833219353b9cfb473A74 "listPoolIds()(bytes32[])" --rpc-url https://forno.celo.org`
+- `cast call 0x3e9926Ff48b84f6E625E833219353b9cfb473A74 "getPoolAddress(bytes32)(address)" 0x746f726f6e746f2d63697263756c61722d65636f6e6f6d790000000000000000 --rpc-url https://forno.celo.org`
+- `cast call 0x3e9926Ff48b84f6E625E833219353b9cfb473A74 "isRegisteredPoolAddress(address)(bool)" 0xA6f024Ad53766d332057d5e40215b695522ee3dE --rpc-url https://forno.celo.org`
+- `pnpm exec tsx scripts/torontocoin-ops-check.ts`
+- `pnpm exec tsx scripts/torontocoin-pool-compatibility-check.ts`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `6.247118087577593885 CELO`
+- End balance: `6.092195950936303558 CELO`
+- Total spent: `0.154922136641290327 CELO`
+- Cost breakdown:
+  - deploy temporary governance helper: `0.126075745339579093 CELO`
+  - set temporary proposal helper: `0.000727882025341772 CELO`
+  - first expired pool-add proposal: `0.007998831340745289 CELO`
+  - second pool-add proposal: `0.007190591371524778 CELO`
+  - steward vote on successful proposal: `0.003003682155959716 CELO`
+  - execute successful proposal: `0.006903946470927356 CELO`
+  - bind pool address through helper: `0.002293575912074349 CELO`
+  - restore original proposal helper: `0.000727882025137974 CELO`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/GovernancePoolRegistryAdminHelper.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernancePoolRegistryAdminHelper.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.73
 ### Timestamp
 - 2026-03-23 01:10:00 EDT
