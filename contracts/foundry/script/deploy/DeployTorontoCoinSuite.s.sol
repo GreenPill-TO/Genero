@@ -334,8 +334,7 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         stewardRegistry.registerSteward(stewardAccount, stewardName, stewardMetadata);
         charityRegistry.assignSteward(1, stewardAccount);
 
-        poolRegistry.addPool(bootstrapPoolId, bootstrapPoolName, bootstrapPoolMetadata);
-        poolRegistry.setPoolAddress(bootstrapPoolId, address(bootstrapSwapPool));
+        poolRegistry.addPoolWithAddress(bootstrapPoolId, bootstrapPoolName, bootstrapPoolMetadata, address(bootstrapSwapPool));
         address[] memory merchantWallets = new address[](1);
         merchantWallets[0] = bootstrapMerchantWallet;
         poolRegistry.approveMerchant(bootstrapMerchantId, bootstrapPoolId, bootstrapMerchantMetadata, merchantWallets);

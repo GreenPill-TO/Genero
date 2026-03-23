@@ -21,6 +21,12 @@ interface IPoolRegistry {
     }
 
     function addPool(bytes32 poolId, string calldata name, string calldata metadataRecordId) external;
+    function addPoolWithAddress(
+        bytes32 poolId,
+        string calldata name,
+        string calldata metadataRecordId,
+        address poolAddress
+    ) external;
     function setPoolAddress(bytes32 poolId, address poolAddress) external;
     function removePool(bytes32 poolId) external;
     function suspendPool(bytes32 poolId) external;

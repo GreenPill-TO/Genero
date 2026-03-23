@@ -38,6 +38,13 @@ abstract contract GovernanceExecutionStorage {
         string metadataRecordId;
     }
 
+    struct PoolAddWithAddressPayload {
+        bytes32 poolId;
+        string name;
+        string metadataRecordId;
+        address poolAddress;
+    }
+
     struct Bytes32IdPayload {
         bytes32 id;
     }
@@ -123,6 +130,7 @@ abstract contract GovernanceExecutionStorage {
     mapping(uint256 => CharityAddPayload) internal _charityAddPayloads;
     mapping(uint256 => CharityIdPayload) internal _charityIdPayloads;
     mapping(uint256 => PoolAddPayload) internal _poolAddPayloads;
+    mapping(uint256 => PoolAddWithAddressPayload) internal _poolAddWithAddressPayloads;
     mapping(uint256 => Bytes32IdPayload) internal _bytes32IdPayloads;
     mapping(uint256 => MerchantApprovePayload) internal _merchantApprovePayloads;
     mapping(uint256 => MerchantIdPayload) internal _merchantIdPayloads;
@@ -189,6 +197,7 @@ contract GovernanceExecutionHelper is GovernanceExecutionStorage {
     uint8 internal constant LIQUIDITY_ROUTER_SET_POOL_ADAPTER = 49;
     uint8 internal constant LIQUIDITY_ROUTER_SET_CHARITY_TOPUP_BPS = 50;
     uint8 internal constant LIQUIDITY_ROUTER_SET_SCORING_WEIGHTS = 51;
+    uint8 internal constant POOL_ADD_WITH_ADDRESS = 52;
 
     error InvalidProposalType(uint8 proposalType);
 
@@ -207,6 +216,10 @@ contract GovernanceExecutionHelper is GovernanceExecutionStorage {
         } else if (proposalType == POOL_ADD) {
             PoolAddPayload storage payload = _poolAddPayloads[proposalId];
             IPoolRegistry(poolRegistry).addPool(payload.poolId, payload.name, payload.metadataRecordId);
+        } else if (proposalType == POOL_ADD_WITH_ADDRESS) {
+            PoolAddWithAddressPayload storage payload = _poolAddWithAddressPayloads[proposalId];
+            IPoolRegistry(poolRegistry)
+                .addPoolWithAddress(payload.poolId, payload.name, payload.metadataRecordId, payload.poolAddress);
         } else if (proposalType == POOL_REMOVE) {
             IPoolRegistry(poolRegistry).removePool(_bytes32IdPayloads[proposalId].id);
         } else if (proposalType == POOL_SUSPEND) {

@@ -60,7 +60,8 @@ abstract contract GovernanceProposalStorage {
         LiquidityRouterSetPoolRegistry,
         LiquidityRouterSetPoolAdapter,
         LiquidityRouterSetCharityTopupBps,
-        LiquidityRouterSetScoringWeights
+        LiquidityRouterSetScoringWeights,
+        PoolAddWithAddress
     }
 
     enum ProposalStatus {
@@ -99,6 +100,13 @@ abstract contract GovernanceProposalStorage {
         bytes32 poolId;
         string name;
         string metadataRecordId;
+    }
+
+    struct PoolAddWithAddressPayload {
+        bytes32 poolId;
+        string name;
+        string metadataRecordId;
+        address poolAddress;
     }
 
     struct Bytes32IdPayload {
@@ -186,6 +194,7 @@ abstract contract GovernanceProposalStorage {
     mapping(uint256 => CharityAddPayload) internal _charityAddPayloads;
     mapping(uint256 => CharityIdPayload) internal _charityIdPayloads;
     mapping(uint256 => PoolAddPayload) internal _poolAddPayloads;
+    mapping(uint256 => PoolAddWithAddressPayload) internal _poolAddWithAddressPayloads;
     mapping(uint256 => Bytes32IdPayload) internal _bytes32IdPayloads;
     mapping(uint256 => MerchantApprovePayload) internal _merchantApprovePayloads;
     mapping(uint256 => MerchantIdPayload) internal _merchantIdPayloads;
@@ -260,6 +269,26 @@ contract GovernanceProposalHelper is GovernanceProposalStorage {
         if (bytes(name).length == 0) revert EmptyString();
         proposalId = _createProposal(ProposalType.PoolAdd, votingWindow);
         _poolAddPayloads[proposalId] = PoolAddPayload({poolId: poolId, name: name, metadataRecordId: metadataRecordId});
+    }
+
+    function proposePoolAddWithAddress(
+        bytes32 poolId,
+        string calldata name,
+        string calldata metadataRecordId,
+        address poolAddress,
+        uint64 votingWindow
+    ) external onlySteward returns (uint256 proposalId) {
+        if (poolId == bytes32(0)) revert InvalidProposalValue();
+        if (bytes(name).length == 0) revert EmptyString();
+        if (poolAddress == address(0)) revert ZeroAddressTarget();
+
+        proposalId = _createProposal(ProposalType.PoolAddWithAddress, votingWindow);
+        _poolAddWithAddressPayloads[proposalId] = PoolAddWithAddressPayload({
+            poolId: poolId,
+            name: name,
+            metadataRecordId: metadataRecordId,
+            poolAddress: poolAddress
+        });
     }
 
     function proposePoolRemove(bytes32 poolId, uint64 votingWindow) external onlySteward returns (uint256) {

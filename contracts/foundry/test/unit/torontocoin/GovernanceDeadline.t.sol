@@ -52,9 +52,26 @@ contract MockPoolRegistry {
     bytes32 public lastApprovedMerchantId;
     bytes32 public lastApprovedPoolId;
     string public lastApprovedMetadataRecordId;
+    bytes32 public lastAddedPoolId;
+    string public lastAddedPoolName;
+    string public lastAddedPoolMetadataRecordId;
+    address public lastAddedPoolAddress;
     address[] private lastInitialWallets;
 
-    function addPool(bytes32, string calldata, string calldata) external pure {}
+    function addPool(bytes32 poolId, string calldata name, string calldata metadataRecordId) external {
+        lastAddedPoolId = poolId;
+        lastAddedPoolName = name;
+        lastAddedPoolMetadataRecordId = metadataRecordId;
+        lastAddedPoolAddress = address(0);
+    }
+    function addPoolWithAddress(bytes32 poolId, string calldata name, string calldata metadataRecordId, address poolAddress)
+        external
+    {
+        lastAddedPoolId = poolId;
+        lastAddedPoolName = name;
+        lastAddedPoolMetadataRecordId = metadataRecordId;
+        lastAddedPoolAddress = poolAddress;
+    }
     function removePool(bytes32) external pure {}
     function suspendPool(bytes32) external pure {}
     function unsuspendPool(bytes32) external pure {}
@@ -471,6 +488,20 @@ contract GovernanceDeadlineTest is Test {
         assertEq(recordedWallets.length, 2);
         assertEq(recordedWallets[0], wallets[0]);
         assertEq(recordedWallets[1], wallets[1]);
+    }
+
+    function test_ExecutePoolAddWithAddressCarriesPoolAddressPayload() public {
+        vm.prank(steward);
+        uint256 proposalId = GovernanceProposalHelper(address(governance)).proposePoolAddWithAddress(
+            POOL_ID, "Pool With Address", "pool-with-address", address(0xCAFE), 1 days
+        );
+
+        _approveAndExecute(proposalId);
+
+        assertEq(poolRegistry.lastAddedPoolId(), POOL_ID);
+        assertEq(poolRegistry.lastAddedPoolName(), "Pool With Address");
+        assertEq(poolRegistry.lastAddedPoolMetadataRecordId(), "pool-with-address");
+        assertEq(poolRegistry.lastAddedPoolAddress(), address(0xCAFE));
     }
 
     function test_ExecuteExpirePeriodUpdateCallsTokenSurface() public {

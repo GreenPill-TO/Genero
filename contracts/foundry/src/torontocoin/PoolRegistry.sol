@@ -121,24 +121,16 @@ contract PoolRegistry is Ownable, Pausable {
         onlyGovernanceOrOwner
         whenNotPaused
     {
-        if (poolId == bytes32(0)) revert ZeroPoolId();
-        if (bytes(name).length == 0) revert EmptyName();
-        if (poolExists[poolId]) revert PoolAlreadyExists(poolId);
+        _addPool(poolId, name, metadataRecordId, address(0));
+    }
 
-        poolExists[poolId] = true;
-        poolIds.push(poolId);
-
-        pools[poolId] = Pool({
-            poolId: poolId,
-            poolAddress: address(0),
-            name: name,
-            metadataRecordId: metadataRecordId,
-            status: PoolStatus.Active,
-            createdAt: uint64(block.timestamp),
-            updatedAt: uint64(block.timestamp)
-        });
-
-        emit PoolAdded(poolId, name, metadataRecordId, msg.sender);
+    function addPoolWithAddress(bytes32 poolId, string calldata name, string calldata metadataRecordId, address poolAddress)
+        external
+        onlyGovernanceOrOwner
+        whenNotPaused
+    {
+        if (poolAddress == address(0)) revert ZeroAddressPool();
+        _addPool(poolId, name, metadataRecordId, poolAddress);
     }
 
     function removePool(bytes32 poolId) external onlyGovernanceOrOwner {
@@ -175,15 +167,7 @@ contract PoolRegistry is Ownable, Pausable {
         if (poolAddress == address(0)) revert ZeroAddressPool();
 
         Pool storage pool = _getPoolStorage(poolId);
-        address oldPoolAddress = pool.poolAddress;
-        if (oldPoolAddress != address(0)) {
-            delete poolIdByAddress[oldPoolAddress];
-        }
-        pool.poolAddress = poolAddress;
-        poolIdByAddress[poolAddress] = poolId;
-        pool.updatedAt = uint64(block.timestamp);
-
-        emit PoolAddressUpdated(poolId, oldPoolAddress, poolAddress);
+        _setPoolAddress(pool, poolId, poolAddress);
     }
 
     function approveMerchant(
@@ -440,6 +424,45 @@ contract PoolRegistry is Ownable, Pausable {
     function _getPoolStorage(bytes32 poolId) internal view returns (Pool storage pool) {
         if (!poolExists[poolId]) revert UnknownPool(poolId);
         pool = pools[poolId];
+    }
+
+    function _addPool(bytes32 poolId, string calldata name, string calldata metadataRecordId, address poolAddress) internal {
+        if (poolId == bytes32(0)) revert ZeroPoolId();
+        if (bytes(name).length == 0) revert EmptyName();
+        if (poolExists[poolId]) revert PoolAlreadyExists(poolId);
+
+        uint64 timestamp = uint64(block.timestamp);
+        poolExists[poolId] = true;
+        poolIds.push(poolId);
+
+        pools[poolId] = Pool({
+            poolId: poolId,
+            poolAddress: address(0),
+            name: name,
+            metadataRecordId: metadataRecordId,
+            status: PoolStatus.Active,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+
+        emit PoolAdded(poolId, name, metadataRecordId, msg.sender);
+
+        if (poolAddress != address(0)) {
+            Pool storage pool = pools[poolId];
+            _setPoolAddress(pool, poolId, poolAddress);
+        }
+    }
+
+    function _setPoolAddress(Pool storage pool, bytes32 poolId, address poolAddress) internal {
+        address oldPoolAddress = pool.poolAddress;
+        if (oldPoolAddress != address(0)) {
+            delete poolIdByAddress[oldPoolAddress];
+        }
+        pool.poolAddress = poolAddress;
+        poolIdByAddress[poolAddress] = poolId;
+        pool.updatedAt = uint64(block.timestamp);
+
+        emit PoolAddressUpdated(poolId, oldPoolAddress, poolAddress);
     }
 
     function _getMerchantStorage(bytes32 merchantId) internal view returns (MerchantEntity storage merchantRecord) {

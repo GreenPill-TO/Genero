@@ -1,3 +1,57 @@
+## v1.75
+### Timestamp
+- 2026-03-23 20:05:00 EDT
+
+### Objective
+- Add a first-class `addPoolWithAddress(...)` path to TorontoCoin `PoolRegistry` and governance so future deployments do not need the temporary pool-address helper, then verify whether the current live `PoolRegistry` and `Governance` can be upgraded in place.
+
+### What Changed
+- Added `addPoolWithAddress(bytes32 poolId, string name, string metadataRecordId, address poolAddress)` to `contracts/foundry/src/torontocoin/PoolRegistry.sol` and `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`.
+- Refactored `PoolRegistry` internals so:
+  - `addPool(...)` and `addPoolWithAddress(...)` share one `_addPool(...)` path
+  - canonical address binding still flows through one `_setPoolAddress(...)` path
+  - future bootstrap and operator flows can add and bind a pool in one transaction without changing runtime semantics
+- Added first-class governance support for that path across:
+  - `contracts/foundry/src/torontocoin/Governance.sol`
+  - `contracts/foundry/src/torontocoin/GovernanceProposalHelper.sol`
+  - `contracts/foundry/src/torontocoin/GovernanceExecutionHelper.sol`
+- Updated `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol` so fresh deployments now bootstrap the canonical Sarafu pool through `addPoolWithAddress(...)` instead of `addPool(...)` plus `setPoolAddress(...)`.
+- Extended unit coverage:
+  - `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol` now proves `addPoolWithAddress(...)` sets the canonical address mapping immediately
+  - `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol` now proves the new governance proposal path carries the pool address payload through execution
+- Verified the live mainnet deployment shape:
+  - live `PoolRegistry` at `0x3e9926Ff48b84f6E625E833219353b9cfb473A74` is a direct deployment, not a proxy
+  - live `Governance` at `0x0Ae274e0898499C48832149266A6625a4D20c581` is a direct deployment, not a proxy
+  - both EIP-1967 implementation/admin slots are zero on the live governance address
+- Conclusion: future deployments no longer need the helper, but the current mainnet suite cannot be upgraded in place. Migrating the live suite to the new first-class path would require a controlled replacement of `PoolRegistry` and `Governance`, not an in-place upgrade transaction.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/PoolRegistry.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge build`
+- `cast storage 0x0Ae274e0898499C48832149266A6625a4D20c581 0x360894A13BA1A3210667C828492DB98DCA3E2076CC3735A920A3CA505D382BBC --rpc-url https://forno.celo.org`
+- `cast storage 0x0Ae274e0898499C48832149266A6625a4D20c581 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103 --rpc-url https://forno.celo.org`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `6.092195950936303558 CELO`
+- End balance: `6.092195950936303558 CELO`
+- Total spent: `0 CELO`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/GovernanceProposalHelper.sol`
+- `contracts/foundry/src/torontocoin/GovernanceExecutionHelper.sol`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.74
 ### Timestamp
 - 2026-03-23 19:25:00 EDT

@@ -65,7 +65,8 @@ contract Governance is Ownable, ReentrancyGuard {
         LiquidityRouterSetPoolRegistry,
         LiquidityRouterSetPoolAdapter,
         LiquidityRouterSetCharityTopupBps,
-        LiquidityRouterSetScoringWeights
+        LiquidityRouterSetScoringWeights,
+        PoolAddWithAddress
     }
 
     enum ProposalStatus {
@@ -104,6 +105,13 @@ contract Governance is Ownable, ReentrancyGuard {
         bytes32 poolId;
         string name;
         string metadataRecordId;
+    }
+
+    struct PoolAddWithAddressPayload {
+        bytes32 poolId;
+        string name;
+        string metadataRecordId;
+        address poolAddress;
     }
 
     struct Bytes32IdPayload {
@@ -236,6 +244,7 @@ contract Governance is Ownable, ReentrancyGuard {
     mapping(uint256 => CharityAddPayload) private _charityAddPayloads;
     mapping(uint256 => CharityIdPayload) private _charityIdPayloads;
     mapping(uint256 => PoolAddPayload) private _poolAddPayloads;
+    mapping(uint256 => PoolAddWithAddressPayload) private _poolAddWithAddressPayloads;
     mapping(uint256 => Bytes32IdPayload) private _bytes32IdPayloads;
     mapping(uint256 => MerchantApprovePayload) private _merchantApprovePayloads;
     mapping(uint256 => MerchantIdPayload) private _merchantIdPayloads;

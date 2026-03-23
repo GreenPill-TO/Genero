@@ -150,4 +150,20 @@ contract PoolRegistryTest is Test {
         assertEq(registry.getPoolIdByAddress(replacementPoolAddress), POOL_A);
         assertTrue(registry.isRegisteredPoolAddress(replacementPoolAddress));
     }
+
+    function test_AddPoolWithAddressSetsCanonicalPoolAddressImmediately() public {
+        bytes32 poolId = bytes32("pool-c");
+        address poolAddress = address(0x3004);
+
+        registry.addPoolWithAddress(poolId, "Pool C", "pool-c-metadata", poolAddress);
+
+        PoolRegistry.Pool memory pool = registry.getPool(poolId);
+        assertEq(pool.poolId, poolId);
+        assertEq(pool.poolAddress, poolAddress);
+        assertEq(pool.name, "Pool C");
+        assertEq(pool.metadataRecordId, "pool-c-metadata");
+        assertEq(registry.getPoolAddress(poolId), poolAddress);
+        assertEq(registry.getPoolIdByAddress(poolAddress), poolId);
+        assertTrue(registry.isRegisteredPoolAddress(poolAddress));
+    }
 }
