@@ -1,3 +1,43 @@
+## v1.77
+### Timestamp
+- 2026-03-23 20:35:00 EDT
+
+### Objective
+- Deploy the updated governance helper contracts to Celo mainnet and repoint the live `Governance` contract so the first-class `addPoolWithAddress(...)` path is available on the current live suite without replacing governance itself.
+
+### What Changed
+- Confirmed again that the live `Governance` contract is a direct deployment, not a proxy, so the practical live upgrade surface is its helper pointers rather than the governance address itself.
+- Deployed the updated mainnet helper contracts:
+  - new `GovernanceProposalHelper`: `0x79b0CC5f5AA657d1dd863D5447f3046EC62F62D3`
+  - new `GovernanceExecutionHelper`: `0x505209d667A81c5bc412E5B054fe786DDa56c98D`
+- Updated the live `Governance` helper pointers:
+  - `proposalHelper = 0x79b0CC5f5AA657d1dd863D5447f3046EC62F62D3`
+  - `executionHelper = 0x505209d667A81c5bc412E5B054fe786DDa56c98D`
+  - `routerProposalHelper` remains unchanged at `0x1814e7fE88ccfa1e08Db589Ed41994bE15dB76D6`
+- Verified the new first-class selector is reachable through the live governance fallback by estimating `proposePoolAddWithAddress(...)` directly against the governance address from the live steward/deployer account.
+- Updated the checked-in live suite artefact so `contracts/foundry/deployments/torontocoin/celo-mainnet/suite.json` now reflects the current on-chain helper addresses.
+
+### Verification
+- `cast call 0x0Ae274e0898499C48832149266A6625a4D20c581 "proposalHelper()(address)" --rpc-url https://forno.celo.org`
+- `cast call 0x0Ae274e0898499C48832149266A6625a4D20c581 "executionHelper()(address)" --rpc-url https://forno.celo.org`
+- `cast estimate --from 0x1B7489bE5C572041b682749F7B25B84E30cF9271 0x0Ae274e0898499C48832149266A6625a4D20c581 "proposePoolAddWithAddress(bytes32,string,string,address,uint64)" 0x746573742d706f6f6c2d776974682d6164647265737300000000000000000000 "Test Pool" "test-pool" 0x000000000000000000000000000000000000c0Fe 60 --rpc-url https://forno.celo.org`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `6.092195950936303558 CELO`
+- End balance: `5.922180920672106578 CELO`
+- Total spent: `0.170015030264196980 CELO`
+- Cost breakdown:
+  - deploy new `GovernanceExecutionHelper`: `0.138873920752562916 CELO`
+  - deploy new `GovernanceProposalHelper`: `0.029957471914954688 CELO`
+  - set live `proposalHelper`: `0.000727882025050860 CELO`
+  - set live `executionHelper`: `0.000455755571628516 CELO`
+
+### Files Edited
+- `contracts/foundry/deployments/torontocoin/celo-mainnet/suite.json`
+- `agent-context/session-log.md`
+
 ## v1.76
 ### Timestamp
 - 2026-03-23 20:15:00 EDT

@@ -54,6 +54,7 @@
   - TorontoCoin operator monitoring is now pool-matrix based rather than bootstrap-only: the runtime and ops helpers resolve the configured bootstrap pool plus any additional Sarafu pools already registered in `PoolRegistry`, then expose registration, liquidity, limiter, quoter, preview, and indexer-visibility status per pool.
   - `PoolRegistry` now supports `addPoolWithAddress(...)`, and governance now has a first-class proposal/execution path for that combined action. Fresh deployments therefore no longer need the temporary `setPoolAddress(...)` helper pattern when onboarding new pools.
   - The current live mainnet `PoolRegistry` and `Governance` contracts are both direct deployments rather than proxies, so this new first-class path cannot be applied to them via in-place upgrade. Using it on mainnet would require a controlled replacement of those contracts.
+  - The current live mainnet governance helper pointers have now been upgraded in place, so the existing live `Governance` contract can expose the new first-class `addPoolWithAddress(...)` proposal and execution path without changing the governance address itself.
   - The current TorontoCoin runtime bridge points at:
     - `Governance`: `0x0Ae274e0898499C48832149266A6625a4D20c581`
     - `TreasuryController`: `0x5A860da554bf1301708db7c41C4e540135e3FCE4`
