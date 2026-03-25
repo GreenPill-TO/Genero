@@ -1,3 +1,33 @@
+## v1.78
+### Timestamp
+- 2026-03-25 14:51:37 EDT
+
+### Objective
+- Fix the new Supabase edge-boundary CI guard so it passes on GitHub runners that do not have `rg` installed, then rerun the PR validation suite for the open `dev` PR.
+
+### What Changed
+- Updated `scripts/check-no-direct-supabase-db.mjs` so it still prefers `rg --files` locally, but now falls back to a pure Node.js recursive directory walk when `rg` is unavailable.
+- Kept the same guarded path scope and allowlist semantics, so the boundary policy is unchanged; only the file-discovery implementation is more portable across CI environments.
+- Recorded the guardrail expectation in the specs: lint-time boundary checks must not depend on optional developer-only binaries being present on the runner.
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `5.922180920672106578 CELO`
+- End balance: `5.922180920672106578 CELO`
+- Total spent: `0 CELO`
+
+### Files Edited
+- `scripts/check-no-direct-supabase-db.mjs`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.77
 ### Timestamp
 - 2026-03-23 20:35:00 EDT

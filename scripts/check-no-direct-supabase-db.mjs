@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { execFileSync } from "node:child_process";
@@ -26,7 +26,18 @@ const allowlist = new Set([
   "shared/api/services/contractManagementService.ts",
 ]);
 
-function listFiles() {
+function normalisePath(file) {
+  return file.split(path.sep).join("/");
+}
+
+function matchesTargetGlob(file) {
+  return targetGlobs.some((glob) => {
+    const prefix = glob.slice(0, glob.indexOf("**"));
+    return file.startsWith(prefix) && (file.endsWith(".ts") || file.endsWith(".tsx"));
+  });
+}
+
+function listFilesWithRipgrep() {
   const args = [
     "--files",
     ...targetGlobs.flatMap((glob) => ["-g", glob]),
@@ -40,6 +51,58 @@ function listFiles() {
     .map((line) => line.trim())
     .filter(Boolean)
     .filter((file) => !allowlist.has(file));
+}
+
+function walkDirectory(rootRelativePath) {
+  const absoluteRoot = path.join(repoRoot, rootRelativePath);
+  if (!existsSync(absoluteRoot)) {
+    return [];
+  }
+
+  const files = [];
+  const queue = [absoluteRoot];
+
+  while (queue.length > 0) {
+    const current = queue.pop();
+    const entries = readdirSync(current, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const absoluteEntry = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        queue.push(absoluteEntry);
+        continue;
+      }
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      const relativeEntry = normalisePath(path.relative(repoRoot, absoluteEntry));
+      if (!matchesTargetGlob(relativeEntry) || allowlist.has(relativeEntry)) {
+        continue;
+      }
+      files.push(relativeEntry);
+    }
+  }
+
+  return files;
+}
+
+function listFiles() {
+  try {
+    return listFilesWithRipgrep();
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  return [
+    ...walkDirectory("app/tcoin"),
+    ...walkDirectory("shared/hooks"),
+    ...walkDirectory("shared/api/services"),
+    ...walkDirectory("shared/utils"),
+    ...walkDirectory("app/api"),
+  ];
 }
 
 const matcher = /\bsupabase\s*\.\s*(from|rpc)\s*\(/g;
