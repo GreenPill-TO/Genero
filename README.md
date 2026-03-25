@@ -37,9 +37,13 @@ app/
   [citycoins]/     # Starting with Toronto's TCOIN, this monorepo allows for multiple cities, each with their own local currency
     [citycoin apps]/  # Each citycoin will have one or more dedicated apps, aka wallets.
 agent-context/     # Session workflow, logs, app context, and agent operating notes
+contracts/
+  foundry/         # TorontoCoin Solidity workspace, deployment artefacts, and runtime manifests
 docs/
   engineering/     # Engineering specs and root-level architecture notes
+scripts/           # Repository helper scripts, including TorontoCoin operator health checks
 shared/            # Reusable hooks, components and utilities
+  lib/contracts/   # Runtime contract bridges and operator status helpers
   lib/edge/        # Typed browser clients and app-scope helpers for Supabase Edge Functions
 supabase/
   migrations/      # Versioned SQL migrations synced with Supabase
@@ -50,6 +54,8 @@ supabase/
 API routes for Twilio OTP verification and temporary compatibility shims are located under `app/api`.
 
 The current implementation specs live in `docs/engineering/technical-spec.md` and `docs/engineering/functional-spec.md`. Session-by-session change history remains in `agent-context/session-log.md`.
+
+TorontoCoin retail runtime now uses the fresh Celo mainnet suite surfaced through `shared/lib/contracts/torontocoinRuntime.ts` for buy, transfer, and operator-health flows. Legacy city-registry resolution remains in place only for older contract-management surfaces that have not yet been repointed.
 
 ## Environment Variables
 

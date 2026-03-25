@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPublicClient, getAddress, http, type Address } from "viem";
+import { listTorontoCoinTrackedPools } from "@shared/lib/contracts/torontocoinPools";
+import { TORONTOCOIN_RUNTIME } from "@shared/lib/contracts/torontocoinRuntime";
 import { deriveBiaRollupsAndRisk, syncBiaMappingValidation } from "./bia";
 import { discoverTrackedPools } from "./discovery/pools";
 import { resolveCityContractSet } from "./discovery/cityContracts";
@@ -9,6 +11,10 @@ import { persistNormalizedEvents } from "./normalize/persist";
 import { deriveVoucherState } from "./vouchers";
 import { ingestCityExchangeRate } from "./rates";
 import {
+  REQUIRED_TCOIN_TOKEN,
+  resolveIndexerConfig,
+} from "./config";
+import {
   buildScopeKey,
   completeRun,
   getCheckpoint,
@@ -17,7 +23,6 @@ import {
   tryStartRun,
   upsertCheckpoint,
 } from "./state/runControl";
-import { resolveIndexerConfig } from "./config";
 import type { IndexerScopeStatus, IndexerTouchResult, IndexerSource, NormalizedEvent } from "./types";
 
 function pickBlockRange(options: {
@@ -56,6 +61,59 @@ function dedupeAddresses(addresses: Address[]): Address[] {
 function filterEventsByAddress(events: NormalizedEvent[], addresses: Address[]): NormalizedEvent[] {
   const allowed = new Set(addresses.map((address) => address.toLowerCase()));
   return events.filter((event) => allowed.has(event.contractAddress.toLowerCase()));
+}
+
+async function readActivePoolTracking(options: {
+  supabase: SupabaseClient<any, any, any>;
+  citySlug: string;
+  chainId: number;
+}) {
+  const { data: activePools, error: poolsError } = await options.supabase
+    .schema("indexer")
+    .from("pool_links")
+    .select("pool_address")
+    .eq("city_slug", options.citySlug)
+    .eq("chain_id", options.chainId)
+    .eq("is_active", true);
+
+  if (poolsError) {
+    throw new Error(`Failed to read tracked pool status: ${poolsError.message}`);
+  }
+
+  const poolAddresses = (activePools ?? [])
+    .map((row) => String(row.pool_address ?? "").trim().toLowerCase())
+    .filter((value) => value !== "");
+
+  const { data: poolTokens, error: poolTokensError } = await options.supabase
+    .schema("indexer")
+    .from("pool_tokens")
+    .select("pool_address,token_address")
+    .in(
+      "pool_address",
+      poolAddresses.length > 0 ? poolAddresses : ["0x0000000000000000000000000000000000000000"]
+    );
+
+  if (poolTokensError) {
+    throw new Error(`Failed to read tracked pool tokens: ${poolTokensError.message}`);
+  }
+
+  const tokenMap = new Map<string, Address[]>();
+  for (const row of poolTokens ?? []) {
+    const poolAddress = String(row.pool_address ?? "").trim().toLowerCase();
+    const tokenAddress = String(row.token_address ?? "").trim();
+    if (!poolAddress || tokenAddress === "") {
+      continue;
+    }
+
+    const existing = tokenMap.get(poolAddress) ?? [];
+    existing.push(getAddress(tokenAddress));
+    tokenMap.set(poolAddress, existing);
+  }
+
+  return {
+    activePoolAddresses: new Set(poolAddresses),
+    poolTokens: tokenMap,
+  };
 }
 
 export async function runIndexerTouch(options: {
@@ -330,11 +388,55 @@ export async function getIndexerScopeStatus(options: {
   const config = resolveIndexerConfig();
   const citySlug = normaliseCitySlug(options.citySlug ?? config.citySlug);
   const scopeKey = buildScopeKey(citySlug, config.chainId);
-
-  return getScopeStatus({
+  const status = await getScopeStatus({
     supabase: options.supabase,
     scopeKey,
     citySlug,
     chainId: config.chainId,
   });
+
+  if (citySlug === "tcoin" && config.chainId === 42220) {
+    const client = createPublicClient({
+      transport: http(config.rpcUrl),
+    });
+    const [{ activePoolAddresses, poolTokens }, trackedPools] = await Promise.all([
+      readActivePoolTracking({
+        supabase: options.supabase,
+        citySlug,
+        chainId: config.chainId,
+      }),
+      listTorontoCoinTrackedPools({
+        client,
+        runtime: TORONTOCOIN_RUNTIME,
+      }),
+    ]);
+
+    const trackedPoolStatus = trackedPools.map((pool) => {
+      const normalizedPoolAddress = pool.poolAddress.toLowerCase();
+      const indexedTokens = poolTokens.get(normalizedPoolAddress) ?? [];
+      const tracked = activePoolAddresses.has(normalizedPoolAddress);
+      return {
+        poolId: pool.poolId,
+        poolAddress: pool.poolAddress,
+        expected: pool.expectedIndexerVisibility,
+        tracked,
+        tokenAddresses: indexedTokens,
+        healthy: !pool.expectedIndexerVisibility || tracked,
+      };
+    });
+
+    return {
+      ...status,
+      torontoCoinTracking: {
+        requiredTokenAddress: REQUIRED_TCOIN_TOKEN,
+        cplTcoinTracked: status.activeTokenCount > 0,
+        trackedPools: trackedPoolStatus,
+      },
+    };
+  }
+
+  return {
+    ...status,
+    torontoCoinTracking: undefined,
+  };
 }

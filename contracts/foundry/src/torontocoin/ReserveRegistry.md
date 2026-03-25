@@ -617,7 +617,9 @@ Set status to `Removed`, keep history intact.
 
 ## 2. Do not store balances here
 
-TreasuryController handles balances; this contract is only metadata and state flags.
+`Treasury` handles reserve balances and custody.
+`TreasuryController` handles economics and policy.
+This contract is only metadata and state flags.
 
 ## 3. Keep asset addition narrow
 

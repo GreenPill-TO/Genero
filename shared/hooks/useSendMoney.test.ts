@@ -5,9 +5,25 @@ const { getActiveCityContractsMock, getRpcUrlForChainIdMock } = vi.hoisted(() =>
   getRpcUrlForChainIdMock: vi.fn(),
 }));
 
+const { getTorontoCoinRuntimeConfigMock } = vi.hoisted(() => ({
+  getTorontoCoinRuntimeConfigMock: vi.fn(),
+}));
+
 vi.mock("@shared/lib/contracts/cityContracts", () => ({
   getActiveCityContracts: getActiveCityContractsMock,
   getRpcUrlForChainId: getRpcUrlForChainIdMock,
+}));
+
+vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
+  TORONTOCOIN_RUNTIME: {
+    chainId: 42220,
+    cplTcoin: {
+      address: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
+      decimals: 6,
+    },
+    rpcUrl: "https://forno.celo.org",
+  },
+  getTorontoCoinRuntimeConfig: getTorontoCoinRuntimeConfigMock,
 }));
 
 vi.mock("cubid-wallet", () => ({
@@ -23,6 +39,7 @@ describe("runWithWebAuthnLock", () => {
     __internal.resetWebAuthnLock();
     getActiveCityContractsMock.mockReset();
     getRpcUrlForChainIdMock.mockReset();
+    getTorontoCoinRuntimeConfigMock.mockReset();
   });
 
   it("prevents concurrent WebAuthn requests", async () => {
@@ -44,21 +61,26 @@ describe("runWithWebAuthnLock", () => {
     await expect(__internal.runWithWebAuthnLock(async () => "second")).resolves.toBe("second");
   });
 
-  it("resolves token runtime config from city contracts registry data", async () => {
-    getActiveCityContractsMock.mockResolvedValue({
-      chainId: 545,
-      contracts: { TCOIN: "0x0000000000000000000000000000000000000001" },
+  it("resolves token runtime config from the TorontoCoin runtime bridge on Celo mainnet", async () => {
+    getTorontoCoinRuntimeConfigMock.mockReturnValue({
+      cplTcoin: {
+        address: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
+        decimals: 6,
+      },
+      rpcUrl: "https://forno.celo.org",
+      chainId: 42220,
     });
-    getRpcUrlForChainIdMock.mockReturnValue("https://testnet.evm.nodes.onflow.org");
 
     await expect(__internal.resolveTokenRuntimeConfig()).resolves.toEqual({
-      tokenAddress: "0x0000000000000000000000000000000000000001",
-      rpcUrl: "https://testnet.evm.nodes.onflow.org",
-      chainId: 545,
+      tokenAddress: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
+      rpcUrl: "https://forno.celo.org",
+      chainId: 42220,
+      decimals: 6,
     });
   });
 
-  it("falls back to tcoin defaults when registry resolution fails", async () => {
+  it("falls back to runtime-aware defaults when registry resolution fails", async () => {
+    getTorontoCoinRuntimeConfigMock.mockReturnValue(null);
     getActiveCityContractsMock.mockRejectedValue(new Error("registry unavailable"));
     getRpcUrlForChainIdMock.mockImplementation((chainId: number) => {
       if (chainId === 42220) return "https://forno.celo.org";
@@ -66,9 +88,10 @@ describe("runWithWebAuthnLock", () => {
     });
 
     await expect(__internal.resolveTokenRuntimeConfig()).resolves.toEqual({
-      tokenAddress: "0x298a698031e2fd7d8f0c830f3fd887601b40058c",
+      tokenAddress: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
       rpcUrl: "https://forno.celo.org",
       chainId: 42220,
+      decimals: 6,
     });
   });
 });

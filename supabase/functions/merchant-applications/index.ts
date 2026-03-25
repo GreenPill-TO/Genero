@@ -3,6 +3,7 @@ import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appC
 import { corsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import {
+  checkSlugAvailability,
   getMerchantStatus,
   restartMerchantApplication,
   saveMerchantApplicationStep,
@@ -52,6 +53,18 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "GET" && pathname === "/status") {
       return jsonResponse(req, await getMerchantStatus(base));
+    }
+
+    if (req.method === "GET" && pathname === "/slug-availability") {
+      const url = new URL(req.url);
+      return jsonResponse(
+        req,
+        await checkSlugAvailability({
+          ...base,
+          slug: url.searchParams.get("slug") ?? "",
+          excludeStoreId: Number(url.searchParams.get("excludeStoreId") ?? 0),
+        })
+      );
     }
 
     if (req.method === "POST" && pathname === "/start") {

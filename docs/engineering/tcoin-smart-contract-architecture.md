@@ -307,7 +307,28 @@ No asset approval decisions here. It only answers pricing for assets the rest of
 
 ---
 
-# 7. `TreasuryController`
+# 7. `Treasury`
+
+## Responsibility
+
+This is the pure reserve vault.
+
+## It should own
+
+* reserve ERC20 balances held by protocol
+* authorized-caller deposit/withdraw permissions
+
+## It should not own
+
+* pricing
+* mint/redeem policy
+* collateralization logic
+* charity mint policy
+* governance proposal state
+
+---
+
+# 8. `TreasuryController`
 
 ## Responsibility
 
@@ -317,7 +338,6 @@ This is where most of the operational complexity belongs.
 
 ## It should own
 
-* reserve balances held by protocol
 * mint against deposit
 * redeem into reserve assets
 * merchant vs user redemption rates
@@ -325,10 +345,12 @@ This is where most of the operational complexity belongs.
 * charity mint uplift during deposit minting
 * pause state for mint/redeem flows
 * surplus accounting hooks
+* collateralization and excess-charity-mint policy
 
 ## It should read from
 
 * `TCOINToken`
+* `Treasury`
 * `ReserveRegistry`
 * `OracleRouter`
 * `CharityRegistry`
@@ -336,6 +358,7 @@ This is where most of the operational complexity belongs.
 
 ## It should not own
 
+* reserve ERC20 custody
 * governance proposal machinery
 * steward registry logic
 * token demurrage internals
@@ -466,7 +489,7 @@ proposeCadPegUpdate(uint256 newPeg)
 proposeUserRedeemRateUpdate(uint256 newRate)
 proposeMerchantRedeemRateUpdate(uint256 newRate)
 proposeCharitySurplusMintRateUpdate(uint256 newRate)
-proposeDemurrageRateUpdate(uint256 newRate)
+proposeExpirePeriodUpdate(uint256 newExpirePeriod)
 ```
 
 ### Oracle administration proposals

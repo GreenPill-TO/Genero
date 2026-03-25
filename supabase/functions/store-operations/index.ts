@@ -7,7 +7,7 @@ import {
   rejectCityManagerStore,
 } from "../_shared/merchantApplications.ts";
 import { jsonResponse } from "../_shared/responses.ts";
-import { assignStoreBia, upsertStore } from "../_shared/storeOperations.ts";
+import { assignStoreBia, updateStoreRisk, upsertStore } from "../_shared/storeOperations.ts";
 import { toNumber } from "../_shared/validation.ts";
 
 type DenoServe = {
@@ -81,6 +81,23 @@ async function handleRequest(req: Request): Promise<Response> {
       const status = (url.searchParams.get("status") ?? "pending").trim().toLowerCase();
       const limit = Math.max(1, Math.min(250, Math.trunc(toNumber(url.searchParams.get("limit"), 50))));
       return jsonResponse(req, await listCityManagerStores({ ...base, status, limit }));
+    }
+
+    if (req.method === "POST" && pathname === "/risk") {
+      const storeId = Number(body?.storeId ?? 0);
+      if (!Number.isFinite(storeId) || storeId <= 0) {
+        return jsonResponse(req, { error: "storeId must be a positive number." }, { status: 400 });
+      }
+
+      return jsonResponse(
+        req,
+        await updateStoreRisk({
+          ...base,
+          storeId,
+          isSuspended: body?.isSuspended === true,
+          reason: typeof body?.reason === "string" ? body.reason : null,
+        })
+      );
     }
 
     if (req.method === "POST" && /^\/city-manager\/stores\/\d+\/approve$/.test(pathname)) {

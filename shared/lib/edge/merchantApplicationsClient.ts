@@ -51,3 +51,26 @@ export async function submitMerchantApplication(
     appContext,
   });
 }
+
+export async function checkMerchantSlugAvailability(
+  input: {
+    slug: string;
+    excludeStoreId?: number | null;
+    appContext?: AppScopeInput | null;
+  }
+): Promise<Record<string, unknown>> {
+  const params = new URLSearchParams();
+  params.set("slug", input.slug);
+  if (typeof input.excludeStoreId === "number" && input.excludeStoreId > 0) {
+    params.set("excludeStoreId", String(input.excludeStoreId));
+  }
+
+  return invokeEdgeFunction<Record<string, unknown>>(
+    "merchant-applications",
+    `/slug-availability?${params.toString()}`,
+    {
+      method: "GET",
+      appContext: input.appContext,
+    }
+  );
+}

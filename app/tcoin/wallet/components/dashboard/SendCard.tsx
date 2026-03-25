@@ -6,7 +6,10 @@ import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { useModal } from "@shared/contexts/ModalContext";
-import { createClient } from "@shared/lib/supabase/client";
+import {
+  getWalletContactDetail,
+  updateWalletContactState,
+} from "@shared/lib/edge/walletOperationsClient";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
 import { ContactSelectModal } from "@tcoin/wallet/components/modals";
 import { Hypodata, contactRecordToHypodata } from "./types";
@@ -154,17 +157,9 @@ export function SendCard({
     if (!toSendData?.id || !userData?.cubidData?.id) return;
     const fetchConnections = async () => {
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("connections")
-          .select("*")
-          .match({
-            connected_user_id: toSendData.id,
-            owner_user_id: userData.cubidData.id,
-          })
-          .neq("state", "new");
-        if (error) throw error;
-        setConnections(data?.[0] ?? null);
+        const { contact } = await getWalletContactDetail(toSendData.id, { citySlug: "tcoin" });
+        const state = contact?.state?.toLowerCase() ?? null;
+        setConnections(state && state !== "new" ? [contact] : null);
       } catch (err) {
         console.error("fetchConnections error", err);
       }
@@ -538,60 +533,40 @@ export function SendCard({
               <div className="border-t border-gray-700 pt-4">
                 <p>Add to Contacts?</p>
                 <div className="mt-2 flex justify-center gap-4">
-                  <Button
-                    size="sm"
-                    onClick={async () => {
-                      const supabase = createClient();
-                      try {
-                        await supabase
-                          .from("connections")
-                          .update({ state: "added" })
-                          .match({
-                            connected_user_id: toSendData.id,
-                            owner_user_id: userData?.cubidData?.id,
-                          });
-                        await supabase
-                          .from("connections")
-                          .update({ state: "added" })
-                          .match({
-                            owner_user_id: toSendData.id,
-                            connected_user_id: userData?.cubidData?.id,
-                          });
-                        toast.success("Contact added!");
-                      } catch (err) {
-                        console.error("add contact error", err);
-                      }
-                    }}
-                  >
-                    Yes
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      const supabase = createClient();
-                      try {
-                        await supabase
-                          .from("connections")
-                          .update({ state: "removed" })
-                          .match({
-                            connected_user_id: toSendData.id,
-                            owner_user_id: userData?.cubidData?.id,
-                          });
-                        await supabase
-                          .from("connections")
-                          .update({ state: "removed" })
-                          .match({
-                            owner_user_id: toSendData.id,
-                            connected_user_id: userData?.cubidData?.id,
-                          });
-                        toast.success("Contact removed!");
-                      } catch (err) {
-                        console.error("remove contact error", err);
-                      }
-                    }}
-                  >
-                    No
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await updateWalletContactState(
+                            { connectedUserId: toSendData.id, state: "added" },
+                            { citySlug: "tcoin" }
+                          );
+                          setConnections([{ state: "added" }]);
+                          toast.success("Contact added!");
+                        } catch (err) {
+                          console.error("add contact error", err);
+                        }
+                      }}
+                    >
+                      Yes
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await updateWalletContactState(
+                            { connectedUserId: toSendData.id, state: "removed" },
+                            { citySlug: "tcoin" }
+                          );
+                          setConnections([{ state: "removed" }]);
+                          toast.success("Contact removed!");
+                        } catch (err) {
+                          console.error("remove contact error", err);
+                        }
+                      }}
+                    >
+                      No
                   </Button>
                 </div>
               </div>

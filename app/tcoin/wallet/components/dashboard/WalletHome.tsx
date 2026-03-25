@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { fetchContactsForOwner } from "@shared/api/services/supabaseService";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
 import { useModal } from "@shared/contexts/ModalContext";
@@ -12,11 +11,11 @@ import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
 import { getRecentPaymentRequestParticipants } from "@shared/lib/edge/paymentRequestsClient";
 import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
-import { createClient } from "@shared/lib/supabase/client";
 import {
-  listWalletPublicKeysForUser,
-  mapUserIdsByWallets,
-} from "@shared/lib/supabase/walletIdentities";
+  connectWalletContact,
+  getWalletRecents,
+  lookupWalletUserByIdentifier,
+} from "@shared/lib/edge/walletOperationsClient";
 import { BuyTcoinModal, TopUpModal } from "@tcoin/wallet/components/modals";
 import { ContributionsCard } from "./ContributionsCard";
 import { SendCard } from "./SendCard";
@@ -165,21 +164,27 @@ export function WalletHome({
       const rest = extractAndDecodeBase64(data);
       if (!rest?.nano_id) return;
       try {
-        const supabase = createClient();
-        const { data: userDataFromSupabaseTable, error } = await supabase
-          .from("users")
-          .select("*")
-          .match({ user_identifier: rest.nano_id });
-        if (error) throw error;
+        const lookup = await lookupWalletUserByIdentifier(
+          { userIdentifier: rest.nano_id },
+          { citySlug: "tcoin" }
+        );
+        if (!lookup.user) {
+          throw new Error("No user matched the scanned QR code.");
+        }
 
-        const { error: insertError } = await supabase.from("connections").insert({
-          owner_user_id: userData?.cubidData?.id,
-          connected_user_id: userDataFromSupabaseTable?.[0]?.id,
-          state: "new",
+        await connectWalletContact(
+          { connectedUserId: lookup.user.id, state: "new" },
+          { citySlug: "tcoin" }
+        );
+
+        setToSendData({
+          id: lookup.user.id,
+          full_name: lookup.user.fullName,
+          username: lookup.user.username,
+          profile_image_url: lookup.user.profileImageUrl,
+          wallet_address: lookup.user.walletAddress,
+          state: lookup.user.state,
         });
-        if (insertError) throw insertError;
-
-        setToSendData(userDataFromSupabaseTable?.[0]);
         if (rest?.qrTcoinAmount) {
           const sanitized = sanitizeNumeric(String(rest.qrTcoinAmount));
           if (sanitized) {
@@ -259,160 +264,45 @@ export function WalletHome({
       };
     }
 
-    const supabase = createClient();
-
-    const toTimestamp = (value: string | null | undefined): number => {
-      if (!value) return Number.NEGATIVE_INFINITY;
-      const parsed = Date.parse(value);
-      return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
-    };
-
-    const upsertRecent = (
-      map: Map<number, RecentInteraction>,
-      row: Partial<RecentInteraction> & { id: number; lastInteractionAt: string | null }
-    ) => {
-      const existing = map.get(row.id);
-      const nextTimestamp = toTimestamp(row.lastInteractionAt);
-      const currentTimestamp = toTimestamp(existing?.lastInteractionAt);
-
-      if (!existing || nextTimestamp >= currentTimestamp) {
-        map.set(row.id, {
-          id: row.id,
-          full_name: row.full_name ?? existing?.full_name ?? null,
-          username: row.username ?? existing?.username ?? null,
-          profile_image_url: row.profile_image_url ?? existing?.profile_image_url ?? null,
-          lastInteractionAt: row.lastInteractionAt,
-        });
-      }
-    };
-
-    const parseMaybeNumber = (value: unknown): number | null => {
-      if (typeof value === "number" && Number.isFinite(value)) {
-        return value;
-      }
-      if (typeof value === "string") {
-        const parsed = Number.parseInt(value, 10);
-        return Number.isFinite(parsed) ? parsed : null;
-      }
-      return null;
-    };
-
     const loadRecents = async () => {
       try {
         const recentsByUser = new Map<number, RecentInteraction>();
-
-        try {
-          const contacts = await fetchContactsForOwner(user_id);
-          contacts.forEach((contact) => {
-            upsertRecent(recentsByUser, {
-              id: contact.id,
-              full_name: contact.full_name,
-              username: contact.username,
-              profile_image_url: contact.profile_image_url,
-              lastInteractionAt: contact.last_interaction,
-            });
-          });
-        } catch {
-          // Best effort only.
-        }
-
-        const myWallets = await listWalletPublicKeysForUser(user_id, supabase);
-        const myWalletSet = new Set(myWallets);
-
-        if (myWallets.length > 0) {
-          const [toRowsResult, fromRowsResult] = await Promise.all([
-            supabase
-              .from("act_transaction_entries")
-              .select("wallet_account_to, wallet_account_from, created_at")
-              .eq("currency", "TCOIN")
-              .in("wallet_account_to", myWallets)
-              .order("created_at", { ascending: false })
-              .limit(80),
-            supabase
-              .from("act_transaction_entries")
-              .select("wallet_account_to, wallet_account_from, created_at")
-              .eq("currency", "TCOIN")
-              .in("wallet_account_from", myWallets)
-              .order("created_at", { ascending: false })
-              .limit(80),
-          ]);
-
-          const txRows = [...(toRowsResult.data ?? []), ...(fromRowsResult.data ?? [])];
-          const walletLastSeen = new Map<string, string>();
-
-          txRows.forEach((row: any) => {
-            const toWallet =
-              typeof row.wallet_account_to === "string" ? row.wallet_account_to : null;
-            const fromWallet =
-              typeof row.wallet_account_from === "string" ? row.wallet_account_from : null;
-            const createdAt =
-              typeof row.created_at === "string" ? row.created_at : null;
-
-            if (!createdAt) return;
-
-            const counterpartWallet =
-              toWallet && myWalletSet.has(toWallet)
-                ? fromWallet
-                : fromWallet && myWalletSet.has(fromWallet)
-                  ? toWallet
-                  : null;
-
-            if (!counterpartWallet || myWalletSet.has(counterpartWallet)) return;
-
-            const existing = walletLastSeen.get(counterpartWallet);
-            if (!existing || toTimestamp(createdAt) > toTimestamp(existing)) {
-              walletLastSeen.set(counterpartWallet, createdAt);
-            }
-          });
-
-          const counterpartWallets = Array.from(walletLastSeen.keys());
-          if (counterpartWallets.length > 0) {
-            const walletToUserId = await mapUserIdsByWallets(counterpartWallets, supabase);
-            const userIds = new Set<number>();
-            walletToUserId.forEach((userId) => {
-              if (parseMaybeNumber(userId) != null) {
-                userIds.add(userId);
-              }
-            });
-
-            if (userIds.size > 0) {
-              const { data: userRows } = await supabase
-                .from("users")
-                .select("id, full_name, username, profile_image_url")
-                .in("id", Array.from(userIds));
-
-              const usersById = new Map<number, any>();
-              (userRows ?? []).forEach((row: any) => {
-                const id = parseMaybeNumber(row.id);
-                if (id != null) {
-                  usersById.set(id, row);
-                }
-              });
-
-              walletLastSeen.forEach((lastSeen, wallet) => {
-                const userId = walletToUserId.get(wallet);
-                if (!userId || userId === user_id) return;
-                const userRow = usersById.get(userId);
-                upsertRecent(recentsByUser, {
-                  id: userId,
-                  full_name: userRow?.full_name ?? null,
-                  username: userRow?.username ?? null,
-                  profile_image_url: userRow?.profile_image_url ?? null,
-                  lastInteractionAt: lastSeen,
-                });
-              });
-            }
+        const toTimestamp = (value: string | null | undefined): number => {
+          if (!value) return Number.NEGATIVE_INFINITY;
+          const parsed = Date.parse(value);
+          return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+        };
+        const upsertRecent = (row: RecentInteraction) => {
+          const existing = recentsByUser.get(row.id);
+          if (!existing || toTimestamp(row.lastInteractionAt) >= toTimestamp(existing.lastInteractionAt)) {
+            recentsByUser.set(row.id, row);
           }
+        };
+
+        const [walletRecents, paymentRequestRecents] = await Promise.allSettled([
+          getWalletRecents({ citySlug: "tcoin" }),
+          getRecentPaymentRequestParticipants({
+            appContext: { citySlug: "tcoin" },
+          }),
+        ]);
+
+        if (walletRecents.status === "fulfilled") {
+          walletRecents.value.participants.forEach((participant) => {
+            if (participant.id === user_id) return;
+            upsertRecent({
+              id: participant.id,
+              full_name: participant.fullName,
+              username: participant.username,
+              profile_image_url: participant.profileImageUrl,
+              lastInteractionAt: participant.lastInteractionAt ?? null,
+            });
+          });
         }
 
-        try {
-          const paymentRequestRecents = await getRecentPaymentRequestParticipants({
-            appContext: { citySlug: "tcoin" },
-          });
-
-          paymentRequestRecents.participants.forEach((participant) => {
+        if (paymentRequestRecents.status === "fulfilled") {
+          paymentRequestRecents.value.participants.forEach((participant) => {
             if (participant.id === user_id) return;
-            upsertRecent(recentsByUser, {
+            upsertRecent({
               id: participant.id,
               full_name: participant.fullName,
               username: participant.username,
@@ -420,8 +310,6 @@ export function WalletHome({
               lastInteractionAt: participant.lastInteractionAt,
             });
           });
-        } catch {
-          // Best effort only.
         }
 
         const sorted = Array.from(recentsByUser.values())
@@ -457,7 +345,7 @@ export function WalletHome({
     openModal({
       content: <BuyTcoinModal closeModal={closeModal} />,
       title: "Buy TCOIN",
-      description: "Checkout with fiat to mint TCOIN automatically from USDC on Celo.",
+      description: "Checkout with fiat to acquire cplTCOIN from USDC on Celo through the TorontoCoin liquidity router.",
     });
   };
 

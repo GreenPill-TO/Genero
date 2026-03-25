@@ -285,9 +285,9 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
 
         if (previousStatus !== statusBody.session.status) {
           if (statusBody.session.status === "mint_started") {
-            toast.info("Mint in progress...");
+            toast.info("Router buy in progress...");
           } else if (statusBody.session.status === "mint_complete") {
-            toast.success("TCOIN mint complete.");
+            toast.success("cplTCOIN delivered.");
           } else if (statusBody.session.status === "manual_review") {
             toast.warning("This checkout needs manual review. Admin will retry automatically.");
           } else if (statusBody.session.status === "failed") {
@@ -319,27 +319,27 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
     }
 
     if (session.status === "mint_complete") {
-      return "Completed. Your wallet should now reflect updated TCOIN balance.";
+      return `Completed. Your wallet should now reflect updated ${session.finalTokenSymbol ?? "cplTCOIN"} balance.`;
     }
 
     if (session.status === "manual_review") {
       return "Manual review is in progress. If delayed, contact support with your session id.";
     }
 
-    return "This flow is atomic once mint starts: either TCOIN arrives, or mint transaction reverts.";
+    return "This flow is atomic once router execution starts: either cplTCOIN arrives, or the router transaction reverts.";
   }, [session]);
 
   const conversionPreview =
     inputMode === "tcoin"
       ? `≈ ${formatCadDisplay(cadAmount)} CAD`
-      : `≈ ${formatTcoinDisplay(tcoinAmount)} TCOIN`;
+      : `≈ ${formatTcoinDisplay(tcoinAmount)} cplTCOIN`;
 
   return (
     <div className="space-y-4 font-sans">
       {!sessionId && (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Pay with fiat through Transak. Funds route to USDC on Celo, then mint to TCOIN automatically.
+            Pay with fiat through Transak. Funds route to USDC on Celo, then acquire cplTCOIN through the TorontoCoin liquidity router.
           </p>
 
           <div className="rounded-md border p-3 space-y-3">
@@ -349,7 +349,7 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="Toggle amount input between TCOIN and CAD"
+                aria-label="Toggle amount input between cplTCOIN and CAD"
                 onClick={() => setInputMode((prev) => (prev === "tcoin" ? "cad" : "tcoin"))}
               >
                 <LuRefreshCcw className="h-4 w-4" />
@@ -358,7 +358,7 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
 
             <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="buy-tcoin-amount">
-                {inputMode === "tcoin" ? "Amount in TCOIN" : "Amount in CAD"}
+                {inputMode === "tcoin" ? "Amount in cplTCOIN" : "Amount in CAD"}
               </label>
               <Input
                 id="buy-tcoin-amount"
@@ -386,6 +386,9 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
               <Input id="buy-tcoin-currency" value="CAD" readOnly aria-readonly="true" />
               <p className="text-xs text-muted-foreground">
                 Fixed to CAD for Buy TCOIN checkout quotes in this version.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Settlement uses USDC on Celo as input and delivers cplTCOIN to your wallet.
               </p>
             </div>
 
@@ -456,7 +459,7 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
             <div className="overflow-hidden rounded-md border">
               <iframe
                 src={widgetUrl}
-                title="Buy TCOIN checkout"
+                title="Buy cplTCOIN checkout"
                 className="h-[520px] w-full"
                 allow="clipboard-write; payment"
               />
@@ -491,14 +494,24 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
                 Incoming USDC tx
               </a>
             )}
-            {session?.mintTxHash && (
+            {(session?.routerTxHash ?? session?.mintTxHash) && (
               <a
                 className="underline"
-                href={`${CELOSCAN_TX_PREFIX}${session.mintTxHash}`}
+                href={`${CELOSCAN_TX_PREFIX}${session.routerTxHash ?? session.mintTxHash}`}
                 target="_blank"
                 rel="noreferrer"
               >
-                Mint tx
+                Router tx
+              </a>
+            )}
+            {session?.tcoinDeliveryTxHash && session.tcoinDeliveryTxHash !== (session.routerTxHash ?? session.mintTxHash) && (
+              <a
+                className="underline"
+                href={`${CELOSCAN_TX_PREFIX}${session.tcoinDeliveryTxHash}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Delivery tx
               </a>
             )}
           </div>

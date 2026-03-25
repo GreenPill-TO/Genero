@@ -1,3 +1,1744 @@
+## v1.79
+### Timestamp
+- 2026-03-25 15:20:14 EDT
+
+### Objective
+- Address the inline PR review comments on `#60`, including the onramp webhook security gap, TorontoCoin/Sarafu ops doc issues, and the remaining runtime consistency issues called out in review.
+
+### What Changed
+- Fixed Foundry/deploy hygiene noted in review:
+  - aligned `DeployCityImplementationRegistry.s.sol` to `pragma solidity ^0.8.24`
+  - narrowed `contracts/foundry/.gitignore` so checked-in deployment manifests are no longer hidden by a broad `deployments/**` ignore rule
+  - added a zero-address guard to `MintableTestReserveToken` owner initialization
+- Cleaned the runbooks:
+  - removed absolute local filesystem paths from `docs/engineering/torontocoin-ops-runbook.md`
+  - corrected the registry deployment runbook to use `pnpm` and the actual Foundry RPC aliases (`celo-mainnet`, `ethereum-sepolia`, `celo-sepolia`)
+- Unified the wallet transaction-history client usage around the canonical `wallet-operations` response shape (`transactions[]` with camelCase fields), updating both wallet contact surfaces to consume the same contract.
+- Restored the `citySlug` passthrough on `/api/vouchers/route` so the compatibility proxy preserves explicit caller context instead of silently dropping it.
+- Closed the webhook trust gap on the Supabase `onramp` edge function by requiring a shared forwarding secret on `/webhooks/transak`, and updated the Next.js webhook ingress to forward that secret only after Transak signature verification succeeds.
+- Aligned TorontoCoin onramp preview behaviour with execution by using the deposit wallet as the preview buyer identity, matching the signer that actually submits `buyCplTcoin(...)`.
+- Added or updated tests for the voucher route proxy, the webhook forwarding secret, and the edge onramp webhook dispatch path.
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+- `pnpm exec tsc --noEmit -p tsconfig.ci.json`
+- `pnpm build`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `5.922180920672106578 CELO`
+- End balance: `5.922180920672106578 CELO`
+- Total spent: `0 CELO`
+
+### Files Edited
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/.gitignore`
+- `contracts/foundry/src/torontocoin/MintableTestReserveToken.sol`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `app/api/vouchers/route/route.ts`
+- `app/api/vouchers/route/route.test.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/onramp/index.test.ts`
+- `supabase/functions/_shared/onramp.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.78
+### Timestamp
+- 2026-03-25 14:51:37 EDT
+
+### Objective
+- Fix the new Supabase edge-boundary CI guard so it passes on GitHub runners that do not have `rg` installed, then rerun the PR validation suite for the open `dev` PR.
+
+### What Changed
+- Updated `scripts/check-no-direct-supabase-db.mjs` so it still prefers `rg --files` locally, but now falls back to a pure Node.js recursive directory walk when `rg` is unavailable.
+- Kept the same guarded path scope and allowlist semantics, so the boundary policy is unchanged; only the file-discovery implementation is more portable across CI environments.
+- Recorded the guardrail expectation in the specs: lint-time boundary checks must not depend on optional developer-only binaries being present on the runner.
+- Fixed follow-on CI type errors that the local `next build` path does not surface:
+  - corrected the `getWalletContacts(...)` caller in `shared/api/services/supabaseService.ts` to pass a plain `AppScopeInput`
+  - made the legacy Cubid data cast explicit through `unknown`
+  - removed `bigint` exponentiation from `shared/lib/contracts/torontocoinPools.ts` so the CI TypeScript target accepts the code
+  - tightened tracked-pool filtering and replaced the direct `readContract(getQuote)` call with encoded `eth_call` handling so the Sarafu pool quote check typechecks cleanly
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+- `pnpm exec tsc --noEmit -p tsconfig.ci.json`
+- `pnpm build`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `5.922180920672106578 CELO`
+- End balance: `5.922180920672106578 CELO`
+- Total spent: `0 CELO`
+
+### Files Edited
+- `scripts/check-no-direct-supabase-db.mjs`
+- `shared/api/services/supabaseService.ts`
+- `shared/lib/contracts/torontocoinPools.ts`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.77
+### Timestamp
+- 2026-03-23 20:35:00 EDT
+
+### Objective
+- Deploy the updated governance helper contracts to Celo mainnet and repoint the live `Governance` contract so the first-class `addPoolWithAddress(...)` path is available on the current live suite without replacing governance itself.
+
+### What Changed
+- Confirmed again that the live `Governance` contract is a direct deployment, not a proxy, so the practical live upgrade surface is its helper pointers rather than the governance address itself.
+- Deployed the updated mainnet helper contracts:
+  - new `GovernanceProposalHelper`: `0x79b0CC5f5AA657d1dd863D5447f3046EC62F62D3`
+  - new `GovernanceExecutionHelper`: `0x505209d667A81c5bc412E5B054fe786DDa56c98D`
+- Updated the live `Governance` helper pointers:
+  - `proposalHelper = 0x79b0CC5f5AA657d1dd863D5447f3046EC62F62D3`
+  - `executionHelper = 0x505209d667A81c5bc412E5B054fe786DDa56c98D`
+  - `routerProposalHelper` remains unchanged at `0x1814e7fE88ccfa1e08Db589Ed41994bE15dB76D6`
+- Verified the new first-class selector is reachable through the live governance fallback by estimating `proposePoolAddWithAddress(...)` directly against the governance address from the live steward/deployer account.
+- Updated the checked-in live suite artefact so `contracts/foundry/deployments/torontocoin/celo-mainnet/suite.json` now reflects the current on-chain helper addresses.
+
+### Verification
+- `cast call 0x0Ae274e0898499C48832149266A6625a4D20c581 "proposalHelper()(address)" --rpc-url https://forno.celo.org`
+- `cast call 0x0Ae274e0898499C48832149266A6625a4D20c581 "executionHelper()(address)" --rpc-url https://forno.celo.org`
+- `cast estimate --from 0x1B7489bE5C572041b682749F7B25B84E30cF9271 0x0Ae274e0898499C48832149266A6625a4D20c581 "proposePoolAddWithAddress(bytes32,string,string,address,uint64)" 0x746573742d706f6f6c2d776974682d6164647265737300000000000000000000 "Test Pool" "test-pool" 0x000000000000000000000000000000000000c0Fe 60 --rpc-url https://forno.celo.org`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `6.092195950936303558 CELO`
+- End balance: `5.922180920672106578 CELO`
+- Total spent: `0.170015030264196980 CELO`
+- Cost breakdown:
+  - deploy new `GovernanceExecutionHelper`: `0.138873920752562916 CELO`
+  - deploy new `GovernanceProposalHelper`: `0.029957471914954688 CELO`
+  - set live `proposalHelper`: `0.000727882025050860 CELO`
+  - set live `executionHelper`: `0.000455755571628516 CELO`
+
+### Files Edited
+- `contracts/foundry/deployments/torontocoin/celo-mainnet/suite.json`
+- `agent-context/session-log.md`
+
+## v1.76
+### Timestamp
+- 2026-03-23 20:15:00 EDT
+
+### Objective
+- Remove the now-obsolete temporary `GovernancePoolRegistryAdminHelper` after adding the first-class `addPoolWithAddress(...)` governance path.
+
+### What Changed
+- Deleted `contracts/foundry/src/torontocoin/GovernancePoolRegistryAdminHelper.sol`.
+- Deleted `contracts/foundry/test/unit/torontocoin/GovernancePoolRegistryAdminHelper.t.sol`.
+- Confirmed the intended current posture is the first-class `addPoolWithAddress(...)` governance path, not the temporary helper workaround.
+- Left the older session-log references in place as historical record, consistent with the append-only session-log policy.
+
+### Verification
+- `forge build`
+- `rg -n "GovernancePoolRegistryAdminHelper" .`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `6.092195950936303558 CELO`
+- End balance: `6.092195950936303558 CELO`
+- Total spent: `0 CELO`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/GovernancePoolRegistryAdminHelper.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernancePoolRegistryAdminHelper.t.sol`
+- `agent-context/session-log.md`
+
+## v1.75
+### Timestamp
+- 2026-03-23 20:05:00 EDT
+
+### Objective
+- Add a first-class `addPoolWithAddress(...)` path to TorontoCoin `PoolRegistry` and governance so future deployments do not need the temporary pool-address helper, then verify whether the current live `PoolRegistry` and `Governance` can be upgraded in place.
+
+### What Changed
+- Added `addPoolWithAddress(bytes32 poolId, string name, string metadataRecordId, address poolAddress)` to `contracts/foundry/src/torontocoin/PoolRegistry.sol` and `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`.
+- Refactored `PoolRegistry` internals so:
+  - `addPool(...)` and `addPoolWithAddress(...)` share one `_addPool(...)` path
+  - canonical address binding still flows through one `_setPoolAddress(...)` path
+  - future bootstrap and operator flows can add and bind a pool in one transaction without changing runtime semantics
+- Added first-class governance support for that path across:
+  - `contracts/foundry/src/torontocoin/Governance.sol`
+  - `contracts/foundry/src/torontocoin/GovernanceProposalHelper.sol`
+  - `contracts/foundry/src/torontocoin/GovernanceExecutionHelper.sol`
+- Updated `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol` so fresh deployments now bootstrap the canonical Sarafu pool through `addPoolWithAddress(...)` instead of `addPool(...)` plus `setPoolAddress(...)`.
+- Extended unit coverage:
+  - `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol` now proves `addPoolWithAddress(...)` sets the canonical address mapping immediately
+  - `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol` now proves the new governance proposal path carries the pool address payload through execution
+- Verified the live mainnet deployment shape:
+  - live `PoolRegistry` at `0x3e9926Ff48b84f6E625E833219353b9cfb473A74` is a direct deployment, not a proxy
+  - live `Governance` at `0x0Ae274e0898499C48832149266A6625a4D20c581` is a direct deployment, not a proxy
+  - both EIP-1967 implementation/admin slots are zero on the live governance address
+- Conclusion: future deployments no longer need the helper, but the current mainnet suite cannot be upgraded in place. Migrating the live suite to the new first-class path would require a controlled replacement of `PoolRegistry` and `Governance`, not an in-place upgrade transaction.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/PoolRegistry.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge build`
+- `cast storage 0x0Ae274e0898499C48832149266A6625a4D20c581 0x360894A13BA1A3210667C828492DB98DCA3E2076CC3735A920A3CA505D382BBC --rpc-url https://forno.celo.org`
+- `cast storage 0x0Ae274e0898499C48832149266A6625a4D20c581 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103 --rpc-url https://forno.celo.org`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `6.092195950936303558 CELO`
+- End balance: `6.092195950936303558 CELO`
+- Total spent: `0 CELO`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/GovernanceProposalHelper.sol`
+- `contracts/foundry/src/torontocoin/GovernanceExecutionHelper.sol`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.74
+### Timestamp
+- 2026-03-23 19:25:00 EDT
+
+### Objective
+- Register the live Sarafu pool at `0xA6f024Ad53766d332057d5e40215b695522ee3dE` in the TorontoCoin mainnet `PoolRegistry` and close the governance admin gap that currently prevents `setPoolAddress(...)` from being executed through the native proposal surface.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/GovernancePoolRegistryAdminHelper.sol` as a narrow governance fallback helper that preserves the normal proposal surface and adds only the missing `setPoolAddress(bytes32,address)` admin call through `Governance.delegatecall`.
+- Added `contracts/foundry/test/unit/torontocoin/GovernancePoolRegistryAdminHelper.t.sol` to prove that, once `PoolRegistry` ownership/governance are held by the `Governance` contract, the helper can update a registered pool address through the governance fallback path and have `PoolRegistry` accept the call from `Governance`.
+- Broadcast the helper to Celo mainnet at `0x9886f6034A1cdcE73C21602Ec9acd928593bbA05`, temporarily pointed `Governance.proposalHelper` at it, and restored the original helper at `0xEDAFCef37590305709E174787AB59D347B7BA8E6` after registration.
+- Registered the pool id `0x746f726f6e746f2d63697263756c61722d65636f6e6f6d790000000000000000` with the name `Toronto's Circular Economy` and metadata record id `0xA6f024Ad53766d332057d5e40215b695522ee3dE` through the normal governance proposal flow:
+  - proposal `1` expired because a `1` second voting window was too short on live Celo mainnet
+  - proposal `2` succeeded with a `60` second window, then executed cleanly
+- Bound the registered pool id to the live Sarafu `SwapPool` at `0xA6f024Ad53766d332057d5e40215b695522ee3dE` through the temporary helper, then verified:
+  - `PoolRegistry.listPoolIds()` now returns both the bootstrap pool and `toronto-circular-economy`
+  - `PoolRegistry.getPoolAddress(poolId)` returns `0xA6f024Ad53766d332057d5e40215b695522ee3dE`
+  - `PoolRegistry.isRegisteredPoolAddress(0xA6f024Ad53766d332057d5e40215b695522ee3dE)` returns `true`
+- Re-ran the TorontoCoin ops scripts. They now discover two tracked pools on mainnet. The newly added pool is registered and fee-bypass eligible, but its preview path still fails because it currently has zero `mrTCOIN` and zero `cplTCOIN` liquidity from TorontoCoin’s point of view.
+- Added a technical/functional spec note that the current governance surface still lacks a native `setPoolAddress` proposal path, so manual external-pool registration presently requires the temporary helper pattern until governance grows a first-class proposal type for pool-address binding.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GovernancePoolRegistryAdminHelper.t.sol`
+- `forge build`
+- `cast call 0x3e9926Ff48b84f6E625E833219353b9cfb473A74 "listPoolIds()(bytes32[])" --rpc-url https://forno.celo.org`
+- `cast call 0x3e9926Ff48b84f6E625E833219353b9cfb473A74 "getPoolAddress(bytes32)(address)" 0x746f726f6e746f2d63697263756c61722d65636f6e6f6d790000000000000000 --rpc-url https://forno.celo.org`
+- `cast call 0x3e9926Ff48b84f6E625E833219353b9cfb473A74 "isRegisteredPoolAddress(address)(bool)" 0xA6f024Ad53766d332057d5e40215b695522ee3dE --rpc-url https://forno.celo.org`
+- `pnpm exec tsx scripts/torontocoin-ops-check.ts`
+- `pnpm exec tsx scripts/torontocoin-pool-compatibility-check.ts`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `6.247118087577593885 CELO`
+- End balance: `6.092195950936303558 CELO`
+- Total spent: `0.154922136641290327 CELO`
+- Cost breakdown:
+  - deploy temporary governance helper: `0.126075745339579093 CELO`
+  - set temporary proposal helper: `0.000727882025341772 CELO`
+  - first expired pool-add proposal: `0.007998831340745289 CELO`
+  - second pool-add proposal: `0.007190591371524778 CELO`
+  - steward vote on successful proposal: `0.003003682155959716 CELO`
+  - execute successful proposal: `0.006903946470927356 CELO`
+  - bind pool address through helper: `0.002293575912074349 CELO`
+  - restore original proposal helper: `0.000727882025137974 CELO`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/GovernancePoolRegistryAdminHelper.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernancePoolRegistryAdminHelper.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.73
+### Timestamp
+- 2026-03-23 01:10:00 EDT
+
+### Objective
+- Expand TorontoCoin Sarafu compatibility monitoring beyond the bootstrap pool by making the runtime, ops surface, indexer status, and operator scripts work against the live set of pools already registered in `PoolRegistry`.
+
+### What Changed
+- Extended `shared/lib/contracts/torontocoinRuntime.ts` with configured tracked-pool metadata for the canonical bootstrap pool and added a shared `TrackedTorontoCoinPool` type for runtime consumers.
+- Added `shared/lib/contracts/torontocoinPools.ts` as the new shared TorontoCoin pool-matrix helper. It now:
+  - resolves live registered pool ids and addresses from `PoolRegistry`
+  - merges them with the configured bootstrap pool
+  - reads real Sarafu `SwapPool` components (`tokenRegistry`, `tokenLimiter`, `quoter`, `feePpm`, owner)
+  - collects token balances, limiter limits, price-index values, quote checks, and router preview readiness per pool
+- Refactored `shared/lib/contracts/torontocoinOps.ts` from a bootstrap-only summary into a broader core status contract with:
+  - live address summary
+  - governance ownership checks
+  - reserve-route health
+  - a per-pool compatibility matrix
+- Extended `app/api/tcoin/ops/status/route.ts` so the operator payload now merges the on-chain TorontoCoin matrix with TorontoCoin-specific indexer tracking state from `getIndexerScopeStatus(...)`.
+- Updated `app/tcoin/wallet/admin/page.tsx` so the admin dashboard now renders a pool-by-pool TorontoCoin ops matrix instead of a single bootstrap-liquidity summary.
+- Refactored indexer TorontoCoin assumptions beyond the bootstrap pool:
+  - `services/indexer/src/discovery/pools.ts` now includes live TorontoCoin-registered Sarafu pools from `PoolRegistry` in discovery, even when they would not be reached by plain token-overlap heuristics alone
+  - `services/indexer/src/index.ts` now reports TorontoCoin tracking per pool instead of only `bootstrapPoolTracked`
+  - `services/indexer/src/types.ts` and `shared/lib/indexer/types.ts` now model that richer per-pool tracking payload
+- Added new operator scripts and package commands:
+  - `pnpm ops:torontocoin`
+  - `pnpm ops:torontocoin:pools`
+  - `pnpm ops:torontocoin:acceptance`
+- Added `tsx` as a dev dependency so those checked-in TypeScript scripts can execute with repo path aliases and `.ts` imports intact.
+- Updated the TorontoCoin ops runbook plus the technical and functional specs to document the new live registered-pool compatibility posture.
+
+### Verification
+- `pnpm test`
+- `pnpm lint`
+- `pnpm build`
+- `pnpm exec tsx scripts/torontocoin-ops-check.ts`
+- `pnpm exec tsx scripts/torontocoin-pool-compatibility-check.ts`
+- `pnpm exec tsx scripts/torontocoin-pool-acceptance.ts`
+
+### Files Edited
+- `shared/lib/contracts/torontocoinRuntime.ts`
+- `shared/lib/contracts/torontocoinPools.ts`
+- `shared/lib/contracts/torontocoinOps.ts`
+- `services/indexer/src/config.ts`
+- `services/indexer/src/index.ts`
+- `services/indexer/src/types.ts`
+- `services/indexer/src/discovery/abis.ts`
+- `services/indexer/src/discovery/pools.ts`
+- `services/indexer/src/discovery/cityContracts.ts`
+- `shared/lib/indexer/types.ts`
+- `app/api/tcoin/ops/status/route.ts`
+- `app/api/tcoin/ops/status/route.test.ts`
+- `app/tcoin/wallet/admin/page.tsx`
+- `shared/lib/contracts/torontocoinRuntime.test.ts`
+- `scripts/torontocoin-ops-check.ts`
+- `scripts/torontocoin-pool-compatibility-check.ts`
+- `scripts/torontocoin-pool-acceptance.ts`
+- `package.json`
+- `pnpm-lock.yaml`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.72
+### Timestamp
+- 2026-03-23 00:20:00 EDT
+
+### Objective
+- Clear the stale Next.js build warnings caused by the indexer importing required TorontoCoin pool/token constants from the wrong module, and confirm how the indexer is actually hosted in the app runtime.
+
+### What Changed
+- Fixed `services/indexer/src/index.ts` so `REQUIRED_POOL_ADDRESSES` and `REQUIRED_TCOIN_TOKEN` are imported from `services/indexer/src/config.ts` instead of `services/indexer/src/state/runControl.ts`.
+- Confirmed the indexer is not a Supabase edge function and not a Supabase function at all. It is a server-side TypeScript service under `services/indexer/src` that runs inside the Next.js app runtime and is invoked through:
+  - `POST /api/indexer/touch`
+  - `GET /api/indexer/status`
+- Re-ran lint autofix, tests, and build after the import fix. `next lint --fix` left existing warnings untouched because they are not auto-fixable, while the stale indexer build warnings disappeared.
+
+### Verification
+- `pnpm exec next lint --fix`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `services/indexer/src/index.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.71
+### Timestamp
+- 2026-03-22 23:58:00 EDT
+
+### Objective
+- Finish the Supabase edge-function migration so wallet/sparechange app runtime and retained DB-backed Next routes no longer own direct Supabase table or RPC logic.
+
+### What Changed
+- Extended the shared `user-settings` edge function to own the remaining authenticated bootstrap/profile and custody endpoints:
+  - `POST /auth/ensure-user`
+  - `GET /personas`
+  - `POST /wallet/register-custody`
+  - `GET /wallet/custody-material`
+  - legacy Cubid data read/write compatibility endpoints
+- Added a new `wallet-operations` edge function plus typed client wrappers for:
+  - contacts
+  - contact connection/state changes
+  - recents
+  - transaction history
+  - contact transaction history
+  - user lookup by identifier
+  - transfer recording
+  - user/admin notifications
+- Added a new `voucher-runtime` edge function plus typed client wrappers for:
+  - portfolio reads
+  - voucher route reads
+  - payment-record writes
+- Extended existing edge domains so the remaining DB mutations moved behind canonical function boundaries:
+  - `onramp` now owns legacy Interac reference/confirm flows, pool purchase request creation, admin request edits, and Transak webhook persistence handoff
+  - `redemptions` now owns legacy off-ramp request creation and admin edits
+  - `merchant-applications` now serves slug availability
+  - `store-operations` now serves risk writes
+- Refactored wallet and sparechange runtime surfaces to consume the new typed edge clients instead of direct `supabase.from(...)` / `supabase.rpc(...)` calls, including:
+  - welcome/custody bootstrap
+  - contacts and QR connect flows
+  - recents and transaction history
+  - send-money custody-material recovery
+  - legacy top-up/off-ramp mutations
+  - voucher runtime flows
+  - admin legacy ramp edits
+- Converted the retained DB-backed Next routes into compatibility proxies with `proxyEdgeRequest(...)` or explicit edge forwarding, including:
+  - `/api/vouchers/portfolio`
+  - `/api/vouchers/route`
+  - `/api/vouchers/payment-record`
+  - `/api/pools/buy`
+  - `/api/merchant/slug-availability`
+  - `/api/stores/risk`
+  - `/api/onramp/webhooks/transak`
+- Added `scripts/check-no-direct-supabase-db.mjs` and wired `pnpm lint` to fail when new direct Supabase table/RPC access is introduced in guarded app-facing paths.
+- Updated tests so the app now asserts edge-client and route-proxy contracts rather than the retired direct DB logic.
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+
+### Files Edited
+- `supabase/functions/user-settings/index.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/wallet-operations/index.ts`
+- `supabase/functions/_shared/walletOperations.ts`
+- `supabase/functions/voucher-runtime/index.ts`
+- `supabase/functions/_shared/voucherRuntime.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/_shared/onramp.ts`
+- `supabase/functions/redemptions/index.ts`
+- `supabase/functions/_shared/redemptions.ts`
+- `supabase/functions/merchant-applications/index.ts`
+- `supabase/functions/_shared/merchantApplications.ts`
+- `supabase/functions/store-operations/index.ts`
+- `supabase/functions/_shared/storeOperations.ts`
+- `shared/lib/edge/userSettingsClient.ts`
+- `shared/lib/edge/walletOperations.ts`
+- `shared/lib/edge/walletOperationsClient.ts`
+- `shared/lib/edge/voucherRuntime.ts`
+- `shared/lib/edge/voucherRuntimeClient.ts`
+- `shared/lib/edge/onrampClient.ts`
+- `shared/lib/edge/redemptionsClient.ts`
+- `shared/lib/edge/merchantApplicationsClient.ts`
+- `shared/lib/edge/storeOperationsClient.ts`
+- `shared/api/services/supabaseService.ts`
+- `shared/api/services/supabaseService.test.ts`
+- `shared/utils/insertNotification.ts`
+- `app/api/pools/buy/route.ts`
+- `app/api/pools/buy/route.test.ts`
+- `app/api/vouchers/route/route.ts`
+- `app/api/vouchers/route/route.test.ts`
+- `app/api/vouchers/portfolio/route.ts`
+- `app/api/vouchers/payment-record/route.ts`
+- `app/api/merchant/slug-availability/route.ts`
+- `app/api/stores/risk/route.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `app/tcoin/wallet/**`
+- `app/tcoin/sparechange/**`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.70
+### Timestamp
+- 2026-03-22 21:05:00 EDT
+
+### Objective
+- Switch the app runtime onto the fresh Celo mainnet TorontoCoin suite for wallet buy, transfer, merchant-payment, indexer, and operator visibility flows while preserving the legacy city-registry path for older contract-management surfaces.
+
+### What Changed
+- Added a canonical TorontoCoin app-runtime bridge in `shared/lib/contracts/torontocoinRuntime.ts`, backed by the fresh Celo mainnet deployment artefacts rather than legacy city-registry resolution or `deploy-config.json`.
+- Added a TorontoCoin ops status helper in `shared/lib/contracts/torontocoinOps.ts`, a read-only API route at `app/api/tcoin/ops/status/route.ts`, a terminal operator script at `scripts/torontocoin-ops-check.ts`, and a concise runbook at `docs/engineering/torontocoin-ops-runbook.md`.
+- Switched wallet-facing TCOIN runtime consumers to the live `cplTCOIN` address and `6`-decimal token settings:
+  - `shared/hooks/useTokenBalance.ts`
+  - `shared/hooks/useSendMoney.tsx`
+  - `app/api/pools/buy/route.ts`
+  - wallet dashboard buy copy
+- Switched buy/onramp settlement from the legacy mint-router flow to `LiquidityRouter.previewBuyCplTcoin(...)` and `LiquidityRouter.buyCplTcoin(...)`, with the current runtime bootstrap `poolId` and reserve metadata resolved from the TorontoCoin runtime bridge.
+- Extended onramp session/status payloads so they remain backward-compatible while now carrying TorontoCoin-specific delivery metadata:
+  - `routerTxHash`
+  - `finalTokenAddress`
+  - `finalTokenSymbol`
+  - `finalTokenDecimals`
+  - `poolId`
+  - `reserveAssetUsed`
+- Updated Transak and wallet buy copy to describe acquiring `cplTCOIN` through the TorontoCoin liquidity router rather than minting TCOIN directly from USDC.
+- Updated the indexer configuration so required pool/token tracking now points at the fresh TorontoCoin bootstrap `SwapPool` and live `cplTCOIN`, while still leaving city-registry discovery intact for legacy contract-family reads.
+- Added a read-only TorontoCoin ops status card to the wallet admin page covering live addresses, governance ownership checks, bootstrap pool liquidity, canonical scenario preview output, reserve-route health, and validator timestamps.
+- Added unit coverage for the runtime loader and ops status route and updated wallet/onramp tests to assert the new `cplTCOIN` runtime path.
+- The current automated onramp delivery path still executes the router buy from the service deposit wallet, then forwards resulting `cplTCOIN` to the recipient wallet because the live router settles to `msg.sender`. That caveat is now documented rather than hidden.
+
+### Verification
+- `pnpm test`
+- `pnpm lint`
+- `node --experimental-strip-types scripts/torontocoin-ops-check.ts`
+
+### Files Edited
+- `shared/lib/contracts/torontocoinRuntime.ts`
+- `shared/lib/contracts/torontocoinOps.ts`
+- `app/api/tcoin/ops/status/route.ts`
+- `scripts/torontocoin-ops-check.ts`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `services/onramp/src/config.ts`
+- `services/onramp/src/settlement.ts`
+- `shared/hooks/useTokenBalance.ts`
+- `shared/hooks/useSendMoney.tsx`
+- `services/indexer/src/config.ts`
+- `app/tcoin/wallet/admin/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.69
+### Timestamp
+- 2026-03-22 18:35:00 EDT
+
+### Objective
+- Deploy a fresh Celo mainnet TorontoCoin suite with the updated `GeneroTokenV3` pool-fee bypass and `PoolRegistry` reverse lookup, then validate the canonical Sarafu `SwapPool` deposit path and bounded `1 USDC -> cplTCOIN` retail smoke on chain.
+
+### What Changed
+- Deployed a fresh canonical TorontoCoin suite to Celo mainnet using the current Sarafu-first runtime and `6`-decimal internal token defaults.
+- The new live mainnet entrypoints are:
+  - `Governance`: `0x0Ae274e0898499C48832149266A6625a4D20c581`
+  - `TreasuryController`: `0x5A860da554bf1301708db7c41C4e540135e3FCE4`
+  - `LiquidityRouter`: `0x6BBa692FC6b2F7F19a925a11EEbfc4Dd67C424a7`
+  - `ReserveInputRouter`: `0xdCD1419C195e95dBe6BD5494597d5aF0568Ba1a3`
+  - `SarafuSwapPoolAdapter`: `0x9EBEedA7c8a98fc58775f088A3210fAC781A1e47`
+  - `PoolRegistry`: `0x3e9926Ff48b84f6E625E833219353b9cfb473A74`
+  - `mrTCOIN`: `0x63ed4CFAD21E9F4a30Ad93a199f382f98CAf59C3`
+  - `cplTCOIN`: `0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19`
+  - bootstrap `SwapPool`: `0xDe2a979EC49811aD27730e451651e52b4540c594`
+- The fresh deploy successfully seeded the bootstrap Sarafu pool through the canonical pool-deposit path. The earlier workaround of minting to the deployer and transferring directly into the pool is no longer required on this suite.
+- Re-ran the post-deploy validator after final state settled. The validator now passes against the new suite and confirms:
+  - `tokenDecimalsAreSix = true`
+  - `governanceWiring = true`
+  - `bootstrapPoolReady = true`
+  - `scenarioPoolLiquiditySufficient = true`
+  - `mentoUsdcRouteConfigured = true`
+- Ran the bounded live Scenario B smoke on the fresh suite with `1 USDC` from the deployer wallet. The on-chain result was:
+  - reserve used: `999450005010000000`
+  - `mrTCOIN` used: `414923183898090909`
+  - pool `cplTCOIN` out: `414923183898090908`
+  - charity top-up: `12447695516942727`
+  - buyer `cplTCOIN` balance after execution: `427370879415033633`
+- The refreshed generated deployment artefacts now live under `contracts/foundry/deployments/torontocoin/celo-mainnet/`. By current repo policy they remain runtime outputs rather than checked-in static config; `deploy-config.json` continues to hold only public deployment inputs.
+
+### Deployer Balance Tracker
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- End balance: `6.247118087577593885 CELO`
+- Previous tracked session balance: `7.438596040537245886 CELO`
+- Delta from previous tracked session: `-1.191477952959652001 CELO`
+- Transaction-cost breakdown this session:
+  - Fresh Celo mainnet suite deploy batch: `1.160099447387488446 CELO`
+  - Live Scenario B smoke batch: `0.031378505572163555 CELO`
+
+### Verification
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url https://forno.celo.org --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url https://forno.celo.org`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url https://forno.celo.org --broadcast`
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo.org`
+
+### Files Edited
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.68
+### Timestamp
+- 2026-03-22 17:10:00 EDT
+
+### Objective
+- Fix the Sarafu `SwapPool.deposit(...)` compatibility gap by making registered pool addresses bypass `GeneroTokenV3` merchant-fee routing through canonical `PoolRegistry` state instead of per-token manual fee-exemption lists.
+
+### What Changed
+- Extended `contracts/foundry/src/torontocoin/PoolRegistry.sol` with canonical pool-address lookup:
+  - tracks `poolAddress -> poolId`
+  - exposes `getPoolIdByAddress(address)`
+  - exposes `isRegisteredPoolAddress(address)`
+  - clears stale reverse mappings when a pool address changes
+- Updated `contracts/foundry/src/torontocoin/GeneroTokenV3.sol` so `feeApplies(...)` now returns `false` for any address that `PoolRegistry` reports as a registered pool before checking merchant POS eligibility.
+- Added regressions in `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol` for the new reverse lookup and address-replacement behaviour.
+- Added a `GeneroTokenV3` regression in `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol` that mimics the real Sarafu deposit path:
+  - the pool is simultaneously linked as a merchant wallet and as a registered pool
+  - the pool calls `transferFrom(...)` into itself using an exact allowance
+  - no merchant fee is charged because the registered-pool predicate short-circuits first
+- Updated the engineering specs to record the new canonical pool-address fee-bypass rule.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/PoolRegistry.t.sol`
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3SarafuCompatibility.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`
+- `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.67
+### Timestamp
+- 2026-03-22 16:40:00 EDT
+
+### Objective
+- Remove obsolete TorontoCoin managed-pool contracts, migration scripts, and superseded deployment surfaces after the Sarafu-first runtime reset and the fresh-deploy-only six-decimal posture.
+
+### What Changed
+- Deleted the obsolete managed-pool execution contract and its stale review artefacts:
+  - `contracts/foundry/src/torontocoin/ManagedPoolAdapter.sol`
+  - `contracts/foundry/src/torontocoin/ManagedPoolAdapter.md`
+  - `contracts/foundry/test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- Deleted the old in-place six-decimal migration script set because that flow targeted the superseded managed-pool architecture and had already been reduced to intentional reverts:
+  - `contracts/foundry/script/deploy/TorontoCoinSixDecimalMigrationBase.s.sol`
+  - `contracts/foundry/script/deploy/StageTorontoCoinSixDecimalMigration.s.sol`
+  - `contracts/foundry/script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol`
+  - `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+  - `contracts/foundry/script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol`
+- Deleted the superseded `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol` entrypoint because the active deployment surface is now `DeployTorontoCoinSuite.s.sol`.
+- Updated the Foundry and TorontoCoin docs so they no longer describe managed-pool execution or deprecated in-place migration tooling as part of the active architecture.
+- Updated the engineering specs to reflect the cleaned posture:
+  - Sarafu `SwapPool` is the only active pool runtime described in current specs
+  - greenfield redeploys are the canonical operational posture
+  - the old managed-pool migration path is removed from the repo, not merely deprecated
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/README.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/src/torontocoin/SarafuSwapPoolAdapter.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+### Files Deleted
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.sol`
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.md`
+- `contracts/foundry/test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `contracts/foundry/script/deploy/TorontoCoinSixDecimalMigrationBase.s.sol`
+- `contracts/foundry/script/deploy/StageTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+
+## v1.66
+### Timestamp
+- 2026-03-22 16:25:00 EDT
+
+### Objective
+- Bring the TorontoCoin mainnet deployment and migration tooling in line with the Sarafu `SwapPool` runtime plus `6`-decimal token posture, then complete a fresh Celo mainnet deployment and bounded Scenario B smoke test in the most cost-effective way.
+
+### What Changed
+- Deprecated the old staged `6`-decimal migration scripts under `contracts/foundry/script/deploy/` by making them revert intentionally through `TorontoCoinSixDecimalMigrationBase.s.sol`, because they target the superseded `ManagedPoolAdapter` architecture rather than the current Sarafu-pool runtime.
+- Updated `DeployTorontoCoinSuite.s.sol` so Sarafu `Limiter` defaults now use the full safe Genero raw-unit ceiling instead of the old `1e12` placeholder, which keeps fresh `6`-decimal bootstrap pools compatible with the still-legacy controller raw-unit output scale.
+- Updated the checked-in TorontoCoin deploy config so fresh bootstrap Sarafu pools seed `1e18` raw `cplTCOIN` by default instead of a tiny `1e9` / `5e6` seed that cannot clear the configured retail smoke route.
+- Switched the Celo mainnet reserve posture in `deploy-config.json` from `CADm` to `USDm` as the active reserve asset. The current mainnet bounded retail route is therefore `USDC -> USDm -> mrTCOIN -> SwapPool -> cplTCOIN`, while `USDm -> CADm` route metadata remains in config for other environments and future reserve-target changes.
+- Tightened `ValidateTorontoCoinDeployment.s.sol` so it no longer stops at “pool exists and has some balance”. It now:
+  - previews the configured Scenario B route,
+  - computes the bootstrap Sarafu `SwapPool` quote plus fees,
+  - fails if the seeded pool cannot actually clear that smoke path,
+  - records the required `cplTCOIN` liquidity in `validation.json`.
+- Deployed two fresh Sarafu-pool-aligned TorontoCoin suites on Celo mainnet this session:
+  - the first greenfield deploy proved the original `CADm`-backed mainnet reserve route was not smoke-safe because live `USDm -> CADm` quoting failed with `no valid median`,
+  - the second greenfield deploy, using `USDm` as the active reserve asset, became the canonical fresh mainnet suite.
+- The current canonical fresh mainnet suite addresses are:
+  - `Governance`: `0xF123231dcAc7908B7b0DdbE704DA99d38B690D66`
+  - `TreasuryController`: `0x3858537E4EC14eF47AF883aDAB4c0C353Dfbc3D9`
+  - `LiquidityRouter`: `0xFA0AA07a1c22d938E7bD2AA0e25E5539A220C367`
+  - `ReserveInputRouter`: `0xec32Aaa2fD15Cd6cD0C0b862e4B0dbE696375b5F`
+  - `SarafuSwapPoolAdapter`: `0x4f318dDCb61189857C0280Fd65A4f8c196F74a59`
+  - `MentoBrokerSwapAdapter`: `0x13387d31713dE1B64a31167fCDDB3c28A377DF0C`
+  - `ReserveRegistry`: `0x1dE6e888B83cA130e7be6b2b35af503B4726725c`
+  - `PoolRegistry`: `0x9397d14E83a6DD4ca0b540fb7c587C00723D97DC`
+  - `Treasury`: `0xB872569930d8624494FE75CCf45E9c3A10c6D72b`
+  - `mrTCOIN`: `0xf1eb1436034DFdDD3C31851120CfabEa05fF3910`
+  - `cplTCOIN`: `0x2e1008Ae6506852578c5Ec3475B21B2A4b9ceFaD`
+  - bootstrap `SwapPool`: `0x6cd584E9b3ed40618c2B2E9FD3F998174487dB04`
+- Reused that second fresh suite rather than paying for a third redeploy. To make the bounded smoke pass, I applied the minimum compatible live fixes:
+  - raised the bootstrap Sarafu `Limiter` caps for both `mrTCOIN` and `cplTCOIN` to `5e18` raw,
+  - temporarily added the deployer as a `cplTCOIN` writer,
+  - minted fresh `cplTCOIN` to the deployer and transferred it into the bootstrap `SwapPool`,
+  - ran the live bounded Scenario B buy with `1 USDC`,
+  - revoked the temporary deployer writer role afterward.
+- The bounded mainnet Scenario B smoke is now successful on the fresh suite:
+  - input: `1 USDC`
+  - normalized reserve used: `999542988495000000` raw `USDm`
+  - `mrTCOIN` used: `414961786132772727`
+  - pool `cplTCOIN` out: `414961786132772726`
+  - charity top-up: `12448853583983181`
+  - deployer `cplTCOIN` balance delta captured in `scenario-b-run.json`
+  - remaining bootstrap pool balances after smoke:
+    - `cplTCOIN`: `585035732367737225`
+    - `mrTCOIN`: `414961398014828642`
+
+### Deployer Balance Tracker
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- End balance: `7.438596040537245886 CELO`
+- Previous tracked session balance: `9.797287038945049075 CELO`
+- Delta from previous tracked session: `-2.358690998407803189 CELO`
+- Transaction-cost breakdown this session:
+  - First fresh Celo mainnet Sarafu-pool suite deploy plus failed `CADm`-backed retail smoke attempt: `1.159319276245643200 CELO`
+  - Second fresh Celo mainnet Sarafu-pool suite deploy plus pre-fix insufficient-liquidity smoke attempt: `1.159341949387073801 CELO`
+  - Live limiter/top-up/successful-smoke/cleanup transactions on the canonical fresh suite: `0.040029772775086188 CELO`
+  - Recent live fix breakdown:
+    - `Limiter.setLimitFor(cplTCOIN, bootstrapSwapPool, 5e18)`: `0.000808335564779684 CELO`
+    - `Limiter.setLimitFor(mrTCOIN, bootstrapSwapPool, 5e18)`: `0.000808335564779684 CELO`
+    - `cplTCOIN.addWriter(deployer)`: `0.001245173996454050 CELO`
+    - `cplTCOIN.mintTo(deployer, 1e18)`: `0.002369561693655118 CELO`
+    - `cplTCOIN.approve(bootstrapSwapPool, 1e18)`: `0.001744211653805056 CELO`
+    - `cplTCOIN.transfer(bootstrapSwapPool, 999999000000000000)`: `0.002078341441919310 CELO`
+    - Scenario B `USDC.approve(liquidityRouter, 1e6)`: `0.001385985979979319 CELO`
+    - Scenario B `LiquidityRouter.buyCplTcoin(...)`: `0.028916872271363888 CELO`
+    - `cplTCOIN.deleteWriter(deployer)`: `0.000672954608350079 CELO`
+
+### Verification
+- `forge build`
+- `forge test`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url https://forno.celo.org --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url https://forno.celo.org`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url https://forno.celo.org --broadcast`
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo.org`
+- `cast call 0x2e1008Ae6506852578c5Ec3475B21B2A4b9ceFaD 'balanceOf(address)(uint256)' 0x6cd584E9b3ed40618c2B2E9FD3F998174487dB04 --rpc-url https://forno.celo.org`
+- `cast call 0xf1eb1436034DFdDD3C31851120CfabEa05fF3910 'balanceOf(address)(uint256)' 0x6cd584E9b3ed40618c2B2E9FD3F998174487dB04 --rpc-url https://forno.celo.org`
+
+### Files Edited
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/script/deploy/TorontoCoinSixDecimalMigrationBase.s.sol`
+- `contracts/foundry/script/deploy/StageTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.65
+### Timestamp
+- 2026-03-20 17:13:00 EDT
+
+### Objective
+- Simplify the Mermaid chart skill so local HTML preview is the only validation path and make the skill validator work without temporary dependency shims.
+
+### What Changed
+- Removed the optional `mermaid.ai` hosted-editor refinement path from the local `mermaid-chart` skill instructions and browser reference notes.
+- Tightened the skill guidance so local HTML preview plus browser screenshot export is now the sole refinement workflow.
+- Installed `PyYAML 6.0.3` into the user Python site-packages so `quick_validate.py` runs directly in future sessions.
+- Updated the repo engineering notes to describe the Mermaid workflow as local-preview-first.
+
+### Verification
+- `python3 -m pip show pyyaml`
+- `python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py ~/.codex/skills/mermaid-chart`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.65
+### Timestamp
+- 2026-03-20 21:55:00 EDT
+
+### Objective
+- Revert the TorontoCoin retail architecture back toward the original Sarafu pool vision by replacing the custom managed-inventory runtime with real Sarafu `SwapPool` execution, while keeping the reserve-backed treasury path and validating that `GeneroTokenV3` can still participate in Sarafu pool flows.
+
+### What Changed
+- Added `SarafuSwapPoolAdapter.sol` as the thin production-facing pool adapter for TorontoCoin. It no longer owns inventory or quote state; instead it resolves a real Sarafu `SwapPool` address from `PoolRegistry`, previews output through `SwapPool.getQuote(...)`, and executes `mrTCOIN -> cplTCOIN` by calling `SwapPool.withdraw(...)`.
+- Refactored `LiquidityRouter.sol` so pool selection is now caller-supplied and off-chain driven. The router no longer ranks pools on-chain; it validates the chosen `poolId` against user acceptance preferences, normalizes reserve input, settles reserve through `TreasuryController`, then executes against the selected Sarafu pool through the adapter.
+- Re-scoped `PoolRegistry.sol` toward identity and allowlisting by adding explicit `poolId -> poolAddress` support. Merchant-to-pool mapping remains, but pool runtime state is no longer assumed to live in a TorontoCoin-managed inventory contract.
+- Refactored the greenfield TorontoCoin deployment scripts to bootstrap Sarafu-native pool infrastructure for the retail path:
+  - deploy `TokenUniqueSymbolIndex`
+  - deploy `Limiter`
+  - deploy `PriceIndexQuoter`
+  - deploy a bootstrap Sarafu `SwapPool`
+  - register `mrTCOIN` and `cplTCOIN` into the Sarafu token registry
+  - set TCOIN limits for the bootstrap pool
+  - point `PoolRegistry` at the real `SwapPool`
+  - wire `LiquidityRouter` to `SarafuSwapPoolAdapter`
+- Updated Scenario B and deployment validation scripts to use the bootstrap pool id explicitly instead of relying on on-chain pool discovery.
+- Added a dedicated Sarafu compatibility regression for `GeneroTokenV3`, proving that the current token implementation can still be registered in `TokenUniqueSymbolIndex`, deposited into a Sarafu `SwapPool`, and withdrawn from that pool successfully in the baseline `6`-decimal posture.
+- Added router and adapter tests that now use real Sarafu `SwapPool`, `Limiter`, `PriceIndexQuoter`, and `TokenUniqueSymbolIndex` contracts instead of the old mock managed-inventory path.
+- Updated the TorontoCoin docs to record the architectural reset:
+  - Sarafu `SwapPool` is the intended runtime pool engine
+  - `ManagedPoolAdapter` is now legacy / migration-only posture
+  - `LiquidityRouter` validates and executes a chosen pool instead of discovering the best one on-chain
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3SarafuCompatibility.t.sol`
+- `forge test --match-path test/unit/torontocoin/SarafuSwapPoolAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/SarafuSwapPoolAdapter.sol`
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+- `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/SarafuSwapPoolAdapter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3SarafuCompatibility.t.sol`
+- `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol`
+- `contracts/foundry/README.md`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.md`
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.md`
+- `contracts/foundry/src/torontocoin/SarafuSwapPoolAdapter.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.64
+### Timestamp
+- 2026-03-20 22:35:00 EDT
+
+### Objective
+- Implement a targeted live TorontoCoin `6`-decimal migration path for Celo mainnet, execute it only if the existing live controller/router stack can safely accept the new token scale, and leave the live system unchanged if that assumption proves false.
+
+### What Changed
+- Added reusable TorontoCoin mainnet migration tooling under `contracts/foundry/script/deploy/`:
+  - `TorontoCoinSixDecimalMigrationBase.s.sol`
+  - `StageTorontoCoinSixDecimalMigration.s.sol`
+  - `ProposeTorontoCoinSixDecimalMigration.s.sol`
+  - `FinalizeTorontoCoinSixDecimalMigration.s.sol`
+  - `AbortTorontoCoinSixDecimalMigration.s.sol`
+- `StageTorontoCoinSixDecimalMigration.s.sol` now deploys a fresh `6`-decimal `mrTCOIN`, a fresh `6`-decimal `cplTCOIN`, and a fresh `ManagedPoolAdapter`, then clones the live bootstrap pool execution settings into a clean pool account and records the staged addresses in `contracts/foundry/deployments/torontocoin/celo-mainnet/six-decimal-migration.json`.
+- The live stage broadcast on Celo mainnet succeeded and produced these staged-but-not-live addresses:
+  - `newMrTcoin = 0xE735e11f38b4dBafEd71C7a70d24F6316612504B`
+  - `newCplTcoin = 0x6e0C7A71ff70C34BCB3Fa42e244aDeA93566E6cd`
+  - `newManagedPoolAdapter = 0x64Dc884C37DfCBDa438c78E706B8515B8ABF6bE5`
+  - `newPoolAccount = 0x718DE5aC75738B9B2EA6C28aE8B0FD0cA9349b5e`
+- `ProposeTorontoCoinSixDecimalMigration.s.sol` then submitted and approved three governance proposals against the live mainnet governance contract:
+  - proposal `17`: `TreasuryController.setTcoinToken(newMrTcoin)`
+  - proposal `18`: `LiquidityRouter.setCplTcoin(newCplTcoin)`
+  - proposal `19`: `LiquidityRouter.setPoolAdapter(newManagedPoolAdapter)`
+- `FinalizeTorontoCoinSixDecimalMigration.s.sol` exposed a real compatibility blocker before any cutover transaction was broadcast: the live TorontoCoin controller/router/adapter path still assumes `18`-decimal-scaled internal token amounts. With only the token decimals changed, the fresh `6`-decimal pool inventory was treated as far too small and the router path reverted with `InsufficientPoolLiquidity(...)`.
+- Because of that blocker, the live cutover was intentionally aborted. `AbortTorontoCoinSixDecimalMigration.s.sol` cancelled proposals `17`, `18`, and `19`, leaving the live TorontoCoin mainnet stack unchanged:
+  - `TreasuryController.tcoinToken()` still points to the old `18`-decimal `mrTCOIN`
+  - `LiquidityRouter.cplTcoin()` still points to the old `18`-decimal `cplTCOIN`
+  - `LiquidityRouter.poolAdapter()` still points to the previously live `ManagedPoolAdapter`
+- The practical conclusion is now explicit: changing deployment defaults to `6` decimals is safe for fresh environments, but live TorontoCoin cannot be migrated by token replacement alone. A real live migration still requires code-level scaling changes in `TreasuryController`, router accounting, and pool-liquidity reads.
+
+### Deployer Balance Tracker
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- End balance: `9.797287038945049075 CELO`
+- Previous tracked session balance: `10.066034561180316480 CELO`
+- Delta from previous tracked session: `-0.268747522235267405 CELO`
+- Transaction-cost breakdown this session:
+  - `StageTorontoCoinSixDecimalMigration.s.sol`: `0.242750878455020330 CELO`
+  - `ProposeTorontoCoinSixDecimalMigration.s.sol`: `0.023656690827783027 CELO`
+  - `AbortTorontoCoinSixDecimalMigration.s.sol`: `0.002339952952464060 CELO`
+  - Total spent: `0.268747522235267405 CELO`
+
+### Verification
+- `forge test`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/StageTorontoCoinSixDecimalMigration.s.sol:StageTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol:ProposeTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol:FinalizeTorontoCoinSixDecimalMigration --rpc-url celo-mainnet`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol:AbortTorontoCoinSixDecimalMigration --rpc-url celo-mainnet --broadcast`
+- `cast call 0x8cBd51D726d7D8851bdD3aC003c0Fb20c26ef6E1 'getProposal(uint256)((uint8,address,address,uint256,uint64,uint64,bool,bool,bytes32,string,string))' 17 --rpc-url https://forno.celo.org`
+- `cast call 0x8cBd51D726d7D8851bdD3aC003c0Fb20c26ef6E1 'getProposal(uint256)((uint8,address,address,uint256,uint64,uint64,bool,bool,bytes32,string,string))' 18 --rpc-url https://forno.celo.org`
+- `cast call 0x8cBd51D726d7D8851bdD3aC003c0Fb20c26ef6E1 'getProposal(uint256)((uint8,address,address,uint256,uint64,uint64,bool,bool,bytes32,string,string))' 19 --rpc-url https://forno.celo.org`
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo.org`
+
+### Files Edited
+- `contracts/foundry/script/deploy/TorontoCoinSixDecimalMigrationBase.s.sol`
+- `contracts/foundry/script/deploy/StageTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/ProposeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/FinalizeTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/script/deploy/AbortTorontoCoinSixDecimalMigration.s.sol`
+- `contracts/foundry/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.63
+### Timestamp
+- 2026-03-20 16:53:59 EDT
+
+### Objective
+- Create a reusable Codex skill for drafting, refining, and exporting Mermaid diagrams so engineering notes can pair editable Mermaid source with visually checked image artefacts.
+
+### What Changed
+- Added a new local Codex skill at `~/.codex/skills/mermaid-chart/`.
+- Wrote the skill workflow so Mermaid work now starts from a minimal valid block, renders locally first, iterates structurally for readability, and uses `mermaid.ai` only when the user explicitly wants the hosted workspace.
+- Added `scripts/render_mermaid_html.py` to convert raw Mermaid or Markdown-embedded Mermaid into a local HTML preview page suitable for browser inspection and screenshot export.
+- Added focused Mermaid authoring and browser-refinement references covering chart selection, layout heuristics, screenshot guidance, and the guard-rail that Google sign-in must stay user-driven.
+- Updated the engineering specs to note the shared Mermaid-diagram documentation workflow for internal technical notes and architecture diagrams.
+
+### Verification
+- `python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py ~/.codex/skills/mermaid-chart`
+- `python3 ~/.codex/skills/mermaid-chart/scripts/render_mermaid_html.py /tmp/mermaid-chart-demo.md --output /tmp/mermaid-chart-demo.html --title "Mermaid Chart Skill Demo"`
+- Browser preview of `file:///tmp/mermaid-chart-demo.html` with screenshot export to JPEG
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.62
+### Timestamp
+- 2026-03-20 18:20:00 EDT
+
+### Objective
+- Formalize deployer-balance tracking in the session log for TorontoCoin chain work, record the current deployer balance baseline, and assess whether the just-landed `6`-decimal default pass requires any cost-effective on-chain deployment.
+
+### What Changed
+- Added a workflow rule in `agent-context/workflow.md` requiring TorontoCoin sessions that touch live or testnet chain state to record the deployer wallet end-balance, delta from the prior tracked session, and a transaction-cost breakdown when the balance changes.
+- Added the first explicit deployer-balance tracker entry to this session log for the TorontoCoin deployer `0x1B7489bE5C572041b682749F7B25B84E30cF9271` on Celo mainnet.
+- Verified that the most recent implementation commit `e8185f1` changes only checked-in defaults, validator logic, tests, and docs. It does not change any deployable production contract bytecode under `contracts/foundry/src/torontocoin/`.
+- As a result, the cost-effective deployment action for this session is a deliberate no-op:
+  - no contracts were redeployed
+  - no governance rewiring was sent
+  - no mainnet balance was spent in this session
+- This remains consistent with the implemented `6`-decimal posture, which is forward-looking for fresh deployments only and intentionally does not migrate the already-deployed mainnet token addresses.
+
+### Deployer Balance Tracker
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- End balance: `10.066034561180316480 CELO`
+- Previous tracked session balance: none; this entry establishes the baseline tracker
+- Delta from previous tracked session: not applicable
+- Transaction-cost breakdown this session: none; no on-chain transactions were broadcast
+
+### Verification
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo.org`
+- `git diff --name-only HEAD^ HEAD | rg '^contracts/foundry/src/torontocoin/.*\\.sol$|^contracts/foundry/script/deploy/.*\\.sol$'`
+
+### Files Edited
+- `agent-context/workflow.md`
+- `agent-context/session-log.md`
+
+## v1.61
+### Timestamp
+- 2026-03-20 16:10:00 EDT
+
+### Objective
+- Change the checked-in TorontoCoin deployment posture so newly deployed internal tokens default to `6` decimals instead of `18`, while leaving reserve-side precision and the already-deployed mainnet token addresses untouched.
+
+### What Changed
+- Updated `contracts/foundry/deploy-config.json` so all three TorontoCoin deployment profiles now default both `mrTCOIN` and `cplTCOIN` to `6` decimals instead of `18`.
+- Re-expressed the bootstrap pool seed in each TorontoCoin profile from `5e18` raw units to `5e6`, preserving the same visible `5 cplTCOIN` seed amount under the new token-decimal default.
+- Kept reserve-side config unchanged where it reflects live token truth: external reserve assets such as `CADm`, `USDm`, and `USDC` still use their actual on-chain decimals, and CAD pricing / collateralization math remains `1e18` based.
+- Tightened `ValidateTorontoCoinDeployment.s.sol` so future deployment validation now explicitly fails if the deployed `mrTCOIN` or `cplTCOIN` decimals are not `6`.
+- Updated TorontoCoin unit coverage to match the new internal-token default:
+  - `ManagedPoolAdapter.t.sol` now uses `6`-decimal `mrTCOIN` / `cplTCOIN` mocks and confirms a `1000e6` pool inventory is readable and tradable.
+  - `LiquidityRouter.t.sol` now uses a `6`-decimal internal `mrTCOIN` posture and `6`-decimal `USDC` reserve input while keeping mixed reserve-token decimal coverage for the normalization path.
+  - `GeneroTokenV3.t.sol` now has an explicit regression test proving a `6`-decimal deployment supports a `1000e6` visible balance plus allowance reads without hitting the old practical ceiling.
+- Updated Foundry/docs artefacts to make the rollout posture explicit: future deployments use `6`-decimal internal TorontoCoin tokens by default, while the existing mainnet `18`-decimal deployment remains a known legacy posture until a separate live-token migration pass is done.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `forge test --match-path test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `contracts/foundry/test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/README.md`
+- `contracts/foundry/src/torontocoin/GeneroToken.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.60
+### Timestamp
+- 2026-03-20 14:20:00 EDT
+
+### Objective
+- Complete the live Celo mainnet TorontoCoin peg ramp to `3.3 CAD/TCOIN`, restore a working retail router path after discovering the current `cplTCOIN` single-account balance ceiling, and execute a live `1 USDC` router buy against the recovered pool.
+
+### What Changed
+- Executed 13 live governance proposals on Celo mainnet to move the deployed `TreasuryController.cadPeg18` from `1.0e18` to `3.3e18`. The first attempt with 1-second windows exposed Celo sequencer nonce and visibility races, so the successful ramp used longer voting windows and explicit nonce management.
+- Confirmed the live router already had `charityTopupBps = 300` (3%), and added the deployer EOA as a `cplTCOIN` writer so pool inventory could be seeded directly from the token contract.
+- Discovered an operationally critical limitation in the current live `GeneroTokenV3` / `cplTCOIN` implementation: once a single account balance grows much beyond roughly `9.22` visible tokens, Sarafu-era `ABDKMath64x64.fromUInt` conversions begin reverting on `balanceOf(...)`. This broke the original bootstrap adapter path after an attempted large pool top-up, because `ManagedPoolAdapter` reads pool inventory through `IERC20.balanceOf(poolAccount)`.
+- Recovered the live retail path by deploying a fresh `ManagedPoolAdapter` at `0xD2Ef61a2Cc17F44e5b5E41bE0F52a0DBa70Ffdf0`, creating a new bootstrap pool account `0x8054e75AfBbEDa1D0d3c3CA6c2e941627b821cCC`, seeding that safe pool with `5 cplTCOIN`, and switching `LiquidityRouter` to the new adapter through governance proposal `16`.
+- Executed a live `1 USDC` buy through `LiquidityRouter` on Celo mainnet after the recovery. The protocol path completed successfully through `USDC -> USDm -> CADm -> TreasuryController -> LiquidityRouter -> cplTCOIN`.
+- The live post-buy state on the recovered pool was:
+  - deployer `USDC`: `4.000000`
+  - deployer `cplTCOIN`: `0.427885999479212629`
+  - recovered pool `cplTCOIN`: `4.584567346438253997`
+  - recovered pool `mrTCOIN`: `0.415423300465254980`
+- The difference between the pool-side `mrTCOIN` inflow and the deployer’s total `cplTCOIN` receipt reflects the 3% charity top-up mint, which still resolves to the deployer wallet under the current bootstrap charity configuration.
+- This session leaves one clear engineering follow-up: patch or replace the current `cplTCOIN` visible/base conversion math so large single-account pool inventories do not break `balanceOf(...)`, router previews, and pool accounting.
+
+### Verification
+- `cast call 0x4AAf282aE14A437163d9D8fDD44aAcD4fB65244c 'cadPeg18()(uint256)' --rpc-url "$MAINNET_RPC_URL"`
+- 13 live `Governance.proposeCadPegUpdate(...)` / `voteProposal(...)` / `executeProposal(...)` transactions on Celo mainnet
+- `cast call 0x3fBcBA716c9C2Bb230Ed02d2C41A93C71c8243DD 'isWriter(address)(bool)' 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url "$MAINNET_RPC_URL"`
+- `forge create src/torontocoin/ManagedPoolAdapter.sol:ManagedPoolAdapter --broadcast ...`
+- live governance proposal `16` to switch `LiquidityRouter.poolAdapter` to `0xD2Ef61a2Cc17F44e5b5E41bE0F52a0DBa70Ffdf0`
+- live `cast send ... 'buyCplTcoin(address,uint256,uint256,uint256)' ...` call against `LiquidityRouter`
+- post-trade balance reads on deployer, recovered pool, `TreasuryController`, and `LiquidityRouter`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.59
+### Timestamp
+- 2026-03-20 11:10:00 EDT
+
+### Objective
+- Update the checked-in TorontoCoin deployment defaults so future deployments start at the intended `3.3 CAD/TCOIN` peg, and verify whether the already-deployed Celo mainnet stack can be moved from the legacy `1.0 CAD/TCOIN` peg to `3.3 CAD/TCOIN` under the live governance constraints before executing a live `1 USDC` retail router buy.
+
+### What Changed
+- Updated `contracts/foundry/deploy-config.json` so all checked-in TorontoCoin deployment profiles now initialize `TreasuryController.cadPeg18` at `3300000000000000000` (`3.3 CAD/TCOIN`) instead of the legacy `1000000000000000000` (`1.0 CAD/TCOIN`) default. This ensures future suite deployments start at the intended reserve-backed mint rate without an immediate post-deploy governance correction.
+- Updated the engineering specs to record that fresh TorontoCoin deployments now start at `3.3 CAD/TCOIN`, aligning the static deployment config with the intended retail economics.
+- Re-verified the live Celo mainnet stack before sending funds. The deployed `TreasuryController` still has `cadPeg18 = 1e18`, the live router still has `charityTopupBps = 300`, and the live `LiquidityRouter` is already a `cplTCOIN` writer.
+- Confirmed that the requested `1.0 -> 3.3` mainnet peg change cannot be completed in 12 governance proposals. The live `TreasuryController` enforces a maximum `10%` peg move per update, so the largest reachable peg after 12 steps is about `3.1384283767`. Reaching `3.3` from `1.0` requires at least 13 governance proposals under the deployed rules.
+
+### Verification
+- `cast call 0x4AAf282aE14A437163d9D8fDD44aAcD4fB65244c 'cadPeg18()(uint256)' --rpc-url "$MAINNET_RPC_URL"`
+- `cast call 0xFe3aE3c1f9EDDbF74472587893a7f8B84e20D748 'charityTopupBps()(uint256)' --rpc-url "$MAINNET_RPC_URL"`
+- `cast call 0x3fBcBA716c9C2Bb230Ed02d2C41A93C71c8243DD 'isWriter(address)(bool)' 0xFe3aE3c1f9EDDbF74472587893a7f8B84e20D748 --rpc-url "$MAINNET_RPC_URL"`
+- `python3` check of the 10% compounding path from `1.0` to `3.3`, confirming 12 steps are insufficient and 13 are required.
+
+### Files Edited
+- `contracts/foundry/deploy-config.json`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.58
+### Timestamp
+- 2026-03-19 18:35:00 EDT
+
+### Objective
+- Reintroduce explicit `ethereum-sepolia` and `celo-sepolia` TorontoCoin deployment profiles, then deploy and smoke test them to prove the limited non-Mento and limited non-Transak paths work as designed.
+
+### What Changed
+- Extended `contracts/foundry/deploy-config.json` with two additional TorontoCoin profiles:
+  - `ethereum-sepolia` now runs a limited non-Mento routing posture using a deploy-time `sCAD` reserve asset and a direct-only swap adapter.
+  - `celo-sepolia` now runs a limited Mento-path posture using live testnet `USDC`, `USDm`, `CADm`, broker, provider, and exchange-ID metadata, while defaulting Scenario B to preview-only until a funded test wallet is available.
+- Added `contracts/foundry/src/torontocoin/DirectOnlySwapAdapter.sol` as the explicit `ISwapAdapter` implementation for non-Mento profiles. It keeps the same helper boundary as production while reverting any attempted swap path.
+- Added `contracts/foundry/src/torontocoin/MintableTestReserveToken.sol` so limited non-production profiles can deploy a treasury-accepted reserve asset and mint scenario funding without external token dependencies.
+- Updated `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol` so the suite deploy path is profile-aware. It now conditionally deploys the direct-only swap adapter or the Mento adapter, can optionally deploy and mint a reserve token from config, records `reserveSwapAdapter`, `reserveAssetToken`, and `scenarioInputToken` in the generated manifests, and only seeds Mento routes when the selected profile enables them.
+- Updated `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol` and `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol` so validation and Scenario B follow the selected profile semantics instead of assuming Celo mainnet Mento. Scenario B now respects profile-configured input tokens and can be configured preview-only where live input funding is not guaranteed.
+- Extended `contracts/foundry/script/helpers/DeployChainConfig.sol` with optional integer and boolean readers, and updated `DiscoverMentoExchangeIds.s.sol` to print both the configured route-token path and the `USDC -> USDm` hop for Mento-enabled profiles.
+- Added `contracts/foundry/test/unit/torontocoin/DirectOnlySwapAdapter.t.sol` and ran the full Foundry test suite after the profile work landed.
+- Deployed the full TorontoCoin suite successfully to Ethereum Sepolia and ran a live Scenario B smoke test there. The generated artifact shows a successful direct-reserve buy into `cplTCOIN`:
+  - buyer `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+  - input token `0xA09a2667A878F30107f03399231205e3171eFB68` (`sCAD`)
+  - selected pool `0x7365706f6c69612d67656e657369732d706f6f6c000000000000000000000000`
+  - `executedCplTcoinOut = 1000000000000000000`
+  - `executedCharityTopupOut = 30000000000000000`
+  - `cplBalanceAfter = 1029999999999999999`
+- Attempted the same full-suite deploy on Celo Sepolia, but the deployer had `0` CELO on chain and the broadcast failed with `insufficient funds for gas * price + value`. A follow-up `cast code` check on the reported `LiquidityRouter` address returned `0x`, confirming the Celo Sepolia deployment did not land. The checked-in Mento testnet route IDs were still verified read-only through `DiscoverMentoExchangeIds.s.sol`.
+- Updated Foundry workspace docs, TorontoCoin contract notes, and engineering specs so the source of truth now documents the three-profile deploy model and the limits of the two non-production smoke profiles.
+
+### Verification
+- `forge fmt src/torontocoin/DirectOnlySwapAdapter.sol src/torontocoin/MintableTestReserveToken.sol script/helpers/DeployChainConfig.sol script/helpers/DiscoverMentoExchangeIds.s.sol script/deploy/DeployTorontoCoinSuite.s.sol script/deploy/ValidateTorontoCoinDeployment.s.sol script/deploy/RunTorontoCoinScenarioB.s.sol test/unit/torontocoin/DirectOnlySwapAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/DirectOnlySwapAdapter.t.sol`
+- `forge test`
+- `DEPLOY_TARGET_CHAIN=celo-sepolia forge script script/helpers/DiscoverMentoExchangeIds.s.sol:DiscoverMentoExchangeIds --rpc-url https://forno.celo-sepolia.celo-testnet.org/`
+- `DEPLOY_TARGET_CHAIN=ethereum-sepolia forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url https://ethereum-sepolia-rpc.publicnode.com --broadcast`
+- `DEPLOY_TARGET_CHAIN=ethereum-sepolia forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url https://ethereum-sepolia-rpc.publicnode.com`
+- `DEPLOY_TARGET_CHAIN=ethereum-sepolia forge script script/deploy/RunTorontoCoinScenarioB.s.sol:RunTorontoCoinScenarioB --rpc-url https://ethereum-sepolia-rpc.publicnode.com --broadcast`
+- `cast code 0x51663116fC9815BF9E12c820dF5cC260576d57D4 --rpc-url https://ethereum-sepolia-rpc.publicnode.com`
+- `DEPLOY_TARGET_CHAIN=celo-sepolia forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url https://forno.celo-sepolia.celo-testnet.org/ --broadcast`
+- `cast balance 0x1B7489bE5C572041b682749F7B25B84E30cF9271 --rpc-url https://forno.celo-sepolia.celo-testnet.org/`
+- `cast code 0xFe3aE3c1f9EDDbF74472587893a7f8B84e20D748 --rpc-url https://forno.celo-sepolia.celo-testnet.org/`
+
+### Files Edited
+- `contracts/foundry/.env.example`
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/helpers/DeployChainConfig.sol`
+- `contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+- `contracts/foundry/src/torontocoin/DirectOnlySwapAdapter.sol`
+- `contracts/foundry/src/torontocoin/DirectOnlySwapAdapter.md`
+- `contracts/foundry/src/torontocoin/MintableTestReserveToken.sol`
+- `contracts/foundry/src/torontocoin/MintableTestReserveToken.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/test/unit/torontocoin/DirectOnlySwapAdapter.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.57
+### Timestamp
+- 2026-03-19 18:05:00 EDT
+
+### Objective
+- Build a mainnet-first TorontoCoin deployment system that can deploy and wire the full current contract suite on Celo mainnet, generate runtime manifests, and validate the retail user journey as two separate scenarios: off-chain USDC on-ramp readiness and on-chain `USDC -> USDm -> CADm -> cplTCOIN` protocol conversion.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/ManagedPoolAdapter.sol` as the missing deployable production pool adapter. It now owns canonical pool settlement accounts, quote-bps execution settings, managed `cplTCOIN` inventory custody, and merchant-to-pool matching for `LiquidityRouter`, while leaving merchant and pool identity canonical in `PoolRegistry`.
+- Added a mainnet-oriented suite deploy script, `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`, that deploys the TorontoCoin stack in dependency order, deploys upgradeable `ReserveRegistry`, `StewardRegistry`, and `TreasuryController` behind `ERC1967Proxy`, wires treasury/router/registry pointers, seeds the bootstrap reserve asset, charity, steward, pool, merchant, and managed pool inventory, configures the default Mento `USDm -> CADm` and multihop `USDC -> USDm -> CADm` routes, and finalizes governance/ownership posture.
+- Added `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol` to validate runtime manifests after deploy. It now checks nonzero core addresses, governance helper wiring, token writer roles, treasury authorized-caller posture, reserve activation, bootstrap pool readiness, and presence of the configured Mento `USDC` route.
+- Added `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol` as the protocol-half validation script. It reads the generated suite manifest, previews and executes `LiquidityRouter.buyCplTcoin(...)` for a funded USDC wallet, and writes a `scenario-b-run.json` artifact with preview/execution outputs and resulting `cplTCOIN` balance deltas.
+- Added `contracts/foundry/script/deploy/RecordOnRampScenarioA.md` as the operator runbook for the off-chain half of the retail journey. It records the wallet, Celo USDC token address, observed post-Transak balance, and transaction references before handing that same wallet into Scenario B.
+- Refactored `contracts/foundry/deploy-config.json` into a static public Celo-mainnet TorontoCoin profile with chain metadata, Celo/Mento addresses, policy defaults, and bootstrap seed metadata only. Deployment outputs are no longer stored in config; runtime manifests are generated under `contracts/foundry/deployments/torontocoin/<target>/`.
+- Tightened `contracts/foundry/script/helpers/DeployChainConfig.sol` so optional role and bootstrap wallet fields can be omitted cleanly and fall back to the broadcasting deployer instead of relying on zero-address sentinels in the checked-in config.
+- Added the governance helper split required to keep the suite deployable under the EIP-170 runtime-size limit: `GovernanceExecutionHelper.sol`, `GovernanceProposalHelper.sol`, and `GovernanceRouterProposalHelper.sol`. `Governance.sol` now keeps the storage, voting, fallback dispatch, and deadline-gated execution entrypoint at the governance address while delegating proposal construction and execution logic into those helper contracts.
+- Added `contracts/foundry/src/torontocoin/StaticCadOracle.sol` as the static CAD price source used by the bootstrap `CADm` reserve asset, and updated `GovernanceDeadline.t.sol` plus the new `ManagedPoolAdapter.t.sol` coverage so the deployable stack and reduced governance surface remain tested.
+- Updated Foundry workspace docs, TorontoCoin contract notes, and engineering specs so the repo now documents the mainnet-first deployment posture, static-config versus generated-manifest split, Scenario A / Scenario B validation model, and the new `ManagedPoolAdapter` plus governance helper structure.
+- Marked `contracts/foundry/deployments/**` as generated output in `contracts/foundry/.gitignore` so local dry runs and Anvil broadcasts do not pollute the repo with non-canonical mainnet artifacts.
+
+### Verification
+- `forge fmt src/torontocoin/Governance.sol src/torontocoin/GovernanceExecutionHelper.sol src/torontocoin/GovernanceProposalHelper.sol src/torontocoin/GovernanceRouterProposalHelper.sol src/torontocoin/ManagedPoolAdapter.sol src/torontocoin/StaticCadOracle.sol script/helpers/DeployChainConfig.sol script/deploy/DeployTorontoCoinSuite.s.sol script/deploy/ValidateTorontoCoinDeployment.s.sol script/deploy/RunTorontoCoinScenarioB.s.sol test/unit/torontocoin/GovernanceDeadline.t.sol test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test --match-path test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `forge test`
+- `anvil --chain-id 42220`
+- `forge script script/deploy/DeployTorontoCoinSuite.s.sol:DeployTorontoCoinSuite --rpc-url http://127.0.0.1:8545 --broadcast`
+- `DEPLOY_TARGET_CHAIN=celo-mainnet forge script script/deploy/ValidateTorontoCoinDeployment.s.sol:ValidateTorontoCoinDeployment --rpc-url http://127.0.0.1:8545`
+
+### Files Edited
+- `contracts/foundry/.env.example`
+- `contracts/foundry/.gitignore`
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/helpers/DeployChainConfig.sol`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/ValidateTorontoCoinDeployment.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+- `contracts/foundry/script/deploy/RecordOnRampScenarioA.md`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/Governance.md`
+- `contracts/foundry/src/torontocoin/GovernanceExecutionHelper.sol`
+- `contracts/foundry/src/torontocoin/GovernanceProposalHelper.sol`
+- `contracts/foundry/src/torontocoin/GovernanceRouterProposalHelper.sol`
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.sol`
+- `contracts/foundry/src/torontocoin/ManagedPoolAdapter.md`
+- `contracts/foundry/src/torontocoin/StaticCadOracle.sol`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `contracts/foundry/test/unit/torontocoin/ManagedPoolAdapter.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.56
+### Timestamp
+- 2026-03-19 14:45:00 EDT
+
+### Objective
+- Enable atomic `USDC -> USDm -> CADm` normalization through the shared Mento adapter so the retail `LiquidityRouter` path can support a Transak-funded USDC on-ramp without embedding multihop swap logic in the router itself.
+
+### What Changed
+- Extended `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.sol` so it now supports both single-hop and multihop default routes. The adapter can still execute direct `tokenIn -> CADm` swaps, but it can now also chain `tokenIn -> intermediateToken -> CADm` in one atomic call while preserving the existing `ISwapAdapter` surface consumed by `ReserveInputRouter` and `TcoinMintRouter`.
+- Added multihop admin/config support to the adapter via `setDefaultMultiHopRoute(...)`, `getDefaultRouteConfig(...)`, and a dedicated `CadmMultiHopSwapped` event. Existing single-hop `setDefaultRoute(...)` behaviour remains intact and continues to clear the multihop fields for that token.
+- Updated `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol` so the checked-in Celo config now seeds both the direct `USDm -> CADm` Mento leg and the new atomic `USDC -> USDm -> CADm` route during deployment, and enables `USDC` on `ReserveInputRouter` for the retail flow.
+- Expanded `contracts/foundry/test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol` with live-shape multihop coverage: previewing `USDC -> USDm -> CADm`, executing the multihop directly through the adapter, and normalizing `USDC` through `ReserveInputRouter` into accepted `CADm`.
+- Updated the TorontoCoin contract notes, Foundry README, and engineering specs so the written source of truth now says the retail on-ramp supports atomic `USDC -> USDm -> CADm` normalization through the helper/adapter boundary rather than requiring a separate future multihop pass.
+
+### Verification
+- `forge fmt src/torontocoin/MentoBrokerSwapAdapter.sol script/deploy/DeployLiquidityRoutingStack.s.sol test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `forge build`
+- `forge test --match-path test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.sol`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `contracts/foundry/test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.md`
+- `contracts/foundry/src/torontocoin/ReserveInputRouter.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.55
+### Timestamp
+- 2026-03-19 14:05:00 EDT
+
+### Objective
+- Move public Foundry deployment parameters out of env files and into a checked-in config, while keeping only real secrets in `.env.example` and recording the verified Celo Mento route metadata for `USDC`, `USDm`, and `CADm`.
+
+### What Changed
+- Added `contracts/foundry/deploy-config.json` as the new checked-in public config for the Foundry workspace. It now holds chain metadata, registry script defaults, TorontoCoin dependency addresses, and the verified Celo mainnet Mento addresses plus exchange IDs.
+- Refactored `contracts/foundry/script/helpers/DeployChainConfig.sol` so scripts now default to the target chain declared in `deploy-config.json`, still accept `DEPLOY_TARGET_CHAIN` as a public runtime override, and read chain metadata from the config instead of hardcoding it separately.
+- Updated `DeployCityImplementationRegistry.s.sol`, `PromoteCityVersion.s.sol`, `DeployLiquidityRoutingStack.s.sol`, and `DiscoverMentoExchangeIds.s.sol` so all public addresses and route metadata come from `deploy-config.json`; only `PRIVATE_KEY` and RPC/explorer secrets remain in env.
+- Tightened `contracts/foundry/.env.example` down to secrets only: `MAINNET_RPC_URL`, `SEPOLIA_RPC_URL`, `PRIVATE_KEY`, `ETHERSCAN_API_KEY`, and `CELOSCAN_API_KEY`.
+- Recorded the verified Celo mainnet Mento route posture in the checked-in config and README: `USDC -> USDm` exists, `USDm -> CADm` exists, and the current single-hop deploy path still seeds `USDm -> CADm` as the active route until a future multihop adapter pass lands.
+- Updated the Foundry README plus the engineering specs/runbook so operator docs now point to `deploy-config.json` for public values and to local env files only for secrets.
+
+### Verification
+- `forge fmt script/helpers/DeployChainConfig.sol script/helpers/DiscoverMentoExchangeIds.s.sol script/deploy/DeployCityImplementationRegistry.s.sol script/deploy/PromoteCityVersion.s.sol script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `forge build`
+- `forge test`
+- `source contracts/foundry/.env.local && DEPLOY_TARGET_CHAIN=celo forge script contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol:DiscoverMentoExchangeIds --rpc-url "$MAINNET_RPC_URL"`
+
+### Files Edited
+- `contracts/foundry/deploy-config.json`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/helpers/DeployChainConfig.sol`
+- `contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol`
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `agent-context/session-log.md`
+
+## v1.54
+### Timestamp
+- 2026-03-19 11:10:00 EDT
+
+### Objective
+- Add a safe way to discover live Mento `exchangeId` values for `tokenIn -> mCAD`, and remove truly unused Foundry env variables from the Solidity workspace.
+
+### What Changed
+- Added `contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol` as a read-only helper script. It uses the canonical Mento discovery flow from the Broker docs: query `getExchangeProviders()` on the Broker, then `getExchanges()` on each provider, and print the matching exchange IDs for `MENTO_ROUTE_TOKEN_IN` paired with `CADM_TOKEN_ADDRESS`.
+- Trimmed `contracts/foundry/.env.example` to remove unused Alchemy-specific placeholders (`MAINNET_RPC_URL_ALCHEMY`, `SEPOLIA_RPC_URL_ALCHEMY`, `ALCHEMY_API_KEY`) while keeping the active Celo/Sepolia deployment variables and the explorer API-key envs used operationally for verification.
+- Updated the Foundry README with the exact `forge script ... DiscoverMentoExchangeIds` invocation and the required env surface for resolving `MENTO_EXCHANGE_ID` from live chain state.
+- Updated the engineering technical spec so the current source of truth now records that Mento exchange IDs are discovered from Broker/provider state rather than assumed or hand-derived in the repo.
+
+### Verification
+- `forge fmt script/helpers/DiscoverMentoExchangeIds.s.sol`
+- `forge build`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/script/helpers/DiscoverMentoExchangeIds.s.sol`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/README.md`
+- `docs/engineering/technical-spec.md`
+- `agent-context/session-log.md`
+
+## v1.53
+### Timestamp
+- 2026-03-19 10:55:00 EDT
+
+### Objective
+- Standardize the Foundry deployment environment around Celo mainnet and Sepolia, remove the old Flow EVM testnet RPC variable, and make the deploy/admin scripts validate the intended target chain explicitly.
+
+### What Changed
+- Removed `FLOW_EVM_TESTNET_RPC_URL` from `contracts/foundry/.env.example`, added `DEPLOY_TARGET_CHAIN`, and complemented `ETHERSCAN_API_KEY` with `CELOSCAN_API_KEY`.
+- Added `contracts/foundry/script/helpers/DeployChainConfig.sol` as a shared script helper that resolves the selected deploy target (`celo` or `sepolia`), maps it to the expected chain ID, the expected RPC env variable, and the expected explorer API-key env variable, and reverts if a script is broadcast on the wrong chain.
+- Updated `DeployCityImplementationRegistry.s.sol`, `PromoteCityVersion.s.sol`, and `DeployLiquidityRoutingStack.s.sol` to inherit the shared deploy-chain helper, validate `DEPLOY_TARGET_CHAIN` against the connected chain, and log the matching RPC/explorer env expectations for operators.
+- Added Foundry RPC aliases for `celo` and `sepolia` in `contracts/foundry/foundry.toml`, and rewrote the Foundry README plus the city-registry engineering runbook so deployment commands now use `--rpc-url celo` / `--rpc-url sepolia` instead of the removed Flow testnet variable.
+- Updated the engineering technical spec so the repo-level source of truth now reflects the Celo/Sepolia deployment-target model for the Solidity workspace.
+
+### Verification
+- `forge fmt script/helpers/DeployChainConfig.sol script/deploy/DeployCityImplementationRegistry.s.sol script/deploy/PromoteCityVersion.s.sol script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `forge build`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/.env.example`
+- `contracts/foundry/foundry.toml`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/helpers/DeployChainConfig.sol`
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `docs/engineering/technical-spec.md`
+- `agent-context/session-log.md`
+
+## v1.52
+### Timestamp
+- 2026-03-19 10:35:00 EDT
+
+### Objective
+- Operationalize the reserve-normalization split by adding a concrete Mento broker adapter, a deploy-and-wire script for the retail liquidity stack, and repo-level integration updates for the new `LiquidityRouter` input-token flow.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.sol` plus `MentoBrokerSwapAdapter.md` as the concrete `ISwapAdapter` implementation for Mento routes. The adapter stores default broker routes per input token, supports optional per-call route overrides through `swapData`, and returns actual observed `mCAD` output back to the caller.
+- Added `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol` so the repo now has a concrete deployment/config path for the retail `cplTCOIN` stack. The script deploys `MentoBrokerSwapAdapter`, `ReserveInputRouter`, and `LiquidityRouter`, wires the helper/router circular dependency, calls `TreasuryController.setLiquidityRouter(...)`, optionally seeds one initial Mento route plus helper-enabled input token, transfers ownership of the new contracts to governance, and writes a deployment artifact.
+- Updated `contracts/foundry/.env.example` with the liquidity-stack deployment variables required by the new script.
+- Added `contracts/foundry/test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`, covering default-route previews, per-call route overrides, and an integration-style normalization path where `ReserveInputRouter` uses the real broker-backed adapter surface to convert an unsupported input into accepted `mCAD`.
+- Updated the TorontoCoin README plus the reserve-input, mint-router, and architecture notes so the written source of truth now distinguishes the older `TcoinMintRouter` checkout path from the newer `LiquidityRouter` retail `cplTCOIN` path, and explicitly documents `MentoBrokerSwapAdapter` as the concrete Mento execution surface shared by both.
+- Confirmed there are currently no live app or indexer call sites for `LiquidityRouter.buyCplTcoin(...)` outside the Solidity/docs layer, so this pass focused the external integration cleanup on deployment/config and architecture notes rather than frontend code rewrites.
+
+### Verification
+- `forge fmt src/torontocoin/MentoBrokerSwapAdapter.sol src/torontocoin/ReserveInputRouter.sol src/torontocoin/LiquidityRouter.sol test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `forge test --match-path test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `forge test --match-path test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.sol`
+- `contracts/foundry/src/torontocoin/MentoBrokerSwapAdapter.md`
+- `contracts/foundry/script/deploy/DeployLiquidityRoutingStack.s.sol`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/test/unit/torontocoin/MentoBrokerSwapAdapter.t.sol`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/src/torontocoin/ReserveInputRouter.md`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.md`
+- `docs/engineering/mintTcoinWithUSDC-architecture.md`
+- `docs/engineering/buy-tcoin-checkout-orchestrator-architecture.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.51
+### Timestamp
+- 2026-03-18 22:05:00 EDT
+
+### Objective
+- Separate reserve-input normalization from `cplTCOIN` pool routing so `LiquidityRouter` remains the retail entrypoint while Mento-style `mCAD` conversion is only engaged when the user input token is not already treasury-accepted.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/ReserveInputRouter.sol` plus `ReserveInputRouter.md` as the dedicated normalization helper. It resolves direct treasury-accepted reserve inputs without swapping, normalizes helper-enabled unsupported inputs into `mCAD`, and remains out of pool selection, charity routing, and treasury policy math.
+- Refactored `contracts/foundry/src/torontocoin/LiquidityRouter.sol` so its public buy/preview surface is now input-token based rather than reserve-asset-id based. The router pulls user input tokens itself, uses `TreasuryController.resolveAcceptedReserveAsset(...)` to decide whether direct treasury settlement is possible, delegates to `ReserveInputRouter` only when needed, then deposits the normalized reserve asset into `depositAssetForLiquidityRoute(...)`, selects the best eligible pool, and finishes the `cplTCOIN` purchase plus charity top-up.
+- Extended `TreasuryController` with `resolveAcceptedReserveAsset(address)` and updated `IReserveRegistry` / `ITreasuryController` accordingly so reserve-input detection stays in the treasury policy layer without embedding normalization logic there.
+- Extended the governance-facing router surface with `setReserveInputRouter(...)`, added the corresponding governance proposal path, and updated the governance regression test harness so the finalized owner/governance execution model still covers router pointer updates.
+- Added focused tests for `ReserveInputRouter`, rewrote `LiquidityRouter` tests around the new direct-vs-normalized input flow, and updated the treasury mock registry to satisfy the new reserve lookup helper.
+- Updated TorontoCoin contract notes and engineering specs so the documented architecture now reflects the split between retail routing, reserve-input normalization, and treasury settlement.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/ReserveInputRouter.sol`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol`
+- `contracts/foundry/test/unit/torontocoin/ReserveInputRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `contracts/foundry/src/torontocoin/ReserveInputRouter.md`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.md`
+- `contracts/foundry/src/torontocoin/TreasuryController.md`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.md`
+- `contracts/foundry/src/torontocoin/README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.50
+### Timestamp
+- 2026-03-18 21:42:00 EDT
+
+### Objective
+- Clear the remaining TorontoCoin editor lint errors tied to the private-leading-underscore rule on the targeted Solidity contracts.
+
+### What Changed
+- Renamed private and internal storage across `GeneroTokenV3.sol`, `Governance.sol`, `ReserveRegistry.sol`, `TreasuryController.sol`, and `UserAcceptancePreferencesRegistry.sol` so the implementation now consistently uses underscore-prefixed private/internal identifiers.
+- Updated the matching helper-function names in `GeneroTokenV3.sol` to the same underscore-prefixed convention and kept the existing token behaviour intact.
+- Added narrow `solhint` suppression only where the Sarafu-derived private constants in `GeneroTokenV3.sol` must stay in SCREAMING_SNAKE_CASE, avoiding a clash between the underscore rule and the constant-name rule.
+- Kept the pass ABI-safe for the targeted contracts; this was an internal naming and tooling-alignment cleanup rather than a behaviour change.
+- Recorded the lint-hardening note in the engineering specs so the repo’s current source of truth matches the implementation.
+
+### Verification
+- `forge build`
+- `pnpm dlx solhint -c /tmp/solhint.XXXXXX.json contracts/foundry/src/torontocoin/GeneroTokenV3.sol contracts/foundry/src/torontocoin/Governance.sol contracts/foundry/src/torontocoin/ReserveRegistry.sol contracts/foundry/src/torontocoin/TreasuryController.sol contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test --match-path test/unit/torontocoin/UserAcceptancePreferencesRegistry.t.sol`
+- `forge test --match-path test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `forge test --match-path test/unit/torontocoin/PoolRegistry.t.sol`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/ReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.49
+### Timestamp
+- 2026-03-18 20:15:00 EDT
+
+### Objective
+- Clear the current Solidity formatter and linter-style failures on the targeted TorontoCoin contracts without changing contract behaviour.
+
+### What Changed
+- Ran `forge fmt` on the targeted TorontoCoin contract set and updated the files that were out of style: `Governance.sol`, `ReserveRegistry.sol`, and `UserAcceptancePreferencesRegistry.sol`.
+- Confirmed the formatter check passes for the full requested target list: `GeneroTokenV3.sol`, `Governance.sol`, `ReserveRegistry.sol`, `TreasuryController.sol`, and `UserAcceptancePreferencesRegistry.sol`.
+- Left `GeneroTokenV3.sol` and `TreasuryController.sol` unchanged because they were already compliant with the formatter path used by the repo.
+
+### Verification
+- `forge fmt --check src/torontocoin/GeneroTokenV3.sol src/torontocoin/Governance.sol src/torontocoin/ReserveRegistry.sol src/torontocoin/TreasuryController.sol src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/ReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+- `agent-context/session-log.md`
+
+## v1.48
+### Timestamp
+- 2026-03-18 20:06:00 EDT
+
+### Objective
+- Add the missing contract notes for `Treasury` and `LiquidityRouter`, and rewrite `TreasuryController.md` so the documentation matches the current treasury split, collateralization policy, and router integration.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/Treasury.md` documenting `Treasury` as the pure reserve vault, its authorization model, its reserve-movement primitives, and its strict separation from treasury economics.
+- Added `contracts/foundry/src/torontocoin/LiquidityRouter.md` documenting the router’s non-custodial execution role, registry-driven acceptance model, pool-selection logic, charity top-up flow, and governance/admin surface.
+- Rewrote `contracts/foundry/src/torontocoin/TreasuryController.md` so it now reflects the live split architecture: `Treasury` as reserve vault, `TreasuryController` as policy engine, router-only reserve settlement, overcollateralization-driven charity minting, and the current owner/governance/indexer/liquidity-router authority model.
+- Updated the engineering specs to record that the contract-level TorontoCoin design notes are now current for the treasury/controller/router boundary.
+
+### Verification
+- Documentation-only pass; no tests were run.
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Treasury.md`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.md`
+- `contracts/foundry/src/torontocoin/TreasuryController.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.47
+### Timestamp
+- 2026-03-18 19:56:00 EDT
+
+### Objective
+- Add a canonical `UserAcceptancePreferencesRegistry` for pool, merchant-voucher, and token acceptance policy, then make `LiquidityRouter` read those stored preferences on-chain instead of taking user preference vectors as calldata.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`, a self-contained on-chain registry where users can manage denied and accepted pools, denied and accepted merchants, ranked preferred merchants, denied and accepted token addresses, ranked preferred token addresses, and one global `strictAcceptedOnly` flag.
+- Added `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.md` and updated `contracts/foundry/src/torontocoin/README.md` so the repo now documents the canonical semantics: allow-unless-denied by default, strict mode as one global flag, pool preferences as allow/deny only, and merchant/token preferences as rankable and implicitly accepted when preferred.
+- Refactored `contracts/foundry/src/torontocoin/LiquidityRouter.sol` so buy and preview flows are now registry-driven: `buyCplTcoin(bytes32,uint256,uint256)` uses `msg.sender`, `previewBuyCplTcoin(address,bytes32,uint256)` takes an explicit buyer, the router stores an `acceptancePreferencesRegistry` pointer, and pool selection now hard-excludes denied pools and denied merchant ecosystems while enforcing strict token/pool/merchant acceptance rules and rank-sensitive preferred-merchant scoring.
+- Replaced the router’s pool-adapter preference hook with the generic `poolMatchesAnyMerchantIds(bytes32,bytes32[])` shape so the same adapter method can be reused for denied, accepted, and preferred merchant matching.
+- Extended `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol` plus `contracts/foundry/src/torontocoin/Governance.sol` so stewards can now propose `LiquidityRouterSetAcceptancePreferencesRegistry` updates against the finalized router admin surface.
+- Added `contracts/foundry/test/unit/torontocoin/UserAcceptancePreferencesRegistry.t.sol`, rewrote `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol` around the live registry, and expanded `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol` so the new acceptance-registry router pointer is covered under the intended governance ownership model.
+- Updated the engineering specs so the current repo-level source of truth now states that voucher acceptance preferences are canonical on-chain protocol state and that `LiquidityRouter` consumes that state directly for pool eligibility and scoring.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/UserAcceptancePreferencesRegistry.t.sol`
+- `forge test --match-path test/unit/torontocoin/LiquidityRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.sol`
+- `contracts/foundry/src/torontocoin/UserAcceptancePreferencesRegistry.md`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol`
+- `contracts/foundry/src/torontocoin/README.md`
+- `contracts/foundry/test/unit/torontocoin/UserAcceptancePreferencesRegistry.t.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.46
+### Timestamp
+- 2026-03-18 17:40:00 EDT
+
+### Objective
+- Finish the treasury split everywhere so the repo consistently treats `Treasury` as the only reserve vault and `TreasuryController` as the economic policy layer only.
+
+### What Changed
+- Refactored `contracts/foundry/test/unit/torontocoin/mocks/MockTreasuryMinting.sol` to use a tiny `MockTreasuryVaultForMinting`, so the minting mock now points `treasury()` at a vault address and deposits reserve assets into that vault instead of into the controller mock itself.
+- Tightened `contracts/foundry/test/unit/torontocoin/TcoinMintRouter.t.sol` so the router path now asserts the treasury mock is not self-custodying reserves and that successful reserve-backed mints end with CADm in the mock vault and not on the controller mock.
+- Rewrote the stale treasury-custody language in `contracts/foundry/src/torontocoin/TreasuryController.md`, `contracts/foundry/src/torontocoin/TcoinMintRouter.md`, and `contracts/foundry/src/torontocoin/ReserveRegistry.md` so they now describe `Treasury` as the reserve holder and `TreasuryController` as the pricing/redemption/router policy engine.
+- Updated `docs/engineering/tcoin-smart-contract-architecture.md`, `docs/engineering/tcoin-smart-contract-design-specs.md`, and `docs/engineering/mintTcoinWithUSDC-architecture.md` to introduce `Treasury` as a first-class vault, move reserve-balance ownership from the controller to the vault, and show router/controller/vault interactions explicitly in the architecture narrative.
+- Rebuilt `contracts/foundry/src/torontocoin/allTcoinContracts.md` as a live treasury-split mirror that includes the vault interface, minting interface, `Treasury`, and the vault-based `TreasuryController` boundary notes.
+- Updated the engineering specs so the current repo-level source of truth now says the treasury split is fully reflected across code, mocks, docs, and mirrors, while admin still retains emergency freeze/unfreeze powers because governance voting is too slow for that operational path.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/TcoinMintRouter.t.sol`
+- `forge test --match-path test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/test/unit/torontocoin/mocks/MockTreasuryMinting.sol`
+- `contracts/foundry/test/unit/torontocoin/TcoinMintRouter.t.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.md`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.md`
+- `contracts/foundry/src/torontocoin/ReserveRegistry.md`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `docs/engineering/tcoin-smart-contract-architecture.md`
+- `docs/engineering/tcoin-smart-contract-design-specs.md`
+- `docs/engineering/mintTcoinWithUSDC-architecture.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.45
+### Timestamp
+- 2026-03-18 17:20:00 EDT
+
+### Objective
+- Reconcile `Governance.sol` with the finalized `TreasuryController`, `LiquidityRouter`, and token admin surfaces so on-chain proposals match the current signatures and ownership model.
+
+### What Changed
+- Expanded `contracts/foundry/src/torontocoin/Governance.sol` with a `liquidityRouter` pointer, a router-governance event/setter, renamed the stale demurrage proposal path to `ExpirePeriodUpdate`, and added explicit proposal families for finalized `TreasuryController` and `LiquidityRouter` pointer/config/admin actions.
+- Added `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol` and broadened `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol` so governance dispatch compiles against the current owner-only, governance-only, and governance-or-owner treasury/router surfaces.
+- Rebuilt `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol` around access-controlled controller/router/token mocks that enforce the intended deployment posture, covering deadline gating, merchant-entity approval payloads, expiry-period updates, router/controller admin proposals, and failure cases when Governance is not wired as the target owner/governance address.
+- Updated `contracts/foundry/src/torontocoin/Governance.md` plus the engineering specs to document that `Governance` should own the finalized controller/router stack and act as their configured governance address where applicable.
+- Left `contracts/foundry/src/torontocoin/allTcoinContracts.md` untouched in this session because it is currently deleted in the worktree and restoring it here would overwrite an existing repo-side change outside this task.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/Governance.md`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ILiquidityRouterGovernance.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.44
+### Timestamp
+- 2026-03-18 15:51:00 EDT
+
+### Objective
+- Harden `GeneroTokenV3` so `cplTCOIN` is safer to operate in production, with corrected burn semantics, explicit writer authority, clearer previews, visible allowance reporting, and stronger merchant-transfer documentation.
+
+### What Changed
+- Refactored `contracts/foundry/src/torontocoin/GeneroTokenV3.sol` around a unified transfer quote path that now powers `transfer`, `transferFrom`, `previewTransfer(...)`, `previewMerchantTransfer(...)`, and `previewAllowanceRequired(...)`.
+- Switched token allowance storage to internal base-unit accounting with a visible-unit `allowance(...)` getter, visible-unit `Approval` events, and post-spend approval emission in `transferFrom(...)`.
+- Added `getMerchantFeeConfig(...)` and `canResolveCharityFor(...)`, documented the base-unit conservation rule for merchant fee routing, and kept the charity base credit as the rounding remainder to preserve exact internal conservation.
+- Fixed `burn(uint256)` to check the base delta instead of comparing visible units to base balance, removed the broken zero-argument `burn()` overload, and separated owner admin authority from explicit writer mint/burn authority.
+- Rewrote `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol` to cover explicit writer requirements, allowance previews, visible allowance decay, merchant-transfer event semantics, charity-resolution health checks, fee-config introspection, and rounding bounds across decimals and demurrage states.
+- Updated `contracts/foundry/src/torontocoin/GeneroToken.md`, synced the token surface into `contracts/foundry/src/torontocoin/allTcoinContracts.md`, and refreshed the engineering specs.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`
+- `contracts/foundry/src/torontocoin/GeneroToken.md`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.43
+### Timestamp
+- 2026-03-18 15:28:00 EDT
+
+### Objective
+- Add a controllable admin override for `TreasuryController.mintToCharity(...)`, defaulting to enabled while still allowing governance or the admin to switch that path off.
+
+### What Changed
+- Added `adminCanMintToCharity` to `contracts/foundry/src/torontocoin/TreasuryController.sol`, defaulting it to `true` during initialization.
+- Added `setAdminCanMintToCharity(bool enabled)` plus an `AdminCanMintToCharityUpdated` event so either governance or the owner/admin can disable or re-enable the admin charity-mint path.
+- Refactored both `mintToCharity(...)` entrypoints to allow governance unconditionally and owner/admin calls only when `adminCanMintToCharity` remains enabled.
+- Expanded `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol` to verify the default admin mint path, governance-driven disablement, and owner self-disablement while preserving governance access.
+- Synced the treasury-controller interface addition into `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`, mirrored the public interface change into `contracts/foundry/src/torontocoin/allTcoinContracts.md`, and updated the engineering specs.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.42
+### Timestamp
+- 2026-03-18 15:12:37 EDT
+
+### Objective
+- Extend `Governance.sol` so stewards can execute on-chain proposals for `setOvercollateralizationTarget(...)` and `mintToCharity(...)` on the refactored treasury controller.
+
+### What Changed
+- Added new governance proposal types for overcollateralization-target updates and excess-capacity charity mints, plus the corresponding payload storage and steward-facing proposal constructors in `contracts/foundry/src/torontocoin/Governance.sol`.
+- Extended proposal execution so approved governance actions now call `ITreasuryController.setOvercollateralizationTarget(...)`, `ITreasuryController.mintToCharity(uint256)`, or `ITreasuryController.mintToCharity(uint256,uint256)` as appropriate.
+- Expanded `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol` so governance can compile against the new treasury-controller hooks.
+- Added focused Foundry coverage in `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol` for deadline-gated execution of both the collateral-target proposal and default/specified charity-mint proposals.
+- Synced the governance and interface changes into `contracts/foundry/src/torontocoin/allTcoinContracts.md` and updated the engineering specs.
+
+### Verification
+- `forge test --match-path test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryController.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.41
+### Timestamp
+- 2026-03-18 14:59:54 EDT
+
+### Objective
+- Split reserve custody out of `TreasuryController` into a dedicated `Treasury` vault, refactor the controller into the pure economic policy layer, and preserve router/on-ramp settlement flows against the new custody model.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/Treasury.sol`, a non-upgradeable reserve vault with owner-managed authorized callers, reserve deposit/withdraw primitives, balance views, and emergency sweep support.
+- Added `contracts/foundry/src/torontocoin/interfaces/ITreasuryVault.sol` and refactored `contracts/foundry/src/torontocoin/TreasuryController.sol` so reserve custody now flows through the vault instead of the controller contract itself.
+- Refactored `TreasuryController` initialization and storage to include `treasury`, `liquidityRouter`, and `overcollateralizationTarget18`, added live collateralization and charity-headroom views, and implemented governance-only `mintToCharity(...)` against excess collateralization headroom.
+- Updated the router-facing settlement path so `depositAssetForLiquidityRoute(...)` is router-only, deposits reserves into `Treasury`, and mints mrTCOIN to the router caller; updated `LiquidityRouter.sol` so it now approves the vault, receives mrTCOIN, and passes that liquidity on to the pool adapter.
+- Updated `TcoinMintRouter.sol` and `ITreasuryMinting.sol` so the swap router now approves the underlying vault address instead of the controller for reserve-backed minting.
+- Expanded the shared interfaces (`ITCOINToken`, `IReserveRegistry`, `ITreasuryMinting`) and added focused Foundry coverage for the vault plus the refactored controller custody/collateralization paths.
+- Mirrored the new `Treasury` contract and the related API/interface changes into `contracts/foundry/src/torontocoin/allTcoinContracts.md`.
+- Enabled `via_ir = true` in `contracts/foundry/foundry.toml` after the split controller exceeded Solidity 0.8.30’s non-IR stack limits under the existing optimizer settings.
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/Treasury.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/src/torontocoin/TcoinMintRouter.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryVault.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IReserveRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITCOINToken.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITreasuryMinting.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/Treasury.t.sol`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/mocks/MockTreasuryMinting.sol`
+- `contracts/foundry/foundry.toml`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.40
+### Timestamp
+- 2026-03-18 14:28:42 EDT
+
+### Objective
+- Build `LiquidityRouter` as the non-custodial execution layer for reserve-asset to `cplTCOIN` liquidity routes, and align the treasury/token/governance surfaces it depends on.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/LiquidityRouter.sol`, including the router-local treasury, token, charity-preferences, pool-registry, and pool-adapter interfaces needed for reserve-asset routing into `cplTCOIN`.
+- Implemented weighted pool scoring with hard eligibility filters, explicit pool and merchant-preference inputs, deterministic fallback to the best eligible pool, preview support, and direct `cplTCOIN` charity top-up minting to the resolved charity wallet.
+- Updated `contracts/foundry/src/torontocoin/TreasuryController.sol` with router-facing reserve-deposit helpers (`depositAssetForLiquidityRoute`, `previewLiquidityRouteDeposit`, `getReserveAssetToken`), switched mint calls to the writer-style `mint(address,uint256,bytes)` surface, and changed redemption burns to transfer tokens in first and then call `burn(uint256)`.
+- Updated `contracts/foundry/src/torontocoin/interfaces/ITCOINToken.sol` to match the `GeneroTokenV3` writer-style token surface and adjusted `contracts/foundry/src/torontocoin/Governance.sol` to use `setExpirePeriod(...)` on the remaining demurrage proposal path.
+- Added `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol` covering preferred-pool routing, automatic fallback, merchant-preference scoring, and admin pool seeding/top-up behaviour, and refreshed the treasury/governance mocks that still assumed the pre-`GeneroTokenV3` token ABI.
+- Mirrored the router and the related treasury/governance/token-interface changes into `contracts/foundry/src/torontocoin/allTcoinContracts.md` and updated the engineering specs to describe the new routing flow.
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/LiquidityRouter.sol`
+- `contracts/foundry/src/torontocoin/TreasuryController.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/interfaces/ITCOINToken.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/LiquidityRouter.t.sol`
+- `contracts/foundry/test/unit/torontocoin/TreasuryMintPreview.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.39
+### Timestamp
+- 2026-03-18 13:23:40 EDT
+
+### Objective
+- Build `GeneroTokenV3` as the Sarafu-family `cplTCOIN` demurrage token with merchant POS fee routing, direct charity fee payout, and preview helpers.
+
+### What Changed
+- Added `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`, a Sarafu-style demurrage token that preserves base-balance demurrage, writer/mint/seal/expiry/max-supply/sink controls, and adds merchant-target fee logic on ordinary `transfer` and `transferFrom`.
+- Added minimal local registry interfaces inside `GeneroTokenV3.sol` for `PoolRegistry` merchant-target detection and `UserCharityPreferencesRegistry` charity/voluntary-fee resolution.
+- Implemented merchant fee configuration knobs: pool-registry and charity-preferences registry setters, merchant-fee enable toggle, default merchant fee, per-merchant-id fee overrides, and address-based fee exemptions.
+- Added the required preview and introspection helpers, including `previewMerchantTransfer`, `feeApplies`, `getEffectiveMerchantFeeBps`, `getMerchantFeeOverride`, and `hasMerchantFeeOverride`.
+- Added `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol` covering merchant transfer splits, transfer-from allowance consumption on actual payer debit, fee exemptions, and merchant-id fee overrides.
+- Added the accompanying `contracts/foundry/src/torontocoin/GeneroToken.md` design note and replaced the old simple token section in `contracts/foundry/src/torontocoin/allTcoinContracts.md` with the new `GeneroTokenV3` implementation.
+- Updated the engineering specs to record the new `cplTCOIN` merchant-payment semantics.
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/GeneroTokenV3.sol`
+- `contracts/foundry/src/torontocoin/GeneroToken.md`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/GeneroTokenV3.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.38
+### Timestamp
+- 2026-03-18 12:36:17 EDT
+
+### Objective
+- Refactor the TorontoCoin `PoolRegistry` into a merchant-entity registry for `cplTCOIN`, with multi-wallet merchants, merchant-level cpl acceptance and POS-fee eligibility, and wallet-facing payment-target helpers.
+
+### What Changed
+- Replaced the wallet-keyed `PoolRegistry` merchant model with `MerchantEntity` records keyed by `bytes32 merchantId`, including merchant-level `acceptsCplTcoin` and `posFeeEligible` flags, linked-wallet management, compact wallet payment-config lookup, and wallet-facing predicate helpers for payment/POS checks.
+- Expanded `IPoolRegistry` to expose the new merchant-entity approval and query surface while preserving wallet-based compatibility helpers used by existing merchant-redemption logic.
+- Updated `Governance.sol` so merchant approval, suspension, removal, and pool-reassignment proposals now carry `merchantId` payloads, with merchant approval also capturing the initial wallet set.
+- Added focused Foundry coverage for the new merchant-entity workflow and updated the governance test mock to the new pool-registry ABI.
+- Mirrored the updated `PoolRegistry` and `IPoolRegistry` definitions into `contracts/foundry/src/torontocoin/allTcoinContracts.md`.
+- Updated the engineering specs to record the new merchant-entity payment-detection model.
+
+### Verification
+- `forge test`
+
+### Files Edited
+- `contracts/foundry/src/torontocoin/PoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/interfaces/IPoolRegistry.sol`
+- `contracts/foundry/src/torontocoin/Governance.sol`
+- `contracts/foundry/src/torontocoin/allTcoinContracts.md`
+- `contracts/foundry/test/unit/torontocoin/PoolRegistry.t.sol`
+- `contracts/foundry/test/unit/torontocoin/GovernanceDeadline.t.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.37
 ### Timestamp
 - 2026-03-15 11:10:00 EDT

@@ -5,6 +5,12 @@
 - Product abstraction: `USDC -> TCOIN`
 - On-chain path: `tokenIn -> CADm -> TreasuryController.depositAndMint(...) -> TCOIN`
 
+For `cplTCOIN` acquisition, this router is no longer the primary normalization path.
+`ReserveInputRouter` now handles reserve-input normalization for `LiquidityRouter`, while `TcoinMintRouter` remains the older mrTCOIN/TCOIN mint abstraction.
+
+Reserve custody does not end in `TreasuryController`.
+The router approves the vault address returned by `ITreasuryMinting(treasury).treasury()`, and the controller entrypoint causes the dedicated `Treasury` vault to receive the reserve asset.
+
 This removes multi-step wallet UX where users would otherwise execute separate swaps and minting interactions.
 
 ## Dependencies and Trust Boundaries
@@ -12,6 +18,8 @@ The router depends on three external surfaces:
 1. `ISwapAdapter` (`swapAdapter`) for input token to CADm conversion.
 2. `ITreasuryMinting` (`treasury`) for reserve-backed TCOIN minting.
 3. ERC20 tokens (`tokenIn`, `CADm`, `TCOIN`) for transfers and approvals.
+
+The recommended concrete adapter is now `MentoBrokerSwapAdapter`, which supports admin-set default Mento routes and optional per-call route overrides through `swapData`.
 
 Trust model:
 - Router is the orchestration boundary.
@@ -31,6 +39,11 @@ Flow:
 6. Enforce `minTcoinOut` using TCOIN balance delta.
 7. Transfer minted TCOIN to recipient.
 8. Refund any per-call leftover `tokenIn` and `CADm`.
+
+Implementation note:
+- the router should approve the `Treasury` vault returned by `ITreasuryMinting(treasury).treasury()`
+- reserve custody ends in the vault, not the controller
+- `TreasuryController` remains the issuance-policy layer and preview/mint authority
 
 ### `mintTcoinWithUSDC(...)`
 Convenience wrapper that forwards to `mintTcoinWithToken` with `tokenIn = usdcToken`.
@@ -53,6 +66,7 @@ Returns `(cadmOut, tcoinOut)` for off-chain quote assembly.
 2. Router does not retain per-call leftovers for successful paths.
 3. Output checks are balance-delta based to reduce reliance on untrusted adapter return values.
 4. Treasury remains canonical issuance authority; router does not mint directly.
+5. Reserve ERC20 balances are not held on the controller; they end each successful call in the `Treasury` vault.
 
 ## Threat Model and Mitigations
 1. Adapter over-reporting output:

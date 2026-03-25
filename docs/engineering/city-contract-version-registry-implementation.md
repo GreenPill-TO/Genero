@@ -28,28 +28,26 @@ The first city implementation is `tcoin` (Toronto). The bootstrap registry chain
   - promotion only for existing versions
 - Ownership:
   - `Ownable` restricted writes (`onlyOwner`)
-  - deploy script supports setting `INITIAL_OWNER` for multisig/admin ownership at deploy time
+  - deploy script reads `registry.initialOwner` from the checked-in Foundry deploy config for multisig/admin ownership at deploy time
 - Emits:
   - `VersionRegistered`
   - `VersionPromoted`
 
 ### 2) Foundry Deployment/Promotion Scripts
 - Added `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
-  - deploys registry with `INITIAL_OWNER`
+  - deploys registry with `registry.initialOwner` from `contracts/foundry/deploy-config.json`
   - writes deployment artifact to:
     - `contracts/foundry/deployments/registry/<chainId>/registry-deployment.json`
 - Added `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
-  - reads `DEPLOYMENT_FILE` JSON
+  - reads `registry.deploymentFile` plus `registry.registryAddress` from `contracts/foundry/deploy-config.json`
   - computes `cityId = keccak256(bytes(lowercase(citySlug)))`
   - validates fields and required addresses
   - executes `registerAndPromote`
   - writes promotion artifact to:
     - `contracts/foundry/deployments/registry/<chainId>/promotions/<timestamp>.json`
-- Script env contract:
-  - `PRIVATE_KEY`
-  - `REGISTRY_ADDRESS`
-  - `DEPLOYMENT_FILE`
-  - RPC URL supplied via `--rpc-url`
+- Script runtime contract:
+  - checked-in public values come from `contracts/foundry/deploy-config.json`
+  - secrets come from local env (`PRIVATE_KEY`, RPC URL, optional explorer key)
 
 ### 3) App Integration for Runtime Resolution
 - Added shared registry modules:
@@ -110,11 +108,13 @@ The first city implementation is `tcoin` (Toronto). The bootstrap registry chain
 
 ## Deployment and Operations Runbook
 1. Deploy registry:
-   - `npm run forge:deploy:registry -- --rpc-url "$FLOW_EVM_TESTNET_RPC_URL"`
+   - update `contracts/foundry/deploy-config.json` for the target chain
+   - pass `DEPLOY_TARGET_CHAIN=celo-mainnet`, `DEPLOY_TARGET_CHAIN=ethereum-sepolia`, or `DEPLOY_TARGET_CHAIN=celo-sepolia` at runtime
+   - use the matching Foundry RPC alias with the repo-standard package manager: `pnpm forge:deploy:registry -- --rpc-url celo-mainnet`, `pnpm forge:deploy:registry -- --rpc-url ethereum-sepolia`, or `pnpm forge:deploy:registry -- --rpc-url celo-sepolia`
 2. Update bootstrap constant with deployed registry address:
    - `shared/lib/contracts/cityRegistryClient.ts`
 3. Promote initial `tcoin` version from deployment JSON:
-   - `npm run forge:promote:city -- --rpc-url "$FLOW_EVM_TESTNET_RPC_URL"`
+   - `pnpm forge:promote:city -- --rpc-url celo-mainnet`, `pnpm forge:promote:city -- --rpc-url ethereum-sepolia`, or `pnpm forge:promote:city -- --rpc-url celo-sepolia`
 4. For upgrades:
    - deploy new city contracts
    - produce deployment JSON artifact
@@ -123,5 +123,5 @@ The first city implementation is `tcoin` (Toronto). The bootstrap registry chain
    - call `promoteVersion(cityId, oldVersion)` as owner/multisig
 
 ## Known Follow-up
-- Replace placeholder registry address in `CITY_REGISTRY_BOOTSTRAP` after first Flow testnet deploy.
+- Replace placeholder registry address in `CITY_REGISTRY_BOOTSTRAP` after first live registry deployment on the selected chain.
 - Full repo `npm test` currently has unrelated existing Supabase-env failures outside this implementation area.

@@ -17,10 +17,16 @@ Goal: collapse this into one user transaction while preserving reserve-backed is
 2. `ISwapAdapter`
 - abstracts tokenIn -> CADm execution venue
 - replaceable by governance/owner config
+- the recommended concrete implementation is `MentoBrokerSwapAdapter`
+- supports admin-set default broker routes and optional per-call route override via `swapData`
 
 3. `TreasuryController` (via `ITreasuryMinting`)
 - canonical reserve-backed mint path
 - validates reserve asset, pricing, and charity uplift
+
+4. `Treasury`
+- pure reserve vault
+- receives the CADm reserve deposit when the controller mint path executes
 
 ## 3. On-Chain Sequence (Happy Path)
 ```mermaid
@@ -28,7 +34,8 @@ sequenceDiagram
     actor User
     participant Router as TcoinMintRouter
     participant Adapter as ISwapAdapter
-    participant Treasury as TreasuryController
+    participant Controller as TreasuryController
+    participant Vault as Treasury
     participant TCOIN as TCOIN ERC20
 
     User->>Router: mintTcoinWithUSDC(amountIn,minCadmOut,minTcoinOut,deadline,recipient,charityId,swapData)
@@ -37,8 +44,9 @@ sequenceDiagram
     Router->>Adapter: swapToCadm(tokenIn, cadmToken, amountIn, minCadmOut, deadline, swapData)
     Adapter-->>Router: CADm transferred to router
     Router->>Router: Enforce CADm delta >= minCadmOut
-    Router->>Treasury: depositAndMint(cadmAssetId, cadmOut, charityId, minTcoinOut)
-    Treasury-->>Router: Mint TCOIN to router
+    Router->>Controller: depositAndMint(cadmAssetId, cadmOut, charityId, minTcoinOut)
+    Controller->>Vault: depositReserveFrom(router, CADm, cadmOut)
+    Controller-->>Router: Mint TCOIN to router
     Router->>Router: Enforce TCOIN delta >= minTcoinOut
     Router->>TCOIN: transfer(recipient, tcoinOut)
     Router->>User: Refund token/CADm leftovers (if any)
@@ -51,7 +59,7 @@ sequenceDiagram
 ### 4.2 Swap under-delivers
 - Router compares CADm balance delta to `minCadmOut` and reverts atomically.
 
-### 4.3 Treasury mint under-delivers
+### 4.3 Treasury-controller mint under-delivers
 - Router compares TCOIN balance delta to `minTcoinOut` and reverts atomically.
 
 ### 4.4 Adapter callback/reentrancy attempt
@@ -86,8 +94,9 @@ Backend/UI quoting should:
 On-chain remains final source of truth for acceptance/rejection.
 
 ## 8. Rollout
-1. Deploy router with treasury, CADm token, CADm assetId, swap adapter, and USDC token.
+1. Deploy router with treasury, CADm token, CADm assetId, and a configured `MentoBrokerSwapAdapter`.
 2. Enable USDC as input token.
-3. Validate preview-vs-execution drift in staging.
-4. Enable wallet feature flag for one-click reserve mint.
-5. Monitor revert distribution, output slippage, and refund frequency.
+3. Configure the default Mento route for USDC (or pass an override through `swapData`).
+4. Validate preview-vs-execution drift in staging.
+5. Enable wallet feature flag for one-click reserve mint.
+6. Monitor revert distribution, output slippage, and refund frequency.

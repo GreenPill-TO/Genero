@@ -4,14 +4,13 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import InputField from "@shared/components/ui/InputField";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
-import { createClient } from "@shared/lib/supabase/client";
-import { off_ramp_req } from "@shared/utils/insertNotification";
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
+import { createLegacyOfframpRequest } from "@shared/lib/edge/redemptionsClient";
 
 interface OffRampProps {
   closeModal: () => void;
@@ -24,8 +23,6 @@ interface OffRampFormValues {
   interac_email: string;
   otp?: string;
 }
-
-const supabase = createClient();
 
 const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   const { control, handleSubmit, watch, setValue, reset } = useForm<OffRampFormValues>({
@@ -170,29 +167,19 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
     const CAD_offramp_fee = parseFloat((estimatedCAD * feePercentage).toFixed(2));
     const CAD_to_user = parseFloat((estimatedCAD - CAD_offramp_fee).toFixed(2));
 
-    off_ramp_req({
-      p_current_token_balance: userBalance,
-      p_etransfer_target: data.interac_email,
-      p_is_store: true,
-      p_tokens_burned: (estimatedCAD / exchangeRate).toFixed(2),
-      p_user_id: userData?.cubidData?.id,
-      p_wallet_account: senderWallet,
-      p_exchange_rate: exchangeRate,
-    });
-
     await burnMoney(donationAmount);
-
-    const { data: off_ramp_req_data, error } = await supabase
-      .from("off_ramp_req")
-      .select("*")
-      .match({ user_id: userData?.cubidData?.id })
-      .order("id", { ascending: false })
-      .limit(1);
-
-    await supabase
-      .rpc('accounting_after_offramp_burn', {
-        p_offramp_req_id: off_ramp_req_data?.[0]?.id
-      })
+    await createLegacyOfframpRequest(
+      {
+        currentTokenBalance: String(userBalance),
+        etransferTarget: data.interac_email,
+        isStore: 1,
+        tokensBurned: Number((estimatedCAD / exchangeRate).toFixed(2)),
+        userId: userData?.cubidData?.id,
+        walletAccountFrom: senderWallet,
+        exchangeRate,
+      },
+      { citySlug: "tcoin" }
+    );
 
     setLoading(false);
     reset();

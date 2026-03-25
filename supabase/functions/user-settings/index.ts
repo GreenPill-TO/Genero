@@ -1,13 +1,19 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
+import { createServiceRoleClient, resolveAuthenticatedUser } from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import {
   completeSignup,
+  ensureAuthenticatedUserRecord,
+  getLegacyCubidData,
+  getWalletCustodyMaterial,
   getUserSettingsBootstrap,
+  listPersonas,
+  registerWalletCustody,
   resetSignup,
   saveSignupStep,
   startSignup,
+  updateLegacyCubidData,
   updateUserPreferences,
   updateUserProfile,
 } from "../_shared/userSettings.ts";
@@ -30,6 +36,20 @@ async function readRequestBody(req: Request) {
   }
 }
 
+function resolveBearerToken(req: Request): string {
+  const header = req.headers.get("authorization") ?? req.headers.get("Authorization");
+  if (!header?.toLowerCase().startsWith("bearer ")) {
+    throw new Error("Unauthorized");
+  }
+
+  const token = header.slice(7).trim();
+  if (!token) {
+    throw new Error("Unauthorized");
+  }
+
+  return token;
+}
+
 async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: resolveCorsHeaders(req) });
@@ -37,17 +57,45 @@ async function handleRequest(req: Request): Promise<Response> {
 
   try {
     const body = await readRequestBody(req);
-    const auth = await resolveAuthenticatedUser(req);
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
-      input: resolveAppContextInput(req, body),
-    });
-
     const rawPathname = new URL(req.url).pathname;
     const pathname =
       rawPathname
         .replace(/^\/functions\/v1\/user-settings/, "")
         .replace(/^\/user-settings/, "") || "/";
+
+    if (req.method === "POST" && pathname === "/auth/ensure-user") {
+      const serviceRole = createServiceRoleClient();
+      const token = resolveBearerToken(req);
+      const {
+        data: { user: authUser },
+        error: authError,
+      } = await serviceRole.auth.getUser(token);
+
+      if (authError || !authUser) {
+        throw new Error("Unauthorized");
+      }
+
+      const appContext = await resolveActiveAppContext({
+        supabase: serviceRole,
+        input: resolveAppContextInput(req, body),
+      });
+
+      return jsonResponse(
+        req,
+        await ensureAuthenticatedUserRecord({
+          supabase: serviceRole,
+          authUser,
+          appContext,
+          payload: body ?? {},
+        })
+      );
+    }
+
+    const auth = await resolveAuthenticatedUser(req);
+    const appContext = await resolveActiveAppContext({
+      supabase: auth.serviceRole,
+      input: resolveAppContextInput(req, body),
+    });
 
     if (req.method === "GET" && pathname === "/bootstrap") {
       return jsonResponse(
@@ -76,6 +124,61 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await updateUserPreferences({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          appContext,
+          payload: body ?? {},
+        })
+      );
+    }
+
+    if (req.method === "GET" && pathname === "/personas") {
+      return jsonResponse(
+        req,
+        await listPersonas({
+          supabase: auth.serviceRole,
+        })
+      );
+    }
+
+    if (req.method === "POST" && pathname === "/wallet/register-custody") {
+      return jsonResponse(
+        req,
+        await registerWalletCustody({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          appContext,
+          payload: body ?? {},
+        })
+      );
+    }
+
+    if (req.method === "GET" && pathname === "/wallet/custody-material") {
+      return jsonResponse(
+        req,
+        await getWalletCustodyMaterial({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          appContext,
+        })
+      );
+    }
+
+    if (req.method === "GET" && pathname === "/legacy/cubid-data") {
+      return jsonResponse(
+        req,
+        await getLegacyCubidData({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          appContext,
+        })
+      );
+    }
+
+    if (req.method === "PATCH" && pathname === "/legacy/cubid-data") {
+      return jsonResponse(
+        req,
+        await updateLegacyCubidData({
           supabase: auth.serviceRole,
           userId: Number(auth.userRow.id),
           appContext,

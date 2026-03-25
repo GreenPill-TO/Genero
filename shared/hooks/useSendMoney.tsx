@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
-import { createClient } from '@shared/lib/supabase/client';
 import { Shamir } from '@spliterati/shamir';
 import { useAuth } from '@shared/api/hooks/useAuth';
 import { tokenAbi } from './abi';
@@ -9,10 +8,12 @@ import { WebAuthnCrypto } from 'cubid-wallet';
 import { transfer } from '@shared/utils/insertNotification';
 import { normaliseTransferResult, TransferRecordSnapshot } from '@shared/utils/transferRecord';
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
-import { getActiveAppInstance, normaliseCredentialId } from '@shared/api/services/supabaseService';
+import { normaliseCredentialId } from '@shared/api/services/supabaseService';
 import { getActiveCityContracts, getRpcUrlForChainId } from '@shared/lib/contracts/cityContracts';
+import { getTorontoCoinRuntimeConfig, TORONTOCOIN_RUNTIME } from '@shared/lib/contracts/torontocoinRuntime';
 import { executeVoucherSwapAndTransfer } from '@shared/lib/vouchers/onchain';
-import { listWalletIdentitiesForUser } from '@shared/lib/supabase/walletIdentities';
+import { getWalletCustodyMaterial } from '@shared/lib/edge/userSettingsClient';
+import { getWalletContactDetail } from '@shared/lib/edge/walletOperationsClient';
 
 
 // Helper: Convert hex string to Uint8Array.
@@ -100,19 +101,35 @@ const decodeUserShare = async (jsonData: any): Promise<string> => {
 };
 
 async function resolveTokenRuntimeConfig() {
+        const torontoCoinRuntime = getTorontoCoinRuntimeConfig({
+                citySlug: process.env.NEXT_PUBLIC_CITYCOIN ?? 'tcoin',
+                chainId: TORONTOCOIN_RUNTIME.chainId,
+        });
+
+        if (torontoCoinRuntime) {
+                return {
+                        tokenAddress: torontoCoinRuntime.cplTcoin.address,
+                        rpcUrl: torontoCoinRuntime.rpcUrl,
+                        chainId: torontoCoinRuntime.chainId,
+                        decimals: torontoCoinRuntime.cplTcoin.decimals,
+                };
+        }
+
         try {
                 const activeContracts = await getActiveCityContracts();
                 return {
                         tokenAddress: activeContracts.contracts.TCOIN,
                         rpcUrl: getRpcUrlForChainId(activeContracts.chainId),
                         chainId: activeContracts.chainId,
+                        decimals: 18,
                 };
         } catch (error) {
-                console.warn('Falling back to default TCOIN runtime config.', error);
+                console.warn('Falling back to default TorontoCoin runtime config.', error);
                 return {
-                        tokenAddress: '0x298a698031e2fd7d8f0c830f3fd887601b40058c',
+                        tokenAddress: TORONTOCOIN_RUNTIME.cplTcoin.address,
                         rpcUrl: getRpcUrlForChainId(42220),
                         chainId: 42220,
+                        decimals: TORONTOCOIN_RUNTIME.cplTcoin.decimals,
                 };
         }
 }
@@ -210,17 +227,15 @@ export const useSendMoney = ({
                 setWallet: (wallet: string | null) => void
         ) => {
                 if (!userId) return;
-                const supabase = createClient();
                 try {
-                        const { data, error } = await supabase
-                                .from('users')
-                                .select('email')
-                                .eq('id', userId)
-                                .single();
-                        if (error) throw new Error(error.message);
-                        if (!data?.email) throw new Error('Email not found');
-                        const walletRows = await listWalletIdentitiesForUser(userId, supabase);
-                        setWallet(walletRows[0]?.public_key ?? null);
+                        if (userData?.cubidData?.id === userId) {
+                                const custody = await getWalletCustodyMaterial();
+                                setWallet(custody.primaryWallet?.publicKey ?? null);
+                                return;
+                        }
+
+                        const contact = await getWalletContactDetail(userId, { citySlug: 'tcoin' });
+                        setWallet((contact.contact as { wallet_address?: string | null })?.wallet_address ?? null);
                 } catch (err: any) {
                         console.error('fetchWalletAddress error', err);
                         setError(err.message);
@@ -230,86 +245,19 @@ export const useSendMoney = ({
 	
 
         const fetchWalletShares = async (userId: number) => {
-                const supabase = createClient();
-                const activeAppInstance = await getActiveAppInstance();
                 const activeCredentialId = getActiveCredentialId();
-                const { data: walletRow, error: walletRowError } = await supabase
-                        .from('wallet_list')
-                        .select('wallet_key_id')
-                        .match({ user_id: userId, namespace: 'EVM' })
-                        .order('id', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
+                const custody = await getWalletCustodyMaterial();
 
-                if (walletRowError) {
-                        throw new Error(walletRowError.message);
-                }
-
-                const walletKeyId = walletRow?.wallet_key_id;
-                if (!walletKeyId) {
-                        throw new Error('No wallet_key_id found for this user');
-                }
-
-                const { data: walletKey, error: walletKeyError } = await supabase
-                        .from('wallet_keys')
-                        .select('app_share')
-                        .eq('id', walletKeyId)
-                        .single();
-
-                if (walletKeyError) {
-                        throw new Error(walletKeyError.message);
-                }
-
-                if (!walletKey?.app_share) {
+                if (!custody.appShare) {
                         throw new Error('No app_share found for this wallet key');
                 }
 
-                const fetchShares = async (appInstanceId: number | null) => {
-                        let userShareQuery = supabase
-                                .from('user_encrypted_share')
-                                .select('id, user_share_encrypted, credential_id, app_instance_id, last_used_at, created_at, revoked_at')
-                                .match({ wallet_key_id: walletKeyId })
-                                .is('revoked_at', null)
-                                .order('last_used_at', { ascending: false })
-                                .order('created_at', { ascending: false })
-                                .limit(20);
-
-                        if (appInstanceId) {
-                                userShareQuery = userShareQuery.eq('app_instance_id', appInstanceId);
-                        }
-
-                        return userShareQuery;
-                };
-
-                const { data: scopedShares, error: scopedShareError } = await fetchShares(activeAppInstance?.id ?? null);
-                if (scopedShareError) {
-                        throw new Error(scopedShareError.message);
-                }
-
-                let userShares = scopedShares;
-                let usedLegacyAppFallback = false;
-
-                if ((!userShares || userShares.length === 0) && activeAppInstance?.id) {
-                        const { data: fallbackShares, error: fallbackShareError } = await fetchShares(null);
-                        if (fallbackShareError) {
-                                throw new Error(fallbackShareError.message);
-                        }
-                        userShares = fallbackShares;
-                        usedLegacyAppFallback = Boolean(userShares && userShares.length > 0);
-                }
-
                 const selection = resolveShareSelection({
-                        userShares: userShares as UserShareRow[] | null | undefined,
+                        userShares: (custody.shares as UserShareRow[] | null | undefined) ?? [],
                         activeCredentialId,
-                        activeAppSlug: activeAppInstance?.slug,
+                        activeAppSlug: custody.appSlug,
                 });
                 setCredentialCandidates(selection.credentialCandidates);
-
-                if (usedLegacyAppFallback && activeAppInstance?.slug) {
-                        console.warn(
-                                `No user shares matched app instance "${activeAppInstance.slug}". Falling back to legacy user shares across app instances.`
-                        );
-                }
 
                 if (selection.usedCredentialFallback && activeCredentialId) {
                         console.warn(
@@ -321,17 +269,8 @@ export const useSendMoney = ({
                         throw new Error('No user_share_encrypted found for this wallet key');
                 }
 
-                const { error: touchError } = await supabase
-                        .from('user_encrypted_share')
-                        .update({ last_used_at: new Date().toISOString() })
-                        .eq('id', selection.selectedShare.id);
-
-                if (touchError) {
-                        console.warn('Could not update last_used_at for selected credential', touchError);
-                }
-
                 return {
-                        app_share: walletKey.app_share,
+                        app_share: custody.appShare,
                         user_share_encrypted: selection.selectedShare.user_share_encrypted,
                 };
         };
@@ -348,33 +287,10 @@ export const useSendMoney = ({
 			if (!userData?.cubidData?.id) return;
 			
 			try {
-				const supabase = createClient();
-				const activeAppInstance = await getActiveAppInstance();
-				
-				const { data: walletRow } = await supabase
-					.from('wallet_list')
-					.select('wallet_key_id')
-					.match({ user_id: userData.cubidData.id, namespace: 'EVM' })
-					.order('id', { ascending: false })
-					.limit(1)
-					.maybeSingle();
+				const custody = await getWalletCustodyMaterial();
 
-				if (!walletRow?.wallet_key_id) return;
-
-				let query = supabase
-					.from('user_encrypted_share')
-					.select('credential_id')
-					.match({ wallet_key_id: walletRow.wallet_key_id })
-					.is('revoked_at', null);
-
-				if (activeAppInstance?.id) {
-					query = query.eq('app_instance_id', activeAppInstance.id);
-				}
-
-				const { data: userShares } = await query;
-
-				if (userShares && userShares.length > 0) {
-					const options = userShares
+				if (custody.shares && custody.shares.length > 0) {
+					const options = custody.shares
 						.map((row) => normaliseCredentialId(row.credential_id))
 						.filter((value): value is string => Boolean(value));
 					setCredentialCandidates(options);
@@ -448,7 +364,7 @@ export const useSendMoney = ({
 			if (isNaN(numAmount) || numAmount <= 0) {
 				throw new Error('Invalid transfer amount');
 			}
-			const parsedAmount = ethers.utils.parseUnits(numAmount.toString(), 'ether');
+			const parsedAmount = ethers.utils.parseUnits(numAmount.toString(), runtimeConfig.decimals);
 
 			// Optional: Perform a static call to see if the transfer would succeed.
 
@@ -559,7 +475,7 @@ export const useSendMoney = ({
                         if (isNaN(numAmount) || numAmount <= 0) {
                                 throw new Error('Invalid transfer amount');
                         }
-                        const parsedAmount = ethers.utils.parseUnits(numAmount.toString(), 'ether');
+                        const parsedAmount = ethers.utils.parseUnits(numAmount.toString(), runtimeConfig.decimals);
 
                         let gasLimit;
                         try {
@@ -682,6 +598,7 @@ export const useSendMoney = ({
                                 recipientAddress: recipientWalletAddress as `0x${string}`,
                                 amountInTcoin: amount,
                                 minAmountOut: minAmountOut ?? amount,
+                                inputTokenDecimals: runtimeConfig.decimals,
                                 outputTokenDecimals: tokenDecimals,
                         });
 

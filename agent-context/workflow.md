@@ -6,6 +6,7 @@
 4. Implement code changes.
 5. Run lint and tests.
 6. Commit with conventional message.
+7. For any TorontoCoin session that touches live or testnet chain state, record the deployer wallet end-balance in `session-log.md`, plus the delta from the prior tracked session and a transaction-cost breakdown if the balance changed.
 
 ## Feature Delivery Rule
 

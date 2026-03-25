@@ -21,6 +21,7 @@ contract PoolRegistry is Ownable, Pausable {
 
     struct Pool {
         bytes32 poolId;
+        address poolAddress;
         string name;
         string metadataRecordId;
         PoolStatus status;
@@ -28,70 +29,77 @@ contract PoolRegistry is Ownable, Pausable {
         uint64 updatedAt;
     }
 
-    struct Merchant {
-        address wallet;
+    struct MerchantEntity {
+        bytes32 merchantId;
         bytes32 poolId;
         string metadataRecordId;
         MerchantStatus status;
+        bool acceptsCplTcoin;
+        bool posFeeEligible;
         uint64 createdAt;
         uint64 updatedAt;
     }
 
     error ZeroAddressOwner();
     error ZeroAddressGovernance();
-    error ZeroAddressMerchant();
+    error ZeroAddressPool();
+    error ZeroAddressWallet();
+    error ZeroMerchantId();
     error ZeroPoolId();
     error EmptyName();
     error UnknownPool(bytes32 poolId);
-    error UnknownMerchant(address merchant);
+    error UnknownMerchant(bytes32 merchantId);
     error PoolAlreadyExists(bytes32 poolId);
-    error MerchantAlreadyExists(address merchant);
+    error MerchantAlreadyExists(bytes32 merchantId);
     error InvalidPoolStatus(bytes32 poolId);
-    error InvalidMerchantStatus(address merchant);
+    error InvalidMerchantStatus(bytes32 merchantId);
     error MerchantPoolInactive(bytes32 poolId);
+    error WalletAlreadyLinked(address wallet, bytes32 merchantId);
+    error WalletNotLinked(bytes32 merchantId, address wallet);
     error Unauthorized();
     error SameAddress();
 
     event GovernanceUpdated(address indexed oldGovernance, address indexed newGovernance);
 
-    event PoolAdded(
-        bytes32 indexed poolId,
-        string name,
-        string metadataRecordId,
-        address indexed actor
-    );
+    event PoolAdded(bytes32 indexed poolId, string name, string metadataRecordId, address indexed actor);
+    event PoolAddressUpdated(bytes32 indexed poolId, address indexed oldPoolAddress, address indexed newPoolAddress);
 
     event PoolRemoved(bytes32 indexed poolId, address indexed actor);
     event PoolSuspended(bytes32 indexed poolId, address indexed actor);
     event PoolUnsuspended(bytes32 indexed poolId, address indexed actor);
 
     event MerchantApproved(
-        address indexed merchant,
-        bytes32 indexed poolId,
-        string metadataRecordId,
-        address indexed actor
+        bytes32 indexed merchantId, bytes32 indexed poolId, string metadataRecordId, address indexed actor
     );
 
-    event MerchantRemoved(address indexed merchant, bytes32 indexed poolId, address indexed actor);
-    event MerchantSuspended(address indexed merchant, bytes32 indexed poolId, address indexed actor);
-    event MerchantUnsuspended(address indexed merchant, bytes32 indexed poolId, address indexed actor);
+    event MerchantRemoved(bytes32 indexed merchantId, bytes32 indexed poolId, address indexed actor);
+    event MerchantSuspended(bytes32 indexed merchantId, bytes32 indexed poolId, address indexed actor);
+    event MerchantUnsuspended(bytes32 indexed merchantId, bytes32 indexed poolId, address indexed actor);
 
     event MerchantPoolReassigned(
-        address indexed merchant,
-        bytes32 indexed oldPoolId,
-        bytes32 indexed newPoolId,
-        address actor
+        bytes32 indexed merchantId, bytes32 indexed oldPoolId, bytes32 indexed newPoolId, address actor
     );
+
+    event MerchantWalletAdded(bytes32 indexed merchantId, address indexed wallet, address indexed actor);
+    event MerchantWalletRemoved(bytes32 indexed merchantId, address indexed wallet, address indexed actor);
+    event MerchantCplAcceptanceUpdated(bytes32 indexed merchantId, bool acceptsCplTcoin, address indexed actor);
+    event MerchantPosFeeEligibilityUpdated(bytes32 indexed merchantId, bool posFeeEligible, address indexed actor);
 
     address public governance;
 
     mapping(bytes32 => Pool) private pools;
     bytes32[] private poolIds;
     mapping(bytes32 => bool) private poolExists;
+    mapping(address => bytes32) private poolIdByAddress;
 
-    mapping(address => Merchant) private merchants;
-    address[] private merchantAddresses;
-    mapping(address => bool) private merchantExists;
+    mapping(bytes32 => MerchantEntity) private merchants;
+    mapping(bytes32 => bool) private merchantExists;
+    bytes32[] private merchantIds;
+
+    mapping(address => bytes32) private merchantIdByWallet;
+    mapping(bytes32 => address[]) private merchantWallets;
+    mapping(bytes32 => mapping(address => bool)) private walletLinkedToMerchant;
+    mapping(bytes32 => mapping(address => uint256)) private merchantWalletIndex;
 
     constructor(address initialOwner, address governance_) {
         if (initialOwner == address(0)) revert ZeroAddressOwner();
@@ -108,28 +116,21 @@ contract PoolRegistry is Ownable, Pausable {
         _setGovernance(governance_);
     }
 
-    function addPool(
-        bytes32 poolId,
-        string calldata name,
-        string calldata metadataRecordId
-    ) external onlyGovernanceOrOwner whenNotPaused {
-        if (poolId == bytes32(0)) revert ZeroPoolId();
-        if (bytes(name).length == 0) revert EmptyName();
-        if (poolExists[poolId]) revert PoolAlreadyExists(poolId);
+    function addPool(bytes32 poolId, string calldata name, string calldata metadataRecordId)
+        external
+        onlyGovernanceOrOwner
+        whenNotPaused
+    {
+        _addPool(poolId, name, metadataRecordId, address(0));
+    }
 
-        poolExists[poolId] = true;
-        poolIds.push(poolId);
-
-        pools[poolId] = Pool({
-            poolId: poolId,
-            name: name,
-            metadataRecordId: metadataRecordId,
-            status: PoolStatus.Active,
-            createdAt: uint64(block.timestamp),
-            updatedAt: uint64(block.timestamp)
-        });
-
-        emit PoolAdded(poolId, name, metadataRecordId, msg.sender);
+    function addPoolWithAddress(bytes32 poolId, string calldata name, string calldata metadataRecordId, address poolAddress)
+        external
+        onlyGovernanceOrOwner
+        whenNotPaused
+    {
+        if (poolAddress == address(0)) revert ZeroAddressPool();
+        _addPool(poolId, name, metadataRecordId, poolAddress);
     }
 
     function removePool(bytes32 poolId) external onlyGovernanceOrOwner {
@@ -162,70 +163,120 @@ contract PoolRegistry is Ownable, Pausable {
         emit PoolUnsuspended(poolId, msg.sender);
     }
 
+    function setPoolAddress(bytes32 poolId, address poolAddress) external onlyGovernanceOrOwner {
+        if (poolAddress == address(0)) revert ZeroAddressPool();
+
+        Pool storage pool = _getPoolStorage(poolId);
+        _setPoolAddress(pool, poolId, poolAddress);
+    }
+
     function approveMerchant(
-        address merchant,
+        bytes32 merchantId,
         bytes32 poolId,
-        string calldata metadataRecordId
+        string calldata metadataRecordId,
+        address[] calldata initialWallets
     ) external onlyGovernanceOrOwner whenNotPaused {
-        if (merchant == address(0)) revert ZeroAddressMerchant();
-        if (merchantExists[merchant]) revert MerchantAlreadyExists(merchant);
+        if (merchantId == bytes32(0)) revert ZeroMerchantId();
+        if (merchantExists[merchantId]) revert MerchantAlreadyExists(merchantId);
         if (!_isPoolActive(poolId)) revert MerchantPoolInactive(poolId);
 
-        merchantExists[merchant] = true;
-        merchantAddresses.push(merchant);
+        uint64 timestamp = uint64(block.timestamp);
+        merchantExists[merchantId] = true;
+        merchantIds.push(merchantId);
 
-        merchants[merchant] = Merchant({
-            wallet: merchant,
+        merchants[merchantId] = MerchantEntity({
+            merchantId: merchantId,
             poolId: poolId,
             metadataRecordId: metadataRecordId,
             status: MerchantStatus.Approved,
-            createdAt: uint64(block.timestamp),
-            updatedAt: uint64(block.timestamp)
+            acceptsCplTcoin: true,
+            posFeeEligible: true,
+            createdAt: timestamp,
+            updatedAt: timestamp
         });
 
-        emit MerchantApproved(merchant, poolId, metadataRecordId, msg.sender);
+        emit MerchantApproved(merchantId, poolId, metadataRecordId, msg.sender);
+
+        for (uint256 i = 0; i < initialWallets.length; ++i) {
+            _linkWallet(merchantId, initialWallets[i]);
+        }
     }
 
-    function removeMerchant(address merchant) external onlyGovernanceOrOwner {
-        Merchant storage merchantRecord = _getMerchantStorage(merchant);
-        if (merchantRecord.status == MerchantStatus.Removed) revert InvalidMerchantStatus(merchant);
+    function addMerchantWallet(bytes32 merchantId, address wallet) external onlyGovernanceOrOwner whenNotPaused {
+        MerchantEntity storage merchantRecord = _getMerchantStorage(merchantId);
+        if (merchantRecord.status == MerchantStatus.Removed) revert InvalidMerchantStatus(merchantId);
+
+        _linkWallet(merchantId, wallet);
+        merchantRecord.updatedAt = uint64(block.timestamp);
+    }
+
+    function removeMerchantWallet(bytes32 merchantId, address wallet) external onlyGovernanceOrOwner {
+        MerchantEntity storage merchantRecord = _getMerchantStorage(merchantId);
+
+        _unlinkWallet(merchantId, wallet);
+        merchantRecord.updatedAt = uint64(block.timestamp);
+    }
+
+    function setMerchantCplAcceptance(bytes32 merchantId, bool acceptsCplTcoin_) external onlyGovernanceOrOwner {
+        MerchantEntity storage merchantRecord = _getMerchantStorage(merchantId);
+        if (merchantRecord.status == MerchantStatus.Removed) revert InvalidMerchantStatus(merchantId);
+
+        merchantRecord.acceptsCplTcoin = acceptsCplTcoin_;
+        merchantRecord.updatedAt = uint64(block.timestamp);
+
+        emit MerchantCplAcceptanceUpdated(merchantId, acceptsCplTcoin_, msg.sender);
+    }
+
+    function setMerchantPosFeeEligibility(bytes32 merchantId, bool posFeeEligible_) external onlyGovernanceOrOwner {
+        MerchantEntity storage merchantRecord = _getMerchantStorage(merchantId);
+        if (merchantRecord.status == MerchantStatus.Removed) revert InvalidMerchantStatus(merchantId);
+
+        merchantRecord.posFeeEligible = posFeeEligible_;
+        merchantRecord.updatedAt = uint64(block.timestamp);
+
+        emit MerchantPosFeeEligibilityUpdated(merchantId, posFeeEligible_, msg.sender);
+    }
+
+    function removeMerchant(bytes32 merchantId) external onlyGovernanceOrOwner {
+        MerchantEntity storage merchantRecord = _getMerchantStorage(merchantId);
+        if (merchantRecord.status == MerchantStatus.Removed) revert InvalidMerchantStatus(merchantId);
 
         merchantRecord.status = MerchantStatus.Removed;
         merchantRecord.updatedAt = uint64(block.timestamp);
 
-        emit MerchantRemoved(merchant, merchantRecord.poolId, msg.sender);
+        emit MerchantRemoved(merchantId, merchantRecord.poolId, msg.sender);
     }
 
-    function suspendMerchant(address merchant) external onlyGovernanceOrOwner {
-        Merchant storage merchantRecord = _getMerchantStorage(merchant);
-        if (merchantRecord.status != MerchantStatus.Approved) revert InvalidMerchantStatus(merchant);
+    function suspendMerchant(bytes32 merchantId) external onlyGovernanceOrOwner {
+        MerchantEntity storage merchantRecord = _getMerchantStorage(merchantId);
+        if (merchantRecord.status != MerchantStatus.Approved) revert InvalidMerchantStatus(merchantId);
 
         merchantRecord.status = MerchantStatus.Suspended;
         merchantRecord.updatedAt = uint64(block.timestamp);
 
-        emit MerchantSuspended(merchant, merchantRecord.poolId, msg.sender);
+        emit MerchantSuspended(merchantId, merchantRecord.poolId, msg.sender);
     }
 
-    function unsuspendMerchant(address merchant) external onlyGovernanceOrOwner whenNotPaused {
-        Merchant storage merchantRecord = _getMerchantStorage(merchant);
-        if (merchantRecord.status != MerchantStatus.Suspended) revert InvalidMerchantStatus(merchant);
+    function unsuspendMerchant(bytes32 merchantId) external onlyGovernanceOrOwner whenNotPaused {
+        MerchantEntity storage merchantRecord = _getMerchantStorage(merchantId);
+        if (merchantRecord.status != MerchantStatus.Suspended) revert InvalidMerchantStatus(merchantId);
 
         merchantRecord.status = MerchantStatus.Approved;
         merchantRecord.updatedAt = uint64(block.timestamp);
 
-        emit MerchantUnsuspended(merchant, merchantRecord.poolId, msg.sender);
+        emit MerchantUnsuspended(merchantId, merchantRecord.poolId, msg.sender);
     }
 
-    function reassignMerchantPool(address merchant, bytes32 newPoolId) external onlyGovernanceOrOwner whenNotPaused {
-        Merchant storage merchantRecord = _getMerchantStorage(merchant);
-        if (merchantRecord.status == MerchantStatus.Removed) revert InvalidMerchantStatus(merchant);
+    function reassignMerchantPool(bytes32 merchantId, bytes32 newPoolId) external onlyGovernanceOrOwner whenNotPaused {
+        MerchantEntity storage merchantRecord = _getMerchantStorage(merchantId);
+        if (merchantRecord.status == MerchantStatus.Removed) revert InvalidMerchantStatus(merchantId);
         if (!_isPoolActive(newPoolId)) revert MerchantPoolInactive(newPoolId);
 
         bytes32 oldPoolId = merchantRecord.poolId;
         merchantRecord.poolId = newPoolId;
         merchantRecord.updatedAt = uint64(block.timestamp);
 
-        emit MerchantPoolReassigned(merchant, oldPoolId, newPoolId, msg.sender);
+        emit MerchantPoolReassigned(merchantId, oldPoolId, newPoolId, msg.sender);
     }
 
     function pause() external onlyGovernanceOrOwner {
@@ -240,30 +291,118 @@ contract PoolRegistry is Ownable, Pausable {
         return _getPoolStorage(poolId);
     }
 
-    function getMerchant(address merchant) external view returns (Merchant memory) {
-        return _getMerchantStorage(merchant);
+    function getMerchant(bytes32 merchantId) external view returns (MerchantEntity memory) {
+        return _getMerchantStorage(merchantId);
+    }
+
+    function getMerchantIdByWallet(address wallet) external view returns (bytes32) {
+        return merchantIdByWallet[wallet];
+    }
+
+    function getMerchantWallets(bytes32 merchantId) external view returns (address[] memory) {
+        _getMerchantStorage(merchantId);
+        return merchantWallets[merchantId];
+    }
+
+    function getMerchantPaymentConfig(address wallet)
+        external
+        view
+        returns (
+            bool exists_,
+            bytes32 merchantId_,
+            bool approved_,
+            bool poolActive_,
+            bool acceptsCpl_,
+            bool posFeeEligible_,
+            bytes32 poolId_
+        )
+    {
+        merchantId_ = merchantIdByWallet[wallet];
+        if (merchantId_ == bytes32(0)) {
+            return (false, bytes32(0), false, false, false, false, bytes32(0));
+        }
+
+        MerchantEntity storage merchantRecord = merchants[merchantId_];
+        approved_ = merchantRecord.status == MerchantStatus.Approved;
+        poolActive_ = _isPoolActive(merchantRecord.poolId);
+        acceptsCpl_ = merchantRecord.acceptsCplTcoin;
+        posFeeEligible_ = merchantRecord.posFeeEligible;
+        poolId_ = merchantRecord.poolId;
+
+        return (true, merchantId_, approved_, poolActive_, acceptsCpl_, posFeeEligible_, poolId_);
     }
 
     function isPoolActive(bytes32 poolId) external view returns (bool) {
         return _isPoolActive(poolId);
     }
 
-    function isMerchantApproved(address merchant) external view returns (bool) {
-        if (!merchantExists[merchant]) return false;
-        return merchants[merchant].status == MerchantStatus.Approved;
+    function isMerchantWallet(address wallet) external view returns (bool) {
+        return merchantIdByWallet[wallet] != bytes32(0);
     }
 
-    function isMerchantApprovedInActivePool(address merchant) external view returns (bool) {
-        if (!merchantExists[merchant]) return false;
+    function isMerchantApproved(address wallet) external view returns (bool) {
+        bytes32 merchantId = merchantIdByWallet[wallet];
+        if (merchantId == bytes32(0)) return false;
 
-        Merchant storage merchantRecord = merchants[merchant];
-        if (merchantRecord.status != MerchantStatus.Approved) return false;
-
-        return _isPoolActive(merchantRecord.poolId);
+        return merchants[merchantId].status == MerchantStatus.Approved;
     }
 
-    function getMerchantPool(address merchant) external view returns (bytes32) {
-        return _getMerchantStorage(merchant).poolId;
+    function isMerchantApprovedWallet(address wallet) external view returns (bool) {
+        return _isMerchantApprovedWallet(wallet);
+    }
+
+    function isMerchantApprovedInActivePool(address wallet) external view returns (bool) {
+        return _isMerchantApprovedWallet(wallet);
+    }
+
+    function isMerchantPaymentTarget(address wallet) external view returns (bool) {
+        bytes32 merchantId = merchantIdByWallet[wallet];
+        if (merchantId == bytes32(0)) return false;
+
+        MerchantEntity storage merchantRecord = merchants[merchantId];
+        if (!_isMerchantApprovedWallet(wallet)) return false;
+
+        return merchantRecord.acceptsCplTcoin;
+    }
+
+    function isMerchantPosFeeTarget(address wallet) external view returns (bool) {
+        bytes32 merchantId = merchantIdByWallet[wallet];
+        if (merchantId == bytes32(0)) return false;
+
+        MerchantEntity storage merchantRecord = merchants[merchantId];
+        if (!_isMerchantApprovedWallet(wallet)) return false;
+
+        return merchantRecord.acceptsCplTcoin && merchantRecord.posFeeEligible;
+    }
+
+    function acceptsCplTcoin(address wallet) external view returns (bool) {
+        bytes32 merchantId = merchantIdByWallet[wallet];
+        if (merchantId == bytes32(0)) return false;
+
+        return merchants[merchantId].acceptsCplTcoin;
+    }
+
+    function getMerchantPool(address wallet) external view returns (bytes32) {
+        bytes32 merchantId = merchantIdByWallet[wallet];
+        if (merchantId == bytes32(0)) return bytes32(0);
+
+        return merchants[merchantId].poolId;
+    }
+
+    function getPoolAddress(bytes32 poolId) external view returns (address) {
+        if (!poolExists[poolId]) return address(0);
+        return pools[poolId].poolAddress;
+    }
+
+    function getPoolIdByAddress(address poolAddress) external view returns (bytes32) {
+        return poolIdByAddress[poolAddress];
+    }
+
+    function isRegisteredPoolAddress(address poolAddress) external view returns (bool) {
+        bytes32 poolId = poolIdByAddress[poolAddress];
+        if (poolId == bytes32(0)) return false;
+
+        return pools[poolId].poolAddress == poolAddress;
     }
 
     function listPoolIds() external view returns (bytes32[] memory) {
@@ -274,12 +413,12 @@ contract PoolRegistry is Ownable, Pausable {
         return poolIds.length;
     }
 
-    function listMerchantAddresses() external view returns (address[] memory) {
-        return merchantAddresses;
+    function listMerchantIds() external view returns (bytes32[] memory) {
+        return merchantIds;
     }
 
     function getMerchantCount() external view returns (uint256) {
-        return merchantAddresses.length;
+        return merchantIds.length;
     }
 
     function _getPoolStorage(bytes32 poolId) internal view returns (Pool storage pool) {
@@ -287,14 +426,98 @@ contract PoolRegistry is Ownable, Pausable {
         pool = pools[poolId];
     }
 
-    function _getMerchantStorage(address merchant) internal view returns (Merchant storage merchantRecord) {
-        if (!merchantExists[merchant]) revert UnknownMerchant(merchant);
-        merchantRecord = merchants[merchant];
+    function _addPool(bytes32 poolId, string calldata name, string calldata metadataRecordId, address poolAddress) internal {
+        if (poolId == bytes32(0)) revert ZeroPoolId();
+        if (bytes(name).length == 0) revert EmptyName();
+        if (poolExists[poolId]) revert PoolAlreadyExists(poolId);
+
+        uint64 timestamp = uint64(block.timestamp);
+        poolExists[poolId] = true;
+        poolIds.push(poolId);
+
+        pools[poolId] = Pool({
+            poolId: poolId,
+            poolAddress: address(0),
+            name: name,
+            metadataRecordId: metadataRecordId,
+            status: PoolStatus.Active,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        });
+
+        emit PoolAdded(poolId, name, metadataRecordId, msg.sender);
+
+        if (poolAddress != address(0)) {
+            Pool storage pool = pools[poolId];
+            _setPoolAddress(pool, poolId, poolAddress);
+        }
+    }
+
+    function _setPoolAddress(Pool storage pool, bytes32 poolId, address poolAddress) internal {
+        address oldPoolAddress = pool.poolAddress;
+        if (oldPoolAddress != address(0)) {
+            delete poolIdByAddress[oldPoolAddress];
+        }
+        pool.poolAddress = poolAddress;
+        poolIdByAddress[poolAddress] = poolId;
+        pool.updatedAt = uint64(block.timestamp);
+
+        emit PoolAddressUpdated(poolId, oldPoolAddress, poolAddress);
+    }
+
+    function _getMerchantStorage(bytes32 merchantId) internal view returns (MerchantEntity storage merchantRecord) {
+        if (!merchantExists[merchantId]) revert UnknownMerchant(merchantId);
+        merchantRecord = merchants[merchantId];
+    }
+
+    function _isMerchantApprovedWallet(address wallet) internal view returns (bool) {
+        bytes32 merchantId = merchantIdByWallet[wallet];
+        if (merchantId == bytes32(0)) return false;
+
+        MerchantEntity storage merchantRecord = merchants[merchantId];
+        if (merchantRecord.status != MerchantStatus.Approved) return false;
+
+        return _isPoolActive(merchantRecord.poolId);
     }
 
     function _isPoolActive(bytes32 poolId) internal view returns (bool) {
         if (!poolExists[poolId]) return false;
         return pools[poolId].status == PoolStatus.Active;
+    }
+
+    function _linkWallet(bytes32 merchantId, address wallet) internal {
+        if (wallet == address(0)) revert ZeroAddressWallet();
+
+        bytes32 existingMerchantId = merchantIdByWallet[wallet];
+        if (existingMerchantId != bytes32(0)) revert WalletAlreadyLinked(wallet, existingMerchantId);
+
+        merchantIdByWallet[wallet] = merchantId;
+        walletLinkedToMerchant[merchantId][wallet] = true;
+        merchantWallets[merchantId].push(wallet);
+        merchantWalletIndex[merchantId][wallet] = merchantWallets[merchantId].length;
+
+        emit MerchantWalletAdded(merchantId, wallet, msg.sender);
+    }
+
+    function _unlinkWallet(bytes32 merchantId, address wallet) internal {
+        if (!walletLinkedToMerchant[merchantId][wallet]) revert WalletNotLinked(merchantId, wallet);
+
+        uint256 indexPlusOne = merchantWalletIndex[merchantId][wallet];
+        uint256 walletIndex = indexPlusOne - 1;
+        uint256 lastIndex = merchantWallets[merchantId].length - 1;
+
+        if (walletIndex != lastIndex) {
+            address movedWallet = merchantWallets[merchantId][lastIndex];
+            merchantWallets[merchantId][walletIndex] = movedWallet;
+            merchantWalletIndex[merchantId][movedWallet] = walletIndex + 1;
+        }
+
+        merchantWallets[merchantId].pop();
+        delete merchantWalletIndex[merchantId][wallet];
+        delete walletLinkedToMerchant[merchantId][wallet];
+        delete merchantIdByWallet[wallet];
+
+        emit MerchantWalletRemoved(merchantId, wallet, msg.sender);
     }
 
     function _setGovernance(address governance_) internal {

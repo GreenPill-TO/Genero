@@ -105,14 +105,14 @@ This contract should be based on the Sarafu `DemurrageTokenSingleNocap` model, b
 
 * only controller may mint
 * only controller may burn from arbitrary accounts
-* only governance-controlled admin path may update demurrage rate
+* only governance-controlled admin path may update the token expiry-period parameter
 * emergency pause should be owner/admin controlled
 
 ## Key events
 
 * `ControllerUpdated(address oldController, address newController)`
 * `TreasuryUpdated(address oldTreasury, address newTreasury)`
-* `DemurrageRateUpdated(uint256 oldRate, uint256 newRate)`
+* `ExpirePeriodUpdated(uint256 oldPeriod, uint256 newPeriod)`
 * `DemurrageCaptured(uint256 amount, uint256 timestamp)`
 * standard ERC20 `Transfer`
 * pause/unpause events
@@ -496,12 +496,15 @@ It should handle:
 * enforcing merchant redemption allowance limits
 * emergency pause controls for mint/redeem
 
+Reserve ERC20 custody should not live here.
+The dedicated `Treasury` vault is the only reserve holder, and `TreasuryController` should read live vault balances and instruct the vault for deposits/withdrawals.
+
 ## State
 
 ### Asset/accounting state
 
 * optional internal accounting per reserve asset deposited and redeemed
-* reserve balances may be derived from actual ERC20 balances, but evented accounting is still useful
+* reserve balances are derived from the live `Treasury` vault balance, though evented accounting is still useful
 
 ### Parameter state
 
@@ -557,7 +560,7 @@ It should handle:
 
 * asset must be approved and active
 * oracle price must be fresh
-* reserve asset transferred into treasury/controller
+* reserve asset transferred into `Treasury` under controller instruction
 * CAD value computed via oracle
 * TCOIN minted at par using CAD→TCOIN peg
 * charity uplift minted to selected charity or default charity, based on configured charity mint rate
@@ -676,7 +679,7 @@ Voting state:
 * `proposeUserRedeemRateUpdate(uint256 newRate)`
 * `proposeMerchantRedeemRateUpdate(uint256 newRate)`
 * `proposeCharityMintRateUpdate(uint256 newRate)`
-* `proposeDemurrageRateUpdate(uint256 newRate)`
+* `proposeExpirePeriodUpdate(uint256 newExpirePeriod)`
 
 ### Voting and execution
 

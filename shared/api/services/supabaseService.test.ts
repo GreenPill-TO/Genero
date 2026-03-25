@@ -1,80 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const supabaseState = vi.hoisted(() => ({
-  connections: [] as Array<{
-    connected_user_id: unknown;
-    state: string | null;
-    modified_at?: string | null;
-    created_at?: string | null;
-  }>,
-  connectionsError: null as { message: string } | null,
-  users: [] as Array<{
-    id: unknown;
-    full_name: string | null;
+const walletOperationsState = vi.hoisted(() => ({
+  contacts: [] as Array<{
+    id: number;
+    fullName: string | null;
     username: string | null;
-    profile_image_url: string | null;
+    profileImageUrl: string | null;
+    walletAddress: string | null;
+    state: string | null;
+    lastInteractionAt: string | null;
   }>,
-  usersError: null as { message: string } | null,
-  walletIdentities: [] as Array<{
-    user_id: unknown;
-    public_key: string | null;
-    wallet_key_id: string | null;
-    wallet_ready?: boolean;
-    has_encrypted_share?: boolean;
-  }>,
-  walletIdentitiesError: null as { message: string } | null,
-  connectionsCalls: 0,
-  usersCalls: 0,
-  walletIdentityCalls: 0,
+  error: null as { message: string } | null,
+  calls: 0,
 }));
 
-vi.mock("@shared/lib/supabase/client", () => ({
-  createClient: () => ({
-    from: (table: string) => {
-      if (table === "connections") {
-        return {
-          select: () => ({
-            eq: () => {
-              supabaseState.connectionsCalls += 1;
-              return Promise.resolve({
-                data: supabaseState.connections,
-                error: supabaseState.connectionsError,
-              });
-            },
-          }),
-        };
-      }
+vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
+  getWalletContacts: vi.fn(async () => {
+    walletOperationsState.calls += 1;
+    if (walletOperationsState.error) {
+      throw walletOperationsState.error;
+    }
 
-      if (table === "users") {
-        return {
-          select: () => ({
-            in: () => {
-              supabaseState.usersCalls += 1;
-              return Promise.resolve({
-                data: supabaseState.users,
-                error: supabaseState.usersError,
-              });
-            },
-          }),
-        };
-      }
-
-      if (table === "v_wallet_identities_v1") {
-        return {
-          select: () => ({
-            in: () => {
-              supabaseState.walletIdentityCalls += 1;
-              return Promise.resolve({
-                data: supabaseState.walletIdentities,
-                error: supabaseState.walletIdentitiesError,
-              });
-            },
-          }),
-        };
-      }
-
-      throw new Error(`Unexpected table: ${table}`);
-    },
+    return {
+      contacts: walletOperationsState.contacts,
+    };
   }),
 }));
 
@@ -87,45 +36,27 @@ import {
 
 describe("fetchContactsForOwner", () => {
   beforeEach(() => {
-    supabaseState.connections = [];
-    supabaseState.connectionsError = null;
-    supabaseState.users = [];
-    supabaseState.usersError = null;
-    supabaseState.walletIdentities = [];
-    supabaseState.walletIdentitiesError = null;
-    supabaseState.connectionsCalls = 0;
-    supabaseState.usersCalls = 0;
-    supabaseState.walletIdentityCalls = 0;
+    walletOperationsState.contacts = [];
+    walletOperationsState.error = null;
+    walletOperationsState.calls = 0;
   });
 
   it("returns an empty array when the owner id is invalid", async () => {
     const result = await fetchContactsForOwner(null);
     expect(result).toEqual([]);
-    expect(supabaseState.connectionsCalls).toBe(0);
-    expect(supabaseState.usersCalls).toBe(0);
+    expect(walletOperationsState.calls).toBe(0);
   });
 
-  it("maps connection rows to contact records", async () => {
-    supabaseState.connections = [
-      {
-        connected_user_id: 7,
-        state: "accepted",
-        modified_at: "2024-01-02T00:00:00.000Z",
-      },
-    ];
-    supabaseState.users = [
+  it("maps edge contact rows to contact records", async () => {
+    walletOperationsState.contacts = [
       {
         id: 7,
-        full_name: "Test User",
+        fullName: "Test User",
         username: "test",
-        profile_image_url: "avatar.png",
-      },
-    ];
-    supabaseState.walletIdentities = [
-      {
-        user_id: 7,
-        public_key: "0xabc",
-        wallet_key_id: "70",
+        profileImageUrl: "avatar.png",
+        walletAddress: "0xabc",
+        state: "accepted",
+        lastInteractionAt: "2024-01-02T00:00:00.000Z",
       },
     ];
 
@@ -141,68 +72,64 @@ describe("fetchContactsForOwner", () => {
         last_interaction: "2024-01-02T00:00:00.000Z",
       },
     ]);
-    expect(supabaseState.connectionsCalls).toBe(1);
-    expect(supabaseState.usersCalls).toBe(1);
-    expect(supabaseState.walletIdentityCalls).toBe(1);
+    expect(walletOperationsState.calls).toBe(1);
   });
 
-  it("deduplicates multiple rows for the same contact", async () => {
-    supabaseState.connections = [
-      {
-        connected_user_id: "8",
-        state: "accepted",
-        modified_at: "2024-01-03T00:00:00.000Z",
-      },
-      { connected_user_id: "8", state: "NEW", created_at: "2024-01-01T00:00:00.000Z" },
-    ];
-    supabaseState.users = [
+  it("preserves duplicate contact rows from the edge response as-is", async () => {
+    walletOperationsState.contacts = [
       {
         id: 8,
-        full_name: "Duplicate",
+        fullName: "Duplicate",
         username: null,
-        profile_image_url: null,
+        profileImageUrl: null,
+        walletAddress: null,
+        state: "accepted",
+        lastInteractionAt: "2024-01-03T00:00:00.000Z",
       },
-    ];
-    supabaseState.walletIdentities = [
       {
-        user_id: 8,
-        public_key: null,
-        wallet_key_id: "80",
+        id: 8,
+        fullName: "Duplicate",
+        username: null,
+        profileImageUrl: null,
+        walletAddress: null,
+        state: "new",
+        lastInteractionAt: "2024-01-01T00:00:00.000Z",
       },
     ];
 
     const result = await fetchContactsForOwner(1);
-    expect(result).toHaveLength(1);
+    expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
       id: 8,
       state: "accepted",
       last_interaction: "2024-01-03T00:00:00.000Z",
     });
+    expect(result[1]).toMatchObject({
+      id: 8,
+      state: "new",
+      last_interaction: "2024-01-01T00:00:00.000Z",
+    });
   });
 
-
-  it("handles multiple wallet rows referencing the same wallet key", async () => {
-    supabaseState.connections = [
-      { connected_user_id: 14, state: "accepted", modified_at: "2024-01-05T00:00:00.000Z" },
-    ];
-    supabaseState.users = [
+  it("maps multiple contacts with their edge-provided wallet addresses", async () => {
+    walletOperationsState.contacts = [
       {
         id: 14,
-        full_name: "Shared Key",
+        fullName: "Shared Key",
         username: "shared",
-        profile_image_url: null,
-      },
-    ];
-    supabaseState.walletIdentities = [
-      {
-        user_id: 14,
-        public_key: "0xshared-primary",
-        wallet_key_id: "999",
+        profileImageUrl: null,
+        walletAddress: "0xshared-primary",
+        state: "accepted",
+        lastInteractionAt: "2024-01-05T00:00:00.000Z",
       },
       {
-        user_id: 14,
-        public_key: "0xshared-secondary",
-        wallet_key_id: "999",
+        id: 15,
+        fullName: "Second Key",
+        username: "secondary",
+        profileImageUrl: null,
+        walletAddress: "0xshared-secondary",
+        state: "accepted",
+        lastInteractionAt: "2024-01-06T00:00:00.000Z",
       },
     ];
 
@@ -212,43 +139,46 @@ describe("fetchContactsForOwner", () => {
         id: 14,
         wallet_address: "0xshared-primary",
       }),
+      expect.objectContaining({
+        id: 15,
+        wallet_address: "0xshared-secondary",
+      }),
     ]);
   });
 
-  it("filters out connections without a corresponding user row", async () => {
-    supabaseState.connections = [
-      { connected_user_id: 9, state: "accepted", modified_at: null },
-    ];
-    supabaseState.users = [];
-    supabaseState.walletIdentities = [];
-
+  it("returns an empty array when the edge response has no contacts", async () => {
     const result = await fetchContactsForOwner(1);
     expect(result).toEqual([]);
   });
 
-  it("ignores rejected connections", async () => {
-    supabaseState.connections = [
-      { connected_user_id: 11, state: " rejected " },
-      { connected_user_id: 12, state: "ACCEPTED", modified_at: "2024-01-04T00:00:00.000Z" },
-    ];
-    supabaseState.users = [
+  it("preserves rejected contacts when the edge response includes them", async () => {
+    walletOperationsState.contacts = [
+      {
+        id: 11,
+        fullName: "Rejected",
+        username: null,
+        profileImageUrl: null,
+        walletAddress: null,
+        state: "rejected",
+        lastInteractionAt: null,
+      },
       {
         id: 12,
-        full_name: "Allowed",
+        fullName: "Allowed",
         username: null,
-        profile_image_url: null,
-      },
-    ];
-    supabaseState.walletIdentities = [
-      {
-        user_id: 12,
-        public_key: null,
-        wallet_key_id: "120",
+        profileImageUrl: null,
+        walletAddress: null,
+        state: "accepted",
+        lastInteractionAt: "2024-01-04T00:00:00.000Z",
       },
     ];
 
     const result = await fetchContactsForOwner(1);
     expect(result).toEqual([
+      expect.objectContaining({
+        id: 11,
+        state: "rejected",
+      }),
       expect.objectContaining({
         id: 12,
         state: "accepted",
@@ -257,35 +187,9 @@ describe("fetchContactsForOwner", () => {
     ]);
   });
 
-  it("throws when fetching connections fails", async () => {
-    supabaseState.connectionsError = { message: "boom" };
+  it("throws when the edge contact fetch fails", async () => {
+    walletOperationsState.error = { message: "boom" };
     await expect(fetchContactsForOwner(1)).rejects.toEqual({ message: "boom" });
-  });
-
-  it("throws when fetching user profiles fails", async () => {
-    supabaseState.connections = [
-      { connected_user_id: 10, state: "accepted" },
-    ];
-    supabaseState.usersError = { message: "nope" };
-
-    await expect(fetchContactsForOwner(1)).rejects.toEqual({ message: "nope" });
-  });
-
-  it("throws when fetching wallet rows fails", async () => {
-    supabaseState.connections = [
-      { connected_user_id: 13, state: "accepted" },
-    ];
-    supabaseState.users = [
-      {
-        id: 13,
-        full_name: "Wallet User",
-        username: null,
-        profile_image_url: null,
-      },
-    ];
-    supabaseState.walletIdentitiesError = { message: "wallets down" };
-
-    await expect(fetchContactsForOwner(1)).rejects.toEqual({ message: "wallets down" });
   });
 });
 

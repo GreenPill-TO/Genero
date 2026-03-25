@@ -57,25 +57,19 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
     event ReserveAssetRemoved(bytes32 indexed assetId, address indexed actor);
 
     event ReserveAssetOracleUpdated(
-        bytes32 indexed assetId,
-        address indexed primaryOracle,
-        address indexed fallbackOracle
+        bytes32 indexed assetId, address indexed primaryOracle, address indexed fallbackOracle
     );
 
-    event ReserveAssetStalenessUpdated(
-        bytes32 indexed assetId,
-        uint256 oldStaleAfter,
-        uint256 newStaleAfter
-    );
+    event ReserveAssetStalenessUpdated(bytes32 indexed assetId, uint256 oldStaleAfter, uint256 newStaleAfter);
 
     event ReserveAssetCodeUpdated(bytes32 indexed assetId, string oldCode, string newCode);
 
     address public governance;
 
-    mapping(bytes32 => ReserveAsset) private reserveAssets;
-    mapping(address => bytes32) private assetIdByToken;
-    bytes32[] private reserveAssetIds;
-    mapping(bytes32 => bool) private assetExists;
+    mapping(bytes32 => ReserveAsset) private _reserveAssets;
+    mapping(address => bytes32) private _assetIdByToken;
+    bytes32[] private _reserveAssetIds;
+    mapping(bytes32 => bool) private _assetExists;
 
     modifier onlyGovernanceOrOwner() {
         if (msg.sender != governance && msg.sender != owner()) revert Unauthorized();
@@ -118,10 +112,10 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         if (bytes(code).length == 0) revert EmptyCode();
         if (primaryOracle == address(0)) revert ZeroPrimaryOracle();
         if (staleAfter == 0) revert InvalidStaleness();
-        if (assetExists[assetId]) revert AssetAlreadyExists(assetId);
-        if (assetIdByToken[token] != bytes32(0)) revert TokenAlreadyRegistered(token);
+        if (_assetExists[assetId]) revert AssetAlreadyExists(assetId);
+        if (_assetIdByToken[token] != bytes32(0)) revert TokenAlreadyRegistered(token);
 
-        reserveAssets[assetId] = ReserveAsset({
+        _reserveAssets[assetId] = ReserveAsset({
             assetId: assetId,
             token: token,
             code: code,
@@ -132,19 +126,11 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
             status: ReserveAssetStatus.Active
         });
 
-        assetExists[assetId] = true;
-        assetIdByToken[token] = assetId;
-        reserveAssetIds.push(assetId);
+        _assetExists[assetId] = true;
+        _assetIdByToken[token] = assetId;
+        _reserveAssetIds.push(assetId);
 
-        emit ReserveAssetAdded(
-            assetId,
-            token,
-            code,
-            tokenDecimals,
-            primaryOracle,
-            fallbackOracle,
-            staleAfter
-        );
+        emit ReserveAssetAdded(assetId, token, code, tokenDecimals, primaryOracle, fallbackOracle, staleAfter);
     }
 
     function pauseReserveAsset(bytes32 assetId) external onlyGovernanceOrOwner {
@@ -171,11 +157,11 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         emit ReserveAssetRemoved(assetId, msg.sender);
     }
 
-    function updateReserveAssetOracles(
-        bytes32 assetId,
-        address primaryOracle,
-        address fallbackOracle
-    ) external onlyGovernanceOrOwner whenNotPaused {
+    function updateReserveAssetOracles(bytes32 assetId, address primaryOracle, address fallbackOracle)
+        external
+        onlyGovernanceOrOwner
+        whenNotPaused
+    {
         ReserveAsset storage asset = _getReserveAssetStorage(assetId);
         if (asset.status == ReserveAssetStatus.Removed) revert InvalidAssetStatus(assetId);
         if (primaryOracle == address(0)) revert ZeroPrimaryOracle();
@@ -186,10 +172,11 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         emit ReserveAssetOracleUpdated(assetId, primaryOracle, fallbackOracle);
     }
 
-    function updateReserveAssetStaleness(
-        bytes32 assetId,
-        uint256 staleAfter
-    ) external onlyGovernanceOrOwner whenNotPaused {
+    function updateReserveAssetStaleness(bytes32 assetId, uint256 staleAfter)
+        external
+        onlyGovernanceOrOwner
+        whenNotPaused
+    {
         ReserveAsset storage asset = _getReserveAssetStorage(assetId);
         if (asset.status == ReserveAssetStatus.Removed) revert InvalidAssetStatus(assetId);
         if (staleAfter == 0) revert InvalidStaleness();
@@ -200,10 +187,11 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
         emit ReserveAssetStalenessUpdated(assetId, oldStaleAfter, staleAfter);
     }
 
-    function updateReserveAssetCode(
-        bytes32 assetId,
-        string calldata newCode
-    ) external onlyGovernanceOrOwner whenNotPaused {
+    function updateReserveAssetCode(bytes32 assetId, string calldata newCode)
+        external
+        onlyGovernanceOrOwner
+        whenNotPaused
+    {
         ReserveAsset storage asset = _getReserveAssetStorage(assetId);
         if (asset.status == ReserveAssetStatus.Removed) revert InvalidAssetStatus(assetId);
         if (bytes(newCode).length == 0) revert EmptyCode();
@@ -227,56 +215,44 @@ contract ReserveRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, 
     }
 
     function getReserveAssetByToken(address token) external view returns (ReserveAsset memory) {
-        bytes32 assetId = assetIdByToken[token];
+        bytes32 assetId = _assetIdByToken[token];
         if (assetId == bytes32(0)) revert UnknownToken(token);
-        return reserveAssets[assetId];
+        return _reserveAssets[assetId];
     }
 
     function getAssetIdByToken(address token) external view returns (bytes32) {
-        return assetIdByToken[token];
+        return _assetIdByToken[token];
     }
 
     function reserveAssetExists(bytes32 assetId) external view returns (bool) {
-        return assetExists[assetId];
+        return _assetExists[assetId];
     }
 
     function isReserveAssetActive(bytes32 assetId) external view returns (bool) {
-        if (!assetExists[assetId]) return false;
-        return reserveAssets[assetId].status == ReserveAssetStatus.Active;
+        if (!_assetExists[assetId]) return false;
+        return _reserveAssets[assetId].status == ReserveAssetStatus.Active;
     }
 
     function listReserveAssetIds() external view returns (bytes32[] memory) {
-        return reserveAssetIds;
+        return _reserveAssetIds;
     }
 
     function reserveAssetCount() external view returns (uint256) {
-        return reserveAssetIds.length;
+        return _reserveAssetIds.length;
     }
 
     function getOracleConfig(bytes32 assetId)
         external
         view
-        returns (
-            address token,
-            uint8 tokenDecimals,
-            address primaryOracle,
-            address fallbackOracle,
-            uint256 staleAfter
-        )
+        returns (address token, uint8 tokenDecimals, address primaryOracle, address fallbackOracle, uint256 staleAfter)
     {
         ReserveAsset storage asset = _getReserveAssetStorage(assetId);
-        return (
-            asset.token,
-            asset.tokenDecimals,
-            asset.primaryOracle,
-            asset.fallbackOracle,
-            asset.staleAfter
-        );
+        return (asset.token, asset.tokenDecimals, asset.primaryOracle, asset.fallbackOracle, asset.staleAfter);
     }
 
     function _getReserveAssetStorage(bytes32 assetId) internal view returns (ReserveAsset storage asset) {
-        if (!assetExists[assetId]) revert UnknownAsset(assetId);
-        asset = reserveAssets[assetId];
+        if (!_assetExists[assetId]) revert UnknownAsset(assetId);
+        asset = _reserveAssets[assetId];
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}

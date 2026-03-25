@@ -11,7 +11,10 @@ import { useModal } from "@shared/contexts/ModalContext";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { createPaymentRequest } from "@shared/lib/edge/paymentRequestsClient";
-import { createClient } from "@shared/lib/supabase/client";
+import {
+  getWalletContactDetail,
+  getWalletContactTransactionHistory,
+} from "@shared/lib/edge/walletOperationsClient";
 
 type ProfileUser = {
   id: number;
@@ -69,29 +72,15 @@ export default function ContactProfilePage() {
 
     setIsLoadingProfile(true);
     try {
-      const supabase = createClient();
-
-      const [profileResult, contactWalletsResult, myWalletsResult] = await Promise.all([
-        supabase
-          .from("users")
-          .select("id, full_name, username, profile_image_url, bio, country, address")
-          .eq("id", contactId)
-          .single(),
-        supabase
-          .from("wallet_list")
-          .select("public_key")
-          .eq("user_id", contactId),
-        supabase
-          .from("wallet_list")
-          .select("public_key")
-          .eq("user_id", currentUserId),
+      const [detailResponse, transactionResponse] = await Promise.all([
+        getWalletContactDetail(contactId, { citySlug: "tcoin" }),
+        getWalletContactTransactionHistory(contactId, { citySlug: "tcoin" }),
       ]);
 
-      if (profileResult.error || !profileResult.data) {
-        throw new Error(profileResult.error?.message ?? "Contact profile not found.");
+      const profileRow = (detailResponse as { contact?: any }).contact;
+      if (!profileRow) {
+        throw new Error("Contact profile not found.");
       }
-
-      const profileRow = profileResult.data as any;
       const parsedProfile: ProfileUser = {
         id: Number(profileRow.id),
         full_name: typeof profileRow.full_name === "string" ? profileRow.full_name : null,
@@ -102,47 +91,23 @@ export default function ContactProfilePage() {
         address: typeof profileRow.address === "string" ? profileRow.address : null,
       };
       setProfile(parsedProfile);
-
-      const normalizeWallets = (rows: any[] | null | undefined) =>
-        (rows ?? [])
-          .map((row) =>
-            typeof row.public_key === "string" && row.public_key.trim() !== "" ? row.public_key : null
-          )
-          .filter((value: string | null): value is string => value != null);
-
-      const contactWalletList = normalizeWallets(contactWalletsResult.data as any[]);
-      const myWalletList = normalizeWallets(myWalletsResult.data as any[]);
-
+      const contactWalletList =
+        typeof profileRow.wallet_address === "string" && profileRow.wallet_address.trim() !== ""
+          ? [profileRow.wallet_address]
+          : [];
       setContactWallets(contactWalletList);
-      if (contactWalletList.length === 0 || myWalletList.length === 0) {
+      const historyEntries = transactionResponse.transactions ?? [];
+
+      if (historyEntries.length === 0) {
         setTransactions([]);
         return;
       }
 
-      const [sentRows, receivedRows] = await Promise.all([
-        supabase
-          .from("act_transaction_entries")
-          .select("id, amount, created_at, wallet_account_from, wallet_account_to")
-          .eq("currency", "TCOIN")
-          .in("wallet_account_from", myWalletList)
-          .in("wallet_account_to", contactWalletList)
-          .order("created_at", { ascending: false })
-          .limit(100),
-        supabase
-          .from("act_transaction_entries")
-          .select("id, amount, created_at, wallet_account_from, wallet_account_to")
-          .eq("currency", "TCOIN")
-          .in("wallet_account_from", contactWalletList)
-          .in("wallet_account_to", myWalletList)
-          .order("created_at", { ascending: false })
-          .limit(100),
-      ]);
-
       const entries: ContactTransactionEntry[] = [];
       const seen = new Set<number>();
 
-      const pushRows = (rows: any[] | null | undefined, direction: "sent" | "received") => {
-        (rows ?? []).forEach((row) => {
+      const pushRows = (rows: typeof historyEntries) => {
+        rows.forEach((row) => {
           const id =
             typeof row.id === "number" ? row.id : Number.parseInt(String(row.id ?? ""), 10);
           if (!Number.isFinite(id) || seen.has(id)) return;
@@ -155,14 +120,13 @@ export default function ContactProfilePage() {
           entries.push({
             id,
             amount: amountRaw,
-            created_at: typeof row.created_at === "string" ? row.created_at : null,
-            direction,
+            created_at: typeof row.createdAt === "string" ? row.createdAt : null,
+            direction: row.direction === "received" ? "received" : "sent",
           });
         });
       };
 
-      pushRows(sentRows.data as any[], "sent");
-      pushRows(receivedRows.data as any[], "received");
+      pushRows(historyEntries as any[]);
 
       entries.sort((a, b) => {
         const aTs = a.created_at ? Date.parse(a.created_at) : 0;

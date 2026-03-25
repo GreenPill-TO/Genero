@@ -101,3 +101,48 @@ export async function getOnrampAdminRequests(
     appContext,
   });
 }
+
+export async function createLegacyInteracReference(
+  payload: { amount: number | string; refCode: string },
+  appContext?: AppScopeInput | null
+): Promise<Record<string, unknown>> {
+  return invokeEdgeFunction<Record<string, unknown>>("onramp", "/legacy/interac/reference", {
+    method: "POST",
+    body: payload as unknown as Record<string, unknown>,
+    appContext,
+  });
+}
+
+export async function confirmLegacyInteracReference(
+  payload: { refCode: string },
+  appContext?: AppScopeInput | null
+): Promise<Record<string, unknown>> {
+  return invokeEdgeFunction<Record<string, unknown>>("onramp", "/legacy/interac/confirm", {
+    method: "POST",
+    body: payload as unknown as Record<string, unknown>,
+    appContext,
+  });
+}
+
+export async function createPoolPurchaseRequest(
+  payload: Record<string, unknown>,
+  appContext?: AppScopeInput | null
+): Promise<Record<string, unknown>> {
+  return invokeEdgeFunction<Record<string, unknown>>("onramp", "/pool-purchase-request", {
+    method: "POST",
+    body: payload,
+    appContext,
+  });
+}
+
+export async function updateLegacyInteracAdminRequest(
+  requestId: number,
+  payload: Record<string, unknown>,
+  appContext?: AppScopeInput | null
+): Promise<Record<string, unknown>> {
+  return invokeEdgeFunction<Record<string, unknown>>("onramp", `/admin/requests/interac/${requestId}`, {
+    method: "PATCH",
+    body: payload,
+    appContext,
+  });
+}

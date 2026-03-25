@@ -38,16 +38,47 @@ function recencyValue(row: Record<string, unknown>): number {
   return 0;
 }
 
-function normaliseStoreSlug(value: string): string {
+export function normaliseStoreSlug(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function assertValidStoreSlug(value: string): string {
+export function assertValidStoreSlug(value: string): string {
   const slug = normaliseStoreSlug(value);
   if (!SLUG_PATTERN.test(slug)) {
     throw new Error("Store slug must use lowercase letters, numbers, and single hyphens.");
   }
   return slug;
+}
+
+export async function checkSlugAvailability(options: MerchantContext & { slug: string; excludeStoreId?: number | null }) {
+  const slug = assertValidStoreSlug(options.slug);
+
+  let query = options.supabase
+    .from("store_profiles")
+    .select("store_id,slug")
+    .eq("app_instance_id", options.appContext.appInstanceId)
+    .ilike("slug", normaliseStoreSlug(slug))
+    .limit(5);
+
+  if (typeof options.excludeStoreId === "number" && options.excludeStoreId > 0) {
+    query = query.neq("store_id", options.excludeStoreId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to check slug availability: ${error.message}`);
+  }
+
+  const available = !Array.isArray(data) || data.length === 0;
+
+  return {
+    citySlug: options.appContext.citySlug,
+    appInstanceId: options.appContext.appInstanceId,
+    slug,
+    available,
+    reason: available ? null : "Slug is already taken in this city app scope.",
+  };
 }
 
 export async function resolveUserMerchantApplication(options: MerchantContext) {

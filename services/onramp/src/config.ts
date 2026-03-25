@@ -1,4 +1,8 @@
-import { isAddress, getAddress, type Address } from "viem";
+import type { Address } from "viem";
+import {
+  TORONTOCOIN_RUNTIME,
+  getTorontoCoinRuntimeConfig,
+} from "@shared/lib/contracts/torontocoinRuntime";
 
 function parseString(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
@@ -41,14 +45,6 @@ function parseBigint(name: string, fallback: bigint): bigint {
   }
 }
 
-function parseAddress(name: string): Address {
-  const value = parseString(name);
-  if (!isAddress(value)) {
-    throw new Error(`${name} must be a valid 0x address.`);
-  }
-  return getAddress(value);
-}
-
 function normalizeHexBytes(value: string): `0x${string}` {
   const v = value.trim().toLowerCase();
   if (!/^0x[0-9a-f]*$/.test(v)) {
@@ -78,13 +74,16 @@ export type OnrampConfig = {
   gasBankPrivateKey: `0x${string}`;
   gasTopupMinWei: bigint;
   gasTopupTargetWei: bigint;
-  usdcTokenAddress: Address;
+  inputTokenAddress: Address;
   routerAddress: Address;
-  swapAdapterId: string;
+  poolRegistryAddress: Address;
+  bootstrapPoolId: `0x${string}`;
+  cplTcoinAddress: Address;
+  cplTcoinDecimals: number;
+  reserveAssetId: `0x${string}`;
   appBaseUrl: string;
   rpcUrl: string;
   buyCheckoutFlag: boolean;
-  defaultSwapData: `0x${string}`;
 };
 
 export function resolveOnrampConfig(): OnrampConfig {
@@ -99,7 +98,9 @@ export function resolveOnrampConfig(): OnrampConfig {
     throw new Error("ONRAMP_GAS_BANK_PRIVATE_KEY must be a 32-byte hex private key.");
   }
 
-  const targetChainId = parseInteger("ONRAMP_TARGET_CHAIN_ID", 42220);
+  const targetChainId = parseInteger("ONRAMP_TARGET_CHAIN_ID", TORONTOCOIN_RUNTIME.chainId);
+  const runtime =
+    getTorontoCoinRuntimeConfig({ citySlug: "tcoin", chainId: targetChainId }) ?? TORONTOCOIN_RUNTIME;
 
   return {
     provider: "transak",
@@ -109,9 +110,9 @@ export function resolveOnrampConfig(): OnrampConfig {
     transakWidgetApiUrl: parseString("ONRAMP_TRANSAK_WIDGET_API_URL", "https://api-gateway-stg.transak.com/api/v2/auth/session"),
     transakAccessToken: parseString("ONRAMP_TRANSAK_ACCESS_TOKEN"),
     transakAuthorizationToken: parseOptionalString("ONRAMP_TRANSAK_USER_AUTH_TOKEN"),
-    targetChainId,
+    targetChainId: runtime.chainId,
     targetInputAsset: parseString("ONRAMP_TARGET_INPUT_ASSET", "USDC"),
-    finalAsset: parseString("ONRAMP_FINAL_ASSET", "TCOIN"),
+    finalAsset: parseString("ONRAMP_FINAL_ASSET", runtime.cplTcoin.symbol),
     settlementTimeoutSeconds: Math.max(60, parseInteger("ONRAMP_SETTLEMENT_TIMEOUT_SECONDS", 600)),
     maxAutoAttempts: Math.max(1, parseInteger("ONRAMP_MAX_AUTO_ATTEMPTS", 3)),
     maxManualAttempts: Math.max(1, parseInteger("ONRAMP_MAX_MANUAL_ATTEMPTS", 3)),
@@ -122,13 +123,16 @@ export function resolveOnrampConfig(): OnrampConfig {
     gasBankPrivateKey,
     gasTopupMinWei: parseBigint("ONRAMP_GAS_TOPUP_MIN_WEI", BigInt("1000000000000000")),
     gasTopupTargetWei: parseBigint("ONRAMP_GAS_TOPUP_TARGET_WEI", BigInt("5000000000000000")),
-    usdcTokenAddress: parseAddress("ONRAMP_USDC_TOKEN_ADDRESS"),
-    routerAddress: parseAddress("ONRAMP_ROUTER_ADDRESS"),
-    swapAdapterId: parseString("ONRAMP_SWAP_ADAPTER_ID", "default"),
+    inputTokenAddress: runtime.scenarioInputToken,
+    routerAddress: runtime.liquidityRouter,
+    poolRegistryAddress: runtime.poolRegistry,
+    bootstrapPoolId: runtime.bootstrapPoolId,
+    cplTcoinAddress: runtime.cplTcoin.address,
+    cplTcoinDecimals: runtime.cplTcoin.decimals,
+    reserveAssetId: runtime.reserveAssetId,
     appBaseUrl: parseString("ONRAMP_APP_BASE_URL", "http://localhost:3000"),
-    rpcUrl: parseString("INDEXER_CHAIN_RPC_URL", "https://forno.celo.org"),
+    rpcUrl: parseString("INDEXER_CHAIN_RPC_URL", runtime.rpcUrl),
     buyCheckoutFlag:
       (parseOptionalString("NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1", "false") ?? "false").toLowerCase() === "true",
-    defaultSwapData: normalizeHexBytes(parseOptionalString("ONRAMP_SWAP_DATA_HEX", "0x") ?? "0x"),
   };
 }

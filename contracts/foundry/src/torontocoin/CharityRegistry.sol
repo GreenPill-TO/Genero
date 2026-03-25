@@ -67,7 +67,7 @@ contract CharityRegistry is Ownable, ReentrancyGuard, ICharityRegistry {
     uint256 public activeCharityCount;
     uint256 public defaultCharityId;
 
-    mapping(uint256 => Charity) private charities;
+    mapping(uint256 => Charity) private _charities;
     mapping(address => uint256) public charityIdByWallet;
     mapping(uint256 => address) public assignedStewardByCharityId;
 
@@ -107,7 +107,7 @@ contract CharityRegistry is Ownable, ReentrancyGuard, ICharityRegistry {
 
         charityId = ++charityCount;
 
-        charities[charityId] = Charity({
+        _charities[charityId] = Charity({
             charityId: charityId,
             name: name,
             wallet: wallet,
@@ -254,6 +254,24 @@ contract CharityRegistry is Ownable, ReentrancyGuard, ICharityRegistry {
         }
     }
 
+    function resolveActiveCharityOrDefault(uint256 requestedCharityId)
+        external
+        view
+        returns (uint256 resolvedCharityId, address wallet)
+    {
+        if (requestedCharityId != 0) {
+            Charity storage requested = _charities[requestedCharityId];
+            if (requested.status == CharityStatus.Active) {
+                return (requestedCharityId, requested.wallet);
+            }
+        }
+        resolvedCharityId = defaultCharityId;
+        if (resolvedCharityId == 0) revert InvalidDefaultCharity(0);
+        Charity storage def = _charities[resolvedCharityId];
+        if (def.status != CharityStatus.Active) revert InvalidDefaultCharity(resolvedCharityId);
+        wallet = def.wallet;
+    }
+
     function getCharity(uint256 charityId) external view returns (Charity memory) {
         return _getCharityStorage(charityId);
     }
@@ -291,7 +309,7 @@ contract CharityRegistry is Ownable, ReentrancyGuard, ICharityRegistry {
     }
 
     function isActiveCharity(uint256 charityId) external view returns (bool) {
-        Charity storage charity = charities[charityId];
+        Charity storage charity = _charities[charityId];
         return charity.status == CharityStatus.Active;
     }
 
@@ -310,7 +328,7 @@ contract CharityRegistry is Ownable, ReentrancyGuard, ICharityRegistry {
 
     function _findFirstActiveCharityId() internal view returns (uint256 foundCharityId) {
         for (uint256 i = 1; i <= charityCount; ++i) {
-            if (charities[i].status == CharityStatus.Active) {
+            if (_charities[i].status == CharityStatus.Active) {
                 return i;
             }
         }
@@ -318,7 +336,7 @@ contract CharityRegistry is Ownable, ReentrancyGuard, ICharityRegistry {
     }
 
     function _getCharityStorage(uint256 charityId) internal view returns (Charity storage charity) {
-        charity = charities[charityId];
+        charity = _charities[charityId];
         if (charity.status == CharityStatus.None) revert UnknownCharity(charityId);
     }
 

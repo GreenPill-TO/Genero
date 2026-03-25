@@ -70,47 +70,13 @@ const getRecentPaymentRequestParticipantsMock = vi.hoisted(() =>
 vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
   getRecentPaymentRequestParticipants: getRecentPaymentRequestParticipantsMock,
 }));
-const listWalletPublicKeysForUserMock = vi.hoisted(() => vi.fn(async () => []));
-const mapUserIdsByWalletsMock = vi.hoisted(() => vi.fn(async () => new Map()));
-vi.mock("@shared/lib/supabase/walletIdentities", () => ({
-  listWalletPublicKeysForUser: listWalletPublicKeysForUserMock,
-  mapUserIdsByWallets: mapUserIdsByWalletsMock,
-}));
-
-const matchMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue({ data: [{ id: 7 }], error: null })
-);
-const insertMock = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
-const fromMock = vi.hoisted(() => vi.fn((table: string) => {
-  if (table === "users") {
-    return { select: () => ({ match: matchMock }) } as any;
-  }
-  if (table === "wallet_list") {
-    return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) } as any;
-  }
-  if (table === "act_transaction_entries") {
-    return {
-      select: () => ({
-        eq: () => ({
-          in: () => ({
-            order: () => ({
-              limit: () => Promise.resolve({ data: [], error: null }),
-            }),
-          }),
-        }),
-      }),
-    } as any;
-  }
-  return { insert: insertMock, select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) } as any;
-}));
-
-vi.mock("@shared/lib/supabase/client", () => ({
-  createClient: () => ({ from: fromMock }),
-}));
-
-const fetchContactsForOwnerMock = vi.hoisted(() => vi.fn<(...args: any[]) => Promise<any[]>>(async () => []));
-vi.mock("@shared/api/services/supabaseService", () => ({
-  fetchContactsForOwner: (...args: any[]) => (fetchContactsForOwnerMock as any)(...args),
+const lookupWalletUserByIdentifierMock = vi.hoisted(() => vi.fn());
+const connectWalletContactMock = vi.hoisted(() => vi.fn());
+const getWalletRecentsMock = vi.hoisted(() => vi.fn(async () => ({ participants: [] })));
+vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
+  lookupWalletUserByIdentifier: lookupWalletUserByIdentifierMock,
+  connectWalletContact: connectWalletContactMock,
+  getWalletRecents: getWalletRecentsMock,
 }));
 
 const pushMock = vi.hoisted(() => vi.fn());
@@ -137,15 +103,22 @@ import { WalletHome } from "./WalletHome";
 describe("WalletHome deep-link scanning", () => {
   beforeEach(() => {
     toastSuccess.mockReset();
-    matchMock.mockClear();
-    insertMock.mockClear();
     sendCardMock.mockClear();
-    fetchContactsForOwnerMock.mockReset();
-    fetchContactsForOwnerMock.mockResolvedValue([]);
-    listWalletPublicKeysForUserMock.mockReset();
-    listWalletPublicKeysForUserMock.mockResolvedValue([]);
-    mapUserIdsByWalletsMock.mockReset();
-    mapUserIdsByWalletsMock.mockResolvedValue(new Map());
+    lookupWalletUserByIdentifierMock.mockReset();
+    lookupWalletUserByIdentifierMock.mockResolvedValue({
+      user: {
+        id: 7,
+        fullName: "Scanned User",
+        username: "scanned",
+        profileImageUrl: null,
+        walletAddress: "0x123",
+        state: "new",
+      },
+    });
+    connectWalletContactMock.mockReset();
+    connectWalletContactMock.mockResolvedValue({ contact: null });
+    getWalletRecentsMock.mockReset();
+    getWalletRecentsMock.mockResolvedValue({ participants: [] });
     getRecentPaymentRequestParticipantsMock.mockReset();
     getRecentPaymentRequestParticipantsMock.mockResolvedValue({
       citySlug: "tcoin",
@@ -158,8 +131,8 @@ describe("WalletHome deep-link scanning", () => {
   it("skips handleScan when URL lacks pay param", () => {
     render(<WalletHome />);
     expect(toastSuccess).not.toHaveBeenCalled();
-    expect(matchMock).not.toHaveBeenCalled();
-    expect(insertMock).not.toHaveBeenCalled();
+    expect(lookupWalletUserByIdentifierMock).not.toHaveBeenCalled();
+    expect(connectWalletContactMock).not.toHaveBeenCalled();
   });
 
   it("processes scan and shows toast when URL has pay param", async () => {
@@ -175,8 +148,8 @@ describe("WalletHome deep-link scanning", () => {
     render(<WalletHome />);
 
     await waitFor(() => {
-      expect(matchMock).toHaveBeenCalled();
-      expect(insertMock).toHaveBeenCalled();
+      expect(lookupWalletUserByIdentifierMock).toHaveBeenCalled();
+      expect(connectWalletContactMock).toHaveBeenCalled();
       expect(toastSuccess).toHaveBeenCalledWith("Scanned User Successfully");
     });
   });
@@ -190,17 +163,19 @@ describe("WalletHome deep-link scanning", () => {
   });
 
   it("opens contact profile page from Recents avatar", async () => {
-    fetchContactsForOwnerMock.mockResolvedValueOnce([
-      {
-        id: 77,
-        full_name: "Recent Contact",
-        username: "recent",
-        profile_image_url: null,
-        wallet_address: null,
-        state: "accepted",
-        last_interaction: "2026-03-11T10:00:00.000Z",
-      },
-    ] as any[]);
+    getWalletRecentsMock.mockResolvedValueOnce({
+      participants: [
+        {
+          id: 77,
+          fullName: "Recent Contact",
+          username: "recent",
+          profileImageUrl: null,
+          walletAddress: null,
+          state: "accepted",
+          lastInteractionAt: "2026-03-11T10:00:00.000Z",
+        },
+      ],
+    });
 
     render(<WalletHome />);
 

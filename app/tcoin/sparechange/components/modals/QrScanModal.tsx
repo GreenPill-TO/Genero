@@ -2,9 +2,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useAuth } from '@shared/api/hooks/useAuth';
-import { createClient } from '@shared/lib/supabase/client';
 import { toast } from 'react-toastify';
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
+import {
+  connectWalletContact,
+  lookupWalletUserByIdentifier,
+} from '@shared/lib/edge/walletOperationsClient';
 
 export interface QrScanModalProps {
   /** Callback to close the modal */
@@ -79,28 +82,13 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
   const handleScan = useCallback(async (data: any) => {
     const { nano_id, ...rest } = extractAndDecodeBase64(data?.[0]?.rawValue);
     console.log({ rest });
-    const supabase = createClient();
     toast.success("Scanned User Successfully");
     if (nano_id) {
-      const { data: userDataFromSupabaseTable } = await supabase
-        .from("users")
-        .select("*")
-        .match({
-          user_identifier: nano_id
-        });
-      await supabase.from("connections").insert({
-        owner_user_id: (userData as any)?.cubidData?.id,
-        connected_user_id: userDataFromSupabaseTable?.[0]?.id,
-        state: "new"
-      });
-
-      await supabase.from("connections").insert({
-        connected_user_id: (userData as any)?.cubidData?.id,
-        owner_user_id: userDataFromSupabaseTable?.[0]?.id,
-        state: "new"
-      });
-
-      setToSendData(userDataFromSupabaseTable?.[0]);
+      const lookup = await lookupWalletUserByIdentifier({ identifier: nano_id });
+      if (lookup.user?.id) {
+        await connectWalletContact({ connectedUserId: lookup.user.id, state: "new" });
+      }
+      setToSendData(lookup.user ?? null);
       if (rest?.qrTcoinAmount) {
         setTcoin(rest?.qrTcoinAmount);
         setCad(extractDecimalFromString(rest?.qrTcoinAmount) * exchangeRate);
@@ -108,7 +96,7 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
     }
 
     closeModal();
-  }, [closeModal]);
+  }, [closeModal, exchangeRate, setCad, setTcoin, setToSendData]);
 
   // Called on any scanning error.
   const handleError = useCallback((error: any) => {

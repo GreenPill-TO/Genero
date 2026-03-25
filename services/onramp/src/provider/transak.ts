@@ -95,7 +95,7 @@ export async function buildTransakSession(input: CreateOnrampSessionInput & {
     redirectURL: `${config.appBaseUrl.replace(/\/$/, "")}/dashboard?onrampSession=${input.sessionId}`,
     partnerOrderId: providerOrderId,
     partnerCustomerId: String(input.userId),
-    exchangeScreenTitle: "Buy TCOIN",
+    exchangeScreenTitle: "Buy cplTCOIN",
     isAutoFillUserData: true,
   };
 

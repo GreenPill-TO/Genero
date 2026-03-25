@@ -132,3 +132,23 @@ export async function completeUserSignup(
     appContext,
   });
 }
+
+export async function getLegacyCubidData(
+  appContext?: Partial<UserSettingsAppContext> | null
+): Promise<Record<string, unknown>> {
+  return invokeUserSettings<Record<string, unknown>>("/legacy/cubid-data", {
+    method: "GET",
+    appContext,
+  });
+}
+
+export async function updateLegacyCubidData(
+  body: Record<string, unknown>,
+  appContext?: Partial<UserSettingsAppContext> | null
+): Promise<Record<string, unknown>> {
+  return invokeUserSettings<Record<string, unknown>>("/legacy/cubid-data", {
+    method: "PATCH",
+    body,
+    appContext,
+  });
+}

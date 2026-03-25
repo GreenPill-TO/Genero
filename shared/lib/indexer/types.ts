@@ -76,4 +76,16 @@ export type IndexerScopeStatus = {
   activeTokenCount: number;
   biaSummary: BiaScopeSummary;
   voucherSummary: VoucherSummary;
+  torontoCoinTracking?: {
+    requiredTokenAddress: string;
+    cplTcoinTracked: boolean;
+    trackedPools: Array<{
+      poolId: string;
+      poolAddress: string;
+      expected: boolean;
+      tracked: boolean;
+      tokenAddresses: string[];
+      healthy: boolean;
+    }>;
+  };
 };

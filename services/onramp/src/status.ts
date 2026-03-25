@@ -16,8 +16,8 @@ const STEP_LABELS: Record<OnrampSessionStatus, string> = {
   payment_submitted: "Payment submitted",
   crypto_sent: "USDC transfer initiated",
   usdc_received: "USDC received",
-  mint_started: "Mint in progress",
-  mint_complete: "TCOIN delivered",
+  mint_started: "Router buy in progress",
+  mint_complete: "cplTCOIN delivered",
   failed: "Failed",
   manual_review: "Manual review",
 };
@@ -48,6 +48,21 @@ export function buildOnrampTimeline(status: OnrampSessionStatus): OnrampSessionT
 }
 
 export function projectOnrampStatus(session: OnrampCheckoutSessionRow): OnrampStatusProjection {
+  const metadata = session.metadata ?? {};
+  const finalTokenDecimals =
+    typeof metadata.finalTokenDecimals === "number" && Number.isFinite(metadata.finalTokenDecimals)
+      ? metadata.finalTokenDecimals
+      : null;
+  const finalTokenAddress =
+    typeof metadata.finalTokenAddress === "string" ? metadata.finalTokenAddress : null;
+  const finalTokenSymbol =
+    typeof metadata.finalTokenSymbol === "string" ? metadata.finalTokenSymbol : null;
+  const poolId = typeof metadata.poolId === "string" ? metadata.poolId : null;
+  const reserveAssetUsed =
+    typeof metadata.reserveAssetUsed === "string" ? metadata.reserveAssetUsed : null;
+  const routerTxHash =
+    typeof metadata.routerTxHash === "string" ? metadata.routerTxHash : session.mint_tx_hash;
+
   return {
     id: session.id,
     status: session.status,
@@ -61,9 +76,15 @@ export function projectOnrampStatus(session: OnrampCheckoutSessionRow): OnrampSt
     recipientWallet: session.recipient_wallet,
     incomingUsdcTxHash: session.incoming_usdc_tx_hash,
     mintTxHash: session.mint_tx_hash,
+    routerTxHash,
     tcoinDeliveryTxHash: session.tcoin_delivery_tx_hash,
     usdcReceivedAmount: toStringNumber(session.usdc_received_amount),
     tcoinOutAmount: toStringNumber(session.tcoin_out_amount),
+    finalTokenAddress,
+    finalTokenSymbol,
+    finalTokenDecimals,
+    poolId,
+    reserveAssetUsed,
     timeline: buildOnrampTimeline(session.status),
     createdAt: session.created_at,
     updatedAt: session.updated_at,

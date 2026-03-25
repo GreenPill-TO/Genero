@@ -95,7 +95,7 @@ describe("BuyTcoinModal", () => {
       { citySlug: "tcoin" }
     );
     expect(toastInfoMock).toHaveBeenCalled();
-    expect(screen.getByTitle(/Buy TCOIN checkout/i)).toBeTruthy();
+    expect(screen.getByTitle(/Buy cplTCOIN checkout/i)).toBeTruthy();
   });
 
   it("shows a user-facing disabled message when checkout is unavailable", async () => {

@@ -1,5 +1,5 @@
 import { isAddress } from "npm:viem@2.23.3";
-import { assertStoreAdminAccess } from "./rbac.ts";
+import { assertAdminOrOperator, assertStoreAdminAccess } from "./rbac.ts";
 import { toNumber } from "./validation.ts";
 
 type StoreContext = {
@@ -237,4 +237,69 @@ export async function assignStoreBia(
   });
 
   return { affiliation: inserted };
+}
+
+export async function updateStoreRisk(
+  options: StoreContext & {
+    storeId: number;
+    isSuspended: boolean;
+    reason?: string | null;
+  }
+) {
+  await assertAdminOrOperator({
+    supabase: options.supabase,
+    userId: options.userId,
+    appInstanceId: options.appContext.appInstanceId,
+  });
+
+  const { data: storeRow, error: storeError } = await options.supabase
+    .from("stores")
+    .select("id,app_instance_id")
+    .eq("id", options.storeId)
+    .eq("app_instance_id", options.appContext.appInstanceId)
+    .limit(1)
+    .maybeSingle();
+
+  if (storeError) {
+    throw new Error(`Failed to validate store: ${storeError.message}`);
+  }
+
+  if (!storeRow) {
+    throw new Error("Store not found in this app instance.");
+  }
+
+  const nowIso = new Date().toISOString();
+
+  const { data: updated, error: upsertError } = await options.supabase
+    .from("store_risk_flags")
+    .upsert(
+      {
+        store_id: options.storeId,
+        is_suspended: options.isSuspended === true,
+        reason: options.reason ?? null,
+        updated_by: options.userId,
+        updated_at: nowIso,
+      },
+      { onConflict: "store_id" }
+    )
+    .select("*")
+    .single();
+
+  if (upsertError) {
+    throw new Error(`Failed to update store risk flags: ${upsertError.message}`);
+  }
+
+  await options.supabase.from("governance_actions_log").insert({
+    action_type: options.isSuspended === true ? "store_suspended" : "store_reinstated",
+    city_slug: options.appContext.citySlug,
+    store_id: options.storeId,
+    actor_user_id: options.userId,
+    reason: options.reason ?? "Store risk status changed",
+    payload: {
+      appInstanceId: options.appContext.appInstanceId,
+      isSuspended: options.isSuspended === true,
+    },
+  });
+
+  return { storeRisk: updated };
 }

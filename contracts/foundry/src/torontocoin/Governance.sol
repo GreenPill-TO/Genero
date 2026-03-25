@@ -3,12 +3,10 @@ pragma solidity ^0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {ICharityRegistry} from "./interfaces/ICharityRegistry.sol";
-import {IPoolRegistry} from "./interfaces/IPoolRegistry.sol";
-import {IReserveRegistry} from "./interfaces/IReserveRegistry.sol";
 import {IStewardRegistry} from "./interfaces/IStewardRegistry.sol";
-import {ITCOINToken} from "./interfaces/ITCOINToken.sol";
 import {ITreasuryController} from "./interfaces/ITreasuryController.sol";
+import {GovernanceExecutionHelper} from "./GovernanceExecutionHelper.sol";
+import {GovernanceRouterProposalHelper} from "./GovernanceRouterProposalHelper.sol";
 
 contract Governance is Ownable, ReentrancyGuard {
     uint256 public constant BPS_DENOMINATOR = 10_000;
@@ -39,7 +37,36 @@ contract Governance is Ownable, ReentrancyGuard {
         UserRedeemRateUpdate,
         MerchantRedeemRateUpdate,
         CharityMintRateUpdate,
-        DemurrageRateUpdate
+        OvercollateralizationTargetUpdate,
+        CharityMintFromExcess,
+        ExpirePeriodUpdate,
+        TreasuryControllerSetTreasury,
+        TreasuryControllerSetGovernance,
+        TreasuryControllerSetIndexer,
+        TreasuryControllerSetLiquidityRouter,
+        TreasuryControllerSetTcoinToken,
+        TreasuryControllerSetReserveRegistry,
+        TreasuryControllerSetCharityRegistry,
+        TreasuryControllerSetPoolRegistry,
+        TreasuryControllerSetOracleRouter,
+        TreasuryControllerPauseMinting,
+        TreasuryControllerUnpauseMinting,
+        TreasuryControllerPauseRedemption,
+        TreasuryControllerUnpauseRedemption,
+        TreasuryControllerPauseAsset,
+        TreasuryControllerUnpauseAsset,
+        TreasuryControllerSetAdminCanMintToCharity,
+        LiquidityRouterSetGovernance,
+        LiquidityRouterSetTreasuryController,
+        LiquidityRouterSetReserveInputRouter,
+        LiquidityRouterSetCplTcoin,
+        LiquidityRouterSetCharityPreferencesRegistry,
+        LiquidityRouterSetAcceptancePreferencesRegistry,
+        LiquidityRouterSetPoolRegistry,
+        LiquidityRouterSetPoolAdapter,
+        LiquidityRouterSetCharityTopupBps,
+        LiquidityRouterSetScoringWeights,
+        PoolAddWithAddress
     }
 
     enum ProposalStatus {
@@ -80,22 +107,30 @@ contract Governance is Ownable, ReentrancyGuard {
         string metadataRecordId;
     }
 
+    struct PoolAddWithAddressPayload {
+        bytes32 poolId;
+        string name;
+        string metadataRecordId;
+        address poolAddress;
+    }
+
     struct Bytes32IdPayload {
         bytes32 id;
     }
 
     struct MerchantApprovePayload {
-        address merchant;
+        bytes32 merchantId;
         bytes32 poolId;
         string metadataRecordId;
+        address[] initialWallets;
     }
 
-    struct MerchantAddressPayload {
-        address merchant;
+    struct MerchantIdPayload {
+        bytes32 merchantId;
     }
 
     struct MerchantPoolReassignPayload {
-        address merchant;
+        bytes32 merchantId;
         bytes32 newPoolId;
     }
 
@@ -120,6 +155,26 @@ contract Governance is Ownable, ReentrancyGuard {
         uint256 value;
     }
 
+    struct AddressPayload {
+        address account;
+    }
+
+    struct BoolPayload {
+        bool value;
+    }
+
+    struct CharityMintPayload {
+        uint256 charityId;
+        uint256 amount;
+    }
+
+    struct ScoringWeightsPayload {
+        uint256 weightLowMrTcoinLiquidity;
+        uint256 weightHighCplTcoinLiquidity;
+        uint256 weightUserPoolPreference;
+        uint256 weightUserMerchantPreference;
+    }
+
     error ZeroAddressOwner();
     error ZeroAddressRegistry();
     error ZeroAddressTarget();
@@ -142,6 +197,7 @@ contract Governance is Ownable, ReentrancyGuard {
     event PoolRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event ReserveRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
     event TreasuryControllerUpdated(address indexed oldController, address indexed newController);
+    event LiquidityRouterUpdated(address indexed oldRouter, address indexed newRouter);
     event TcoinTokenUpdated(address indexed oldToken, address indexed newToken);
     event DefaultVotingWindowUpdated(uint64 oldWindow, uint64 newWindow);
 
@@ -172,25 +228,34 @@ contract Governance is Ownable, ReentrancyGuard {
     address public poolRegistry;
     address public reserveRegistry;
     address public treasuryController;
+    address public liquidityRouter;
     address public tcoinToken;
+    address public executionHelper;
+    address public proposalHelper;
+    address public routerProposalHelper;
 
     uint64 public defaultVotingWindow;
     uint256 public proposalCount;
 
-    mapping(uint256 => Proposal) private proposals;
-    mapping(uint256 => mapping(address => uint256)) private stewardSnapshotWeight;
+    mapping(uint256 => Proposal) private _proposals;
+    mapping(uint256 => mapping(address => uint256)) private _stewardSnapshotWeight;
     mapping(uint256 => mapping(address => bool)) public hasVoted;
 
-    mapping(uint256 => CharityAddPayload) private charityAddPayloads;
-    mapping(uint256 => CharityIdPayload) private charityIdPayloads;
-    mapping(uint256 => PoolAddPayload) private poolAddPayloads;
-    mapping(uint256 => Bytes32IdPayload) private bytes32IdPayloads;
-    mapping(uint256 => MerchantApprovePayload) private merchantApprovePayloads;
-    mapping(uint256 => MerchantAddressPayload) private merchantAddressPayloads;
-    mapping(uint256 => MerchantPoolReassignPayload) private merchantPoolReassignPayloads;
-    mapping(uint256 => ReserveAssetAddPayload) private reserveAssetAddPayloads;
-    mapping(uint256 => ReserveOracleUpdatePayload) private reserveOracleUpdatePayloads;
-    mapping(uint256 => UIntPayload) private uintPayloads;
+    mapping(uint256 => CharityAddPayload) private _charityAddPayloads;
+    mapping(uint256 => CharityIdPayload) private _charityIdPayloads;
+    mapping(uint256 => PoolAddPayload) private _poolAddPayloads;
+    mapping(uint256 => PoolAddWithAddressPayload) private _poolAddWithAddressPayloads;
+    mapping(uint256 => Bytes32IdPayload) private _bytes32IdPayloads;
+    mapping(uint256 => MerchantApprovePayload) private _merchantApprovePayloads;
+    mapping(uint256 => MerchantIdPayload) private _merchantIdPayloads;
+    mapping(uint256 => MerchantPoolReassignPayload) private _merchantPoolReassignPayloads;
+    mapping(uint256 => ReserveAssetAddPayload) private _reserveAssetAddPayloads;
+    mapping(uint256 => ReserveOracleUpdatePayload) private _reserveOracleUpdatePayloads;
+    mapping(uint256 => UIntPayload) private _uintPayloads;
+    mapping(uint256 => AddressPayload) private _addressPayloads;
+    mapping(uint256 => BoolPayload) private _boolPayloads;
+    mapping(uint256 => CharityMintPayload) private _charityMintPayloads;
+    mapping(uint256 => ScoringWeightsPayload) private _scoringWeightsPayloads;
 
     constructor(
         address initialOwner,
@@ -199,7 +264,11 @@ contract Governance is Ownable, ReentrancyGuard {
         address poolRegistry_,
         address reserveRegistry_,
         address treasuryController_,
+        address liquidityRouter_,
         address tcoinToken_,
+        address executionHelper_,
+        address proposalHelper_,
+        address routerProposalHelper_,
         uint64 defaultVotingWindow_
     ) {
         if (initialOwner == address(0)) revert ZeroAddressOwner();
@@ -209,7 +278,11 @@ contract Governance is Ownable, ReentrancyGuard {
         _setPoolRegistry(poolRegistry_);
         _setReserveRegistry(reserveRegistry_);
         _setTreasuryController(treasuryController_);
+        _setLiquidityRouter(liquidityRouter_);
         _setTcoinToken(tcoinToken_);
+        _setExecutionHelper(executionHelper_);
+        _setProposalHelper(proposalHelper_);
+        _setRouterProposalHelper(routerProposalHelper_);
         _setDefaultVotingWindow(defaultVotingWindow_);
     }
 
@@ -246,6 +319,10 @@ contract Governance is Ownable, ReentrancyGuard {
         _setTreasuryController(newController);
     }
 
+    function setLiquidityRouter(address newRouter) external onlyOwner {
+        _setLiquidityRouter(newRouter);
+    }
+
     function setTcoinToken(address newToken) external onlyOwner {
         _setTcoinToken(newToken);
     }
@@ -254,222 +331,45 @@ contract Governance is Ownable, ReentrancyGuard {
         _setDefaultVotingWindow(newWindow);
     }
 
-    function proposeCharityAdd(
-        string calldata name,
-        address wallet,
-        string calldata metadataRecordId,
-        uint64 votingWindow
-    ) external onlySteward returns (uint256 proposalId) {
-        if (bytes(name).length == 0) revert EmptyString();
-        if (wallet == address(0)) revert ZeroAddressTarget();
-
-        proposalId = _createProposal(ProposalType.CharityAdd, votingWindow);
-        charityAddPayloads[proposalId] = CharityAddPayload({
-            name: name,
-            wallet: wallet,
-            metadataRecordId: metadataRecordId
-        });
+    function setExecutionHelper(address newHelper) external onlyOwner {
+        _setExecutionHelper(newHelper);
     }
 
-    function proposeCharityRemove(uint256 charityId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeCharityId(ProposalType.CharityRemove, charityId, votingWindow);
+    function setProposalHelper(address newHelper) external onlyOwner {
+        _setProposalHelper(newHelper);
     }
 
-    function proposeCharitySuspend(uint256 charityId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeCharityId(ProposalType.CharitySuspend, charityId, votingWindow);
+    function setRouterProposalHelper(address newHelper) external onlyOwner {
+        _setRouterProposalHelper(newHelper);
     }
 
-    function proposeCharityUnsuspend(uint256 charityId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeCharityId(ProposalType.CharityUnsuspend, charityId, votingWindow);
+    fallback() external payable {
+        address helper = _isRouterProposalSelector(msg.sig) ? routerProposalHelper : proposalHelper;
+        if (helper == address(0)) revert Unauthorized();
+
+        (bool ok, bytes memory result) = helper.delegatecall(msg.data);
+        if (!ok) {
+            assembly ("memory-safe") {
+                revert(add(result, 0x20), mload(result))
+            }
+        }
+        assembly ("memory-safe") {
+            return(add(result, 0x20), mload(result))
+        }
     }
 
-    function proposeSetDefaultCharity(uint256 charityId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeCharityId(ProposalType.SetDefaultCharity, charityId, votingWindow);
-    }
-
-    function proposePoolAdd(
-        bytes32 poolId,
-        string calldata name,
-        string calldata metadataRecordId,
-        uint64 votingWindow
-    ) external onlySteward returns (uint256 proposalId) {
-        if (poolId == bytes32(0)) revert InvalidProposalValue();
-        if (bytes(name).length == 0) revert EmptyString();
-
-        proposalId = _createProposal(ProposalType.PoolAdd, votingWindow);
-        poolAddPayloads[proposalId] = PoolAddPayload({
-            poolId: poolId,
-            name: name,
-            metadataRecordId: metadataRecordId
-        });
-    }
-
-    function proposePoolRemove(bytes32 poolId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeBytes32Id(ProposalType.PoolRemove, poolId, votingWindow);
-    }
-
-    function proposePoolSuspend(bytes32 poolId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeBytes32Id(ProposalType.PoolSuspend, poolId, votingWindow);
-    }
-
-    function proposePoolUnsuspend(bytes32 poolId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeBytes32Id(ProposalType.PoolUnsuspend, poolId, votingWindow);
-    }
-
-    function proposeMerchantApprove(
-        address merchant,
-        bytes32 poolId,
-        string calldata metadataRecordId,
-        uint64 votingWindow
-    ) external onlySteward returns (uint256 proposalId) {
-        if (merchant == address(0)) revert ZeroAddressTarget();
-        if (poolId == bytes32(0)) revert InvalidProposalValue();
-
-        proposalId = _createProposal(ProposalType.MerchantApprove, votingWindow);
-        merchantApprovePayloads[proposalId] = MerchantApprovePayload({
-            merchant: merchant,
-            poolId: poolId,
-            metadataRecordId: metadataRecordId
-        });
-    }
-
-    function proposeMerchantRemove(address merchant, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeMerchantAddress(ProposalType.MerchantRemove, merchant, votingWindow);
-    }
-
-    function proposeMerchantSuspend(address merchant, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeMerchantAddress(ProposalType.MerchantSuspend, merchant, votingWindow);
-    }
-
-    function proposeMerchantUnsuspend(address merchant, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeMerchantAddress(ProposalType.MerchantUnsuspend, merchant, votingWindow);
-    }
-
-    function proposeMerchantPoolReassign(
-        address merchant,
-        bytes32 newPoolId,
-        uint64 votingWindow
-    ) external onlySteward returns (uint256 proposalId) {
-        if (merchant == address(0)) revert ZeroAddressTarget();
-        if (newPoolId == bytes32(0)) revert InvalidProposalValue();
-
-        proposalId = _createProposal(ProposalType.MerchantPoolReassign, votingWindow);
-        merchantPoolReassignPayloads[proposalId] = MerchantPoolReassignPayload({
-            merchant: merchant,
-            newPoolId: newPoolId
-        });
-    }
-
-    function proposeReserveAssetAdd(
-        bytes32 assetId,
-        address token,
-        string calldata code,
-        uint8 tokenDecimals,
-        address primaryOracle,
-        address fallbackOracle,
-        uint256 staleAfter,
-        uint64 votingWindow
-    ) external onlySteward returns (uint256 proposalId) {
-        if (assetId == bytes32(0)) revert InvalidProposalValue();
-        if (token == address(0)) revert ZeroAddressTarget();
-        if (bytes(code).length == 0) revert EmptyString();
-        if (primaryOracle == address(0)) revert ZeroAddressTarget();
-        if (staleAfter == 0) revert InvalidProposalValue();
-
-        proposalId = _createProposal(ProposalType.ReserveAssetAdd, votingWindow);
-        reserveAssetAddPayloads[proposalId] = ReserveAssetAddPayload({
-            assetId: assetId,
-            token: token,
-            code: code,
-            tokenDecimals: tokenDecimals,
-            primaryOracle: primaryOracle,
-            fallbackOracle: fallbackOracle,
-            staleAfter: staleAfter
-        });
-    }
-
-    function proposeReserveAssetRemove(bytes32 assetId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeBytes32Id(ProposalType.ReserveAssetRemove, assetId, votingWindow);
-    }
-
-    function proposeReserveAssetPause(bytes32 assetId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeBytes32Id(ProposalType.ReserveAssetPause, assetId, votingWindow);
-    }
-
-    function proposeReserveAssetUnpause(bytes32 assetId, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeBytes32Id(ProposalType.ReserveAssetUnpause, assetId, votingWindow);
-    }
-
-    function proposeReserveOracleUpdate(
-        bytes32 assetId,
-        address primaryOracle,
-        address fallbackOracle,
-        uint256 staleAfter,
-        uint64 votingWindow
-    ) external onlySteward returns (uint256 proposalId) {
-        if (assetId == bytes32(0)) revert InvalidProposalValue();
-        if (primaryOracle == address(0)) revert ZeroAddressTarget();
-        if (staleAfter == 0) revert InvalidProposalValue();
-
-        proposalId = _createProposal(ProposalType.ReserveOracleUpdate, votingWindow);
-        reserveOracleUpdatePayloads[proposalId] = ReserveOracleUpdatePayload({
-            assetId: assetId,
-            primaryOracle: primaryOracle,
-            fallbackOracle: fallbackOracle,
-            staleAfter: staleAfter
-        });
-    }
-
-    function proposeCadPegUpdate(uint256 newCadPeg18, uint64 votingWindow)
-        external
-        onlySteward
-        returns (uint256 proposalId)
-    {
-        if (newCadPeg18 == 0) revert InvalidProposalValue();
-        _validateCadPegChange(newCadPeg18);
-
-        proposalId = _createProposal(ProposalType.CadPegUpdate, votingWindow);
-        uintPayloads[proposalId] = UIntPayload({value: newCadPeg18});
-    }
-
-    function proposeUserRedeemRateUpdate(uint256 newRateBps, uint64 votingWindow) external onlySteward returns (uint256) {
-        return _proposeRateLike(ProposalType.UserRedeemRateUpdate, newRateBps, votingWindow);
-    }
-
-    function proposeMerchantRedeemRateUpdate(uint256 newRateBps, uint64 votingWindow)
-        external
-        onlySteward
-        returns (uint256)
-    {
-        return _proposeRateLike(ProposalType.MerchantRedeemRateUpdate, newRateBps, votingWindow);
-    }
-
-    function proposeCharityMintRateUpdate(uint256 newRateBps, uint64 votingWindow)
-        external
-        onlySteward
-        returns (uint256)
-    {
-        return _proposeRateLike(ProposalType.CharityMintRateUpdate, newRateBps, votingWindow);
-    }
-
-    function proposeDemurrageRateUpdate(uint256 newRate, uint64 votingWindow)
-        external
-        onlySteward
-        returns (uint256 proposalId)
-    {
-        if (newRate == 0) revert InvalidProposalValue();
-        proposalId = _createProposal(ProposalType.DemurrageRateUpdate, votingWindow);
-        uintPayloads[proposalId] = UIntPayload({value: newRate});
+    receive() external payable {
+        revert Unauthorized();
     }
 
     /// @notice Cast a weighted steward vote on a pending proposal.
     /// @dev A proposal can move to Approved before deadline if quorum and majority conditions are met.
     function voteProposal(uint256 proposalId, bool support) external onlySteward onlyPendingProposal(proposalId) {
-        Proposal storage proposal = proposals[proposalId];
+        Proposal storage proposal = _proposals[proposalId];
         if (block.timestamp > proposal.deadline) revert ProposalExpired(proposalId);
         if (hasVoted[proposalId][msg.sender]) revert ProposalAlreadyVoted(proposalId, msg.sender);
 
-        uint256 weight = stewardSnapshotWeight[proposalId][msg.sender];
+        uint256 weight = _stewardSnapshotWeight[proposalId][msg.sender];
         if (weight == 0) revert NoSnapshotWeight(proposalId, msg.sender);
 
         hasVoted[proposalId][msg.sender] = true;
@@ -516,87 +416,24 @@ contract Governance is Ownable, ReentrancyGuard {
 
         proposal = _getProposalStorage(proposalId);
         if (proposal.status != ProposalStatus.Approved) revert ProposalNotApproved(proposalId);
-
         ProposalType proposalType = proposal.proposalType;
-
-        if (proposalType == ProposalType.CharityAdd) {
-            CharityAddPayload storage payload = charityAddPayloads[proposalId];
-            ICharityRegistry(charityRegistry).addCharity(payload.name, payload.wallet, payload.metadataRecordId);
-        } else if (proposalType == ProposalType.CharityRemove) {
-            ICharityRegistry(charityRegistry).removeCharity(charityIdPayloads[proposalId].charityId);
-        } else if (proposalType == ProposalType.CharitySuspend) {
-            ICharityRegistry(charityRegistry).suspendCharity(charityIdPayloads[proposalId].charityId);
-        } else if (proposalType == ProposalType.CharityUnsuspend) {
-            ICharityRegistry(charityRegistry).unsuspendCharity(charityIdPayloads[proposalId].charityId);
-        } else if (proposalType == ProposalType.SetDefaultCharity) {
-            ICharityRegistry(charityRegistry).setDefaultCharity(charityIdPayloads[proposalId].charityId);
-        } else if (proposalType == ProposalType.PoolAdd) {
-            PoolAddPayload storage payload = poolAddPayloads[proposalId];
-            IPoolRegistry(poolRegistry).addPool(payload.poolId, payload.name, payload.metadataRecordId);
-        } else if (proposalType == ProposalType.PoolRemove) {
-            IPoolRegistry(poolRegistry).removePool(bytes32IdPayloads[proposalId].id);
-        } else if (proposalType == ProposalType.PoolSuspend) {
-            IPoolRegistry(poolRegistry).suspendPool(bytes32IdPayloads[proposalId].id);
-        } else if (proposalType == ProposalType.PoolUnsuspend) {
-            IPoolRegistry(poolRegistry).unsuspendPool(bytes32IdPayloads[proposalId].id);
-        } else if (proposalType == ProposalType.MerchantApprove) {
-            MerchantApprovePayload storage payload = merchantApprovePayloads[proposalId];
-            IPoolRegistry(poolRegistry).approveMerchant(payload.merchant, payload.poolId, payload.metadataRecordId);
-        } else if (proposalType == ProposalType.MerchantRemove) {
-            IPoolRegistry(poolRegistry).removeMerchant(merchantAddressPayloads[proposalId].merchant);
-        } else if (proposalType == ProposalType.MerchantSuspend) {
-            IPoolRegistry(poolRegistry).suspendMerchant(merchantAddressPayloads[proposalId].merchant);
-        } else if (proposalType == ProposalType.MerchantUnsuspend) {
-            IPoolRegistry(poolRegistry).unsuspendMerchant(merchantAddressPayloads[proposalId].merchant);
-        } else if (proposalType == ProposalType.MerchantPoolReassign) {
-            MerchantPoolReassignPayload storage payload = merchantPoolReassignPayloads[proposalId];
-            IPoolRegistry(poolRegistry).reassignMerchantPool(payload.merchant, payload.newPoolId);
-        } else if (proposalType == ProposalType.ReserveAssetAdd) {
-            ReserveAssetAddPayload storage payload = reserveAssetAddPayloads[proposalId];
-            IReserveRegistry(reserveRegistry).addReserveAsset(
-                payload.assetId,
-                payload.token,
-                payload.code,
-                payload.tokenDecimals,
-                payload.primaryOracle,
-                payload.fallbackOracle,
-                payload.staleAfter
-            );
-        } else if (proposalType == ProposalType.ReserveAssetRemove) {
-            IReserveRegistry(reserveRegistry).removeReserveAsset(bytes32IdPayloads[proposalId].id);
-        } else if (proposalType == ProposalType.ReserveAssetPause) {
-            IReserveRegistry(reserveRegistry).pauseReserveAsset(bytes32IdPayloads[proposalId].id);
-        } else if (proposalType == ProposalType.ReserveAssetUnpause) {
-            IReserveRegistry(reserveRegistry).unpauseReserveAsset(bytes32IdPayloads[proposalId].id);
-        } else if (proposalType == ProposalType.ReserveOracleUpdate) {
-            ReserveOracleUpdatePayload storage payload = reserveOracleUpdatePayloads[proposalId];
-            IReserveRegistry(reserveRegistry).updateReserveAssetOracles(
-                payload.assetId,
-                payload.primaryOracle,
-                payload.fallbackOracle
-            );
-            IReserveRegistry(reserveRegistry).updateReserveAssetStaleness(payload.assetId, payload.staleAfter);
-        } else if (proposalType == ProposalType.CadPegUpdate) {
-            uint256 newCadPeg18 = uintPayloads[proposalId].value;
-            _validateCadPegChange(newCadPeg18);
-            ITreasuryController(treasuryController).setCadPeg(newCadPeg18);
-        } else if (proposalType == ProposalType.UserRedeemRateUpdate) {
-            ITreasuryController(treasuryController).setUserRedeemRate(uintPayloads[proposalId].value);
-        } else if (proposalType == ProposalType.MerchantRedeemRateUpdate) {
-            ITreasuryController(treasuryController).setMerchantRedeemRate(uintPayloads[proposalId].value);
-        } else if (proposalType == ProposalType.CharityMintRateUpdate) {
-            ITreasuryController(treasuryController).setCharityMintRate(uintPayloads[proposalId].value);
-        } else if (proposalType == ProposalType.DemurrageRateUpdate) {
-            ITCOINToken(tcoinToken).updateDemurrageRate(uintPayloads[proposalId].value);
-        } else {
-            revert InvalidProposalValue();
+        if (proposalType == ProposalType.CadPegUpdate) {
+            _validateCadPegChange(_uintPayloads[proposalId].value);
+        }
+        (bool ok, bytes memory result) = executionHelper.delegatecall(
+            abi.encodeCall(GovernanceExecutionHelper.execute, (proposalId, uint8(proposalType)))
+        );
+        if (!ok) {
+            assembly ("memory-safe") {
+                revert(add(result, 0x20), mload(result))
+            }
         }
 
         proposal.status = ProposalStatus.Executed;
         emit ProposalExecuted(proposalId, msg.sender);
     }
 
-    /// @notice Owner-only cancellation hook for non-executed proposals.
+    /// @notice Owner-only cancellation hook for non-executed _proposals.
     function cancelProposal(uint256 proposalId) external onlyOwner {
         Proposal storage proposal = _getProposalStorage(proposalId);
         if (proposal.status == ProposalStatus.Executed || proposal.status == ProposalStatus.Cancelled) {
@@ -611,7 +448,7 @@ contract Governance is Ownable, ReentrancyGuard {
     }
 
     function getSnapshotWeight(uint256 proposalId, address steward) external view returns (uint256) {
-        return stewardSnapshotWeight[proposalId][steward];
+        return _stewardSnapshotWeight[proposalId][steward];
     }
 
     function getProposalCount() external view returns (uint256) {
@@ -638,81 +475,6 @@ contract Governance is Ownable, ReentrancyGuard {
         nextCursor = end;
     }
 
-    function _proposeCharityId(
-        ProposalType proposalType,
-        uint256 charityId,
-        uint64 votingWindow
-    ) internal returns (uint256 proposalId) {
-        if (charityId == 0) revert InvalidProposalValue();
-        proposalId = _createProposal(proposalType, votingWindow);
-        charityIdPayloads[proposalId] = CharityIdPayload({charityId: charityId});
-    }
-
-    function _proposeBytes32Id(
-        ProposalType proposalType,
-        bytes32 id,
-        uint64 votingWindow
-    ) internal returns (uint256 proposalId) {
-        if (id == bytes32(0)) revert InvalidProposalValue();
-        proposalId = _createProposal(proposalType, votingWindow);
-        bytes32IdPayloads[proposalId] = Bytes32IdPayload({id: id});
-    }
-
-    function _proposeMerchantAddress(
-        ProposalType proposalType,
-        address merchant,
-        uint64 votingWindow
-    ) internal returns (uint256 proposalId) {
-        if (merchant == address(0)) revert ZeroAddressTarget();
-        proposalId = _createProposal(proposalType, votingWindow);
-        merchantAddressPayloads[proposalId] = MerchantAddressPayload({merchant: merchant});
-    }
-
-    function _proposeRateLike(
-        ProposalType proposalType,
-        uint256 value,
-        uint64 votingWindow
-    ) internal returns (uint256 proposalId) {
-        if (value > BPS_DENOMINATOR) revert InvalidProposalValue();
-        proposalId = _createProposal(proposalType, votingWindow);
-        uintPayloads[proposalId] = UIntPayload({value: value});
-    }
-
-    function _createProposal(ProposalType proposalType, uint64 votingWindow) internal returns (uint256 proposalId) {
-        uint64 window = votingWindow == 0 ? defaultVotingWindow : votingWindow;
-        if (window == 0) revert InvalidVotingWindow();
-
-        proposalId = ++proposalCount;
-        uint64 createdAt = uint64(block.timestamp);
-        uint64 deadline = createdAt + window;
-
-        Proposal storage proposal = proposals[proposalId];
-        proposal.proposalId = proposalId;
-        proposal.proposalType = proposalType;
-        proposal.status = ProposalStatus.Pending;
-        proposal.proposer = msg.sender;
-        proposal.createdAt = createdAt;
-        proposal.deadline = deadline;
-
-        uint256 totalSnapshotWeight = _snapshotStewardWeights(proposalId);
-        proposal.totalSnapshotWeight = totalSnapshotWeight;
-
-        emit ProposalCreated(proposalId, proposalType, msg.sender, deadline, totalSnapshotWeight);
-    }
-
-    function _snapshotStewardWeights(uint256 proposalId) internal returns (uint256 totalSnapshotWeight) {
-        address[] memory stewards = IStewardRegistry(stewardRegistry).listStewardAddresses();
-
-        for (uint256 i = 0; i < stewards.length; ++i) {
-            address steward = stewards[i];
-            uint256 weight = IStewardRegistry(stewardRegistry).getStewardWeight(steward);
-            if (weight == 0) continue;
-
-            stewardSnapshotWeight[proposalId][steward] = weight;
-            totalSnapshotWeight += weight;
-        }
-    }
-
     function _shouldApprove(Proposal storage proposal) internal view returns (bool) {
         return proposal.yesWeight > proposal.noWeight && proposal.participationWeight >= MINIMUM_PARTICIPATION_WEIGHT;
     }
@@ -730,7 +492,7 @@ contract Governance is Ownable, ReentrancyGuard {
     }
 
     function _getProposalStorage(uint256 proposalId) internal view returns (Proposal storage proposal) {
-        proposal = proposals[proposalId];
+        proposal = _proposals[proposalId];
         if (proposal.status == ProposalStatus.None) revert UnknownProposal(proposalId);
     }
 
@@ -769,6 +531,13 @@ contract Governance is Ownable, ReentrancyGuard {
         emit TreasuryControllerUpdated(old, newController);
     }
 
+    function _setLiquidityRouter(address newRouter) internal {
+        if (newRouter == address(0)) revert ZeroAddressRegistry();
+        address old = liquidityRouter;
+        liquidityRouter = newRouter;
+        emit LiquidityRouterUpdated(old, newRouter);
+    }
+
     function _setTcoinToken(address newToken) internal {
         if (newToken == address(0)) revert ZeroAddressRegistry();
         address old = tcoinToken;
@@ -781,5 +550,34 @@ contract Governance is Ownable, ReentrancyGuard {
         uint64 oldWindow = defaultVotingWindow;
         defaultVotingWindow = newWindow;
         emit DefaultVotingWindowUpdated(oldWindow, newWindow);
+    }
+
+    function _setExecutionHelper(address newHelper) internal {
+        if (newHelper == address(0)) revert ZeroAddressTarget();
+        executionHelper = newHelper;
+    }
+
+    function _setProposalHelper(address newHelper) internal {
+        if (newHelper == address(0)) revert ZeroAddressTarget();
+        proposalHelper = newHelper;
+    }
+
+    function _setRouterProposalHelper(address newHelper) internal {
+        if (newHelper == address(0)) revert ZeroAddressTarget();
+        routerProposalHelper = newHelper;
+    }
+
+    function _isRouterProposalSelector(bytes4 selector) internal pure returns (bool) {
+        return selector == GovernanceRouterProposalHelper.proposeLiquidityRouterSetGovernance.selector
+            || selector == GovernanceRouterProposalHelper.proposeLiquidityRouterSetTreasuryController.selector
+            || selector == GovernanceRouterProposalHelper.proposeLiquidityRouterSetReserveInputRouter.selector
+            || selector == GovernanceRouterProposalHelper.proposeLiquidityRouterSetCplTcoin.selector
+            || selector == GovernanceRouterProposalHelper.proposeLiquidityRouterSetCharityPreferencesRegistry.selector
+            || selector
+                == GovernanceRouterProposalHelper.proposeLiquidityRouterSetAcceptancePreferencesRegistry.selector
+            || selector == GovernanceRouterProposalHelper.proposeLiquidityRouterSetPoolRegistry.selector
+            || selector == GovernanceRouterProposalHelper.proposeLiquidityRouterSetPoolAdapter.selector
+            || selector == GovernanceRouterProposalHelper.proposeLiquidityRouterSetCharityTopupBps.selector
+            || selector == GovernanceRouterProposalHelper.proposeLiquidityRouterSetScoringWeights.selector;
     }
 }

@@ -75,9 +75,15 @@ export type OnrampStatusProjection = {
   recipientWallet: string;
   incomingUsdcTxHash: string | null;
   mintTxHash: string | null;
+  routerTxHash: string | null;
   tcoinDeliveryTxHash: string | null;
   usdcReceivedAmount: string | null;
   tcoinOutAmount: string | null;
+  finalTokenAddress: string | null;
+  finalTokenSymbol: string | null;
+  finalTokenDecimals: number | null;
+  poolId: string | null;
+  reserveAssetUsed: string | null;
   timeline: OnrampSessionTimelineStep[];
   createdAt: string;
   updatedAt: string;

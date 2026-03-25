@@ -71,3 +71,18 @@ export async function rejectCityManagerStore(
     appContext,
   });
 }
+
+export async function updateStoreRisk(
+  payload: {
+    storeId: number;
+    isSuspended: boolean;
+    reason?: string | null;
+  },
+  appContext?: AppScopeInput | null
+): Promise<Record<string, unknown>> {
+  return invokeEdgeFunction<Record<string, unknown>>("store-operations", "/risk", {
+    method: "POST",
+    body: payload as unknown as Record<string, unknown>,
+    appContext,
+  });
+}

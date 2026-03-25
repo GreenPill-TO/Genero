@@ -79,17 +79,9 @@ contract TcoinMintRouter is Ownable, Pausable, ReentrancyGuard {
         uint256 requestedCharityId,
         bytes calldata swapData
     ) external nonReentrant whenNotPaused returns (uint256 tcoinOut) {
-        return
-            _mintTcoinWithToken(
-                tokenIn,
-                amountIn,
-                minCadmOut,
-                minTcoinOut,
-                deadline,
-                recipient,
-                requestedCharityId,
-                swapData
-            );
+        return _mintTcoinWithToken(
+            tokenIn, amountIn, minCadmOut, minTcoinOut, deadline, recipient, requestedCharityId, swapData
+        );
     }
 
     function mintTcoinWithUSDC(
@@ -101,17 +93,9 @@ contract TcoinMintRouter is Ownable, Pausable, ReentrancyGuard {
         uint256 requestedCharityId,
         bytes calldata swapData
     ) external nonReentrant whenNotPaused returns (uint256 tcoinOut) {
-        return
-            _mintTcoinWithToken(
-                usdcToken,
-                usdcAmountIn,
-                minCadmOut,
-                minTcoinOut,
-                deadline,
-                recipient,
-                requestedCharityId,
-                swapData
-            );
+        return _mintTcoinWithToken(
+            usdcToken, usdcAmountIn, minCadmOut, minTcoinOut, deadline, recipient, requestedCharityId, swapData
+        );
     }
 
     function _mintTcoinWithToken(
@@ -219,23 +203,19 @@ contract TcoinMintRouter is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    function _mintTcoinFromCadm(
-        uint256 cadmOut,
-        uint256 minTcoinOut,
-        uint256 requestedCharityId
-    ) internal returns (uint256 tcoinOut) {
+    function _mintTcoinFromCadm(uint256 cadmOut, uint256 minTcoinOut, uint256 requestedCharityId)
+        internal
+        returns (uint256 tcoinOut)
+    {
         address tcoin = ITreasuryMinting(treasury).tcoinToken();
+        address treasuryVault = ITreasuryMinting(treasury).treasury();
         if (tcoin == address(0)) revert InvalidAddress();
+        if (treasuryVault == address(0)) revert InvalidAddress();
 
         uint256 tcoinBefore = IERC20(tcoin).balanceOf(address(this));
-        _approveExact(cadmToken, treasury, cadmOut);
+        _approveExact(cadmToken, treasuryVault, cadmOut);
 
-        ITreasuryMinting(treasury).depositAndMint(
-            cadmAssetId,
-            cadmOut,
-            requestedCharityId,
-            minTcoinOut
-        );
+        ITreasuryMinting(treasury).depositAndMint(cadmAssetId, cadmOut, requestedCharityId, minTcoinOut);
 
         uint256 tcoinAfter = IERC20(tcoin).balanceOf(address(this));
         uint256 mintedByBalance = tcoinAfter - tcoinBefore;

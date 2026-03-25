@@ -5,14 +5,12 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import InputField from "@shared/components/ui/InputField";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
-import { createClient } from "@shared/lib/supabase/client";
-import { off_ramp_req } from "@shared/utils/insertNotification";
 import { useForm, Controller } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
-import { createRedemptionRequest } from "@shared/lib/edge/redemptionsClient";
+import { createLegacyOfframpRequest, createRedemptionRequest } from "@shared/lib/edge/redemptionsClient";
 
 interface OffRampProps {
   closeModal: () => void;
@@ -171,45 +169,24 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       const CAD_offramp_fee = parseFloat((estimatedCAD * feePercentage).toFixed(2));
       const CAD_to_user = parseFloat((estimatedCAD - CAD_offramp_fee).toFixed(2));
 
-      off_ramp_req({
-        p_current_token_balance: userBalance,
-        p_etransfer_target: data.interac_email,
-        p_is_store: true,
-        p_tokens_burned: (estimatedCAD / exchangeRate).toFixed(2),
-        p_user_id: userData?.cubidData?.id,
-        p_wallet_account_from: senderWallet,
-        p_wallet_account_to: null,
-        p_exchange_rate: exchangeRate,
-      });
-
       await burnMoney(donationAmount);
-
-      const supabase = createClient();
-      const { data: off_ramp_req_data, error } = await supabase
-        .from("off_ramp_req")
-        .select("*")
-        .match({ user_id: userData?.cubidData?.id })
-        .order("id", { ascending: false })
-        .limit(1);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      await supabase.rpc("accounting_after_offramp_burn", {
-        p_offramp_req_id: off_ramp_req_data?.[0]?.id,
-      });
+      const legacyOfframp = await createLegacyOfframpRequest(
+        {
+          currentTokenBalance: String(userBalance),
+          etransferTarget: data.interac_email,
+          isStore: 1,
+          tokensBurned: Number((estimatedCAD / exchangeRate).toFixed(2)),
+          userId: userData?.cubidData?.id,
+          walletAccountFrom: senderWallet,
+          walletAccountTo: null,
+          exchangeRate,
+        },
+        { citySlug: "tcoin" }
+      );
+      const legacyOfframpRequest = (legacyOfframp as { request?: { id?: number } }).request;
 
       if (isStoreOwner) {
-        const { data: storeEmployeeRow } = await supabase
-          .from("store_employees")
-          .select("store_id")
-          .eq("user_id", userData?.cubidData?.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        const storeId = Number(storeEmployeeRow?.store_id ?? 0);
+        const storeId = Number(userData?.storeId ?? 0);
         if (Number.isFinite(storeId) && storeId > 0) {
           await createRedemptionRequest(
             {
@@ -218,7 +195,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
               settlementAsset: "CAD",
               settlementAmount: CAD_to_user,
               metadata: {
-                offRampReqId: off_ramp_req_data?.[0]?.id ?? null,
+                offRampReqId: legacyOfframpRequest?.id ?? null,
                 offRampRequestUuid: offRampRequestId,
                 transactionId,
               },
