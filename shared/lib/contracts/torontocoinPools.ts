@@ -1,5 +1,7 @@
 import {
   createPublicClient,
+  decodeFunctionResult,
+  encodeFunctionData,
   formatUnits,
   getAddress,
   http,
@@ -119,17 +121,6 @@ const poolAbi = [
   },
   {
     type: "function",
-    name: "getQuote",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "_outToken", type: "address" },
-      { name: "_inToken", type: "address" },
-      { name: "_value", type: "uint256" },
-    ],
-    outputs: [{ type: "uint256" }],
-  },
-  {
-    type: "function",
     name: "name",
     stateMutability: "view",
     inputs: [],
@@ -141,6 +132,20 @@ const poolAbi = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "string" }],
+  },
+] as const;
+
+const poolQuoteAbi = [
+  {
+    type: "function",
+    name: "getQuote",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_outToken", type: "address" },
+      { name: "_inToken", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    outputs: [{ type: "uint256" }],
   },
 ] as const;
 
@@ -358,7 +363,8 @@ function dedupeAddresses(addresses: Address[]): Address[] {
 }
 
 function pow10(decimals: number): bigint {
-  return BigInt(10) ** BigInt(Math.max(0, decimals));
+  const normalized = Math.max(0, decimals);
+  return BigInt(`1${"0".repeat(normalized)}`);
 }
 
 async function safeReadAddress(
@@ -547,7 +553,12 @@ async function readRegisteredPoolRecords(
     })
   );
 
-  return registered.filter((value): value is TrackedTorontoCoinPool => value !== null);
+  return registered.reduce<TrackedTorontoCoinPool[]>((output, value) => {
+    if (value) {
+      output.push(value);
+    }
+    return output;
+  }, []);
 }
 
 function mergeTrackedPools(
@@ -638,12 +649,20 @@ async function safeReadQuote(options: {
   label: string;
 }): Promise<TorontoCoinTrackedPoolQuoteCheck> {
   try {
-    const outputAmount = await options.client.readContract({
-      address: options.poolAddress,
-      abi: poolAbi,
+    const data = encodeFunctionData({
+      abi: poolQuoteAbi,
       functionName: "getQuote",
       args: [options.outputToken, options.inputToken, options.inputAmount],
     });
+    const result = await options.client.call({
+      to: options.poolAddress,
+      data,
+    });
+    const outputAmount = decodeFunctionResult({
+      abi: poolQuoteAbi,
+      functionName: "getQuote",
+      data: result.data ?? "0x",
+    }) as bigint;
 
     return {
       label: options.label,

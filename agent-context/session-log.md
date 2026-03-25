@@ -9,10 +9,16 @@
 - Updated `scripts/check-no-direct-supabase-db.mjs` so it still prefers `rg --files` locally, but now falls back to a pure Node.js recursive directory walk when `rg` is unavailable.
 - Kept the same guarded path scope and allowlist semantics, so the boundary policy is unchanged; only the file-discovery implementation is more portable across CI environments.
 - Recorded the guardrail expectation in the specs: lint-time boundary checks must not depend on optional developer-only binaries being present on the runner.
+- Fixed follow-on CI type errors that the local `next build` path does not surface:
+  - corrected the `getWalletContacts(...)` caller in `shared/api/services/supabaseService.ts` to pass a plain `AppScopeInput`
+  - made the legacy Cubid data cast explicit through `unknown`
+  - removed `bigint` exponentiation from `shared/lib/contracts/torontocoinPools.ts` so the CI TypeScript target accepts the code
+  - tightened tracked-pool filtering and replaced the direct `readContract(getQuote)` call with encoded `eth_call` handling so the Sarafu pool quote check typechecks cleanly
 
 ### Verification
 - `pnpm lint`
 - `pnpm test`
+- `pnpm exec tsc --noEmit -p tsconfig.ci.json`
 - `pnpm build`
 
 ### Deployer Balance
@@ -24,6 +30,8 @@
 
 ### Files Edited
 - `scripts/check-no-direct-supabase-db.mjs`
+- `shared/api/services/supabaseService.ts`
+- `shared/lib/contracts/torontocoinPools.ts`
 - `agent-context/session-log.md`
 - `docs/engineering/technical-spec.md`
 - `docs/engineering/functional-spec.md`

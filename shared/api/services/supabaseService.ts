@@ -166,7 +166,7 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
     return [];
   }
 
-  const response = await getWalletContacts({ appContext: { citySlug: "tcoin" } });
+  const response = await getWalletContacts({ citySlug: "tcoin" });
   return (response.contacts ?? []).map((contact) => ({
     id: contact.id,
     full_name: contact.fullName ?? null,
@@ -200,7 +200,7 @@ export const createNewUser = async (authMethod: "phone" | "email", fullContact: 
 
 export const fetchCubidDataFromSupabase = async (cubidId: string): Promise<TCubidData> => {
   const response = await getLegacyCubidData();
-  return response as TCubidData;
+  return response as unknown as TCubidData;
 };
 
 export interface CubidProfileUpdate {
