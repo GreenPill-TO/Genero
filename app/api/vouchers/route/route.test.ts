@@ -33,7 +33,7 @@ describe("GET /api/vouchers/route", () => {
     expect(h.proxyEdgeRequestMock).toHaveBeenCalledWith({
       req,
       functionName: "voucher-runtime",
-      path: "/route?amount=10&recipientWallet=0x1111111111111111111111111111111111111111",
+      path: "/route?citySlug=tcoin&amount=10&recipientWallet=0x1111111111111111111111111111111111111111",
       method: "GET",
     });
   });

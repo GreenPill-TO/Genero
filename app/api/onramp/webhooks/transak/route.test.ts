@@ -45,10 +45,12 @@ describe("POST /api/onramp/webhooks/transak", () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY = "publishable-key";
     process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "test";
+    process.env.ONRAMP_WEBHOOK_FORWARD_SECRET = "forward-secret";
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    delete process.env.ONRAMP_WEBHOOK_FORWARD_SECRET;
   });
 
   it("forwards verified webhook payloads to the onramp edge function", async () => {
@@ -79,6 +81,7 @@ describe("POST /api/onramp/webhooks/transak", () => {
           "x-app-slug": "wallet",
           "x-city-slug": "tcoin",
           "x-app-environment": "test",
+          "x-onramp-forward-secret": "forward-secret",
         }),
         body: JSON.stringify({
           providerEventId: "evt-1",

@@ -12,6 +12,7 @@ contract MintableTestReserveToken is ERC20, Ownable {
         Ownable()
     {
         _tokenDecimals = decimals_;
+        require(initialOwner != address(0), "Ownable: new owner is the zero address");
         _transferOwnership(initialOwner);
     }
 

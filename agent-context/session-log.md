@@ -1,3 +1,57 @@
+## v1.79
+### Timestamp
+- 2026-03-25 15:20:14 EDT
+
+### Objective
+- Address the inline PR review comments on `#60`, including the onramp webhook security gap, TorontoCoin/Sarafu ops doc issues, and the remaining runtime consistency issues called out in review.
+
+### What Changed
+- Fixed Foundry/deploy hygiene noted in review:
+  - aligned `DeployCityImplementationRegistry.s.sol` to `pragma solidity ^0.8.24`
+  - narrowed `contracts/foundry/.gitignore` so checked-in deployment manifests are no longer hidden by a broad `deployments/**` ignore rule
+  - added a zero-address guard to `MintableTestReserveToken` owner initialization
+- Cleaned the runbooks:
+  - removed absolute local filesystem paths from `docs/engineering/torontocoin-ops-runbook.md`
+  - corrected the registry deployment runbook to use `pnpm` and the actual Foundry RPC aliases (`celo-mainnet`, `ethereum-sepolia`, `celo-sepolia`)
+- Unified the wallet transaction-history client usage around the canonical `wallet-operations` response shape (`transactions[]` with camelCase fields), updating both wallet contact surfaces to consume the same contract.
+- Restored the `citySlug` passthrough on `/api/vouchers/route` so the compatibility proxy preserves explicit caller context instead of silently dropping it.
+- Closed the webhook trust gap on the Supabase `onramp` edge function by requiring a shared forwarding secret on `/webhooks/transak`, and updated the Next.js webhook ingress to forward that secret only after Transak signature verification succeeds.
+- Aligned TorontoCoin onramp preview behaviour with execution by using the deposit wallet as the preview buyer identity, matching the signer that actually submits `buyCplTcoin(...)`.
+- Added or updated tests for the voucher route proxy, the webhook forwarding secret, and the edge onramp webhook dispatch path.
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+- `pnpm exec tsc --noEmit -p tsconfig.ci.json`
+- `pnpm build`
+
+### Deployer Balance
+- Network: Celo mainnet
+- Deployer: `0x1B7489bE5C572041b682749F7B25B84E30cF9271`
+- Start balance: `5.922180920672106578 CELO`
+- End balance: `5.922180920672106578 CELO`
+- Total spent: `0 CELO`
+
+### Files Edited
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/.gitignore`
+- `contracts/foundry/src/torontocoin/MintableTestReserveToken.sol`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `app/api/vouchers/route/route.ts`
+- `app/api/vouchers/route/route.test.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/onramp/index.test.ts`
+- `supabase/functions/_shared/onramp.ts`
+- `.env.local.example`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.78
 ### Timestamp
 - 2026-03-25 14:51:37 EDT

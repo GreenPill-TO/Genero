@@ -73,8 +73,8 @@ export default function ContactProfilePage() {
     setIsLoadingProfile(true);
     try {
       const [detailResponse, transactionResponse] = await Promise.all([
-        getWalletContactDetail(contactId, { appContext: { citySlug: "tcoin" } }),
-        getWalletContactTransactionHistory(contactId, { appContext: { citySlug: "tcoin" } }),
+        getWalletContactDetail(contactId, { citySlug: "tcoin" }),
+        getWalletContactTransactionHistory(contactId, { citySlug: "tcoin" }),
       ]);
 
       const profileRow = (detailResponse as { contact?: any }).contact;
@@ -96,9 +96,7 @@ export default function ContactProfilePage() {
           ? [profileRow.wallet_address]
           : [];
       setContactWallets(contactWalletList);
-      const historyEntries = Array.isArray((transactionResponse as { entries?: any[] }).entries)
-        ? (transactionResponse as { entries?: any[] }).entries
-        : [];
+      const historyEntries = transactionResponse.transactions ?? [];
 
       if (historyEntries.length === 0) {
         setTransactions([]);
@@ -108,8 +106,8 @@ export default function ContactProfilePage() {
       const entries: ContactTransactionEntry[] = [];
       const seen = new Set<number>();
 
-      const pushRows = (rows: any[] | null | undefined) => {
-        (rows ?? []).forEach((row: any) => {
+      const pushRows = (rows: typeof historyEntries) => {
+        rows.forEach((row) => {
           const id =
             typeof row.id === "number" ? row.id : Number.parseInt(String(row.id ?? ""), 10);
           if (!Number.isFinite(id) || seen.has(id)) return;
@@ -122,7 +120,7 @@ export default function ContactProfilePage() {
           entries.push({
             id,
             amount: amountRaw,
-            created_at: typeof row.created_at === "string" ? row.created_at : null,
+            created_at: typeof row.createdAt === "string" ? row.createdAt : null,
             direction: row.direction === "received" ? "received" : "sent",
           });
         });

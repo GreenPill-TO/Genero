@@ -28,6 +28,14 @@ function resolvePublishableKey(): string {
   return key;
 }
 
+function resolveWebhookForwardSecret(): string {
+  const secret = process.env.ONRAMP_WEBHOOK_FORWARD_SECRET?.trim();
+  if (!secret) {
+    throw new Error("ONRAMP_WEBHOOK_FORWARD_SECRET is required.");
+  }
+  return secret;
+}
+
 export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature =
@@ -49,6 +57,7 @@ export async function POST(req: Request) {
       "x-app-slug": "wallet",
       "x-city-slug": "tcoin",
       "x-app-environment": process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "production",
+      "x-onramp-forward-secret": resolveWebhookForwardSecret(),
     },
     body: JSON.stringify({
       providerEventId: normalized.providerEventId,

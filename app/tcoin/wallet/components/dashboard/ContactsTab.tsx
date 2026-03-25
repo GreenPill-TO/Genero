@@ -114,14 +114,11 @@ export function ContactsTab({
       const results = await Promise.all(
         contacts.map(async (contact) => {
           try {
-            const response = await getWalletContactTransactionHistory(contact.id, {
-              appContext: { citySlug: "tcoin" },
-            });
-
-            const entries: ContactTransactionEntry[] = (response.transactions ?? []).map((row: any) => ({
+            const response = await getWalletContactTransactionHistory(contact.id, { citySlug: "tcoin" });
+            const entries: ContactTransactionEntry[] = (response.transactions ?? []).map((row) => ({
               id: Number(row.id),
               amount: Number(row.amount),
-              created_at: typeof row.createdAt === "string" ? row.createdAt : null,
+              created_at: row.createdAt,
               direction: row.direction === "received" ? "received" : "sent",
             }));
 

@@ -109,12 +109,12 @@ The first city implementation is `tcoin` (Toronto). The bootstrap registry chain
 ## Deployment and Operations Runbook
 1. Deploy registry:
    - update `contracts/foundry/deploy-config.json` for the target chain
-   - pass `DEPLOY_TARGET_CHAIN=celo` or `DEPLOY_TARGET_CHAIN=sepolia` at runtime
-   - use the matching Foundry RPC alias: `npm run forge:deploy:registry -- --rpc-url celo` or `npm run forge:deploy:registry -- --rpc-url sepolia`
+   - pass `DEPLOY_TARGET_CHAIN=celo-mainnet`, `DEPLOY_TARGET_CHAIN=ethereum-sepolia`, or `DEPLOY_TARGET_CHAIN=celo-sepolia` at runtime
+   - use the matching Foundry RPC alias with the repo-standard package manager: `pnpm forge:deploy:registry -- --rpc-url celo-mainnet`, `pnpm forge:deploy:registry -- --rpc-url ethereum-sepolia`, or `pnpm forge:deploy:registry -- --rpc-url celo-sepolia`
 2. Update bootstrap constant with deployed registry address:
    - `shared/lib/contracts/cityRegistryClient.ts`
 3. Promote initial `tcoin` version from deployment JSON:
-   - `npm run forge:promote:city -- --rpc-url celo` or `npm run forge:promote:city -- --rpc-url sepolia`
+   - `pnpm forge:promote:city -- --rpc-url celo-mainnet`, `pnpm forge:promote:city -- --rpc-url ethereum-sepolia`, or `pnpm forge:promote:city -- --rpc-url celo-sepolia`
 4. For upgrades:
    - deploy new city contracts
    - produce deployment JSON artifact

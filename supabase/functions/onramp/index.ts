@@ -24,6 +24,11 @@ type DenoServe = {
 };
 
 const DenoRuntime = (globalThis as typeof globalThis & { Deno?: DenoServe }).Deno;
+const DenoEnv = (
+  globalThis as typeof globalThis & {
+    Deno?: { env?: { get(name: string): string | undefined } };
+  }
+).Deno?.env;
 
 async function readBody(req: Request) {
   if (req.method === "GET" || req.method === "OPTIONS") {
@@ -37,6 +42,18 @@ async function readBody(req: Request) {
   }
 }
 
+function headerValue(req: Request, key: string): string | null {
+  return req.headers.get(key) ?? req.headers.get(key.toLowerCase()) ?? req.headers.get(key.toUpperCase());
+}
+
+function resolveWebhookForwardSecret(): string {
+  const secret = (DenoEnv?.get("ONRAMP_WEBHOOK_FORWARD_SECRET") ?? process.env.ONRAMP_WEBHOOK_FORWARD_SECRET)?.trim();
+  if (!secret) {
+    throw new Error("ONRAMP_WEBHOOK_FORWARD_SECRET is required for webhook forwarding.");
+  }
+  return secret;
+}
+
 export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -47,6 +64,11 @@ export async function handleRequest(req: Request): Promise<Response> {
     const pathname = rawPathname.replace(/^\/functions\/v1\/onramp/, "").replace(/^\/onramp/, "") || "/";
 
     if (req.method === "POST" && pathname === "/webhooks/transak") {
+      const forwardedSecret = headerValue(req, "x-onramp-forward-secret");
+      if (forwardedSecret !== resolveWebhookForwardSecret()) {
+        return jsonResponse(req, { error: "Invalid webhook forwarding secret." }, { status: 401 });
+      }
+
       const body = await readBody(req);
       return jsonResponse(
         req,

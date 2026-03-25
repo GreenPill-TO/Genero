@@ -1648,7 +1648,7 @@ export async function runSessionSettlement(options: {
       address: config.routerAddress,
       abi: liquidityRouterAbi,
       functionName: "previewBuyCplTcoin",
-      args: [targetPoolId, recipientWallet, config.inputTokenAddress, usdcBalance],
+      args: [targetPoolId, depositAddress, config.inputTokenAddress, usdcBalance],
     });
 
     if (quoteReserveOut <= BigInt(0) || quoteCplTcoinOut <= BigInt(0)) {

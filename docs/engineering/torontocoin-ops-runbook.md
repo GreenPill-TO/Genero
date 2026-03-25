@@ -6,14 +6,13 @@ Use this runbook to confirm the live TorontoCoin Celo mainnet suite is healthy b
 
 ## Current live suite
 
-The canonical runtime addresses are the checked-in TorontoCoin runtime bridge at [torontocoinRuntime.ts](/Users/botmaster/src/greenpill-TO/Genero/shared/lib/contracts/torontocoinRuntime.ts). It mirrors the latest validated mainnet deployment artefacts.
+The canonical runtime addresses are the checked-in TorontoCoin runtime bridge at [torontocoinRuntime.ts](../../shared/lib/contracts/torontocoinRuntime.ts). It mirrors the latest validated mainnet deployment artefacts.
 
 ## Read-only ops check
 
 Run the baseline ops summary:
 
 ```bash
-cd /Users/botmaster/src/greenpill-TO/Genero
 pnpm ops:torontocoin
 ```
 
@@ -30,7 +29,6 @@ The script prints:
 Run the focused compatibility matrix:
 
 ```bash
-cd /Users/botmaster/src/greenpill-TO/Genero
 pnpm ops:torontocoin:pools
 ```
 
@@ -46,7 +44,6 @@ That script emits a concise pass/fail summary per registered Sarafu pool for:
 Run bounded previews or an optional live acceptance buy:
 
 ```bash
-cd /Users/botmaster/src/greenpill-TO/Genero
 pnpm ops:torontocoin:acceptance
 ```
 
