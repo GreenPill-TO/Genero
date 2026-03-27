@@ -1,3 +1,23 @@
+## v1.80
+### Timestamp
+- 2026-03-26 00:14:52 EDT
+
+### Objective
+- Refresh the wallet landing page dark-mode banner so the header uses the new Supabase-hosted Toronto Coin artwork.
+
+### What Changed
+- Updated the shared default `TCOIN_BANNER_DARK_URL` asset to `tcoin-banner-dark-mode-2.jpeg`.
+- Amended the wallet functional and technical specs so they describe the refreshed dark-mode banner asset instead of the older cache-busting wording.
+
+### Verification
+- `rg -n "tcoin-banner-dark-mode-2\\.jpeg|tcoin-banner-dark-mode\\.png" shared/lib/supabase/assets.ts docs/engineering/technical-spec.md docs/engineering/functional-spec.md`
+
+### Files Edited
+- `shared/lib/supabase/assets.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.79
 ### Timestamp
 - 2026-03-25 15:20:14 EDT

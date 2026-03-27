@@ -19,7 +19,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Layout loads the Special Elite typewriter font via a style tag with system-ui fallback and uniform text size; headings are bold, centred, and spaced with one blank line above and below.
 - Section margins trimmed so headings net exactly one blank line of space above and below.
 - Banner is limited to content width and the "<open my wallet>" link sits in the right margin, linking to the dashboard.
-- Top banner image sourced from Supabase displays light and dark variants based on the active theme on the wallet homepage, and the dark banner appends a version query so the latest asset loads.
+- Top banner image sourced from Supabase displays light and dark variants based on the active theme on the wallet homepage, with dark mode now using the refreshed `tcoin-banner-dark-mode-2.jpeg` asset.
 - Banner and tagline now sit in the fixed header so the page scrolls under them.
 - Body content and banner expand to roughly 60% width on large screens to reduce side margins.
 - Tagline text now reads "Local Currency. Value = $3.35. Proceeds to charity." and is right-aligned beneath the banner image.
