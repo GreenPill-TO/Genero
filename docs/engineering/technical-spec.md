@@ -172,6 +172,8 @@
 - Landing, Resources and Contact pages use `bg-background` and `text-foreground` so colours follow the active theme.
 - Global footer removed from layout; the dashboard renders its own fixed footer navigation.
 - Wallet dashboard is composed from modular cards (Contributions, Receive, Send, Account and Other) within `WalletHome`.
+- Authenticated wallet routes now mount inside a scoped `wallet-auth-shell` theme override so the signed-in experience can use its own palette, surface treatment, and nav styling without changing the unauthenticated landing/resources/contact pages.
+- Dashboard, contacts, receive, history, and contact-profile surfaces now share reusable authenticated-shell layout helpers for rounded frosted panels, summary-first headings, and pill-style action controls, while preserving the existing data flows and tab routing behaviour.
 - `/admin` route renders an admin-only dashboard that fetches on-ramp/off-ramp requests from Supabase, lets admins adjust status, fees and notes, and is linked from the More tab when `is_admin` is true.
 - `/admin` and `/city-manager` access is now aligned to the app-scoped API role check instead of the looser local `is_admin` profile flag, preventing UI links from exposing pages that the API will reject.
 - Legacy `/admin` ramp-request loading now runs through a server endpoint that can report missing legacy schema objects directly; the repository migrations currently do not fully define the legacy `interac_transfer`/`off_ramp_req` shape or `ref_request_statuses`.
@@ -201,7 +203,7 @@
 - Layout sets the page background to white in light mode and black in dark mode, leaving headers, footers and other panels with `bg-background` for contrast.
 - Highlight spans on public wallet pages use `bg-gray-200` in light mode and `dark:bg-gray-700` in dark mode to emphasise key phrases.
 - The top-right call-to-action aligns vertically with the banner image and a duplicate "<open my wallet>" link is centred beneath the closing copy.
-- Landing header swaps between light and dark banner images using Tailwind's `dark` utility, with the dark image URL carrying a version query to bypass stale caches.
+- Landing header swaps between light and dark banner images using Tailwind's `dark` utility, with the default dark image sourced from Supabase `website-images/tcoin-banner-dark-mode-2.jpeg`.
 - Tailwind is configured for class-based dark mode so `dark:` utilities respond to the root `dark` class.
 - "<open my wallet>" links on the landing page display as rectangular buttons with #05656F backgrounds and white text in light mode and invert colours in dark mode.
 - Contact page send button adopts a #05656F background in light mode.

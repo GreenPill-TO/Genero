@@ -10,6 +10,7 @@ import {
 import { Hypodata, contactRecordToHypodata } from "./types";
 import { useModal } from "@shared/contexts/ModalContext";
 import { getWalletContactTransactionHistory } from "@shared/lib/edge/walletOperationsClient";
+import { walletActionButtonClass, walletPanelMutedClass } from "./authenticated-ui";
 
 type SortOrder = "alphabetical" | "recents";
 
@@ -200,14 +201,20 @@ export function ContactsTab({
   };
 
   return (
-    <div className="space-y-4 lg:px-[25vw]">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">Contacts</h1>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            Contacts
+          </p>
+          <h1 className="text-2xl font-semibold tracking-[-0.04em]">People you trust</h1>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             type="button"
             size="sm"
             variant={sortOrder === "alphabetical" ? "default" : "outline"}
+            className="rounded-full"
             onClick={() => setSortOrder("alphabetical")}
           >
             Alphabetical
@@ -216,6 +223,7 @@ export function ContactsTab({
             type="button"
             size="sm"
             variant={sortOrder === "recents" ? "default" : "outline"}
+            className="rounded-full"
             onClick={() => setSortOrder("recents")}
           >
             Recents
@@ -226,6 +234,7 @@ export function ContactsTab({
         placeholder="Search contacts..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        className="wallet-auth-input h-12 rounded-2xl"
       />
       <ul className="space-y-3">
         {filtered.map((contact) => {
@@ -237,7 +246,7 @@ export function ContactsTab({
           return (
             <li
               key={contact.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border bg-card/40 p-3"
+              className={`${walletPanelMutedClass} flex flex-wrap items-center justify-between gap-4`}
             >
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
@@ -272,6 +281,7 @@ export function ContactsTab({
                 <Button
                   size="sm"
                   variant="default"
+                  className="rounded-full"
                   onClick={() => onSend(contactRecordToHypodata(contact))}
                   aria-label={`Send to ${formatName(contact)}`}
                 >
@@ -281,6 +291,7 @@ export function ContactsTab({
                   <Button
                     size="sm"
                     variant="outline"
+                    className="rounded-full"
                     onClick={() => onRequest(contactRecordToHypodata(contact))}
                     aria-label={`Request from ${formatName(contact)}`}
                   >
@@ -290,6 +301,7 @@ export function ContactsTab({
                 <Button
                   size="sm"
                   variant="outline"
+                  className={walletActionButtonClass}
                   onClick={() => openTransactionsModal(contact)}
                   aria-label={`View transactions with ${formatName(contact)}`}
                 >

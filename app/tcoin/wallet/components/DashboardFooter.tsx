@@ -50,15 +50,23 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
         handleSelect(key);
       }}
       className={cn(
-        "w-full flex flex-col items-center justify-center text-xs gap-1",
+        "w-full flex flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[11px] font-medium transition duration-200",
         !compact && key === "send" ? "-mt-4" : "",
-        active === key ? "text-primary" : "text-muted-foreground"
+        active === key
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground"
       )}
     >
       <span
         className={cn(
-          "flex items-center justify-center",
-          key === "send" ? "p-3 rounded-full bg-primary" : compact ? "p-1.5" : "p-2"
+          "flex items-center justify-center rounded-2xl transition duration-200",
+          key === "send"
+            ? "bg-primary p-3 shadow-[0_16px_30px_rgba(8,145,178,0.35)]"
+            : active === key
+              ? "bg-primary/12 p-2.5"
+              : compact
+                ? "p-2"
+                : "p-2.5"
         )}
       >
         <Icon className={cn("h-5 w-5", key === "send" && "text-white")} />
@@ -72,8 +80,8 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 border-t bg-background lg:hidden">
-        <ul className="grid grid-cols-5">
+      <nav className="fixed bottom-4 left-4 right-4 z-40 lg:hidden">
+        <ul className="grid grid-cols-5 rounded-[24px] border border-white/10 bg-background/85 p-2 shadow-[0_24px_40px_rgba(15,23,42,0.2)] backdrop-blur-xl">
           {mobileItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -90,9 +98,9 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
         </ul>
       </nav>
 
-      <nav className="fixed left-0 top-16 bottom-0 hidden w-24 border-r bg-background lg:block">
-        <div className="flex h-full flex-col items-center py-4">
-          <div className="flex flex-1 w-full flex-col items-center justify-center gap-6 px-2">
+      <nav className="fixed left-4 top-24 bottom-6 z-30 hidden w-[92px] lg:block">
+        <div className="flex h-full flex-col items-center rounded-[28px] border border-white/10 bg-background/75 py-4 shadow-[0_24px_50px_rgba(15,23,42,0.16)] backdrop-blur-xl">
+          <div className="flex flex-1 w-full flex-col items-center justify-center gap-4 px-2">
             {middle.map((item) => (
               <div key={item.key} className="w-full">
                 {renderItem({

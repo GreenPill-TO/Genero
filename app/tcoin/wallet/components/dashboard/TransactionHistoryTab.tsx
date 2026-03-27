@@ -3,6 +3,7 @@ import { LuArrowLeft } from "react-icons/lu";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import { getWalletTransactionHistory } from "@shared/lib/edge/walletOperationsClient";
+import { walletPanelMutedClass } from "./authenticated-ui";
 
 type TransactionRow = {
   id: number;
@@ -161,11 +162,14 @@ export function TransactionHistoryTab({
   }, [userId]);
 
   return (
-    <div className="space-y-4 lg:px-[25vw]">
+    <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Transaction History</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            Activity
+          </p>
+          <h2 className="text-2xl font-semibold tracking-[-0.04em]">Transaction History</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Your recent TCOIN transfers in and out of your wallet.
           </p>
         </div>
@@ -181,7 +185,7 @@ export function TransactionHistoryTab({
         </Button>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+      <section className={`${walletPanelMutedClass} space-y-3`}>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading transaction history...</p>
         ) : errorMessage ? (
@@ -208,7 +212,7 @@ export function TransactionHistoryTab({
               return (
                 <div
                   key={row.id}
-                  className="flex items-center justify-between rounded-lg border border-border/60 bg-background/70 p-3"
+                  className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/70 p-4"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{directionLabel}</p>

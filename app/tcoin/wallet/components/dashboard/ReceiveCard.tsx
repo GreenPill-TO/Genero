@@ -3,7 +3,6 @@ import QRCode from "react-qr-code";
 import { LuShare2, LuUsers, LuX } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { Button } from "@shared/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
 import useDarkMode from "@shared/hooks/useDarkMode";
@@ -12,6 +11,7 @@ import { ContactSelectModal, ShareQrModal } from "@tcoin/wallet/components/modal
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Hypodata, InvoicePayRequest } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
+import { walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
 
 export function ReceiveCard({
   qrCodeData,
@@ -413,21 +413,24 @@ export function ReceiveCard({
   const shouldShowQrCode = showQrCode && !requestContact;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Receive</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 mt-[-10px]">
+    <section className={`${walletPanelClass} space-y-5`}>
+      <div className="space-y-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+          Receive money
+        </p>
+        <h2 className="text-2xl font-semibold tracking-[-0.04em]">Receive</h2>
+      </div>
+      <div className="space-y-4">
         <div
           className={cn(
-            "relative flex flex-col items-center justify-center rounded-xl transform transition duration-500 hover:scale-105",
+            "relative flex flex-col items-center justify-center rounded-[24px] transform transition duration-500 hover:scale-[1.01]",
             qrWrapperClassName ?? "p-2"
           )}
         >
           {shouldShowQrCode ? (
             qrCodeData ? (
               <>
-                <p className="mb-3 text-center text-base font-semibold text-gray-900">
+                <p className="mb-3 text-center text-base font-semibold text-slate-900 dark:text-white">
                   {qrCaption}
                 </p>
                 <QRCode
@@ -446,24 +449,26 @@ export function ReceiveCard({
             </p>
           )}
         </div>
-        <div className="space-y-2">
-          <p>{tokenLabel}</p>
+        <div className={`${walletPanelMutedClass} space-y-3`}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{tokenLabel}</p>
+          </div>
           <Input
             name="qrTcoin"
             elSize="md"
             label={tokenLabel}
-            className="w-full"
+            className="wallet-auth-input h-12 w-full rounded-2xl"
             value={qrTcoinAmount}
             onChange={handleQrTcoinChange}
             onBlur={handleQrTcoinBlur}
             placeholder={`Enter ${tokenLabel.toUpperCase()} amount`}
           />
-          <p>Cad</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Cad</p>
           <Input
             name="qrCad"
             elSize="md"
             label="Cad"
-            className="w-full"
+            className="wallet-auth-input h-12 w-full rounded-2xl"
             value={qrCadAmount}
             onChange={handleQrCadChange}
             onBlur={handleQrCadBlur}
@@ -471,7 +476,7 @@ export function ReceiveCard({
           />
         </div>
         {requestContact && (
-          <div className="rounded-2xl border border-border bg-background/70 p-4">
+          <div className={walletPanelMutedClass}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <Avatar className="h-11 w-11">
@@ -528,7 +533,7 @@ export function ReceiveCard({
           )}
         </div>
         {hasOpenRequests && (
-          <div className="space-y-4 rounded-2xl border border-border/60 bg-background/60 p-4">
+          <div className={`${walletPanelMutedClass} space-y-4`}>
             <h3 className="text-sm font-semibold">Payment requests I have sent</h3>
             {shareableRequests.length > 0 && (
               <div className="space-y-2">
@@ -539,10 +544,7 @@ export function ReceiveCard({
                   const amountValue = normaliseAmount(request.amountRequested);
                   const { label, note } = describeRequestAmount(amountValue);
                   return (
-                    <div
-                      key={request.id}
-                      className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/50 bg-background/80 p-3"
-                    >
+                    <div key={request.id} className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/50 bg-background/80 p-3">
                       <div>
                         <p className="text-sm font-medium">{label}</p>
                         {note && (
@@ -585,10 +587,7 @@ export function ReceiveCard({
                   const recipientLabel = getContactLabel(request.requestFrom ?? null);
                   const { label, note } = describeRequestAmount(amountValue);
                   return (
-                    <div
-                      key={request.id}
-                      className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/50 bg-background/80 p-3"
-                    >
+                    <div key={request.id} className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/50 bg-background/80 p-3">
                       <div>
                         <p className="text-sm font-medium">{label}</p>
                         {note && (
@@ -618,7 +617,7 @@ export function ReceiveCard({
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

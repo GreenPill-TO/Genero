@@ -46,7 +46,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   return (
     <section className={bodyClass}>
       {!isPublic && <Navbar title="TCOIN" />}
-      <div className={cn(!isPublic && "flex-grow flex flex-col pt-16 bg-background text-foreground")}>{children}</div>
+      <div
+        className={cn(
+          !isPublic &&
+            "wallet-auth-shell flex-grow flex flex-col pt-16 bg-background text-foreground"
+        )}
+      >
+        {children}
+      </div>
       <ToastContainer autoClose={3000} transition={Flip} theme="colored" />
     </section>
   );

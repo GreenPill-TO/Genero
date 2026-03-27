@@ -15,6 +15,7 @@ import { ContactSelectModal } from "@tcoin/wallet/components/modals";
 import { Hypodata, contactRecordToHypodata } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { TransferRecordSnapshot } from "@shared/utils/transferRecord";
+import { walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
 
 const FONT_SIZE_MAX_REM = 4.5;
 const FONT_SIZE_MIN_REM = 1.1;
@@ -305,9 +306,14 @@ export function SendCard({
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col space-y-4">
-      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+      <section className={`${walletPanelClass} p-5 sm:p-6`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">{recipientHeading}</h2>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Make a payment
+            </p>
+            <h2 className="text-2xl font-semibold tracking-[-0.04em]">{recipientHeading}</h2>
+          </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {amountHeaderActions && (
               <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
@@ -317,6 +323,7 @@ export function SendCard({
             <Button
               type="button"
               variant="secondary"
+              className="rounded-full"
               onClick={openContactSelector}
               disabled={recipientLocked}
             >
@@ -329,18 +336,19 @@ export function SendCard({
                 size="icon"
                 onClick={clearRecipient}
                 aria-label="Clear recipient"
+                className="rounded-full"
               >
                 <LuX className="h-4 w-4" />
               </Button>
             )}
           </div>
         </div>
-        <div className="relative mx-auto mt-4 flex w-full flex-col items-center gap-4 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
+        <div className={`${walletPanelMutedClass} relative mt-5 flex w-full flex-col items-center gap-4 px-5 py-6 sm:px-6`}>
           <div className="w-full text-center">
             {isCadInput ? (
               <input
                 ref={amountInputRef}
-                className="w-full bg-transparent text-center font-bold leading-tight focus:outline-none"
+                className="wallet-auth-input w-full rounded-[22px] border bg-transparent px-4 py-3 text-center font-bold leading-tight focus:outline-none"
                 name="cad"
                 value={displayValue}
                 onChange={amountLocked ? undefined : handleCadChange}
@@ -358,7 +366,7 @@ export function SendCard({
             ) : (
               <input
                 ref={amountInputRef}
-                className="w-full bg-transparent text-center font-bold leading-tight focus:outline-none"
+                className="wallet-auth-input w-full rounded-[22px] border bg-transparent px-4 py-3 text-center font-bold leading-tight focus:outline-none"
                 name="tcoin"
                 value={displayValue}
                 onChange={amountLocked ? undefined : handleTcoinChange}
@@ -381,7 +389,7 @@ export function SendCard({
               variant="ghost"
               size="icon"
               aria-label="Toggle between TCOIN and CAD"
-              className="h-10 w-10 flex-shrink-0 rounded-full border border-border/60 [&_svg]:h-5 [&_svg]:w-5"
+              className="h-10 w-10 flex-shrink-0 rounded-full border border-border/60 bg-background/75 [&_svg]:h-5 [&_svg]:w-5"
               onClick={() => {
                 if (isCadInput) {
                   handleCadBlur();
@@ -415,7 +423,7 @@ export function SendCard({
         </div>
 
         {toSendData ? (
-          <div className="mt-4 flex items-center gap-4 rounded-2xl border border-border bg-background/70 p-4">
+          <div className={`${walletPanelMutedClass} mt-4 flex items-center gap-4`}>
             <Avatar className="h-12 w-12">
               <AvatarImage
                 src={toSendData.profile_image_url ?? undefined}
@@ -437,7 +445,7 @@ export function SendCard({
             </div>
           </div>
         ) : (
-          <div className="mt-4 rounded-2xl border border-dashed border-border/60 bg-background/70 p-5">
+          <div className={`${walletPanelMutedClass} mt-4 border-dashed`}>
             <label htmlFor="recipient-search" className="mb-2 block text-sm font-medium text-muted-foreground">
               Recipient
             </label>
@@ -448,6 +456,7 @@ export function SendCard({
               value={recipientQuery}
               onChange={(event) => setRecipientQuery(event.target.value)}
               aria-label="Recipient search"
+              className="wallet-auth-input h-12 rounded-2xl"
             />
             {trimmedRecipientQuery !== "" && matchingContacts.length > 0 && (
               <ul className="mt-3 space-y-2">
@@ -457,7 +466,7 @@ export function SendCard({
                     <li key={contact.id}>
                       <button
                         type="button"
-                        className="flex w-full flex-col rounded-xl border border-border/60 bg-background/80 px-4 py-3 text-left transition hover:border-primary"
+                        className="flex w-full flex-col rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-primary"
                         onClick={() => handleContactRecordSelection(contact)}
                       >
                         <span className="text-sm font-medium">{name}</span>
@@ -475,7 +484,7 @@ export function SendCard({
 
         <Button
           ref={sendButtonRef}
-          className={`mt-4 w-full ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
+          className={`mt-4 h-12 w-full rounded-full text-base ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
           aria-disabled={!canSend}
           onClick={() => {
             if (!toSendData) {
@@ -516,13 +525,13 @@ export function SendCard({
       </section>
 
       {explorerLink && (
-        <div className="rounded-lg bg-green-900/20 p-4">
+        <div className={`${walletPanelMutedClass} border-emerald-400/30 bg-emerald-500/10`}>
           <div className="space-y-4 text-center">
             <>
-              <h3 className="text-lg font-bold text-green-400">Success!</h3>
+              <h3 className="text-lg font-bold text-emerald-600 dark:text-emerald-300">Success!</h3>
               <a
                 href={explorerLink}
-                className="block text-blue-400 underline"
+                className="block underline"
                 target="_blank"
                 rel="noopener noreferrer"
               >

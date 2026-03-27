@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@shared/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { useModal } from "@shared/contexts/ModalContext";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useUserSettings } from "@shared/hooks/useUserSettings";
@@ -32,6 +31,7 @@ import { useControlPlaneAccess } from "@shared/api/hooks/useControlPlaneAccess";
 import { useRouter } from "next/navigation";
 import { getMerchantApplicationStatus } from "@shared/lib/edge/merchantApplicationsClient";
 import { updateVoucherPreferences } from "@shared/lib/edge/voucherPreferencesClient";
+import { walletPanelClass } from "./authenticated-ui";
 
 const DEFAULT_CHARITY_DATA = {
   personalContribution: 50,
@@ -201,12 +201,18 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   };
 
   return (
-    <div className="lg:px-[25vw]">
-      <Card>
-        <CardHeader>
-          <CardTitle>More</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+    <div className="space-y-5">
+      <section className={`${walletPanelClass} space-y-5`}>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            Settings
+          </p>
+          <h2 className="text-2xl font-semibold tracking-[-0.04em]">More</h2>
+          <p className="text-sm text-muted-foreground">
+            Everything that changes how your wallet behaves lives here, with admin tools separated from everyday actions.
+          </p>
+        </div>
+        <div className="space-y-3">
           <Button type="button" className="w-full justify-start" onClick={openOffRampModal}>
             <LuDollarSign className="mr-2 h-4 w-4" /> Convert to CAD and Cash Out
           </Button>
@@ -241,8 +247,8 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
               <LuShield className="mr-2 h-4 w-4" /> Open Admin Dashboard
             </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }

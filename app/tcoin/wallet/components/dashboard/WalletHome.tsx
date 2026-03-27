@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
-import { Button } from "@shared/components/ui/Button";
 import { useModal } from "@shared/contexts/ModalContext";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
@@ -21,6 +20,11 @@ import { ContributionsCard } from "./ContributionsCard";
 import { SendCard } from "./SendCard";
 import { AccountCard } from "./AccountCard";
 import { Hypodata } from "./types";
+import {
+  walletActionButtonClass,
+  walletPanelClass,
+  walletPanelMutedClass,
+} from "./authenticated-ui";
 
 type RecentInteraction = {
   id: number;
@@ -201,7 +205,7 @@ export function WalletHome({
         console.error("handleScan error", err);
       }
     },
-    [safeExchangeRate, sanitizeNumeric, userData]
+    [safeExchangeRate, sanitizeNumeric]
   );
 
   useEffect(() => {
@@ -362,8 +366,8 @@ export function WalletHome({
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-8 pb-24">
-      <div className="space-y-8 max-w-[400px] mx-auto md:hidden">
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.95fr)]">
         <AccountCard
           balance={userBalance}
           totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
@@ -372,6 +376,63 @@ export function WalletHome({
           senderWallet={senderWallet ?? ""}
           onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
         />
+        <section className={`${walletPanelClass} flex flex-col justify-between gap-6`}>
+          <div className="space-y-3">
+            <span className="inline-flex w-fit rounded-full border border-border/70 bg-background/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+              Everyday actions
+            </span>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-semibold tracking-[-0.04em]">Move money with less friction.</h2>
+              <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+                Keep the next action obvious: send funds, add money, or review the people and merchants you use most.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button type="button" className={walletActionButtonClass} onClick={() => onOpenTransactionHistory?.()}>
+              View activity
+            </button>
+            {buyCheckoutEnabled ? (
+              <button type="button" className={walletActionButtonClass} onClick={openBuyTcoinModal}>
+                Buy TCOIN
+              </button>
+            ) : null}
+            <button type="button" className={walletActionButtonClass} onClick={openTopUpModal}>
+              Top up with Interac
+            </button>
+            <button type="button" className={walletActionButtonClass} onClick={() => router.push("/dashboard?tab=contacts")}>
+              Open contacts
+            </button>
+          </div>
+          <div className={walletPanelMutedClass}>
+            <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              These are the nearby merchants currently matched to your preferred neighbourhood pools.
+            </p>
+            {myPoolMerchants.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">
+                No mapped merchants were found in your primary or secondary BIA pools yet.
+              </p>
+            ) : (
+              <ul className="mt-4 space-y-2 text-sm">
+                {myPoolMerchants.map((merchant) => (
+                  <li
+                    key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-background/65 px-4 py-3"
+                  >
+                    <span>{merchant.displayName ?? `Store ${merchant.merchantStoreId}`}</span>
+                    <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      {merchant.tokenSymbol ?? "TCOIN"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <SendCard
           toSendData={toSendData}
           setToSendData={setToSendData}
@@ -387,68 +448,10 @@ export function WalletHome({
           userBalance={userBalance}
           onUseMax={handleUseMax}
         />
-        <ContributionsCard
-          selectedCharity={selectedCharity}
-          setSelectedCharity={setSelectedCharity}
-          charityData={charityData}
-          openModal={openModal}
-          closeModal={closeModal}
-        />
-        <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
-          <h3 className="text-sm font-semibold">Buy TCOIN</h3>
-          <p className="text-xs text-muted-foreground">One checkout flow: fiat to USDC on Celo to TCOIN.</p>
-          {buyCheckoutEnabled && (
-            <Button className="w-full" onClick={openBuyTcoinModal}>
-              Buy TCOIN
-            </Button>
-          )}
-          <Button className="w-full" variant="outline" onClick={openTopUpModal}>
-            Top Up with Interac eTransfer
-          </Button>
-        </div>
-        <div className="rounded-xl border border-border bg-card/70 p-4">
-          <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
-          {myPoolMerchants.length === 0 ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              No mapped merchants were found in your primary/secondary BIA pools.
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-1 text-xs">
-              {myPoolMerchants.map((merchant) => (
-                <li key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}>
-                  {merchant.displayName ?? `Store ${merchant.merchantStoreId}`}
-                  {merchant.tokenSymbol ? ` - ${merchant.tokenSymbol}` : ""}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
         <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
       </div>
-      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <AccountCard
-          balance={userBalance}
-          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
-          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
-          voucherCount={portfolio?.voucherBalances?.length ?? 0}
-          senderWallet={senderWallet ?? ""}
-          onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
-        />
-        <SendCard
-          toSendData={toSendData}
-          setToSendData={setToSendData}
-          tcoinAmount={tcoinAmount}
-          cadAmount={cadAmount}
-          handleTcoinChange={handleTcoinChange}
-          handleCadChange={handleCadChange}
-          handleTcoinBlur={handleTcoinBlur}
-          handleCadBlur={handleCadBlur}
-          sendMoney={sendMoney}
-          explorerLink={explorerLink}
-          setExplorerLink={setExplorerLink}
-          userBalance={userBalance}
-          onUseMax={handleUseMax}
-        />
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
         <ContributionsCard
           selectedCharity={selectedCharity}
           setSelectedCharity={setSelectedCharity}
@@ -456,36 +459,14 @@ export function WalletHome({
           openModal={openModal}
           closeModal={closeModal}
         />
-        <div className="rounded-xl border border-border bg-card/70 p-4 space-y-2">
-          <h3 className="text-sm font-semibold">Buy TCOIN</h3>
-          <p className="text-xs text-muted-foreground">One checkout flow: fiat to USDC on Celo to TCOIN.</p>
-          {buyCheckoutEnabled && (
-            <Button className="w-full" onClick={openBuyTcoinModal}>
-              Buy TCOIN
-            </Button>
-          )}
-          <Button className="w-full" variant="outline" onClick={openTopUpModal}>
-            Top Up with Interac eTransfer
-          </Button>
-        </div>
-        <div className="rounded-xl border border-border bg-card/70 p-4">
-          <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
-          {myPoolMerchants.length === 0 ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              No mapped merchants were found in your primary/secondary BIA pools.
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-1 text-xs">
-              {myPoolMerchants.map((merchant) => (
-                <li key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}>
-                  {merchant.displayName ?? `Store ${merchant.merchantStoreId}`}
-                  {merchant.tokenSymbol ? ` - ${merchant.tokenSymbol}` : ""}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
+        <section className={walletPanelMutedClass}>
+          <h3 className="text-sm font-semibold">What this wallet optimises for</h3>
+          <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+            <li>Simple send and request flows with familiar labels and clear confirmation.</li>
+            <li>One source of truth for your balance and current CAD estimate.</li>
+            <li>Neighbourhood routing and charity defaults that work quietly in the background.</li>
+          </ul>
+        </section>
       </div>
     </div>
   );
@@ -499,14 +480,17 @@ function RecentsPanel({
   onOpenContactProfile: (contactId: number) => void;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card/70 p-4">
-      <h3 className="text-sm font-semibold">Recents</h3>
+    <div className={walletPanelMutedClass}>
+      <h3 className="text-sm font-semibold">Recent people</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Jump back into the people you have paid or requested money from most recently.
+      </p>
       {recents.length === 0 ? (
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-4 text-sm text-muted-foreground">
           No recent contacts yet. Your recent recipients and request interactions will show up here.
         </p>
       ) : (
-        <div className="mt-3 flex flex-wrap gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {recents.map((contact) => {
             const label = contact.full_name?.trim() || contact.username?.trim() || `User ${contact.id}`;
             const fallback = label.charAt(0).toUpperCase() || "?";
@@ -514,7 +498,7 @@ function RecentsPanel({
               <button
                 key={contact.id}
                 type="button"
-                className="flex w-[74px] flex-col items-center gap-1 rounded-md p-1 transition hover:bg-background/70"
+                className="flex flex-col items-center gap-2 rounded-[20px] border border-border/50 bg-background/65 px-3 py-4 text-center transition hover:-translate-y-0.5 hover:bg-background/85"
                 onClick={() => onOpenContactProfile(contact.id)}
                 aria-label={`Open profile for ${label}`}
                 title={label}

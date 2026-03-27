@@ -184,7 +184,7 @@ export function ReceiveTab({
   };
 
   return (
-    <div className="lg:px-[25vw]">
+    <div className="mx-auto w-full max-w-3xl">
       <ReceiveCard
         qrCodeData={qrCodeData}
         qrTcoinAmount={qrTcoinAmount}

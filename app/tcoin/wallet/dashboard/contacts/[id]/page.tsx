@@ -15,6 +15,7 @@ import {
   getWalletContactDetail,
   getWalletContactTransactionHistory,
 } from "@shared/lib/edge/walletOperationsClient";
+import { walletPageClass, walletPanelClass, walletPanelMutedClass } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 
 type ProfileUser = {
   id: number;
@@ -213,11 +214,16 @@ export default function ContactProfilePage() {
   const avatarFallback = displayName.charAt(0).toUpperCase() || "?";
 
   return (
-    <div className="p-4 pb-24 lg:px-[25vw]">
-      <div className="space-y-4 rounded-xl border border-border bg-card/70 p-4">
+    <div className={`${walletPageClass} lg:pl-32`}>
+      <div className={`${walletPanelClass} space-y-5`}>
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold">Contact Profile</h1>
-          <Button type="button" variant="outline" onClick={() => router.push("/dashboard")}>Back to Dashboard</Button>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Contact
+            </p>
+            <h1 className="text-2xl font-semibold tracking-[-0.04em]">Contact Profile</h1>
+          </div>
+          <Button type="button" variant="outline" className="rounded-full" onClick={() => router.push("/dashboard")}>Back to Dashboard</Button>
         </div>
 
         {isLoadingProfile ? (
@@ -226,7 +232,7 @@ export default function ContactProfilePage() {
           <p className="text-sm text-muted-foreground">Contact not found.</p>
         ) : (
           <>
-            <div className="flex items-start gap-4 rounded-lg border border-border/60 bg-background/70 p-4">
+            <div className={`${walletPanelMutedClass} flex items-start gap-4`}>
               <Avatar className="h-16 w-16">
                 <AvatarImage src={profile.profile_image_url ?? undefined} alt={displayName} />
                 <AvatarFallback>{avatarFallback}</AvatarFallback>
@@ -243,7 +249,7 @@ export default function ContactProfilePage() {
               </div>
             </div>
 
-            <div className="space-y-2 rounded-lg border border-border/60 bg-background/70 p-4">
+            <div className={`${walletPanelMutedClass} space-y-3`}>
               <label htmlFor="profile-send-amount" className="text-sm font-medium">Amount to send (TCOIN)</label>
               <Input
                 id="profile-send-amount"
@@ -251,17 +257,18 @@ export default function ContactProfilePage() {
                 onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
                 placeholder="0.00"
                 inputMode="decimal"
+                className="wallet-auth-input h-12 rounded-2xl"
               />
               <p className="text-xs text-muted-foreground">Available: {userBalance.toFixed(4)} TCOIN</p>
-              <Button type="button" className="w-full" onClick={() => void handleSend()} disabled={isSending}>
+              <Button type="button" className="h-12 w-full rounded-full" onClick={() => void handleSend()} disabled={isSending}>
                 {isSending ? "Sending..." : "Send"}
               </Button>
-              <Button type="button" variant="outline" className="w-full" onClick={openRequestModal}>
+              <Button type="button" variant="outline" className="h-12 w-full rounded-full" onClick={openRequestModal}>
                 Request money from {displayName}
               </Button>
             </div>
 
-            <div className="space-y-2 rounded-lg border border-border/60 bg-background/70 p-4">
+            <div className={`${walletPanelMutedClass} space-y-3`}>
               <h2 className="text-sm font-semibold">Transaction History</h2>
               {transactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No transactions with this contact yet.</p>

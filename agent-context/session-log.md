@@ -1,3 +1,64 @@
+## v1.81
+### Timestamp
+- 2026-03-27 01:54:59 EDT
+
+### Objective
+- Reimagine the authenticated Toronto Coin wallet experience so it feels sleeker, simpler, and more familiar to novice users while leaving the public wallet pages unchanged.
+
+### What Changed
+- Added a dedicated authenticated wallet shell with scoped theme tokens, calmer light/dark palettes, and a frosted-surface visual system that applies only to signed-in wallet routes.
+- Refactored the authenticated navbar and wallet footer navigation into lighter, pill-based controls with clearer scan/account affordances.
+- Restructured the wallet dashboard around a summary-first home screen with a stronger account overview, explicit quick actions, recent contacts, and simplified supporting panels.
+- Restyled the authenticated send, receive, contacts, history, more, contributions, and contact-profile surfaces to share the same bank-style interaction language without changing their underlying data contracts.
+- Updated the functional and technical specs to document the new authenticated-shell separation from the public wallet pages.
+
+### Verification
+- `pnpm install --frozen-lockfile`
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/AccountCard.tsx app/tcoin/wallet/components/dashboard/SendCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ContactsTab.tsx app/tcoin/wallet/components/dashboard/ContributionsCard.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx 'app/tcoin/wallet/dashboard/contacts/[id]/page.tsx' app/tcoin/wallet/ContentLayout.tsx`
+- `pnpm lint`
+
+### Files Edited
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContributionsCard.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.80
+### Timestamp
+- 2026-03-26 00:14:52 EDT
+
+### Objective
+- Refresh the wallet landing page dark-mode banner so the header uses the new Supabase-hosted Toronto Coin artwork.
+
+### What Changed
+- Updated the shared default `TCOIN_BANNER_DARK_URL` asset to `tcoin-banner-dark-mode-2.jpeg`.
+- Amended the wallet functional and technical specs so they describe the refreshed dark-mode banner asset instead of the older cache-busting wording.
+
+### Verification
+- `rg -n "tcoin-banner-dark-mode-2\\.jpeg|tcoin-banner-dark-mode\\.png" shared/lib/supabase/assets.ts docs/engineering/technical-spec.md docs/engineering/functional-spec.md`
+
+### Files Edited
+- `shared/lib/supabase/assets.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.79
 ### Timestamp
 - 2026-03-25 15:20:14 EDT

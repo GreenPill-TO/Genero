@@ -15,11 +15,45 @@ import { ErrorBoundary } from "@shared/components/ErrorBoundary";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { Hypodata } from "@tcoin/wallet/components/dashboard";
+import {
+  WalletPageIntro,
+  WalletSection,
+  walletActionButtonClass,
+  walletPageClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
+import { cn } from "@shared/utils/classnames";
 
 const VALID_TAB_KEYS = new Set(["home", "receive", "send", "contacts", "more", "history"]);
+const TAB_COPY: Record<string, { title: string; description: string }> = {
+  home: {
+    title: "Your wallet",
+    description:
+      "See your balance, move money quickly, and stay oriented without crypto jargon.",
+  },
+  send: {
+    title: "Send money",
+    description: "Choose a person, enter an amount, and confirm with the same clarity you expect from a banking app.",
+  },
+  receive: {
+    title: "Request or receive",
+    description: "Share your wallet details or send a clear payment request to someone you know.",
+  },
+  contacts: {
+    title: "People you pay",
+    description: "Find contacts fast, review recent activity, and start a send or request flow from one place.",
+  },
+  history: {
+    title: "Recent activity",
+    description: "Review completed transfers and keep track of money moving in and out of your wallet.",
+  },
+  more: {
+    title: "Settings and tools",
+    description: "Manage profile, payout options, theme, routing preferences, and any operator tools you can access.",
+  },
+};
 
 export default function Dashboard() {
-  const { userData, error, isLoadingUser } = useAuth();
+  const { error, isLoadingUser } = useAuth();
   const searchParams = useSearchParams();
   const requestedTab = (searchParams.get("tab") ?? "home").toLowerCase();
   const [activeTab, setActiveTab] = useState("home");
@@ -29,7 +63,8 @@ export default function Dashboard() {
   const [receiveQrVisible, setReceiveQrVisible] = useState(true);
   const router = useRouter();
 
-  const mainClass = "font-sans pb-24 p-4 sm:p-8 lg:pb-8 lg:pl-28 bg-background text-foreground min-h-screen";
+  const pageCopy = TAB_COPY[activeTab] ?? TAB_COPY.home;
+  const mainClass = cn(walletPageClass, "font-sans lg:pl-32");
 
   const handleTabChange = useCallback(
     (next: string, options?: { showReceiveQr?: boolean }) => {
@@ -137,7 +172,38 @@ export default function Dashboard() {
   return (
     <ErrorBoundary fallback={<div className={mainClass}>Something went wrong.</div>}>
       <div className={mainClass}>
-        {content}
+        <WalletPageIntro
+          eyebrow="Authenticated wallet"
+          title={pageCopy.title}
+          description={pageCopy.description}
+          actions={
+            [
+              activeTab !== "send" ? (
+                <button
+                  key="send"
+                  type="button"
+                  className={walletActionButtonClass}
+                  onClick={() => handleTabChange("send")}
+                >
+                  Send money
+                </button>
+              ) : null,
+              activeTab !== "receive" ? (
+                <button
+                  key="receive"
+                  type="button"
+                  className={walletActionButtonClass}
+                  onClick={() => handleTabChange("receive")}
+                >
+                  Request money
+                </button>
+              ) : null,
+            ].filter(Boolean)
+          }
+        />
+        <WalletSection className="p-0">
+          <div className="p-5 sm:p-6">{content}</div>
+        </WalletSection>
         <DashboardFooter active={activeTab} onChange={(next) => handleTabChange(next)} />
       </div>
     </ErrorBoundary>
