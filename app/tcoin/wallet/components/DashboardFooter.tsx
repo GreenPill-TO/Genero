@@ -50,7 +50,8 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
         handleSelect(key);
       }}
       className={cn(
-        "w-full flex flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[11px] font-medium transition duration-200",
+        "w-full flex flex-col items-center justify-center rounded-2xl font-medium transition duration-200",
+        compact ? "gap-2 px-2 py-3 text-xs xl:text-[13px]" : "gap-1 px-1 py-2 text-[11px]",
         !compact && key === "send" ? "-mt-4" : "",
         active === key
           ? "text-foreground"
@@ -61,15 +62,19 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
         className={cn(
           "flex items-center justify-center rounded-2xl transition duration-200",
           key === "send"
-            ? "bg-primary p-3 shadow-[0_16px_30px_rgba(8,145,178,0.35)]"
+            ? compact
+              ? "bg-primary p-3.5 shadow-[0_18px_34px_rgba(8,145,178,0.35)]"
+              : "bg-primary p-3 shadow-[0_16px_30px_rgba(8,145,178,0.35)]"
             : active === key
-              ? "bg-primary/12 p-2.5"
+              ? compact
+                ? "bg-primary/12 p-3"
+                : "bg-primary/12 p-2.5"
               : compact
-                ? "p-2"
+                ? "p-2.5"
                 : "p-2.5"
         )}
       >
-        <Icon className={cn("h-5 w-5", key === "send" && "text-white")} />
+        <Icon className={cn(compact ? "h-[22px] w-[22px]" : "h-5 w-5", key === "send" && "text-white")} />
       </span>
       <span>{label}</span>
     </button>
@@ -98,9 +103,9 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
         </ul>
       </nav>
 
-      <nav className="fixed left-4 top-24 bottom-6 z-30 hidden w-[92px] lg:block">
-        <div className="flex h-full flex-col items-center rounded-[28px] border border-white/10 bg-background/75 py-4 shadow-[0_24px_50px_rgba(15,23,42,0.16)] backdrop-blur-xl">
-          <div className="flex flex-1 w-full flex-col items-center justify-center gap-4 px-2">
+      <nav data-testid="sidebar-shell" className="fixed left-4 top-24 bottom-6 z-30 hidden w-[112px] lg:block xl:w-[124px]">
+        <div className="flex h-full flex-col items-center rounded-[32px] border border-white/10 bg-background/75 py-5 shadow-[0_24px_50px_rgba(15,23,42,0.16)] backdrop-blur-xl">
+          <div className="flex flex-1 w-full flex-col items-center justify-center gap-4 px-3">
             {middle.map((item) => (
               <div key={item.key} className="w-full">
                 {renderItem({
@@ -114,7 +119,7 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
             ))}
           </div>
 
-          <div className="w-full px-2">
+          <div className="w-full px-3">
             {renderItem({
               key: more.key,
               label: more.label,

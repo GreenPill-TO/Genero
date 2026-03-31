@@ -214,7 +214,7 @@ export default function ContactProfilePage() {
   const avatarFallback = displayName.charAt(0).toUpperCase() || "?";
 
   return (
-    <div className={`${walletPageClass} lg:pl-32`}>
+    <div className={`${walletPageClass} lg:pl-40 xl:pl-44`}>
       <div className={`${walletPanelClass} space-y-5`}>
         <div className="flex items-center justify-between gap-3">
           <div className="space-y-1">

@@ -33,4 +33,10 @@ describe("DashboardFooter", () => {
     const sendButton = getAllByTestId("footer-send")[0];
     expect(sendButton.className).toContain("-mt-4");
   });
+
+  it("uses the widened desktop sidebar shell and larger compact item sizing", () => {
+    const { getAllByTestId } = render(<DashboardFooter active="home" onChange={() => {}} />);
+    expect(getAllByTestId("sidebar-shell")[0].className).toContain("w-[112px]");
+    expect(getAllByTestId("sidebar-home")[0].className).toContain("text-xs");
+  });
 });

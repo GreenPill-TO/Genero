@@ -1,3 +1,29 @@
+## v1.88
+### Timestamp
+- 2026-03-31 17:36:06 EDT
+
+### Objective
+- Make the authenticated sidebar feel proportionate on mid/large screens and tone down the main-screen scale on phone-sized devices.
+
+### What Changed
+- Widened the authenticated desktop sidebar, increased its compact label/icon sizing, and adjusted the dashboard/contact-page left offsets so the larger rail stays balanced against the main workspace.
+- Reduced the shared authenticated shell scale on small devices by tightening page gaps, outer padding, panel padding, badge sizing, action-chip sizing, and intro typography.
+- Added a sidebar sizing regression check and documented the new responsive shell sizing rules in the functional and technical specs.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/dashboard/page.tsx 'app/tcoin/wallet/dashboard/contacts/[id]/page.tsx'`
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.87
 ### Timestamp
 - 2026-03-31 17:30:29 EDT

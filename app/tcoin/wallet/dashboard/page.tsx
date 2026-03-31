@@ -65,7 +65,7 @@ export default function Dashboard() {
   const router = useRouter();
 
   const pageCopy = TAB_COPY[activeTab] ?? TAB_COPY.home;
-  const mainClass = cn(walletPageClass, "font-sans lg:pl-32");
+  const mainClass = cn(walletPageClass, "font-sans lg:pl-40 xl:pl-44");
 
   const handleTabChange = useCallback(
     (next: string, options?: { showReceiveQr?: boolean }) => {
