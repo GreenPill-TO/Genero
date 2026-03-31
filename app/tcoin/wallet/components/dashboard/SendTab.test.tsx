@@ -182,6 +182,7 @@ describe("SendTab", () => {
 
   it("renders send mode actions and shows inline QR scanner panel", () => {
     render(<SendTab recipient={null} />);
+    expect(screen.getByTestId("send-tab-layout").className).not.toContain("lg:px-[25vw]");
     expect(screen.getByText("Manual")).toBeTruthy();
     expect(screen.getByText("Scan QR Code")).toBeTruthy();
     expect(screen.getByText("Pay Link")).toBeTruthy();

@@ -1,3 +1,26 @@
+## v1.86
+### Timestamp
+- 2026-03-31 17:26:52 EDT
+
+### Objective
+- Remove the remaining large-screen send-tab padding that was still collapsing the payment workspace into a narrow centre column.
+
+### What Changed
+- Removed the send tab’s `lg:px-[25vw]` wrapper padding so the desktop send flow now uses the same authenticated workspace width as the rest of the wallet dashboard.
+- Trimmed the local action-switcher panel padding slightly and added a focused regression check that guards against reintroducing the oversized desktop padding class.
+- Updated the functional and technical specs to document the corrected send-tab width behaviour.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/SendTab.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.85
 ### Timestamp
 - 2026-03-31 16:52:00 EDT

@@ -728,8 +728,8 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
   const recipientHeading = selectedRequest ? "Requested By:" : undefined;
 
   return (
-    <div className="space-y-4 lg:px-[25vw]">
-      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+    <div data-testid="send-tab-layout" className="space-y-4">
+      <section className="rounded-2xl border border-border bg-card/70 p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-center gap-2">{modeActions}</div>
       </section>
 
