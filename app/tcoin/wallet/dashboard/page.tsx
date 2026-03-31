@@ -1,5 +1,6 @@
 "use client";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import Link from "next/link";
 import React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -53,7 +54,7 @@ const TAB_COPY: Record<string, { title: string; description: string }> = {
 };
 
 export default function Dashboard() {
-  const { error, isLoadingUser } = useAuth();
+  const { error, isAuthenticated, isLoadingUser } = useAuth();
   const searchParams = useSearchParams();
   const requestedTab = (searchParams.get("tab") ?? "home").toLowerCase();
   const [activeTab, setActiveTab] = useState("home");
@@ -168,6 +169,47 @@ export default function Dashboard() {
   }
 
   if (isLoadingUser) return <div className={mainClass}> ... Loading </div>;
+
+  if (!isAuthenticated) {
+    return (
+      <div className={mainClass}>
+        <WalletPageIntro
+          eyebrow="Wallet preview"
+          title="Open your wallet when you're ready"
+          description="This dashboard now stays quiet until you authenticate, so local preview mode does not spam protected wallet APIs or show broken loading states."
+          actions={
+            <Link href="/" className={walletActionButtonClass}>
+              Back to home
+            </Link>
+          }
+        />
+        <WalletSection>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.9fr)]">
+            <div className="space-y-3">
+              <h2 className="text-2xl font-semibold tracking-[-0.04em]">
+                Sign in to see your balance, contacts, and payment history.
+              </h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Use the <strong>Authenticate</strong> button in the top-right corner to enter the
+                wallet. Until then, we keep authenticated requests paused so the preview remains
+                clean and stable in local development.
+              </p>
+            </div>
+            <div className="rounded-[24px] border border-border/60 bg-background/60 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                What you’ll unlock
+              </p>
+              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <li>Current TCOIN balance and CAD estimate</li>
+                <li>Send, request, and recent-contact flows</li>
+                <li>History, profile, and routing preferences</li>
+              </ul>
+            </div>
+          </div>
+        </WalletSection>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary fallback={<div className={mainClass}>Something went wrong.</div>}>

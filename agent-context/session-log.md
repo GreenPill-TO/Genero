@@ -1,3 +1,32 @@
+## v1.82
+### Timestamp
+- 2026-03-31 13:55:13 EDT
+
+### Objective
+- Clean up the local smoke-test blockers on wallet routes so signed-out preview mode stops generating avoidable runtime noise and React DOM warnings.
+
+### What Changed
+- Added a signed-out wallet preview state on `/dashboard` so local-dev bypass no longer mounts authenticated wallet tabs and their protected edge requests before a user signs in.
+- Scoped Cubid wallet runtime providers to authenticated non-public wallet routes, which suppresses WalletConnect boot on public and signed-out preview pages.
+- Updated the shared `Input` component to strip legacy presentation props such as `label` and `elSize` before they hit the DOM.
+- Added a simple app icon so the local app no longer requests a missing favicon by default.
+- Extended the dashboard test coverage to assert the new signed-out preview behaviour.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/layout.tsx shared/components/ui/Input.tsx`
+- Browser smoke pass on `http://127.0.0.1:3000/dashboard` confirmed the signed-out dashboard preview renders with `0` console errors and only existing dev warnings.
+
+### Files Edited
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `shared/components/ui/Input.tsx`
+- `app/icon.svg`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.81
 ### Timestamp
 - 2026-03-27 01:54:59 EDT

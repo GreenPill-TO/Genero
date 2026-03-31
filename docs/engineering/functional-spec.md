@@ -36,6 +36,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Dashboard's public status is verified by a Vitest unit test covering the unauthenticated path list.
 - Once authenticated, wallet users move into a separate bank-inspired shell with calmer neutrals, a single teal action colour, compact chrome, and summary-first layouts; the public landing/resources/contact styling stays unchanged.
 - Authenticated wallet home now prioritises the balance summary, quick money actions, recent people, and charity context before secondary settings, so novice users can orient themselves without crypto-specific terminology.
+- When `/dashboard` is opened without an authenticated session in local preview mode, the page now shows a quiet wallet-preview state instead of attempting protected wallet reads, so the route remains explorable without noisy unauthorised errors.
 - Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository and ends with a return-home link.
 - Ecosystem page showcases related community projects and is linked from the Resources page and the landing footer.
 - Contact page contains a form that saves user requests to Supabase including IP addresses and separates the send button from the return-home link.

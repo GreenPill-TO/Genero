@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const useAuthMock = vi.hoisted(() => vi.fn());
 const pushMock = vi.hoisted(() => vi.fn());
@@ -47,6 +47,10 @@ vi.mock("@tcoin/wallet/components/dashboard", () => ({
 import DashboardPage from "./page";
 
 describe("DashboardPage", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     useAuthMock.mockReturnValue({
       userData: {
@@ -54,6 +58,7 @@ describe("DashboardPage", () => {
           full_name: "Test User",
         },
       },
+      isAuthenticated: true,
       error: null,
       isLoadingUser: false,
     });
@@ -67,5 +72,19 @@ describe("DashboardPage", () => {
     fireEvent.click(screen.getByText("open-history"));
 
     expect(pushMock).toHaveBeenCalledWith("/dashboard?tab=history");
+  });
+
+  it("shows the signed-out preview instead of wallet tabs when unauthenticated", () => {
+    useAuthMock.mockReturnValue({
+      userData: null,
+      isAuthenticated: false,
+      error: null,
+      isLoadingUser: false,
+    });
+
+    render(<DashboardPage />);
+
+    expect(screen.getByText("Open your wallet when you're ready")).toBeTruthy();
+    expect(screen.queryByText("open-history")).toBeNull();
   });
 });
