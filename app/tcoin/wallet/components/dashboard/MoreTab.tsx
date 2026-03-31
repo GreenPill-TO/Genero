@@ -21,6 +21,7 @@ import {
   LuDollarSign,
   LuFlaskConical,
   LuHeart,
+  LuHistory,
   LuMapPin,
   LuPalette,
   LuShield,
@@ -39,7 +40,12 @@ const DEFAULT_CHARITY_DATA = {
   allUsersToAllCharities: 7000,
 };
 
-export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
+interface MoreTabProps {
+  tokenLabel?: string;
+  onOpenHistory?: () => void;
+}
+
+export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
   const { bootstrap } = useUserSettings();
@@ -213,6 +219,13 @@ export function MoreTab({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
           </p>
         </div>
         <div className="space-y-3">
+          <Button
+            type="button"
+            className="w-full justify-start lg:hidden"
+            onClick={onOpenHistory}
+          >
+            <LuHistory className="mr-2 h-4 w-4" /> History
+          </Button>
           <Button type="button" className="w-full justify-start" onClick={openOffRampModal}>
             <LuDollarSign className="mr-2 h-4 w-4" /> Convert to CAD and Cash Out
           </Button>

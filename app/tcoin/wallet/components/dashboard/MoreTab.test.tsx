@@ -167,6 +167,16 @@ describe("MoreTab", () => {
     expect(screen.queryByRole("button", { name: /Top Up with Interac eTransfer/i })).toBeNull();
   });
 
+  it("opens history from the More tab overflow action", () => {
+    const onOpenHistory = vi.fn();
+
+    render(<MoreTab onOpenHistory={onOpenHistory} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^History$/i }));
+
+    expect(onOpenHistory).toHaveBeenCalledTimes(1);
+  });
+
   it("opens the off-ramp modal", () => {
     render(<MoreTab />);
     fireEvent.click(

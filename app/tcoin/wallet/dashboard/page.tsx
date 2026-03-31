@@ -128,7 +128,7 @@ export default function Dashboard() {
       );
     }
     if (activeTab === "more") {
-      return <MoreTab tokenLabel="TCOIN" />;
+      return <MoreTab tokenLabel="TCOIN" onOpenHistory={() => handleTabChange("history")} />;
     }
     if (activeTab === "history") {
       return (

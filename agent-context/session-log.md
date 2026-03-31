@@ -1,3 +1,27 @@
+## v1.84
+### Timestamp
+- 2026-03-31 14:32:13 EDT
+
+### Objective
+- Restore a mobile path to transaction history now that the compact footer omits the dedicated History tab on small screens.
+
+### What Changed
+- Added a small-screen-only History button to the More tab so mobile users can still reach transaction history from the authenticated wallet overflow menu.
+- Passed the dashboard tab-navigation callback into `MoreTab`, keeping the new mobile History action aligned with the existing URL-backed tab routing.
+- Updated the functional and technical specs to document the mobile overflow behaviour.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/dashboard/page.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.83
 ### Timestamp
 - 2026-03-31 14:29:51 EDT
