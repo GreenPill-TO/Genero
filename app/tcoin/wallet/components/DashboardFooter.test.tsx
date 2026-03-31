@@ -37,6 +37,8 @@ describe("DashboardFooter", () => {
   it("uses the widened desktop sidebar shell and larger compact item sizing", () => {
     const { getAllByTestId } = render(<DashboardFooter active="home" onChange={() => {}} />);
     expect(getAllByTestId("sidebar-shell")[0].className).toContain("w-[112px]");
+    expect(getAllByTestId("sidebar-shell")[0].className).toContain("font-sans");
     expect(getAllByTestId("sidebar-home")[0].className).toContain("text-xs");
+    expect(getAllByTestId("sidebar-home")[0].className).toContain("font-sans");
   });
 });

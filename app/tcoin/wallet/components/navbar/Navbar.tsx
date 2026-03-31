@@ -113,7 +113,7 @@ export default function Navbar({ title }: { title?: string }) {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-3 rounded-full border border-white/10 bg-white/80 px-2 py-1 text-left text-slate-900 shadow-sm transition hover:bg-white dark:bg-white/[0.06] dark:text-white dark:hover:bg-white/[0.1]"
+              className="flex items-center gap-3 rounded-full border border-white/10 bg-white/80 px-2 py-1 text-left font-sans text-slate-900 shadow-sm transition hover:bg-white dark:bg-white/[0.06] dark:text-white dark:hover:bg-white/[0.1]"
               aria-label="Account menu"
             >
               <Avatar className="h-9 w-9">
@@ -134,7 +134,7 @@ export default function Navbar({ title }: { title?: string }) {
               <LuChevronDown className="hidden h-4 w-4 text-slate-500 dark:text-slate-300 sm:block" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={12} className="w-64 space-y-3 p-4">
+          <DropdownMenuContent align="end" sideOffset={12} className="w-64 space-y-3 p-4 font-sans">
             <div className="space-y-1">
               {username && <p className="truncate text-sm font-semibold">@{username}</p>}
               {email && <p className="truncate text-sm text-muted-foreground">{email}</p>}
@@ -200,7 +200,7 @@ export default function Navbar({ title }: { title?: string }) {
   return (
     <nav
       className={cn(
-        "wallet-auth-shell fixed top-0 z-20 w-full border-b border-white/10 bg-background/80 text-foreground backdrop-blur-xl",
+        "wallet-auth-shell fixed top-0 z-20 w-full border-b border-white/10 bg-background/80 font-sans text-foreground backdrop-blur-xl",
         "transition-transform duration-300",
         { "translate-y-0": isVisible },
         { "-translate-y-full": !isVisible }

@@ -1,3 +1,29 @@
+## v1.89
+### Timestamp
+- 2026-03-31 17:38:28 EDT
+
+### Objective
+- Make the authenticated header and navigation controls use the wallet app’s sans-serif UI font instead of inheriting the landing page font.
+
+### What Changed
+- Added explicit `font-sans` overrides to the authenticated navbar shell, account control, dropdown, nav links, mobile footer, desktop sidebar rail, and footer buttons.
+- Added focused navbar/footer regression checks that assert the authenticated chrome keeps its sans-serif font override in place.
+- Updated the functional and technical specs to document the authenticated chrome font override.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/NavLink.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/NavLink.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.88
 ### Timestamp
 - 2026-03-31 17:36:06 EDT

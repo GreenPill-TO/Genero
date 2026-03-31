@@ -83,8 +83,10 @@ describe("Navbar session control", () => {
   });
 
   it("shows the session dropdown with user details", () => {
-    render(<Navbar />);
+    const { container } = render(<Navbar />);
+    const nav = container.querySelector("nav");
 
+    expect(nav?.className).toContain("font-sans");
     expect(screen.getByText("@testuser")).toBeTruthy();
     expect(screen.getAllByText("test@example.com")).toHaveLength(2);
   });

@@ -50,7 +50,7 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
         handleSelect(key);
       }}
       className={cn(
-        "w-full flex flex-col items-center justify-center rounded-2xl font-medium transition duration-200",
+        "w-full flex flex-col items-center justify-center rounded-2xl font-sans font-medium transition duration-200",
         compact ? "gap-2 px-2 py-3 text-xs xl:text-[13px]" : "gap-1 px-1 py-2 text-[11px]",
         !compact && key === "send" ? "-mt-4" : "",
         active === key
@@ -85,7 +85,7 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
 
   return (
     <>
-      <nav className="fixed bottom-4 left-4 right-4 z-40 lg:hidden">
+      <nav className="fixed bottom-4 left-4 right-4 z-40 font-sans lg:hidden">
         <ul className="grid grid-cols-5 rounded-[24px] border border-white/10 bg-background/85 p-2 shadow-[0_24px_40px_rgba(15,23,42,0.2)] backdrop-blur-xl">
           {mobileItems.map((item) => {
             const Icon = item.icon;
@@ -103,7 +103,7 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
         </ul>
       </nav>
 
-      <nav data-testid="sidebar-shell" className="fixed left-4 top-24 bottom-6 z-30 hidden w-[112px] lg:block xl:w-[124px]">
+      <nav data-testid="sidebar-shell" className="fixed left-4 top-24 bottom-6 z-30 hidden w-[112px] font-sans lg:block xl:w-[124px]">
         <div className="flex h-full flex-col items-center rounded-[32px] border border-white/10 bg-background/75 py-5 shadow-[0_24px_50px_rgba(15,23,42,0.16)] backdrop-blur-xl">
           <div className="flex flex-1 w-full flex-col items-center justify-center gap-4 px-3">
             {middle.map((item) => (
