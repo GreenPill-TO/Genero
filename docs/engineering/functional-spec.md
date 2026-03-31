@@ -13,6 +13,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Digital wallet for holding, sending, and receiving CityCoins.
 - Modal windows close when the Escape key is pressed, and zero-value requests prompt for confirmation before sending.
 - Sign-in flow presents six single-digit inputs that auto-focus, advance and accept pasted codes.
+- The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.
 - Closing line states "build up - not extract from - our communities" with space-dash-space style.

@@ -1,3 +1,26 @@
+## v1.85
+### Timestamp
+- 2026-03-31 16:52:00 EDT
+
+### Objective
+- Make the auth modal’s email input behave like a proper browser-recognized email field.
+
+### What Changed
+- Tagged the wallet OTP form’s pre-send email input with standard email-field attributes, including `name="email"` and `autoComplete="email"`, plus email keyboard/autocorrect hints.
+- Added a focused OTP form test to lock in the expected email semantics before passcode submission.
+- Updated the functional and technical specs to document the browser-recognizable auth email field behaviour.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.84
 ### Timestamp
 - 2026-03-31 14:32:13 EDT

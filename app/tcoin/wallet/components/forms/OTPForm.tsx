@@ -138,9 +138,17 @@ function OTPForm({
         {!isOtpSent && authMethod === "email" && (
           <div className="form-control w-full mt-8">
             <Input
+              id="auth-email"
+              name="email"
               elSize="md"
               variant="bordered"
               type="email"
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label="Email address"
               placeholder="Enter your email"
               value={contact}
               onChange={handleContactChange}

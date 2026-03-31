@@ -138,6 +138,7 @@
 - Send tab converts string token balances to numbers before performing arithmetic.
 - Token balances from Web3 are returned as strings; dashboard components parse them to numbers before applying arithmetic or `toFixed`.
 - Sign-in modal shows a spam-folder notice with an inline "Resend Code" link instead of a button.
+- Wallet auth email entry now tags the contact input with `type="email"`, `name="email"`, `autoComplete="email"`, and related keyboard/autocorrect hints so browsers and password managers treat it as an email field before OTP submission.
 - Entering the sixth digit in the sign-in modal automatically submits the verification form.
 - Send tab binds `useSendMoney` with the authenticated user's ID and selected recipient to avoid undefined sender errors.
 - Contact selection modal returns full contact objects so downstream send logic can derive receiver IDs and display metadata.

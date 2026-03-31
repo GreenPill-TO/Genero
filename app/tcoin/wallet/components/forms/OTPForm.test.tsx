@@ -7,6 +7,32 @@ import OTPForm from "./OTPForm";
 afterEach(cleanup);
 
 describe("OTPForm", () => {
+  it("marks the auth contact input as an email field before OTP is sent", () => {
+    render(
+      <OTPForm
+        authMethod="email"
+        countryCode="+1"
+        contact="test@example.com"
+        passcode=""
+        setCountryCode={() => {}}
+        setContact={() => {}}
+        setPasscode={() => {}}
+        onSubmit={vi.fn()}
+        onResend={vi.fn()}
+        canResend={true}
+        isOtpSent={false}
+        errorMessage={null}
+        handleAuthMethodChange={() => {}}
+      />
+    );
+
+    const emailInput = screen.getByRole("textbox", { name: /email address/i });
+    expect(emailInput.getAttribute("type")).toBe("email");
+    expect(emailInput.getAttribute("name")).toBe("email");
+    expect(emailInput.getAttribute("autocomplete")).toBe("email");
+    expect(emailInput.getAttribute("inputmode")).toBe("email");
+  });
+
   it("renders six inputs and handles typing and pasting", () => {
     const setPasscode = vi.fn();
     const { getAllByRole } = render(
