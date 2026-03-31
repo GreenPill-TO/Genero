@@ -39,6 +39,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Authenticated wallet home now prioritises the balance summary, quick money actions, recent people, and charity context before secondary settings, so novice users can orient themselves without crypto-specific terminology.
 - Authenticated send and receive tabs now use the full shared dashboard workspace width on large screens instead of narrower nested content columns, so money-movement tasks align with the rest of the signed-in shell.
 - The authenticated send tab no longer applies the old large-screen `25vw` side padding, so the payment workspace and action controls sit on the same width rhythm as the rest of the dashboard instead of collapsing into a narrow centre column.
+- The authenticated header now only auto-hides on phone-sized screens; tablet and desktop layouts keep the top navigation visible during scroll and footer tab changes.
 - On small screens, where the footer omits the dedicated History tab, the More screen now includes a History button so transaction review remains reachable in the mobile navigation model.
 - When `/dashboard` is opened without an authenticated session in local preview mode, the page now shows a quiet wallet-preview state instead of attempting protected wallet reads, so the route remains explorable without noisy unauthorised errors.
 - Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository and ends with a return-home link.

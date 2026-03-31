@@ -21,6 +21,8 @@ import { QrScanModal } from "@tcoin/wallet/components/modals";
 import NavLink from "./NavLink";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 
+const PHONE_BREAKPOINT = 768;
+
 export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
   const { isAuthenticated, userData, signOut } = useAuth();
@@ -34,16 +36,37 @@ export default function Navbar({ title }: { title?: string }) {
   };
 
   useEffect(() => {
+    const isPhoneViewport = () => window.innerWidth < PHONE_BREAKPOINT;
+
     const handleScroll = () => {
+      if (!isPhoneViewport()) {
+        setIsVisible(true);
+        lastScrollY.current = window.scrollY;
+        return;
+      }
+
       const scrollY = window.scrollY;
       setIsVisible(scrollY <= lastScrollY.current || scrollY <= 50);
       lastScrollY.current = scrollY;
     };
+
+    const handleResize = () => {
+      if (!isPhoneViewport()) {
+        setIsVisible(true);
+      }
+    };
+
     window.addEventListener("scroll", handleScroll);
-    const hideListener = () => setIsVisible(false);
+    window.addEventListener("resize", handleResize);
+    const hideListener = () => {
+      if (isPhoneViewport()) {
+        setIsVisible(false);
+      }
+    };
     document.addEventListener("hide-header", hideListener);
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleResize);
       document.removeEventListener("hide-header", hideListener);
     };
   }, []);

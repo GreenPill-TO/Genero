@@ -1,3 +1,26 @@
+## v1.87
+### Timestamp
+- 2026-03-31 17:30:29 EDT
+
+### Objective
+- Keep the authenticated header visible on midsized and large screens while preserving the phone-sized hide-on-scroll behaviour.
+
+### What Changed
+- Updated the authenticated wallet navbar so both scroll-driven hiding and `hide-header` event handling only apply below the phone breakpoint.
+- Added resize handling so the header snaps back into view when the viewport widens from phone size to tablet or desktop.
+- Added navbar tests that lock in the new desktop-visible and phone-hide behaviour, and documented the responsive header rule in the specs.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/DashboardFooter.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.86
 ### Timestamp
 - 2026-03-31 17:26:52 EDT

@@ -49,6 +49,16 @@ vi.mock("@tcoin/wallet/components/modals/SignInModal", () => ({
 
 describe("Navbar session control", () => {
   beforeEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      writable: true,
+      value: 0,
+    });
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
       userData: {
@@ -76,7 +86,7 @@ describe("Navbar session control", () => {
     render(<Navbar />);
 
     expect(screen.getByText("@testuser")).toBeTruthy();
-    expect(screen.getByText("test@example.com")).toBeTruthy();
+    expect(screen.getAllByText("test@example.com")).toHaveLength(2);
   });
 
   it("opens the edit profile modal from the dropdown", () => {
@@ -105,5 +115,46 @@ describe("Navbar session control", () => {
     expect(openModal.mock.calls[0][0].title).toBe("Scan QR");
     expect(openModal.mock.calls[0][0].elSize).toBe("4xl");
     expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+  });
+
+  it("stays visible on desktop when hide-header is dispatched", () => {
+    const { container } = render(<Navbar />);
+    const nav = container.querySelector("nav");
+
+    document.dispatchEvent(new Event("hide-header"));
+
+    expect(nav?.className).toContain("translate-y-0");
+    expect(nav?.className).not.toContain("-translate-y-full");
+  });
+
+  it("stays visible on desktop scroll", () => {
+    const { container } = render(<Navbar />);
+    const nav = container.querySelector("nav");
+
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      writable: true,
+      value: 220,
+    });
+
+    fireEvent.scroll(window);
+
+    expect(nav?.className).toContain("translate-y-0");
+    expect(nav?.className).not.toContain("-translate-y-full");
+  });
+
+  it("hides on phone-sized screens when hide-header is dispatched", () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 390,
+    });
+
+    const { container } = render(<Navbar />);
+    const nav = container.querySelector("nav");
+
+    fireEvent(document, new Event("hide-header"));
+
+    expect(nav?.className).toContain("-translate-y-full");
   });
 });
