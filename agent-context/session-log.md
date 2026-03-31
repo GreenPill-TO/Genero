@@ -1,3 +1,26 @@
+## v1.83
+### Timestamp
+- 2026-03-31 14:29:51 EDT
+
+### Objective
+- Make the authenticated wallet send and receive tabs use the full dashboard workspace width on large screens.
+
+### What Changed
+- Removed the nested width cap from the send tab so the payment form now expands across the same signed-in content column as the rest of the wallet dashboard.
+- Removed the nested width cap from the receive tab so request and QR surfaces no longer render slightly narrower than adjacent authenticated tabs.
+- Updated the functional and technical specs to document the full-width authenticated send/receive layout behaviour.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/SendCard.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- Browser route checks on `http://127.0.0.1:3002/dashboard?tab=send` and `http://127.0.0.1:3002/dashboard?tab=receive` confirmed both deep links still resolve cleanly in signed-out preview mode; no authenticated local session was available to visually exercise the widened tabs.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.82
 ### Timestamp
 - 2026-03-31 13:55:13 EDT

@@ -174,6 +174,7 @@
 - Wallet dashboard is composed from modular cards (Contributions, Receive, Send, Account and Other) within `WalletHome`.
 - Authenticated wallet routes now mount inside a scoped `wallet-auth-shell` theme override so the signed-in experience can use its own palette, surface treatment, and nav styling without changing the unauthenticated landing/resources/contact pages.
 - Dashboard, contacts, receive, history, and contact-profile surfaces now share reusable authenticated-shell layout helpers for rounded frosted panels, summary-first headings, and pill-style action controls, while preserving the existing data flows and tab routing behaviour.
+- Send and receive tab wrappers no longer apply their own `max-w-*` caps inside the authenticated shell, allowing those tabs to inherit the same full workspace width as home, contacts, and history on larger viewports.
 - Cubid wallet runtime providers now mount only for authenticated non-public wallet routes; signed-out preview/public routes still get theme, modal, and React Query providers but skip WalletConnect boot so local smoke tests stay quieter.
 - Shared text inputs now explicitly strip legacy presentation props such as `label` and `elSize` before reaching the DOM, preventing React attribute warnings on receive and OTP flows.
 - `/admin` route renders an admin-only dashboard that fetches on-ramp/off-ramp requests from Supabase, lets admins adjust status, fees and notes, and is linked from the More tab when `is_admin` is true.

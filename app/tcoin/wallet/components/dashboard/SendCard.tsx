@@ -305,7 +305,7 @@ export function SendCard({
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col space-y-4">
+    <div className="mx-auto flex w-full flex-col space-y-4">
       <section className={`${walletPanelClass} p-5 sm:p-6`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
