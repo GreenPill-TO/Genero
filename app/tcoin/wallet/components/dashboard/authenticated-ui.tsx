@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "@shared/utils/classnames";
 
 export const walletPageClass =
-  "mx-auto flex w-full max-w-[90rem] flex-col gap-4 px-3 pb-24 pt-4 sm:gap-6 sm:px-6 sm:pb-28 sm:pt-5 lg:gap-5 lg:px-5 lg:pb-8 lg:pt-5 xl:px-4 xl:pb-7";
+  "mx-auto flex w-full max-w-[90rem] flex-col gap-4 px-3 pb-24 pt-4 sm:gap-6 sm:px-6 sm:pb-28 sm:pt-5 lg:gap-5 lg:px-5 lg:pb-8 lg:pt-5 xl:px-4 xl:pb-7 min-[1850px]:max-w-[112rem] min-[1850px]:px-6 min-[1850px]:pb-9";
 
 export const walletPanelClass =
   "rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,247,249,0.88))] p-4 text-slate-900 shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur sm:rounded-[28px] sm:p-5 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(18,25,34,0.94),rgba(10,15,21,0.92))] dark:text-slate-50 dark:shadow-[0_32px_80px_rgba(2,6,23,0.5)]";

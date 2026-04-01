@@ -224,6 +224,15 @@ describe("MoreTab", () => {
     expect(description.className).toContain("col-[2/4]");
   });
 
+  it("adds ultra-wide layout tracks for the account overview and action sections", () => {
+    render(<MoreTab />);
+
+    expect(screen.getByTestId("more-tab-overview-grid").className).toContain(
+      "min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.74fr)_minmax(280px,0.74fr)]"
+    );
+    expect(screen.getByTestId("more-tab-actions-grid").className).toContain("min-[1850px]:grid-cols-3");
+  });
+
   it("opens the off-ramp modal", () => {
     render(<MoreTab />);
     fireEvent.click(

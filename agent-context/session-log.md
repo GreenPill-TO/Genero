@@ -1,3 +1,30 @@
+## v1.99
+### Timestamp
+- 2026-04-01 17:43:39 EDT
+
+### Objective
+- Use ultra-wide desktop space more efficiently on authenticated Home and More so key wallet content fits with less vertical scrolling.
+
+### What Changed
+- Expanded the shared authenticated shell again at `min-[1850px]`, increasing the signed-in page max width and restoring some horizontal space specifically for ultra-wide desktop layouts.
+- Reworked `WalletHome` into broader three-track desktop compositions where the summary, send, and support rows give the primary task surfaces wider spans and use the extra width for parallel panels instead of taller stacking.
+- Updated `MoreTab` so the account-centre overview becomes a three-column layout and the lower action-section grid grows from two columns to three on ultra-wide screens, making better use of large desktop space.
+- Added focused breakpoint regressions for the new Home and More grid classes, then documented the ultra-wide layout behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.98
 ### Timestamp
 - 2026-04-01 17:35:00 EDT

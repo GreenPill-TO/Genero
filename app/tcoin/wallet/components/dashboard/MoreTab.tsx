@@ -364,7 +364,10 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
   return (
     <div className="space-y-6 lg:space-y-4">
       <section className={`${walletPanelClass} overflow-hidden`}>
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.95fr)]">
+        <div
+          data-testid="more-tab-overview-grid"
+          className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.95fr)] min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.74fr)_minmax(280px,0.74fr)]"
+        >
           <div className="space-y-5">
             <span className={walletBadgeClass}>Account centre</span>
 
@@ -424,7 +427,7 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 min-[1850px]:contents">
             <div className={walletMetricTileClass}>
               <p className={walletSectionLabelClass}>Current defaults</p>
               <dl className="mt-4 space-y-3">
@@ -455,7 +458,10 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:gap-4 xl:grid-cols-2">
+      <div
+        data-testid="more-tab-actions-grid"
+        className="grid gap-6 lg:gap-4 xl:grid-cols-2 min-[1850px]:grid-cols-3"
+      >
         <ActionSection
           eyebrow="Account and appearance"
           title="Keep your account clear and familiar."

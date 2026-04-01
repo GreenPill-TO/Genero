@@ -162,6 +162,20 @@ describe("WalletHome deep-link scanning", () => {
     expect(props?.userBalance).toBe(5.5);
   });
 
+  it("adds ultra-wide layout tracks for home sections", () => {
+    render(<WalletHome />);
+
+    expect(screen.getAllByTestId("wallet-home-summary-grid")[0].className).toContain(
+      "min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,1.05fr)_minmax(320px,0.92fr)]"
+    );
+    expect(screen.getAllByTestId("wallet-home-send-grid")[0].className).toContain(
+      "min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
+    );
+    expect(screen.getAllByTestId("wallet-home-support-grid")[0].className).toContain(
+      "min-[1850px]:grid-cols-[minmax(0,1.08fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
+    );
+  });
+
   it("routes to More from the account-settings prompt", () => {
     render(<WalletHome />);
 
