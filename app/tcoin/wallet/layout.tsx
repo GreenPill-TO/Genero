@@ -35,11 +35,16 @@ function WalletRuntimeProviders({
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
   const shouldMountWalletProviders = isAuthenticated && !publicPaths.includes(pathname);
+  const modalThemeClassName = shouldMountWalletProviders
+    ? "wallet-auth-shell font-sans"
+    : undefined;
 
   const content = (
     <ReactQueryProvider>
       <DarkModeProvider>
-        <ModalProvider>{children}</ModalProvider>
+        <ModalProvider modalThemeClassName={modalThemeClassName}>
+          {children}
+        </ModalProvider>
       </DarkModeProvider>
     </ReactQueryProvider>
   );

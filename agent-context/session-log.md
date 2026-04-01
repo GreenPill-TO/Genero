@@ -1,3 +1,28 @@
+## v1.90
+### Timestamp
+- 2026-03-31 23:24:02 EDT
+
+### Objective
+- Make authenticated wallet modals use the signed-in wallet shell styling instead of the landing-page modal chrome.
+
+### What Changed
+- Added a route-aware modal theme handoff so authenticated non-public wallet routes automatically pass `wallet-auth-shell font-sans` into the shared modal layer.
+- Restyled the shared modal component to use authenticated shell panel, typography, and close-button chrome whenever that theme is present, covering the signed-in wallet modals from contacts, buy/top-up, off-ramp, profile, theme, BIA, voucher, charity, future-features, and admin flows.
+- Added a focused modal regression test and updated the functional and technical specs to document the authenticated modal theme behaviour.
+
+### Verification
+- `pnpm exec vitest run shared/components/ui/Modal.test.tsx`
+- `pnpm exec eslint shared/contexts/ModalContext.tsx shared/components/ui/Modal.tsx shared/components/ui/Modal.test.tsx app/tcoin/wallet/layout.tsx`
+
+### Files Edited
+- `shared/contexts/ModalContext.tsx`
+- `shared/components/ui/Modal.tsx`
+- `shared/components/ui/Modal.test.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.89
 ### Timestamp
 - 2026-03-31 17:38:28 EDT

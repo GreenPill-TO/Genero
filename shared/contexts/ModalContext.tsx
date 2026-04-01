@@ -30,21 +30,31 @@ export const useModal = (): ModalContextType => {
 
 interface ModalProviderProps {
   children: ReactNode;
+  modalThemeClassName?: string;
 }
 
-export const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
+export const ModalProvider: React.FC<ModalProviderProps> = ({
+  children,
+  modalThemeClassName,
+}) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [modalContent, setModalContent] = useState<ModalContentType | null>(null);
 
-  const openModal = ({ content = null, title = "", description = "", elSize = "md", isResponsive = false }: ModalContentType) => {
+  const openModal = ({
+    content = null,
+    title = "",
+    description = "",
+    elSize = "md",
+    isResponsive = false,
+  }: ModalContentType) => {
     setModalContent({ content, title, elSize, isResponsive, description });
     setIsOpen(true);
   };
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsOpen(false);
     setModalContent(null);
-  };
+  }, []);
 
   const handleEscape = useCallback(() => {
     if (isOpen) closeModal();
@@ -55,7 +65,13 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {
   return (
     <ModalContext.Provider value={{ isOpen, modalContent, openModal, closeModal }}>
       {children}
-      {isOpen && <Modal modalContent={modalContent} closeModal={closeModal} />}
+      {isOpen && (
+        <Modal
+          modalContent={modalContent}
+          closeModal={closeModal}
+          modalThemeClassName={modalThemeClassName}
+        />
+      )}
     </ModalContext.Provider>
   );
 };
