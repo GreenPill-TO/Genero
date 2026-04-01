@@ -42,6 +42,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - The authenticated header now only auto-hides on phone-sized screens; tablet and desktop layouts keep the top navigation visible during scroll and footer tab changes.
 - On non-phone authenticated layouts, the left sidebar now uses a wider rail and larger labels/icons to feel proportionate beside the main workspace, while phone-sized layouts scale headings, panels, and action chrome down to avoid an oversized feel.
 - The authenticated header, sidebar navigation, and footer controls now explicitly use the wallet app’s sans-serif UI font instead of inheriting the landing page’s typewriter font.
+- The authenticated sidebar and bottom footer now apply the former Send-tab highlight treatment to whichever tab is actually selected, so the active destination is obvious at a glance and Send is no longer permanently emphasised.
 - Authenticated wallet modals now inherit the same signed-in shell styling and sans-serif typography as the dashboard instead of reusing the unauthenticated landing-page modal chrome.
 - Authenticated operator pages reachable from More, including `/city-manager`, `/admin`, and `/merchant`, now use the same shared dashboard padding and keep the same side/bottom navigation frame as `/dashboard`.
 - The authenticated More tab now acts as the wallet’s account centre: wallet address and explorer access, optimisation guidance, account defaults, and grouped settings/operator tools live there instead of being split across the home screen and scattered button lists.

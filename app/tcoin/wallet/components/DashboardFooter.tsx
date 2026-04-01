@@ -43,42 +43,42 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
     Icon: React.ComponentType<{ className?: string }>;
     testId: string;
     compact?: boolean;
-  }) => (
-    <button
-      data-testid={testId}
-      onClick={() => {
-        handleSelect(key);
-      }}
-      className={cn(
-        "w-full flex flex-col items-center justify-center rounded-2xl font-sans font-medium transition duration-200",
-        compact ? "gap-2 px-2 py-3 text-xs xl:text-[13px]" : "gap-1 px-1 py-2 text-[11px]",
-        !compact && key === "send" ? "-mt-4" : "",
-        active === key
-          ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground"
-      )}
-    >
-      <span
+  }) => {
+    const isActive = active === key;
+
+    return (
+      <button
+        data-testid={testId}
+        onClick={() => {
+          handleSelect(key);
+        }}
         className={cn(
-          "flex items-center justify-center rounded-2xl transition duration-200",
-          key === "send"
-            ? compact
-              ? "bg-primary p-3.5 shadow-[0_18px_34px_rgba(8,145,178,0.35)]"
-              : "bg-primary p-3 shadow-[0_16px_30px_rgba(8,145,178,0.35)]"
-            : active === key
+          "w-full flex flex-col items-center justify-center rounded-2xl font-sans transition duration-200",
+          compact ? "gap-2 px-2 py-3 text-xs xl:text-[13px]" : "gap-1 px-1 py-2 text-[11px]",
+          !compact && isActive ? "-mt-4" : "",
+          isActive
+            ? "font-semibold text-foreground"
+            : "font-medium text-muted-foreground hover:text-foreground"
+        )}
+      >
+        <span
+          className={cn(
+            "flex items-center justify-center rounded-2xl transition duration-200",
+            isActive
               ? compact
-                ? "bg-primary/12 p-3"
-                : "bg-primary/12 p-2.5"
+                ? "bg-primary p-3.5 shadow-[0_18px_34px_rgba(8,145,178,0.35)]"
+                : "bg-primary p-3 shadow-[0_16px_30px_rgba(8,145,178,0.35)]"
               : compact
                 ? "p-2.5"
                 : "p-2.5"
-        )}
-      >
-        <Icon className={cn(compact ? "h-[22px] w-[22px]" : "h-5 w-5", key === "send" && "text-white")} />
-      </span>
-      <span>{label}</span>
-    </button>
-  );
+          )}
+        >
+          <Icon className={cn(compact ? "h-[22px] w-[22px]" : "h-5 w-5", isActive && "text-white")} />
+        </span>
+        <span>{label}</span>
+      </button>
+    );
+  };
 
   const more = desktopItems.find((item) => item.key === "more")!;
   const middle = desktopItems.filter((item) => item.key !== "more");

@@ -1,3 +1,26 @@
+## v1.98
+### Timestamp
+- 2026-04-01 17:35:00 EDT
+
+### Objective
+- Make the active tab in the authenticated sidebar and footer obvious at a glance, and stop permanently highlighting Send.
+
+### What Changed
+- Refactored `DashboardFooter` so the strong primary-filled icon treatment, raised mobile offset, and stronger label weight now follow the selected tab instead of being hardcoded to Send.
+- Applied that same active-state rule across both the mobile footer and the desktop sidebar, so the selected destination uses one consistent visual language in both nav layouts.
+- Updated the footer regression tests to assert that active-state styling follows the current tab and that inactive Send returns to the neutral state, then documented the change in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/DashboardFooter.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.97
 ### Timestamp
 - 2026-04-01 17:32:00 EDT
