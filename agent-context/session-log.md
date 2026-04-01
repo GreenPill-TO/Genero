@@ -1,3 +1,32 @@
+## v1.96
+### Timestamp
+- 2026-04-01 17:25:00 EDT
+
+### Objective
+- Make clickable controls visually distinct from non-clickable frames across the authenticated wallet without depending on hover.
+
+### What Changed
+- Split the shared authenticated surface styling into quieter static panels and more obviously interactive surfaces, giving clickable cards and rows a persistent teal edge, ring, and stronger at-rest control treatment.
+- Applied that interactive treatment to the wallet’s shared action rows and choice cards, the small authenticated action buttons, global outline-style buttons, the Recents contact tiles, and the Send-card contact suggestion rows so the distinction carries across dashboard and modal flows.
+- Added focused regressions for the shared interaction-language tokens, the outline button variant, and the custom Recents and Send-card clickable tiles, then updated the functional and technical specs to document the new affordance rule.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/SendCard.tsx app/tcoin/wallet/components/dashboard/SendCard.test.tsx shared/components/ui/Button.tsx shared/components/ui/Button.test.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/SendCard.test.tsx shared/components/ui/Button.test.ts`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+- `shared/components/ui/Button.tsx`
+- `shared/components/ui/Button.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.95
 ### Timestamp
 - 2026-04-01 00:42:00 EDT

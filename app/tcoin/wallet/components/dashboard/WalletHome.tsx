@@ -22,6 +22,7 @@ import { AccountCard } from "./AccountCard";
 import { Hypodata } from "./types";
 import {
   walletActionButtonClass,
+  walletInteractiveSurfaceClass,
   walletPanelClass,
   walletPanelMutedClass,
 } from "./authenticated-ui";
@@ -505,7 +506,7 @@ function RecentsPanel({
               <button
                 key={contact.id}
                 type="button"
-                className="flex flex-col items-center gap-2 rounded-[20px] border border-border/50 bg-background/65 px-3 py-4 text-center transition hover:-translate-y-0.5 hover:bg-background/85"
+                className={`${walletInteractiveSurfaceClass} flex flex-col items-center gap-2 rounded-[20px] px-3 py-4 text-center before:bottom-3 before:top-3`}
                 onClick={() => onOpenContactProfile(contact.id)}
                 aria-label={`Open profile for ${label}`}
                 title={label}

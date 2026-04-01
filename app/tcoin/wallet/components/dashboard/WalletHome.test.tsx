@@ -189,6 +189,8 @@ describe("WalletHome deep-link scanning", () => {
     const buttons = await screen.findAllByRole("button", {
       name: /Open profile for Recent Contact/i,
     });
+    expect(buttons[0].className).toContain("ring-teal-500/12");
+    expect(buttons[0].className).toContain("before:bg-teal-600/40");
     fireEvent.click(buttons[0]);
     expect(pushMock).toHaveBeenCalledWith("/dashboard/contacts/77");
   });

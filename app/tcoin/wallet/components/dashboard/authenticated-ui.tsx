@@ -8,28 +8,31 @@ export const walletPanelClass =
   "rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,247,249,0.88))] p-4 text-slate-900 shadow-[0_24px_60px_rgba(15,23,42,0.12)] backdrop-blur sm:rounded-[28px] sm:p-5 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(18,25,34,0.94),rgba(10,15,21,0.92))] dark:text-slate-50 dark:shadow-[0_32px_80px_rgba(2,6,23,0.5)]";
 
 export const walletPanelMutedClass =
-  "rounded-[20px] border border-slate-200/70 bg-white/70 p-3 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur sm:rounded-[24px] sm:p-4 dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none";
+  "rounded-[20px] border border-slate-200/55 bg-white/68 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.48)] backdrop-blur sm:rounded-[24px] sm:p-4 dark:border-white/8 dark:bg-white/[0.035] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 
 export const walletBadgeClass =
   "inline-flex items-center rounded-full border border-slate-200/80 bg-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 sm:px-3 sm:text-[11px] sm:tracking-[0.24em] dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-300";
 
 export const walletActionButtonClass =
-  "rounded-full border border-slate-200/70 bg-white/90 px-3.5 py-1.5 text-[13px] font-medium text-slate-700 transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white sm:px-4 sm:py-2 sm:text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-100 dark:hover:bg-white/[0.1]";
+  "rounded-full border border-slate-300/80 bg-white/96 px-3.5 py-1.5 text-[13px] font-medium text-slate-800 shadow-[0_10px_24px_rgba(15,23,42,0.08)] ring-1 ring-teal-500/10 transition duration-200 hover:-translate-y-0.5 hover:border-teal-600/30 hover:bg-white sm:px-4 sm:py-2 sm:text-sm dark:border-teal-400/16 dark:bg-white/[0.07] dark:text-slate-100 dark:ring-teal-400/12 dark:hover:border-teal-300/30 dark:hover:bg-white/[0.1]";
 
 export const walletSectionLabelClass =
   "text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-300";
 
 export const walletMetricTileClass =
-  "rounded-[20px] border border-slate-200/70 bg-white/80 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none";
+  "rounded-[20px] border border-slate-200/60 bg-white/76 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.54)] backdrop-blur dark:border-white/8 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
+
+export const walletInteractiveSurfaceClass =
+  "relative overflow-hidden cursor-pointer border border-teal-500/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,251,252,0.93))] ring-1 ring-teal-500/12 shadow-[0_20px_42px_rgba(15,23,42,0.08)] transition duration-200 before:pointer-events-none before:absolute before:bottom-4 before:left-0 before:top-4 before:w-[3px] before:rounded-r-full before:bg-teal-600/40 hover:-translate-y-0.5 hover:border-teal-600/34 hover:bg-white dark:border-teal-400/18 dark:bg-[linear-gradient(180deg,rgba(19,28,37,0.96),rgba(13,20,29,0.94))] dark:ring-teal-400/14 dark:before:bg-teal-400/50 dark:hover:border-teal-300/32 dark:hover:bg-white/[0.08]";
 
 export const walletActionRowClass =
-  "group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2 rounded-[22px] border border-slate-200/70 bg-white/82 px-4 py-4 text-left shadow-[0_18px_36px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-white/[0.08]";
+  `${walletInteractiveSurfaceClass} group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2 rounded-[22px] px-4 py-4 text-left`;
 
 export const walletActionRowIconClass =
-  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200/80 bg-slate-50 text-slate-700 transition duration-200 group-hover:border-slate-300 group-hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100 dark:group-hover:bg-white/[0.08]";
+  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-teal-500/18 bg-teal-50/85 text-teal-700 transition duration-200 group-hover:border-teal-600/34 group-hover:bg-teal-50 dark:border-teal-400/16 dark:bg-teal-400/12 dark:text-teal-200 dark:group-hover:bg-teal-400/18";
 
 export const walletChoiceCardClass =
-  "w-full rounded-[22px] border border-slate-200/70 bg-white/82 p-4 text-left shadow-[0_18px_36px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-white/[0.08]";
+  `${walletInteractiveSurfaceClass} w-full rounded-[22px] p-4 text-left`;
 
 export function WalletPageIntro({
   eyebrow,

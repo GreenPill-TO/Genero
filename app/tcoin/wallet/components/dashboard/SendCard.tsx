@@ -15,7 +15,7 @@ import { ContactSelectModal } from "@tcoin/wallet/components/modals";
 import { Hypodata, contactRecordToHypodata } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { TransferRecordSnapshot } from "@shared/utils/transferRecord";
-import { walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
+import { walletInteractiveSurfaceClass, walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
 
 const FONT_SIZE_MAX_REM = 4.5;
 const FONT_SIZE_MIN_REM = 1.1;
@@ -466,7 +466,7 @@ export function SendCard({
                     <li key={contact.id}>
                       <button
                         type="button"
-                        className="flex w-full flex-col rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-primary"
+                        className={`${walletInteractiveSurfaceClass} flex w-full flex-col gap-1 rounded-2xl px-4 py-3 text-left before:bottom-3 before:top-3`}
                         onClick={() => handleContactRecordSelection(contact)}
                       >
                         <span className="text-sm font-medium">{name}</span>
