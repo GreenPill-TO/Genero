@@ -362,7 +362,7 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-4">
       <section className={`${walletPanelClass} overflow-hidden`}>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.95fr)]">
           <div className="space-y-5">
@@ -455,7 +455,7 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6 lg:gap-4 xl:grid-cols-2">
         <ActionSection
           eyebrow="Account and appearance"
           title="Keep your account clear and familiar."

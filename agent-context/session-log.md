@@ -1,3 +1,27 @@
+## v1.94
+### Timestamp
+- 2026-04-01 00:27:00 EDT
+
+### Objective
+- Make the authenticated home and More screens denser on large displays so users can see more without extra scrolling.
+
+### What Changed
+- Widened the shared authenticated page shell to `max-w-[90rem]` and reduced large-screen outer padding so `/dashboard` and `/dashboard?tab=more` use more of the available viewport width.
+- Tightened large-screen section and grid spacing in the authenticated home and More surfaces so balance, shortcuts, and account-centre content sit higher on the page.
+- Updated the functional and technical specs to document the new desktop-density behaviour for the authenticated wallet shell.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.93
 ### Timestamp
 - 2026-04-01 00:02:00 EDT

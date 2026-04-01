@@ -366,8 +366,8 @@ export function WalletHome({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.95fr)]">
+    <div className="space-y-6 lg:space-y-4">
+      <div className="grid gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.95fr)]">
         <AccountCard
           balance={userBalance}
           totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
@@ -432,7 +432,7 @@ export function WalletHome({
         </section>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+      <div className="grid gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <SendCard
           toSendData={toSendData}
           setToSendData={setToSendData}
@@ -451,7 +451,7 @@ export function WalletHome({
         <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+      <div className="grid gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
         <ContributionsCard
           selectedCharity={selectedCharity}
           setSelectedCharity={setSelectedCharity}
