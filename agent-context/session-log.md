@@ -1,3 +1,26 @@
+## v1.101
+### Timestamp
+- 2026-04-01 17:49:04 EDT
+
+### Objective
+- Make the authenticated theme icon communicate `system`, `light`, and `dark` clearly so theme changes never appear to do nothing.
+
+### What Changed
+- Refactored the wallet navbar theme button to use the shared `themeMode` value directly instead of inferring state from resolved dark mode alone.
+- Added an explicit three-state cycle (`system -> light -> dark -> system`), a dedicated system/laptop icon, and current/next-state labels on the button so the control always communicates what mode is active and what a click will do next.
+- Added focused tests covering the explicit system state plus all three cycle transitions and persisted theme writes, then documented the new behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/ThemeToggleButton.tsx app/tcoin/wallet/components/navbar/ThemeToggleButton.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/ThemeToggleButton.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/ThemeToggleButton.tsx`
+- `app/tcoin/wallet/components/navbar/ThemeToggleButton.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.100
 ### Timestamp
 - 2026-04-01 17:46:33 EDT
