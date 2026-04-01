@@ -44,14 +44,22 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
       toast.error("Please enter a valid amount.");
       return;
     }
-    await createLegacyInteracReference(
-      {
-        amount,
-        refCode,
-      },
-      { citySlug: "tcoin" }
-    );
-    setStep("confirmation");
+    try {
+      await createLegacyInteracReference(
+        {
+          amount,
+          refCode,
+        },
+        { citySlug: "tcoin" }
+      );
+      setStep("confirmation");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Top up is not available right now. Please try again in a moment.";
+      toast.error(message);
+    }
   };
 
   const handleBack = () => {

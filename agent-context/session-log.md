@@ -1,3 +1,28 @@
+## v1.102
+### Timestamp
+- 2026-04-01 18:44:15 EDT
+
+### Objective
+- Prevent the Interac top-up modal from crashing when the legacy onramp route is missing, and surface a clearer error for that environment mismatch.
+
+### What Changed
+- Added a route-specific 404 message in the shared edge-function client so bare `Not found.` responses identify which onramp path is unavailable in the current environment.
+- Wrapped the wallet `TopUpModal` Next-step legacy Interac reference call in a `try/catch`, keeping the modal on the input step and showing a toast instead of throwing an unhandled runtime error.
+- Added focused regressions for the new 404 message and the modal’s failure handling, then documented the degraded-environment top-up behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint shared/lib/edge/core.ts shared/lib/edge/core.test.ts app/tcoin/wallet/components/modals/TopUpModal.tsx app/tcoin/wallet/components/modals/TopUpModal.test.tsx`
+- `pnpm exec vitest run shared/lib/edge/core.test.ts app/tcoin/wallet/components/modals/TopUpModal.test.tsx`
+
+### Files Edited
+- `shared/lib/edge/core.ts`
+- `shared/lib/edge/core.test.ts`
+- `app/tcoin/wallet/components/modals/TopUpModal.tsx`
+- `app/tcoin/wallet/components/modals/TopUpModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.101
 ### Timestamp
 - 2026-04-01 17:49:04 EDT
