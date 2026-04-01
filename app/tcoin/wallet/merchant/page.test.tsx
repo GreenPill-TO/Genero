@@ -91,7 +91,7 @@ describe("MerchantDashboardPage", () => {
     const { container } = render(<MerchantDashboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Merchant Dashboard/i)).toBeTruthy();
+      expect(screen.getByRole("heading", { name: /Merchant Dashboard/i })).toBeTruthy();
     });
 
     expect((container.firstChild as HTMLElement).className).toContain("lg:pl-40");

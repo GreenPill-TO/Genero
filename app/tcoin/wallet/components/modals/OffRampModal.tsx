@@ -11,6 +11,11 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { createLegacyOfframpRequest, createRedemptionRequest } from "@shared/lib/edge/redemptionsClient";
+import {
+  walletBadgeClass,
+  walletPanelMutedClass,
+  walletSectionLabelClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 
 interface OffRampProps {
   closeModal: () => void;
@@ -78,7 +83,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       setCubidSDK(cubid_sdk);
     };
     loadSDK();
-  }, []);
+  }, [setValue, userData?.user?.cubid_id]);
 
   const sendOTP = async () => {
     const phone = phoneCubidSDK || watch("phone_number");
@@ -217,8 +222,27 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="mt-2 p-0">
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <span className={walletBadgeClass}>Cash out</span>
+          <p className="text-sm text-muted-foreground">
+            Redeem TCOIN for CAD and send it to your bank account once the phone verification step is complete.
+          </p>
+        </div>
+
+        <div className={`${walletPanelMutedClass} grid gap-3 sm:grid-cols-2`}>
+          <div>
+            <p className={walletSectionLabelClass}>Available balance</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{userBalance.toFixed(2)} TCOIN</p>
+          </div>
+          <div>
+            <p className={walletSectionLabelClass}>Estimated CAD</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">${estimatedCAD.toFixed(2)}</p>
+          </div>
+        </div>
+
         <div className="space-y-4">
+          <div className={walletPanelMutedClass}>
           <Controller
             name="preferredDonationAmount"
             control={control}
@@ -226,18 +250,22 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
               <InputField {...field} label="TCOIN amount to redeem (TCOIN)" type="number" fullWidth />
             )}
           />
-          <p>Estimated CAD: ${estimatedCAD.toFixed(2)}</p>
+          <p className="mt-3 text-sm text-muted-foreground">Estimated CAD: ${estimatedCAD.toFixed(2)}</p>
           {exchangeRateState !== "ready" && (
-            <p className="text-xs text-amber-700 dark:text-amber-300">
+            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
               CAD values are using a fallback estimate until the live city rate is indexed.
             </p>
           )}
           {donationAmount > userBalance && (
-            <p className="text-sm text-red-500">
+            <p className="mt-2 text-sm text-red-500">
               Warning: The entered TCOIN amount exceeds your available balance of {userBalance}.
             </p>
           )}
+          </div>
 
+          <div className={walletPanelMutedClass}>
+            <p className={walletSectionLabelClass}>Phone verification</p>
+            <div className="mt-3">
           <Controller
             name="phone_number"
             control={control}
@@ -251,10 +279,11 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
               />
             )}
           />
+            </div>
 
           {!otpSent && (
-            <Button disabled={loading} onClick={sendOTP}>
-              Send OTP
+            <Button type="button" className="mt-4 rounded-full" disabled={loading} onClick={sendOTP}>
+              Send verification code
             </Button>
           )}
 
@@ -267,12 +296,16 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
                   <InputField label="OTP" placeholder="Enter OTP" {...field} fullWidth />
                 )}
               />
-              <Button disabled={loading} onClick={verifyOTP}>
-                Verify OTP
+              <Button type="button" className="rounded-full" disabled={loading} onClick={verifyOTP}>
+                Confirm code
               </Button>
             </>
           )}
+          </div>
 
+          <div className={walletPanelMutedClass}>
+            <p className={walletSectionLabelClass}>Bank transfer details</p>
+            <div className="mt-3">
           <Controller
             name="interac_email"
             control={control}
@@ -280,11 +313,14 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
               <InputField label="Interac Email" placeholder="Interac Email" {...field} fullWidth />
             )}
           />
+            </div>
+          </div>
 
           {errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
 
           <Button
             disabled={loading || !otpVerified || donationAmount > userBalance}
+            className="rounded-full"
             type="submit"
           >
             Convert and Transfer

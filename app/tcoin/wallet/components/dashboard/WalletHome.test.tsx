@@ -162,6 +162,13 @@ describe("WalletHome deep-link scanning", () => {
     expect(props?.userBalance).toBe(5.5);
   });
 
+  it("routes to More from the account-settings prompt", () => {
+    render(<WalletHome />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Open More/i })[0]);
+    expect(pushMock).toHaveBeenCalledWith("/dashboard?tab=more");
+  });
+
   it("opens contact profile page from Recents avatar", async () => {
     getWalletRecentsMock.mockResolvedValueOnce({
       participants: [

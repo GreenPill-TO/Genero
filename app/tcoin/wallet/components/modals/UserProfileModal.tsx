@@ -15,6 +15,11 @@ import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
 import { dialCodes } from "@shared/utils/countryDialCodes";
 import { toast } from "react-toastify";
 import { LuUser } from "react-icons/lu";
+import {
+  walletBadgeClass,
+  walletPanelMutedClass,
+  walletSectionLabelClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 
 interface UserProfileModalProps {
   closeModal: () => void;
@@ -205,7 +210,14 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div className="space-y-2">
+        <span className={walletBadgeClass}>Profile</span>
+        <p className="text-sm text-muted-foreground">
+          Keep the personal details tied to this wallet current and easy to recognize.
+        </p>
+      </div>
+
+      <div className={`${walletPanelMutedClass} flex flex-col gap-4 sm:flex-row sm:items-center`}>
         <Avatar className="h-20 w-20">
           {avatarPreview ? (
             <AvatarImage src={avatarPreview} alt="Profile picture" />
@@ -220,23 +232,25 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
             {username && <p className="text-sm font-semibold break-words">{username}</p>}
             {email && <p className="text-sm text-muted-foreground break-words">{email}</p>}
           </div>
-          <div>
-            <Label htmlFor="profilePicture">Profile picture</Label>
+          <div className="space-y-2">
+            <Label htmlFor="profilePicture" className={walletSectionLabelClass}>
+              Profile picture
+            </Label>
             <input
               id="profilePicture"
               name="profilePicture"
               type="file"
               accept="image/*"
               onChange={handleAvatarChange}
-              className="mt-1 block w-full text-sm"
+              className="block w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm"
             />
-            <p className="text-xs text-muted-foreground mt-1">Upload a square image for the best fit.</p>
+            <p className="text-xs text-muted-foreground">Upload a square image for the best fit.</p>
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={`${walletPanelMutedClass} grid gap-4 sm:grid-cols-2`}>
           <div>
             <Label htmlFor="firstName">First name</Label>
             <Input id="firstName" {...register("firstName", { required: "First name is required" })} />
@@ -249,64 +263,66 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="username">Username</Label>
-          <Input
-            id="username"
-            autoComplete="off"
-            {...register("username", {
-              required: "Username is required",
-              maxLength: {
-                value: 32,
-                message: "Username must be 32 characters or fewer.",
-              },
-              pattern: {
-                value: /^[a-z0-9._-]+$/,
-                message: "Use only lowercase letters, numbers, dots, underscores or hyphens.",
-              },
-            })}
-          />
-          {errors.username && <p className="mt-1 text-sm text-red-500">{errors.username.message}</p>}
-        </div>
+        <div className={`${walletPanelMutedClass} space-y-4`}>
+          <div>
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              autoComplete="off"
+              {...register("username", {
+                required: "Username is required",
+                maxLength: {
+                  value: 32,
+                  message: "Username must be 32 characters or fewer.",
+                },
+                pattern: {
+                  value: /^[a-z0-9._-]+$/,
+                  message: "Use only lowercase letters, numbers, dots, underscores or hyphens.",
+                },
+              })}
+            />
+            {errors.username && <p className="mt-1 text-sm text-red-500">{errors.username.message}</p>}
+          </div>
 
-        <div>
-          <Label htmlFor="nickname">Preferred name</Label>
-          <Input id="nickname" {...register("nickname")} placeholder="What should we call you?" />
-        </div>
+          <div>
+            <Label htmlFor="nickname">Preferred name</Label>
+            <Input id="nickname" {...register("nickname")} placeholder="What should we call you?" />
+          </div>
 
-        <div>
-          <Label htmlFor="country">Country</Label>
-          <Controller
-            name="country"
-            control={control}
-            rules={{ required: "Country is required" }}
-            render={({ field }) => (
-              <Select
-                {...field}
-                options={countryOptions}
-                styles={selectStyles}
-                placeholder="Select a country"
-                classNamePrefix="country-select"
-                value={field.value}
-                onChange={(option) => field.onChange(option)}
-                menuPortalTarget={typeof window !== "undefined" ? document.body : undefined}
-              />
-            )}
-          />
-          {errors.country && <p className="mt-1 text-sm text-red-500">{errors.country.message}</p>}
-        </div>
+          <div>
+            <Label htmlFor="country">Country</Label>
+            <Controller
+              name="country"
+              control={control}
+              rules={{ required: "Country is required" }}
+              render={({ field }) => (
+                <Select
+                  {...field}
+                  options={countryOptions}
+                  styles={selectStyles}
+                  placeholder="Select a country"
+                  classNamePrefix="country-select"
+                  value={field.value}
+                  onChange={(option) => field.onChange(option)}
+                  menuPortalTarget={typeof window !== "undefined" ? document.body : undefined}
+                />
+              )}
+            />
+            {errors.country && <p className="mt-1 text-sm text-red-500">{errors.country.message}</p>}
+          </div>
 
-        <div>
-          <Label htmlFor="phone">Phone number</Label>
-          <Input id="phone" type="tel" value={bootstrap.user.phone ?? ""} readOnly disabled />
-          <p className="mt-1 text-xs text-muted-foreground">Phone updates stay in the verified onboarding flow.</p>
+          <div>
+            <Label htmlFor="phone">Phone number</Label>
+            <Input id="phone" type="tel" value={bootstrap.user.phone ?? ""} readOnly disabled />
+            <p className="mt-1 text-xs text-muted-foreground">Phone updates stay in the verified onboarding flow.</p>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" onClick={closeModal} disabled={isSubmitting}>
+          <Button type="button" variant="ghost" onClick={closeModal} disabled={isSubmitting} className="rounded-full">
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || updateProfile.isPending}>
+          <Button type="submit" disabled={isSubmitting || updateProfile.isPending} className="rounded-full">
             {isSubmitting || updateProfile.isPending ? "Saving..." : "Save Changes"}
           </Button>
         </div>

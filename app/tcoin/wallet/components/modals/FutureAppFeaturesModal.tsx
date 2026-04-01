@@ -10,6 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  walletBadgeClass,
+  walletPanelMutedClass,
+  walletSectionLabelClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 
 const balanceHistory = [
   { date: "2023-06-01", balance: 800 },
@@ -30,28 +35,37 @@ const charityContributionData = [
 export function FutureAppFeaturesModal() {
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        These are future dashboard features currently powered by illustrative sample data.
-      </p>
+      <div className="space-y-2">
+        <span className={walletBadgeClass}>Preview</span>
+        <p className="text-sm text-muted-foreground">
+          These concepts are still powered by illustrative sample data. They help us evaluate which insights deserve a permanent home later.
+        </p>
+      </div>
 
-      <section>
-        <h3 className="text-sm font-semibold">Balance Trend (Preview)</h3>
-        <div className="mt-2 h-56 w-full">
+      <section className={walletPanelMutedClass}>
+        <p className={walletSectionLabelClass}>Balance trend</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          A future view for showing how wallet balance changes over time at a glance.
+        </p>
+        <div className="mt-4 h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={balanceHistory}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="balance" stroke="#8884d8" />
+              <Line type="monotone" dataKey="balance" stroke="#0f7d84" strokeWidth={2.5} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </section>
 
-      <section>
-        <h3 className="text-sm font-semibold">Charity Mix Over Time (Preview)</h3>
-        <div className="mt-2 h-56 w-full">
+      <section className={walletPanelMutedClass}>
+        <p className={walletSectionLabelClass}>Charity mix over time</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          A reporting concept for showing how contributions shift across causes.
+        </p>
+        <div className="mt-4 h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={charityContributionData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -62,15 +76,15 @@ export function FutureAppFeaturesModal() {
                 type="monotone"
                 dataKey="TheShelter"
                 stackId="1"
-                stroke="#8884d8"
-                fill="#8884d8"
+                stroke="#0f7d84"
+                fill="#0f7d84"
               />
               <Area
                 type="monotone"
                 dataKey="TheFoodBank"
                 stackId="1"
-                stroke="#82ca9d"
-                fill="#82ca9d"
+                stroke="#74b5a0"
+                fill="#74b5a0"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -79,4 +93,3 @@ export function FutureAppFeaturesModal() {
     </div>
   );
 }
-

@@ -11,7 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@shared/components/ui/TextArea";
 import type { CityManagerStoreApplicationRecord, StoreLifecycleStatus } from "@shared/lib/merchantSignup/types";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
-import { walletPageClass } from "@tcoin/wallet/components/dashboard/authenticated-ui";
+import {
+  WalletPageIntro,
+  walletPageClass,
+  walletPanelMutedClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import {
@@ -159,11 +163,20 @@ export default function CityManagerPage() {
   return (
     <div className={mainClass}>
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold">City Manager</h1>
-            <p className="text-sm text-muted-foreground">Review and approve merchant applications.</p>
-          </div>
+        <WalletPageIntro
+          eyebrow="Operator workspace"
+          title="City Manager"
+          description="Review merchant applications, keep approvals moving, and give clear reasons when a store needs follow-up."
+          actions={(
+            <Button variant="outline" className="rounded-full" onClick={() => router.push("/dashboard?tab=more")}>
+              Back to More
+            </Button>
+          )}
+        />
+        <div className={`${walletPanelMutedClass} flex flex-wrap items-center justify-between gap-3`}>
+          <p className="text-sm text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{statusLabel[statusFilter] ?? statusFilter}</span> applications for this city.
+          </p>
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StoreLifecycleStatus)}>
               <SelectTrigger className="w-44">

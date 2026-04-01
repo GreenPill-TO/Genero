@@ -2,6 +2,13 @@ import React from "react";
 import { Button } from "@shared/components/ui/Button";
 import { useUpdateUserPreferencesMutation } from "@shared/hooks/useUserSettingsMutations";
 import { useUserSettings } from "@shared/hooks/useUserSettings";
+import {
+  walletBadgeClass,
+  walletChoiceCardClass,
+  walletPanelMutedClass,
+  walletSectionLabelClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
+import { cn } from "@shared/utils/classnames";
 
 type BiaOption = {
   id: string;
@@ -39,33 +46,34 @@ export function BiaPreferencesModal({ closeModal }: BiaPreferencesModalProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2 text-sm text-muted-foreground">
-        <p>
-          Your BIA selection helps us personalize local discovery and route certain voucher-related recommendations to
-          neighbourhood pools that are most relevant to you.
-        </p>
-        <p>
-          Choose one primary BIA and optionally add secondary BIAs for nearby areas you also frequent. This does not
-          restrict where you can spend.
-        </p>
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <span className={walletBadgeClass}>Neighbourhoods</span>
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            Your BIA selection helps personalize discovery and voucher routing toward the neighbourhood pools most relevant to you.
+          </p>
+          <p>
+            Choose one primary BIA and optionally add nearby secondary BIAs. This does not restrict where you can spend.
+          </p>
+        </div>
       </div>
 
       {!hasOptions ? (
-        <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">
+        <p className={`${walletPanelMutedClass} text-sm text-muted-foreground`}>
           No BIA options are available right now. Please try again shortly.
         </p>
       ) : (
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label htmlFor="bia-primary" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="space-y-4">
+          <div className={walletPanelMutedClass}>
+            <label htmlFor="bia-primary" className={walletSectionLabelClass}>
               Primary BIA
             </label>
             <select
               id="bia-primary"
               value={primaryBiaId}
               onChange={(event) => setPrimaryBiaId(event.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-3 w-full rounded-2xl border border-input bg-background px-3 py-2.5 text-sm"
             >
               {biaOptions.map((bia) => (
                 <option key={bia.id} value={bia.id}>
@@ -76,18 +84,27 @@ export function BiaPreferencesModal({ closeModal }: BiaPreferencesModalProps) {
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Secondary BIAs</p>
+            <p className={walletSectionLabelClass}>Secondary BIAs</p>
             {biaOptions
               .filter((bia) => bia.id !== primaryBiaId)
               .map((bia) => (
-                <label key={bia.id} className="flex items-center gap-2 rounded-md border border-border/60 px-3 py-2 text-sm">
+                <label
+                  key={bia.id}
+                  className={cn(
+                    walletChoiceCardClass,
+                    "flex cursor-pointer items-center gap-3",
+                    secondaryBiaIds.includes(bia.id)
+                      ? "border-teal-500/70 bg-teal-50 dark:bg-teal-500/10"
+                      : ""
+                  )}
+                >
                   <input
                     type="checkbox"
                     className="h-4 w-4"
                     checked={secondaryBiaIds.includes(bia.id)}
                     onChange={() => toggleSecondaryBia(bia.id)}
                   />
-                  <span>
+                  <span className="text-sm">
                     {bia.code} · {bia.name}
                   </span>
                 </label>
@@ -97,12 +114,13 @@ export function BiaPreferencesModal({ closeModal }: BiaPreferencesModalProps) {
       )}
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={closeModal}>
+        <Button type="button" variant="outline" onClick={closeModal} className="rounded-full">
           Close
         </Button>
         <Button
           type="button"
           onClick={() => void onSave()}
+          className="rounded-full"
           disabled={savePreferences.isPending || !hasOptions || !primaryBiaId}
         >
           {savePreferences.isPending ? "Saving BIA Selection…" : "Save BIA Selection"}

@@ -460,12 +460,19 @@ export function WalletHome({
           closeModal={closeModal}
         />
         <section className={walletPanelMutedClass}>
-          <h3 className="text-sm font-semibold">What this wallet optimises for</h3>
-          <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-            <li>Simple send and request flows with familiar labels and clear confirmation.</li>
-            <li>One source of truth for your balance and current CAD estimate.</li>
-            <li>Neighbourhood routing and charity defaults that work quietly in the background.</li>
-          </ul>
+          <h3 className="text-sm font-semibold">Need account settings?</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Wallet address, explorer access, appearance, charity defaults, and routing preferences now live together in More.
+          </p>
+          <div className="mt-4">
+            <button
+              type="button"
+              className={walletActionButtonClass}
+              onClick={() => router.push("/dashboard?tab=more")}
+            >
+              Open More
+            </button>
+          </div>
         </section>
       </div>
     </div>

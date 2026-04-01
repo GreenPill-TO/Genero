@@ -34,7 +34,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/
 import { Button } from "@shared/components/ui/Button";
 import { Badge } from "@shared/components/ui/badge";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
-import { walletPageClass } from "@tcoin/wallet/components/dashboard/authenticated-ui";
+import {
+  WalletPageIntro,
+  walletPageClass,
+  walletPanelMutedClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import {
   Select,
   SelectContent,
@@ -1324,26 +1328,31 @@ export default function AdminDashboardPage() {
   return (
     <div className={mainClass}>
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">Admin dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              Review on-ramp and off-ramp activity, leave notes for the operations team and update request statuses.
-            </p>
-            {adminName && (
-              <p className="mt-1 text-xs text-muted-foreground">Signed in as {adminName}</p>
-            )}
+        <WalletPageIntro
+          eyebrow="Administrator workspace"
+          title="Admin dashboard"
+          description="Review on-ramp and off-ramp activity, update request statuses, and keep the wallet’s control-plane operations healthy."
+          actions={(
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" className="rounded-full" onClick={() => router.push("/dashboard?tab=more")}>
+                Back to More
+              </Button>
+              <Button onClick={() => void loadRequests()} disabled={isFetching} variant="outline" className="rounded-full">
+                {isFetching ? "Refreshing…" : "Refresh data"}
+              </Button>
+            </div>
+          )}
+        />
+        <div className={`${walletPanelMutedClass} flex flex-wrap items-center justify-between gap-3`}>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            {adminName ? <p>Signed in as <span className="font-semibold text-foreground">{adminName}</span></p> : null}
+            <p>Operational views and control-plane signals for the TorontoCoin wallet stack.</p>
           </div>
-          <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
-            {lastSyncedAt && (
-              <span className="text-xs text-muted-foreground">
-                Synced {lastSyncedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-            <Button onClick={() => void loadRequests()} disabled={isFetching} variant="outline">
-              {isFetching ? "Refreshing…" : "Refresh data"}
-            </Button>
-          </div>
+          {lastSyncedAt && (
+            <span className="text-xs text-muted-foreground">
+              Synced {lastSyncedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
         </div>
 
       {loadError && (

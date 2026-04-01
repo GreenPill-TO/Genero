@@ -5,9 +5,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const openModal = vi.fn();
 const closeModal = vi.fn();
+const toastSuccessMock = vi.hoisted(() => vi.fn());
+const toastErrorMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@shared/contexts/ModalContext", () => ({
   useModal: () => ({ openModal, closeModal }),
+}));
+
+vi.mock("react-toastify", () => ({
+  toast: {
+    success: (...args: any[]) => toastSuccessMock(...args),
+    error: (...args: any[]) => toastErrorMock(...args),
+  },
 }));
 
 const createProfile = (overrides: Partial<any> = {}) => ({
@@ -71,6 +80,14 @@ vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
 vi.mock("@shared/hooks/useUserSettings", () => ({
   useUserSettings: () => ({
     bootstrap: {
+      user: {
+        id: 123,
+        fullName: "Taylor Example",
+        firstName: "Taylor",
+        username: "taylorexample",
+        email: "taylor@example.com",
+        profileImageUrl: null,
+      },
       preferences: {
         charity: "Food Bank",
         selectedCause: "Food Bank",
@@ -84,6 +101,14 @@ vi.mock("@shared/hooks/useUserSettings", () => ({
       },
     },
   }),
+}));
+
+vi.mock("@shared/hooks/useSendMoney", () => ({
+  useSendMoney: () => ({ senderWallet: "0xabc1234567890def1234567890abcdef1234567" }),
+}));
+
+vi.mock("@shared/hooks/useTokenBalance", () => ({
+  useTokenBalance: () => ({ balance: "12.34" }),
 }));
 
 const pushMock = vi.hoisted(() => vi.fn());
@@ -133,7 +158,10 @@ vi.mock("@tcoin/wallet/components/modals/UserProfileModal", () => ({
 import { MoreTab } from "./MoreTab";
 
 describe("MoreTab", () => {
+  const originalExplorerUrl = process.env.NEXT_PUBLIC_EXPLORER_URL;
+
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_EXPLORER_URL = "https://env.example/address/";
     useAuthMock.mockReturnValue({
       userData: {
         cubidData: {
@@ -154,11 +182,18 @@ describe("MoreTab", () => {
     cleanup();
     openModal.mockReset();
     closeModal.mockReset();
+    toastSuccessMock.mockReset();
+    toastErrorMock.mockReset();
     pushMock.mockReset();
     getMerchantApplicationStatusMock.mockReset();
     getMerchantApplicationStatusMock.mockResolvedValue({ state: "none" });
     updateVoucherPreferencesMock.mockReset();
     updateVoucherPreferencesMock.mockResolvedValue({ preference: {} });
+    if (originalExplorerUrl === undefined) {
+      delete process.env.NEXT_PUBLIC_EXPLORER_URL;
+    } else {
+      process.env.NEXT_PUBLIC_EXPLORER_URL = originalExplorerUrl;
+    }
   });
 
   it("does not render buy/top-up actions in the More tab", () => {
@@ -172,7 +207,7 @@ describe("MoreTab", () => {
 
     render(<MoreTab onOpenHistory={onOpenHistory} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /^History$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /History/i }));
 
     expect(onOpenHistory).toHaveBeenCalledTimes(1);
   });
@@ -204,7 +239,7 @@ describe("MoreTab", () => {
 
   it("opens the profile modal", () => {
     render(<MoreTab />);
-    fireEvent.click(screen.getByRole("button", { name: /Edit Profile/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Edit Profile/i })[0]);
     expect(openModal).toHaveBeenCalled();
     expect(openModal.mock.calls[0][0].title).toBe("Edit Profile");
   });
@@ -240,6 +275,29 @@ describe("MoreTab", () => {
   it("does not render admin controls for non-admin users", () => {
     render(<MoreTab />);
     expect(screen.queryByRole("button", { name: /Open Admin Dashboard/i })).toBeNull();
+  });
+
+  it("shows wallet address details and explorer access in More", () => {
+    render(<MoreTab />);
+
+    expect(screen.getByText(/Wallet address/i)).toBeTruthy();
+    expect(screen.getByText(/What this wallet optimises for/i)).toBeTruthy();
+    const explorerLink = screen.getByRole("link", { name: /View on Explorer/i });
+    expect(explorerLink.getAttribute("href")).toBe(
+      "https://env.example/address/0xabc1234567890def1234567890abcdef1234567"
+    );
+  });
+
+  it("copies the wallet address from More", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText },
+    });
+
+    render(<MoreTab />);
+    fireEvent.click(screen.getByRole("button", { name: /Copy address/i }));
+
+    expect(writeText).toHaveBeenCalledWith("0xabc1234567890def1234567890abcdef1234567");
   });
 
   it("shows the admin dashboard shortcut when the user is an admin", () => {

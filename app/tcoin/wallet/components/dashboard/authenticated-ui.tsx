@@ -16,6 +16,21 @@ export const walletBadgeClass =
 export const walletActionButtonClass =
   "rounded-full border border-slate-200/70 bg-white/90 px-3.5 py-1.5 text-[13px] font-medium text-slate-700 transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white sm:px-4 sm:py-2 sm:text-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-100 dark:hover:bg-white/[0.1]";
 
+export const walletSectionLabelClass =
+  "text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-300";
+
+export const walletMetricTileClass =
+  "rounded-[20px] border border-slate-200/70 bg-white/80 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none";
+
+export const walletActionRowClass =
+  "group flex w-full items-start justify-between gap-4 rounded-[22px] border border-slate-200/70 bg-white/82 px-4 py-4 text-left shadow-[0_18px_36px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-white/[0.08]";
+
+export const walletActionRowIconClass =
+  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200/80 bg-slate-50 text-slate-700 transition duration-200 group-hover:border-slate-300 group-hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100 dark:group-hover:bg-white/[0.08]";
+
+export const walletChoiceCardClass =
+  "w-full rounded-[22px] border border-slate-200/70 bg-white/82 p-4 text-left shadow-[0_18px_36px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-white/[0.08]";
+
 export function WalletPageIntro({
   eyebrow,
   title,

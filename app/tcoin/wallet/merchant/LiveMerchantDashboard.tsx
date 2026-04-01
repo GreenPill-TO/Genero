@@ -22,6 +22,10 @@ import { createRedemptionRequest, getRedemptionRequests } from "@shared/lib/edge
 import { assignStoreBia, saveStoreProfile } from "@shared/lib/edge/storeOperationsClient";
 import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
 import { toast } from "react-toastify";
+import {
+  WalletPageIntro,
+  walletPanelMutedClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 
 const CITY_SLUG = "tcoin";
 const bypassAuthInLocalDev = ["local", "development"].includes(
@@ -451,23 +455,30 @@ export function LiveMerchantDashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Merchant Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage store profile + BIA affiliation and submit/view redemption requests.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {lastSyncedAt && (
-            <span className="text-xs text-muted-foreground">
-              Synced {lastSyncedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          )}
-          <Button variant="outline" onClick={() => void loadData()} disabled={isLoadingData}>
-            {isLoadingData ? "Refreshing…" : "Refresh"}
-          </Button>
-        </div>
+      <WalletPageIntro
+        eyebrow="Merchant workspace"
+        title="Merchant Dashboard"
+        description="Manage store details, BIA affiliation, and redemption activity from one operations view."
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="rounded-full" onClick={() => router.push("/dashboard?tab=more")}>
+              Back to More
+            </Button>
+            <Button variant="outline" className="rounded-full" onClick={() => void loadData()} disabled={isLoadingData}>
+              {isLoadingData ? "Refreshing…" : "Refresh"}
+            </Button>
+          </div>
+        )}
+      />
+      <div className={`${walletPanelMutedClass} flex flex-wrap items-center justify-between gap-3`}>
+        <p className="text-sm text-muted-foreground">
+          Keep store profile, neighbourhood assignment, and redemption operations aligned from one place.
+        </p>
+        {lastSyncedAt && (
+          <span className="text-xs text-muted-foreground">
+            Synced {lastSyncedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
       </div>
 
       {loadError && (

@@ -1,6 +1,13 @@
 import React from "react";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
+import {
+  walletBadgeClass,
+  walletChoiceCardClass,
+  walletPanelMutedClass,
+  walletSectionLabelClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
+import { cn } from "@shared/utils/classnames";
 
 type VoucherPreferenceForm = {
   merchantStoreId: string;
@@ -23,22 +30,41 @@ export function VoucherRoutingPreferencesModal({
   onSave,
   isSaving,
 }: VoucherRoutingPreferencesModalProps) {
+  const trustOptions = [
+    {
+      value: "default",
+      title: "Default",
+      description: "Let the wallet decide using the normal routing rules.",
+    },
+    {
+      value: "trusted",
+      title: "Trusted",
+      description: "Prefer this route when it is available.",
+    },
+    {
+      value: "blocked",
+      title: "Blocked",
+      description: "Avoid this route even if it is otherwise available.",
+    },
+  ];
+
   return (
-    <div className="space-y-4">
-      <div className="space-y-2 text-sm text-muted-foreground">
-        <p>
-          Voucher routing preferences let you control how payments are routed when voucher paths are available for a
-          merchant or token.
-        </p>
-        <p>
-          Use these settings to trust, block, or keep default behavior for specific merchant/token combinations. If you
-          leave fields blank, the preference applies more broadly.
-        </p>
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <span className={walletBadgeClass}>Voucher routing</span>
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            Voucher routing preferences let you control how payments are routed when voucher paths are available for a merchant or token.
+          </p>
+          <p>
+            Leave the merchant or token fields blank to apply the rule more broadly. Use trusted or blocked only when you want to override normal wallet behaviour.
+          </p>
+        </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <label htmlFor="voucher-merchant-store-id" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="grid gap-4">
+        <div className={walletPanelMutedClass}>
+          <label htmlFor="voucher-merchant-store-id" className={walletSectionLabelClass}>
             Merchant Store ID (optional)
           </label>
           <Input
@@ -52,11 +78,12 @@ export function VoucherRoutingPreferencesModal({
               }))
             }
             placeholder="Merchant store id"
+            className="mt-3"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="voucher-token-address" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <div className={walletPanelMutedClass}>
+          <label htmlFor="voucher-token-address" className={walletSectionLabelClass}>
             Token Address (optional)
           </label>
           <Input
@@ -70,36 +97,43 @@ export function VoucherRoutingPreferencesModal({
               }))
             }
             placeholder="0x..."
+            className="mt-3"
           />
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="voucher-trust-status" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Trust Status
-          </label>
-          <select
-            id="voucher-trust-status"
-            value={voucherPreferenceForm.trustStatus}
-            onChange={(event) =>
-              setVoucherPreferenceForm((prev) => ({
-                ...prev,
-                trustStatus: event.target.value,
-              }))
-            }
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="default">Default</option>
-            <option value="trusted">Trusted</option>
-            <option value="blocked">Blocked</option>
-          </select>
+        <div className="space-y-3">
+          <p className={walletSectionLabelClass}>Trust status</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {trustOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={cn(
+                  walletChoiceCardClass,
+                  voucherPreferenceForm.trustStatus === option.value
+                    ? "border-teal-500/70 bg-teal-50 dark:bg-teal-500/10"
+                    : ""
+                )}
+                onClick={() =>
+                  setVoucherPreferenceForm((prev) => ({
+                    ...prev,
+                    trustStatus: option.value,
+                  }))
+                }
+              >
+                <p className="text-sm font-semibold text-slate-950 dark:text-white">{option.title}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{option.description}</p>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={closeModal}>
+        <Button type="button" variant="outline" onClick={closeModal} className="rounded-full">
           Close
         </Button>
-        <Button type="button" onClick={() => void onSave()} disabled={isSaving}>
+        <Button type="button" onClick={() => void onSave()} className="rounded-full" disabled={isSaving}>
           {isSaving ? "Saving Preference…" : "Save Voucher Preference"}
         </Button>
       </div>

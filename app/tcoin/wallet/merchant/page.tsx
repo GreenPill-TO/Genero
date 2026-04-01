@@ -27,7 +27,11 @@ import {
 } from "@shared/lib/edge/merchantApplicationsClient";
 import { createClient } from "@shared/lib/supabase/client";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
-import { walletPageClass } from "@tcoin/wallet/components/dashboard/authenticated-ui";
+import {
+  WalletPageIntro,
+  walletPageClass,
+  walletPanelMutedClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { LiveMerchantDashboard } from "./LiveMerchantDashboard";
@@ -564,12 +568,23 @@ export default function MerchantDashboardPage() {
   return (
     <div className={mainClass}>
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold">Merchant Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Apply to become a live merchant store in your city.</p>
-          </div>
-          <Badge variant="outline">Status: {lifecycleLabel[appState] ?? appState}</Badge>
+        <WalletPageIntro
+          eyebrow="Merchant workspace"
+          title="Merchant Dashboard"
+          description="Start, resume, or review your merchant application with the same signed-in wallet shell used everywhere else."
+          actions={(
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">Status: {lifecycleLabel[appState] ?? appState}</Badge>
+              <Button variant="outline" className="rounded-full" onClick={() => router.push("/dashboard?tab=more")}>
+                Back to More
+              </Button>
+            </div>
+          )}
+        />
+        <div className={walletPanelMutedClass}>
+          <p className="text-sm text-muted-foreground">
+            Use this workspace to complete onboarding, update merchant details, or continue into the live merchant dashboard after approval.
+          </p>
         </div>
  
 

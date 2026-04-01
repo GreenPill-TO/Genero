@@ -1,5 +1,4 @@
 import React from "react";
-import { FiCopy } from "react-icons/fi";
 import { Button } from "@shared/components/ui/Button";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
@@ -38,23 +37,6 @@ export function AccountCard({
     return isCad ? `$${formatted}` : `${formatted} TCOIN`;
   };
 
-  const shortenedAddress = (address: string) => {
-    if (address?.length <= 10) return address;
-    return `${address?.substring(0, 6)}...${address?.substring(address.length - 4)}`;
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard
-      .writeText(senderWallet)
-      .then(() => alert("Wallet address copied to clipboard!"))
-      .catch((error) => console.error("Copy failed:", error));
-  };
-
-  const explorerBaseUrl =
-    process.env.NEXT_PUBLIC_EXPLORER_URL ||
-    "https://explorer.example.com/address/";
-  const explorerHref = `${explorerBaseUrl}${senderWallet}`;
-
   return (
     <section className={`${walletPanelClass} flex h-full flex-col gap-6`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -75,29 +57,16 @@ export function AccountCard({
         <div className={`${walletPanelMutedClass} min-w-[220px] space-y-3`}>
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              Wallet address
+              Today&apos;s estimate
             </p>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium" title={senderWallet}>
-                {shortenedAddress(senderWallet)}
-              </span>
-              <button
-                onClick={handleCopy}
-                title="Copy wallet address"
-                className="rounded-full border border-border/70 p-2 transition hover:bg-background/70"
-              >
-                <FiCopy className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </div>
+            <p className="text-2xl font-semibold">{formatNumber(convertToCad(rest.balance), true)}</p>
+            <p className="text-sm text-muted-foreground">
+              A live CAD estimate for the TCOIN that is ready to spend right now.
+            </p>
           </div>
-          <a
-            href={explorerHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex text-sm font-medium underline"
-          >
-            View on Explorer
-          </a>
+          <p className="text-xs text-muted-foreground">
+            Wallet address, explorer access, and account settings now live in More.
+          </p>
         </div>
       </div>
 
@@ -138,14 +107,6 @@ export function AccountCard({
           onClick={onOpenTransactionHistory}
         >
           View transaction history
-        </Button>
-        <Button
-          type="button"
-          className="rounded-full px-5"
-          variant="outline"
-          onClick={handleCopy}
-        >
-          Copy wallet address
         </Button>
       </div>
     </section>

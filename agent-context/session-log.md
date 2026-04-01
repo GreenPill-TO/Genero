@@ -1,3 +1,45 @@
+## v1.92
+### Timestamp
+- 2026-03-31 23:49:00 EDT
+
+### Objective
+- Refactor the authenticated More tab into a clearer account centre and align its linked modals and workspaces with the same signed-in wallet UX.
+
+### What Changed
+- Rebuilt `/dashboard?tab=more` around a stronger account-centre layout with identity, wallet address and explorer access, defaults summaries, grouped settings/actions, and the moved wallet-optimisation guidance.
+- Removed wallet-address and optimisation explainer chrome from the authenticated home screen so `/dashboard` stays focused on balance, money movement, recents, and a handoff into More for account settings.
+- Restyled the More-linked modal bodies and operator pages to share calmer signed-in hierarchy and grouped task panels, including profile, theme, BIA, voucher-routing, charity, future-features, cash-out, merchant, city-manager, and admin surfaces.
+- Added focused regression coverage for the More tab, wallet home, account card, merchant page, and key modals, then updated the functional and technical specs to document the new account-centre model.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.test.tsx app/tcoin/wallet/components/modals/CharitySelectModal.test.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/merchant/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.tsx app/tcoin/wallet/components/dashboard/AccountCard.test.tsx app/tcoin/wallet/components/modals/ThemeSelectModal.tsx app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx app/tcoin/wallet/components/modals/VoucherRoutingPreferencesModal.tsx app/tcoin/wallet/components/modals/CharityContributionsModal.tsx app/tcoin/wallet/components/modals/CharitySelectModal.tsx app/tcoin/wallet/components/modals/FutureAppFeaturesModal.tsx app/tcoin/wallet/components/modals/OffRampModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/admin/page.tsx app/tcoin/wallet/city-manager/page.tsx app/tcoin/wallet/merchant/page.tsx app/tcoin/wallet/merchant/LiveMerchantDashboard.tsx app/tcoin/wallet/merchant/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.test.tsx`
+- `app/tcoin/wallet/components/modals/ThemeSelectModal.tsx`
+- `app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx`
+- `app/tcoin/wallet/components/modals/VoucherRoutingPreferencesModal.tsx`
+- `app/tcoin/wallet/components/modals/CharityContributionsModal.tsx`
+- `app/tcoin/wallet/components/modals/CharitySelectModal.tsx`
+- `app/tcoin/wallet/components/modals/FutureAppFeaturesModal.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/tcoin/wallet/merchant/LiveMerchantDashboard.tsx`
+- `app/tcoin/wallet/merchant/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.91
 ### Timestamp
 - 2026-03-31 23:56:00 EDT
