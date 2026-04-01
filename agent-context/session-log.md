@@ -1,3 +1,28 @@
+## v1.103
+### Timestamp
+- 2026-04-01 18:49:53 EDT
+
+### Objective
+- Unstick the Receive tab QR generator and stop showing a permanent loading state when the wallet’s shareable identifier is missing or arrives before the numeric user id.
+
+### What Changed
+- Refactored `ReceiveTab` so QR payload generation depends on the wallet `user_identifier` itself rather than the numeric `id`, which allows QR setup to proceed as soon as the shareable receive identity is available.
+- Added an explicit unavailable-state message for cases where the QR identifier is absent, replacing the indefinite “Loading QR Code...” fallback in `ReceiveCard`.
+- Added focused regressions for both the receive-tab identifier edge cases and the receive-card unavailable-state message, then documented the behavior in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.102
 ### Timestamp
 - 2026-04-01 18:44:15 EDT

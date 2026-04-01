@@ -28,6 +28,8 @@ export function ReceiveTab({
 
   const user_id = userData?.cubidData.id;
   const nano_id = userData?.cubidData.user_identifier;
+  const normalizedNanoId =
+    typeof nano_id === "string" && nano_id.trim() !== "" ? nano_id.trim() : null;
   const [qrCodeData, setQrCodeData] = useState("");
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");
   const [qrCadAmount, setQrCadAmount] = useState("");
@@ -37,13 +39,17 @@ export function ReceiveTab({
   const [openRequests, setOpenRequests] = useState<InvoicePayRequest[]>([]);
 
   useEffect(() => {
-    if (!user_id) return;
-    setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
+    if (!normalizedNanoId) {
+      setQrCodeData("");
+      return;
+    }
+
+    setQrCodeData(JSON.stringify({ nano_id: normalizedNanoId, timestamp: Date.now() }));
     const interval = setInterval(() => {
-      setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
+      setQrCodeData(JSON.stringify({ nano_id: normalizedNanoId, timestamp: Date.now() }));
     }, 2000);
     return () => clearInterval(interval);
-  }, [user_id, nano_id]);
+  }, [normalizedNanoId]);
 
   const handleQrTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^\d.]/g, "");
@@ -198,6 +204,11 @@ export function ReceiveTab({
         qrBgColor="#fff"
         qrFgColor="#000"
         qrWrapperClassName="bg-white p-1"
+        qrUnavailableReason={
+          normalizedNanoId
+            ? null
+            : "QR code is unavailable until your wallet identity finishes loading."
+        }
         requestContact={requestContact}
         onClearRequestContact={() => handleRequestContactChange(null)}
         contacts={contacts}

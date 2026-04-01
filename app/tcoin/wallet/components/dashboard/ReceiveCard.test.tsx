@@ -331,6 +331,19 @@ describe("ReceiveCard", () => {
     ).toBeTruthy();
   });
 
+  it("shows an unavailable message instead of permanent loading when QR identity is missing", () => {
+    renderReceiveCard({
+      qrCodeData: "",
+      qrUnavailableReason:
+        "QR code is unavailable until your wallet identity finishes loading.",
+    });
+
+    expect(screen.queryByText(/Loading QR Code/i)).toBeNull();
+    expect(
+      screen.getByText(/QR code is unavailable until your wallet identity finishes loading/i)
+    ).toBeTruthy();
+  });
+
   it("creates a targeted request after confirmation", async () => {
     const requestContact = {
       id: 15,

@@ -25,6 +25,7 @@ export function ReceiveCard({
   qrBgColor,
   qrFgColor,
   qrWrapperClassName,
+  qrUnavailableReason = null,
   tokenLabel = "Tcoin",
   requestContact = null,
   onClearRequestContact,
@@ -47,6 +48,7 @@ export function ReceiveCard({
   qrBgColor?: string;
   qrFgColor?: string;
   qrWrapperClassName?: string;
+  qrUnavailableReason?: string | null;
   tokenLabel?: string;
   requestContact?: Hypodata | null;
   onClearRequestContact?: () => void;
@@ -440,6 +442,8 @@ export function ReceiveCard({
                   fgColor={qrFgColor ?? (isDarkMode ? "#fff" : "#000")}
                 />
               </>
+            ) : qrUnavailableReason ? (
+              <p className="text-center text-sm text-muted-foreground">{qrUnavailableReason}</p>
             ) : (
               <p className="text-sm text-muted-foreground">Loading QR Code...</p>
             )

@@ -35,6 +35,7 @@ const createPaymentRequestMock = vi.hoisted(() =>
   }))
 );
 const cancelPaymentRequestMock = vi.hoisted(() => vi.fn(async () => ({ request: { id: 5 } })));
+const useAuthMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
   getOutgoingPaymentRequests: getOutgoingPaymentRequestsMock,
@@ -43,16 +44,7 @@ vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
 }));
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
-  useAuth: () => ({
-    userData: {
-      cubidData: {
-        id: 42,
-        user_identifier: "nano-1",
-        wallet_address: "0xabc",
-        full_name: "Hubert",
-      },
-    },
-  }),
+  useAuth: () => useAuthMock(),
 }));
 
 vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
@@ -75,6 +67,16 @@ describe("ReceiveTab", () => {
     getOutgoingPaymentRequestsMock.mockClear();
     createPaymentRequestMock.mockClear();
     cancelPaymentRequestMock.mockClear();
+    useAuthMock.mockReturnValue({
+      userData: {
+        cubidData: {
+          id: 42,
+          user_identifier: "nano-1",
+          wallet_address: "0xabc",
+          full_name: "Hubert",
+        },
+      },
+    });
   });
 
   afterEach(() => {
@@ -145,5 +147,51 @@ describe("ReceiveTab", () => {
       requestId: 5,
       appContext: { citySlug: "tcoin" },
     });
+  });
+
+  it("generates QR payloads when a wallet identifier exists even if the numeric user id is missing", async () => {
+    useAuthMock.mockReturnValue({
+      userData: {
+        cubidData: {
+          id: null,
+          user_identifier: "nano-only",
+          wallet_address: "0xabc",
+          full_name: "Hubert",
+        },
+      },
+    });
+
+    render(<ReceiveTab />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(receiveCardProps.qrCodeData).toContain("\"nano_id\":\"nano-only\"");
+    expect(receiveCardProps.qrUnavailableReason).toBeNull();
+  });
+
+  it("surfaces an unavailable message when no wallet identifier is present", async () => {
+    useAuthMock.mockReturnValue({
+      userData: {
+        cubidData: {
+          id: 42,
+          user_identifier: null,
+          wallet_address: "0xabc",
+          full_name: "Hubert",
+        },
+      },
+    });
+
+    render(<ReceiveTab />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(receiveCardProps.qrCodeData).toBe("");
+    expect(receiveCardProps.qrUnavailableReason).toBe(
+      "QR code is unavailable until your wallet identity finishes loading."
+    );
   });
 });
