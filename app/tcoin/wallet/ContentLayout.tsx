@@ -1,6 +1,7 @@
 // app/ClientLayout.tsx
 "use client";
 
+import React from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useIndexerTrigger } from "@shared/hooks/useIndexerTrigger";
 import { cn } from "@shared/utils/classnames";
@@ -28,7 +29,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     "min-h-screen",
     "flex flex-col justify-between",
     "bg-background",
-    "text-foreground text-sm"
+    "text-foreground text-sm",
+    !isPublic && "wallet-auth-frame"
   );
 
   useEffect(() => {
@@ -44,12 +46,13 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <section className={bodyClass}>
+    <section data-testid="wallet-layout-root" className={bodyClass}>
       {!isPublic && <Navbar title="TCOIN" />}
       <div
+        data-testid="wallet-layout-scroll-region"
         className={cn(
           !isPublic &&
-            "wallet-auth-shell flex-grow flex flex-col pt-16 bg-background text-foreground"
+            "wallet-auth-shell wallet-auth-scroll-region flex-grow flex flex-col pt-16 bg-background text-foreground"
         )}
       >
         {children}

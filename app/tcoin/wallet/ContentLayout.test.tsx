@@ -1,0 +1,69 @@
+/** @vitest-environment jsdom */
+import React from "react";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const useAuthMock = vi.hoisted(() => vi.fn());
+const usePathnameMock = vi.hoisted(() => vi.fn());
+const pushMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@shared/api/hooks/useAuth", () => ({
+  useAuth: () => useAuthMock(),
+}));
+
+vi.mock("@shared/hooks/useIndexerTrigger", () => ({
+  useIndexerTrigger: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+  usePathname: () => usePathnameMock(),
+}));
+
+vi.mock("@tcoin/wallet/components/navbar", () => ({
+  __esModule: true,
+  default: () => <div data-testid="wallet-navbar" />,
+}));
+
+import ContentLayout from "./ContentLayout";
+
+describe("ContentLayout", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  beforeEach(() => {
+    useAuthMock.mockReturnValue({
+      isLoading: false,
+      isAuthenticated: true,
+    });
+    usePathnameMock.mockReturnValue("/dashboard");
+    pushMock.mockReset();
+  });
+
+  it("marks authenticated non-public routes as a dedicated mobile scroll frame", () => {
+    render(
+      <ContentLayout>
+        <div>dashboard</div>
+      </ContentLayout>
+    );
+
+    expect(screen.getByTestId("wallet-layout-root").className).toContain("wallet-auth-frame");
+    expect(screen.getByTestId("wallet-layout-scroll-region").className).toContain("wallet-auth-scroll-region");
+    expect(screen.getByTestId("wallet-navbar")).toBeTruthy();
+  });
+
+  it("does not apply the authenticated scroll frame on public routes", () => {
+    usePathnameMock.mockReturnValue("/");
+
+    render(
+      <ContentLayout>
+        <div>public</div>
+      </ContentLayout>
+    );
+
+    expect(screen.getByTestId("wallet-layout-root").className).not.toContain("wallet-auth-frame");
+    expect(screen.getByTestId("wallet-layout-scroll-region").className).toBe("");
+    expect(screen.queryByTestId("wallet-navbar")).toBeNull();
+  });
+});

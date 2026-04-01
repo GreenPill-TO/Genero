@@ -170,4 +170,47 @@
     background: rgba(255, 255, 255, 0.04);
     box-shadow: none;
   }
+
+  @media (max-width: 1023px) {
+    .wallet-auth-frame {
+      height: 100dvh;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
+    .wallet-auth-frame .wallet-auth-scroll-region {
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(8, 145, 178, 0.28) transparent;
+    }
+
+    .wallet-auth-frame .wallet-auth-scroll-region::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .wallet-auth-frame .wallet-auth-scroll-region::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .wallet-auth-frame .wallet-auth-scroll-region::-webkit-scrollbar-thumb {
+      border: 3px solid transparent;
+      border-radius: 999px;
+      background: rgba(8, 145, 178, 0.22);
+      background-clip: padding-box;
+    }
+
+    .dark .wallet-auth-frame .wallet-auth-scroll-region {
+      scrollbar-color: rgba(94, 234, 212, 0.28) transparent;
+    }
+
+    .dark .wallet-auth-frame .wallet-auth-scroll-region::-webkit-scrollbar-thumb {
+      background: rgba(94, 234, 212, 0.22);
+      background-clip: padding-box;
+    }
+  }
 }

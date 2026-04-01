@@ -1,3 +1,27 @@
+## v1.100
+### Timestamp
+- 2026-04-01 17:46:33 EDT
+
+### Objective
+- Stop authenticated mobile and tablet layouts from shifting sideways between tab changes when the footer is visible and scrollbar presence changes.
+
+### What Changed
+- Marked authenticated non-public wallet routes as a dedicated mobile/tablet frame and inner scroll region so the signed-in shell, not the viewport, owns vertical scrolling under `1024px`.
+- Added shared authenticated scrollbar styling that reserves a stable gutter, keeps the scrollbar thin and low-contrast, and lets it sit inside the shell instead of pushing the whole layout left and right as tabs change height.
+- Added a focused `ContentLayout` regression test to confirm the scroll-frame classes apply only to authenticated non-public wallet routes, then documented the behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/ContentLayout.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/ContentLayout.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.99
 ### Timestamp
 - 2026-04-01 17:43:39 EDT
