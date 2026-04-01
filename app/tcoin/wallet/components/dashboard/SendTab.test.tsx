@@ -10,6 +10,13 @@ const useSendMoneyMock = vi.hoisted(() =>
     getLastTransferRecord: vi.fn(),
   })
 );
+const useCameraAvailabilityMock = vi.hoisted(() =>
+  vi.fn().mockReturnValue({
+    hasCamera: true,
+    hasMultipleCameras: true,
+    isCheckingCamera: false,
+  })
+);
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -31,6 +38,10 @@ const useTokenBalanceMock = vi.hoisted(() =>
 
 vi.mock("@shared/hooks/useTokenBalance", () => ({
   useTokenBalance: useTokenBalanceMock,
+}));
+
+vi.mock("@shared/hooks/useCameraAvailability", () => ({
+  useCameraAvailability: useCameraAvailabilityMock,
 }));
 
 const invoiceRequests = [
@@ -169,6 +180,12 @@ afterEach(() => {
   markPaymentRequestPaidMock.mockClear();
   getIncomingPaymentRequestsMock.mockClear();
   useTokenBalanceMock.mockClear();
+  useCameraAvailabilityMock.mockReset();
+  useCameraAvailabilityMock.mockReturnValue({
+    hasCamera: true,
+    hasMultipleCameras: true,
+    isCheckingCamera: false,
+  });
 });
 
 describe("SendTab", () => {
@@ -190,6 +207,19 @@ describe("SendTab", () => {
     fireEvent.click(screen.getByText("Scan QR Code"));
     expect(screen.getByText("Scan QR")).toBeTruthy();
     expect(screen.getByText("qr-modal")).toBeTruthy();
+  });
+
+  it("hides scan actions when the device reports no camera", () => {
+    useCameraAvailabilityMock.mockReturnValue({
+      hasCamera: false,
+      hasMultipleCameras: false,
+      isCheckingCamera: false,
+    });
+
+    render(<SendTab recipient={null} />);
+
+    expect(screen.queryByText("Scan QR Code")).toBeNull();
+    expect(screen.queryByText("Scan QR")).toBeNull();
   });
 
   it("passes numeric userBalance to SendCard", () => {

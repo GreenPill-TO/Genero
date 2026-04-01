@@ -4,6 +4,7 @@ import { Scanner } from '@yudiel/react-qr-scanner';
 import { useAuth } from '@shared/api/hooks/useAuth';
 import { toast } from 'react-toastify';
 import { useControlVariables } from '@shared/hooks/useGetLatestExchangeRate';
+import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
 import {
   connectWalletContact,
   lookupWalletUserByIdentifier,
@@ -28,26 +29,11 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
 }: any) => {
   // State to track the current facing mode
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
-  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
   // Optionally show a loading indicator until the scanner is mounted
   const [loading, setLoading] = useState(true);
+  const { hasCamera, hasMultipleCameras, isCheckingCamera } = useCameraAvailability();
   const { userData } = useAuth();
   const { exchangeRate } = useControlVariables()
-
-  // Check if multiple video input devices exist.
-  useEffect(() => {
-    const checkDevices = async () => {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoInputs = devices.filter((device) => device.kind === 'videoinput');
-        setHasMultipleCameras(videoInputs.length > 1);
-      } catch (error) {
-        console.error('Error enumerating devices:', error);
-      }
-    };
-
-    checkDevices();
-  }, []);
 
   // Listen for the Escape key to close the modal
   useEffect(() => {
@@ -112,26 +98,35 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
 
   // Once the component mounts, assume the scanner is ready after a short delay.
   useEffect(() => {
+    if (!hasCamera) {
+      setLoading(false);
+      return;
+    }
+
     const timer = setTimeout(() => setLoading(false), 1000);
     return () => clearTimeout(timer);
-  }, [facingMode]);
+  }, [facingMode, hasCamera]);
 
   return (
     <div className="p-4">
       <div className="relative">
-        {loading && (
+        {loading && hasCamera && (
           <p className="absolute z-10 text-gray-700">Loading camera...</p>
         )}
-        <Scanner
-          onScan={handleScan}
-          onError={handleError}
-          // Pass the camera constraints – flipping the camera is as simple as toggling the facingMode value.
-          constraints={{ facingMode }}
-          // Style to ensure the video fills the container.
-          style={{ width: '100%', height: '100%' } as any}
-          className="object-cover"
-        />
-        {hasMultipleCameras && (
+        {!hasCamera && !isCheckingCamera ? (
+          <div className="rounded-lg border border-gray-300 bg-gray-50 p-6 text-sm text-gray-700">
+            This device does not report an available camera, so QR scanning is unavailable here.
+          </div>
+        ) : (
+          <Scanner
+            onScan={handleScan}
+            onError={handleError}
+            constraints={{ facingMode }}
+            style={{ width: '100%', height: '100%' } as any}
+            className="object-cover"
+          />
+        )}
+        {hasCamera && hasMultipleCameras && (
           <button
             onClick={handleFlipCamera}
             className="absolute bottom-2 right-2 bg-black text-white border rounded p-1 text-sm"

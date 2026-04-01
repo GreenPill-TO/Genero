@@ -4,6 +4,7 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
+import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
 import {
   dismissPaymentRequest,
   getIncomingPaymentRequests,
@@ -106,6 +107,7 @@ const resolveTransactionId = (
 
 export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps) {
   const { userData } = useAuth();
+  const { hasCamera, isCheckingCamera } = useCameraAvailability();
   const { exchangeRate } = useControlVariables();
   const safeExchangeRate =
     typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
@@ -631,6 +633,12 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     void fetchIncomingRequests();
   }, [fetchIncomingRequests]);
 
+  useEffect(() => {
+    if (!isCheckingCamera && !hasCamera && activeAction === "scan") {
+      setActiveAction("manual");
+    }
+  }, [activeAction, hasCamera, isCheckingCamera]);
+
   const extractAndDecodeBase64 = (url: string) => {
     try {
       const urlObj = new URL(url);
@@ -695,14 +703,16 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       >
         Manual
       </Button>
-      <Button
-        type="button"
-        variant={activeAction === "scan" ? "default" : "outline"}
-        onClick={handleScanClick}
-        className="min-w-[120px]"
-      >
-        Scan QR Code
-      </Button>
+      {hasCamera ? (
+        <Button
+          type="button"
+          variant={activeAction === "scan" ? "default" : "outline"}
+          onClick={handleScanClick}
+          className="min-w-[120px]"
+        >
+          Scan QR Code
+        </Button>
+      ) : null}
       <Button
         type="button"
         variant={activeAction === "link" ? "default" : "outline"}
@@ -759,7 +769,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
         />
       )}
 
-      {activeAction === "scan" && (
+      {activeAction === "scan" && hasCamera && (
         <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Scan QR</h2>

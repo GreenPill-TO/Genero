@@ -1,3 +1,35 @@
+## v1.97
+### Timestamp
+- 2026-04-01 17:32:00 EDT
+
+### Objective
+- Hide scan controls on devices without a reported camera and keep QR-scan flows from presenting broken camera UI there.
+
+### What Changed
+- Added a shared `useCameraAvailability()` hook that detects whether the browser reports any `videoinput` devices, along with whether multiple cameras are available.
+- Updated wallet and sparechange scan entry points to hide header and send-flow scan buttons when no camera is available, and prevented SpareChange’s deferred `openQR` flow from reopening the scanner on camera-less devices.
+- Refactored both QR-scan modals to reuse the shared camera capability state, keep flip-camera support when multiple cameras exist, and show a clear non-camera fallback message instead of always mounting the scanner.
+- Added focused tests for the new camera hook plus wallet navbar and send-tab camera gating, then updated the functional and technical specs to document the capability rule.
+
+### Verification
+- `pnpm exec eslint shared/hooks/useCameraAvailability.ts shared/hooks/useCameraAvailability.test.tsx app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/SendTab.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx app/tcoin/wallet/components/modals/QrScanModal.tsx app/tcoin/sparechange/components/navbar/Navbar.tsx app/tcoin/sparechange/components/modals/QrScanModal.tsx app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+- `pnpm exec vitest run shared/hooks/useCameraAvailability.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+
+### Files Edited
+- `shared/hooks/useCameraAvailability.ts`
+- `shared/hooks/useCameraAvailability.test.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `app/tcoin/wallet/components/modals/QrScanModal.tsx`
+- `app/tcoin/sparechange/components/navbar/Navbar.tsx`
+- `app/tcoin/sparechange/components/modals/QrScanModal.tsx`
+- `app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.96
 ### Timestamp
 - 2026-04-01 17:25:00 EDT

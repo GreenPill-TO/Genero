@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
 import { useModal } from "@shared/contexts/ModalContext";
+import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
 import { cn } from "@shared/utils/classnames";
 
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
@@ -26,6 +27,7 @@ const PHONE_BREAKPOINT = 768;
 export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
   const { isAuthenticated, userData, signOut } = useAuth();
+  const { hasCamera } = useCameraAvailability();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
@@ -219,7 +221,7 @@ export default function Navbar({ title }: { title?: string }) {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggleButton />
-            {isAuthenticated && (
+            {isAuthenticated && hasCamera && (
               <Button
                 variant="ghost"
                 aria-label="Open QR scanner"

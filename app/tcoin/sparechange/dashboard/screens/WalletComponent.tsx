@@ -39,6 +39,7 @@ import {
 import QRCode from "react-qr-code";
 import { toast } from "react-toastify";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
+import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
 import useDarkMode from "@shared/hooks/useDarkMode";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { adminInsertNotification, insertSuccessNotification } from "@shared/utils/insertNotification";
@@ -454,25 +455,27 @@ function SendCard({
         {/* If no recipient is selected, show two options */}
         {!toSendData && (
           <div className="space-y-2">
-            <Button
-              className="w-full"
-              onClick={() => {
-                openModal({
-                  content: (
-                    <QrScanModal
-                      setTcoin={setTcoin}
-                      setCad={setCad}
-                      setToSendData={setToSendData}
-                      closeModal={closeModal}
-                    />
-                  ),
-                  title: "Scan QR to Pay",
-                  description: "Use your device's camera to scan a QR code for payment.",
-                });
-              }}
-            >
-              <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
-            </Button>
+            {hasCamera ? (
+              <Button
+                className="w-full"
+                onClick={() => {
+                  openModal({
+                    content: (
+                      <QrScanModal
+                        setTcoin={setTcoin}
+                        setCad={setCad}
+                        setToSendData={setToSendData}
+                        closeModal={closeModal}
+                      />
+                    ),
+                    title: "Scan QR to Pay",
+                    description: "Use your device's camera to scan a QR code for payment.",
+                  });
+                }}
+              >
+                <LuCamera className="mr-2 h-4 w-4" /> Scan QR to Pay
+              </Button>
+            ) : null}
             <Button
               className="w-full"
               onClick={() => {
@@ -1020,6 +1023,7 @@ export function MobileWalletDashboardComponent({
   ];
 
   const { openModal, closeModal } = useModal();
+  const { hasCamera } = useCameraAvailability();
   const { userData } = useAuth();
   const activeProfile = userData?.cubidData?.activeProfile;
   const [balance, setBalance] = useState(1000);
@@ -1119,7 +1123,12 @@ export function MobileWalletDashboardComponent({
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (localStorage.getItem("openQR")) {
+      if (!hasCamera && localStorage.getItem("openQR")) {
+        localStorage.removeItem("openQR")
+        return
+      }
+
+      if (hasCamera && localStorage.getItem("openQR")) {
         openModal({
           content: (
             <QrScanModal
@@ -1138,7 +1147,7 @@ export function MobileWalletDashboardComponent({
     return () => {
       clearInterval(interval)
     }
-  }, [])
+  }, [closeModal, hasCamera, openModal])
 
   // Number formatting helper.
   const formatNumber = (value: string, isCad: boolean) => {

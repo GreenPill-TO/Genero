@@ -7,6 +7,7 @@ import Navbar from "./Navbar";
 const openModal = vi.fn();
 const closeModal = vi.fn();
 const signOut = vi.fn();
+const useCameraAvailabilityMock = vi.fn();
 
 const useAuthMock = vi.fn();
 
@@ -24,6 +25,10 @@ vi.mock("@shared/components/ui/dropdown-menu", () => ({
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock("@shared/hooks/useCameraAvailability", () => ({
+  useCameraAvailability: () => useCameraAvailabilityMock(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -73,6 +78,11 @@ describe("Navbar session control", () => {
       },
       signOut,
     });
+    useCameraAvailabilityMock.mockReturnValue({
+      hasCamera: true,
+      hasMultipleCameras: true,
+      isCheckingCamera: false,
+    });
   });
 
   afterEach(() => {
@@ -117,6 +127,18 @@ describe("Navbar session control", () => {
     expect(openModal.mock.calls[0][0].title).toBe("Scan QR");
     expect(openModal.mock.calls[0][0].elSize).toBe("4xl");
     expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+  });
+
+  it("hides the camera button when the device reports no camera", () => {
+    useCameraAvailabilityMock.mockReturnValue({
+      hasCamera: false,
+      hasMultipleCameras: false,
+      isCheckingCamera: false,
+    });
+
+    render(<Navbar />);
+
+    expect(screen.queryByRole("button", { name: /open qr scanner/i })).toBeNull();
   });
 
   it("stays visible on desktop when hide-header is dispatched", () => {
