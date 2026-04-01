@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const useAuthMock = vi.hoisted(() => vi.fn());
 const useControlPlaneAccessMock = vi.hoisted(() => vi.fn());
 const replaceMock = vi.hoisted(() => vi.fn());
+const pushMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
 const selectResponses = vi.hoisted(() => ({
   interac_transfer: { data: [], error: null as any },
@@ -68,7 +69,11 @@ vi.mock("@shared/api/hooks/useControlPlaneAccess", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => ({ replace: replaceMock, push: pushMock }),
+}));
+
+vi.mock("@tcoin/wallet/components/DashboardFooter", () => ({
+  DashboardFooter: () => <div data-testid="dashboard-footer" />,
 }));
 
 vi.mock("@shared/lib/supabase/client", () => ({
@@ -133,6 +138,7 @@ describe("AdminDashboardPage", () => {
       isLoading: false,
     });
     replaceMock.mockReset();
+    pushMock.mockReset();
     fetchMock.mockReset();
     fetchMock.mockImplementation(async () => createFetchResponse({}));
     mockFrom.mockClear();
@@ -179,6 +185,7 @@ describe("AdminDashboardPage", () => {
 
     expect(replaceMock).toHaveBeenCalledWith("/dashboard");
     expect(screen.getByText(/Restricted area/i)).toBeTruthy();
+    expect(screen.getByTestId("dashboard-footer")).toBeTruthy();
   });
 
   it("renders ramp requests returned by Supabase", async () => {
@@ -234,6 +241,10 @@ describe("AdminDashboardPage", () => {
       expect(screen.getByText(/Request #4/)).toBeTruthy();
     });
 
+    const pageRoot = screen.getByText(/Admin dashboard/i).closest("div[class*='lg:pl-40']");
+    expect(pageRoot?.className).toContain("lg:pl-40");
+    expect(pageRoot?.className).toContain("xl:pl-44");
+    expect(screen.getByTestId("dashboard-footer")).toBeTruthy();
     expect(screen.getByText(/Dana/)).toBeTruthy();
     expect(screen.getByText(/lee@example.com/)).toBeTruthy();
     expect(screen.getByText(/1 awaiting review/i)).toBeTruthy();

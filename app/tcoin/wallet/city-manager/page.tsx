@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@shared/components/ui/TextArea";
 import type { CityManagerStoreApplicationRecord, StoreLifecycleStatus } from "@shared/lib/merchantSignup/types";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
+import { walletPageClass } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import {
@@ -18,6 +19,7 @@ import {
   getCityManagerStores,
   rejectCityManagerStore,
 } from "@shared/lib/edge/storeOperationsClient";
+import { cn } from "@shared/utils/classnames";
 
 const CITY_SLUG = "tcoin";
 
@@ -114,7 +116,7 @@ export default function CityManagerPage() {
     }
   };
 
-  const mainClass = "font-sans pb-24 p-4 sm:p-8 lg:pb-8 lg:pl-28 bg-background text-foreground min-h-screen";
+  const mainClass = cn(walletPageClass, "font-sans min-h-screen text-foreground lg:pl-40 xl:pl-44");
 
   const handleTabChange = (next: string) => {
     if (next === "home") {

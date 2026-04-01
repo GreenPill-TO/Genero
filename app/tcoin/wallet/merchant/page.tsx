@@ -27,9 +27,11 @@ import {
 } from "@shared/lib/edge/merchantApplicationsClient";
 import { createClient } from "@shared/lib/supabase/client";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
+import { walletPageClass } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { LiveMerchantDashboard } from "./LiveMerchantDashboard";
+import { cn } from "@shared/utils/classnames";
 
 const CITY_SLUG = "tcoin";
 const MERCHANT_ASSET_BUCKET = "merchant_assets";
@@ -137,7 +139,7 @@ export default function MerchantDashboardPage() {
   const isLive = appState === "live";
 
   const storeId = status?.storeId ?? null;
-  const mainClass = "font-sans pb-24 p-4 sm:p-8 lg:pb-8 lg:pl-28 bg-background text-foreground min-h-screen";
+  const mainClass = cn(walletPageClass, "font-sans min-h-screen text-foreground lg:pl-40 xl:pl-44");
 
   const handleTabChange = (next: string) => {
     if (next === "home") {

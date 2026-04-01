@@ -1,3 +1,30 @@
+## v1.91
+### Timestamp
+- 2026-03-31 23:56:00 EDT
+
+### Objective
+- Align the authenticated More-linked operator pages with the shared dashboard shell and navigation chrome.
+
+### What Changed
+- Switched `/city-manager` and `/merchant` onto the shared authenticated `walletPageClass` wrapper so they inherit the same dashboard padding and desktop sidebar offsets as `/dashboard`.
+- Refactored `/admin` to use that same shell across loading, restricted, error, and normal states, and mounted the shared `DashboardFooter` so the side and bottom navigation stay available there too.
+- Added focused route regression coverage for the city-manager, merchant, and admin pages, and updated the functional and technical specs to document the shared shell requirement for More-linked authenticated routes.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/merchant/page.test.tsx app/tcoin/wallet/admin/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/city-manager/page.tsx app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/merchant/page.tsx app/tcoin/wallet/merchant/page.test.tsx app/tcoin/wallet/admin/page.tsx app/tcoin/wallet/admin/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/city-manager/page.test.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/tcoin/wallet/merchant/page.test.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/admin/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.90
 ### Timestamp
 - 2026-03-31 23:24:02 EDT

@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const useAuthMock = vi.hoisted(() => vi.fn());
@@ -52,5 +52,25 @@ describe("CityManagerPage", () => {
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith("/dashboard");
     });
+  });
+
+  it("uses the shared dashboard shell and footer", async () => {
+    useControlPlaneAccessMock.mockReturnValue({
+      data: {
+        canAccessCityManager: true,
+      },
+      error: null,
+      isLoading: false,
+    });
+
+    const { container } = render(<CityManagerPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/City Manager/i)).toBeTruthy();
+    });
+
+    expect((container.firstChild as HTMLElement).className).toContain("lg:pl-40");
+    expect((container.firstChild as HTMLElement).className).toContain("xl:pl-44");
+    expect(screen.getByTestId("dashboard-footer")).toBeTruthy();
   });
 });
