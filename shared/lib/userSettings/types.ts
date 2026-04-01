@@ -23,6 +23,7 @@ export type UserSettingsBiaOption = {
 export type UserSettingsUser = {
   id: number;
   cubidId: string;
+  userIdentifier: string | null;
   email: string | null;
   phone: string | null;
   fullName: string | null;

@@ -445,7 +445,7 @@ export async function getUserSettingsBootstrap(options: {
       options.supabase
         .from("users")
         .select(
-          "id,cubid_id,email,phone,full_name,nickname,username,country,profile_image_url,has_completed_intro,is_new_user"
+          "id,cubid_id,user_identifier,email,phone,full_name,nickname,username,country,profile_image_url,has_completed_intro,is_new_user"
         )
         .eq("id", options.userId)
         .limit(1)
@@ -510,6 +510,7 @@ export async function getUserSettingsBootstrap(options: {
     user: {
       id: Number(userRow.id),
       cubidId: typeof userRow.cubid_id === "string" ? userRow.cubid_id : "",
+      userIdentifier: toNullableString(userRow.user_identifier),
       email: toNullableString(userRow.email),
       phone: toNullableString(userRow.phone),
       fullName: toNullableString(userRow.full_name),
@@ -1048,7 +1049,7 @@ function mapBootstrapToCubidData(bootstrap: Awaited<ReturnType<typeof getUserSet
     cubid_score_details: null,
     updated_at: null,
     created_at: null,
-    user_identifier: null,
+    user_identifier: bootstrap.user.userIdentifier,
     given_names: bootstrap.user.firstName || null,
     family_name: bootstrap.user.lastName || null,
     nickname: bootstrap.user.nickname,

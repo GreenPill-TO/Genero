@@ -68,6 +68,7 @@ describe("ReceiveTab", () => {
     createPaymentRequestMock.mockClear();
     cancelPaymentRequestMock.mockClear();
     useAuthMock.mockReturnValue({
+      isLoadingUser: false,
       userData: {
         cubidData: {
           id: 42,
@@ -151,6 +152,7 @@ describe("ReceiveTab", () => {
 
   it("generates QR payloads when a wallet identifier exists even if the numeric user id is missing", async () => {
     useAuthMock.mockReturnValue({
+      isLoadingUser: false,
       userData: {
         cubidData: {
           id: null,
@@ -173,6 +175,7 @@ describe("ReceiveTab", () => {
 
   it("surfaces an unavailable message when no wallet identifier is present", async () => {
     useAuthMock.mockReturnValue({
+      isLoadingUser: false,
       userData: {
         cubidData: {
           id: 42,
@@ -191,7 +194,25 @@ describe("ReceiveTab", () => {
 
     expect(receiveCardProps.qrCodeData).toBe("");
     expect(receiveCardProps.qrUnavailableReason).toBe(
-      "QR code is unavailable until your wallet identity finishes loading."
+      "QR code is unavailable because your wallet identity is missing."
+    );
+  });
+
+  it("surfaces a loading message while the authenticated user record is still resolving", async () => {
+    useAuthMock.mockReturnValue({
+      isLoadingUser: true,
+      userData: null,
+    });
+
+    render(<ReceiveTab />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(receiveCardProps.qrCodeData).toBe("");
+    expect(receiveCardProps.qrUnavailableReason).toBe(
+      "QR code is still loading your wallet identity."
     );
   });
 });

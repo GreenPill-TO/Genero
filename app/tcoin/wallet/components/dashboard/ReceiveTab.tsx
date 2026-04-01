@@ -23,7 +23,7 @@ export function ReceiveTab({
   contacts,
   showQrCode = true,
 }: ReceiveTabProps) {
-  const { userData } = useAuth();
+  const { userData, isLoadingUser } = useAuth();
   const { exchangeRate } = useControlVariables();
 
   const user_id = userData?.cubidData.id;
@@ -207,7 +207,9 @@ export function ReceiveTab({
         qrUnavailableReason={
           normalizedNanoId
             ? null
-            : "QR code is unavailable until your wallet identity finishes loading."
+            : isLoadingUser
+              ? "QR code is still loading your wallet identity."
+              : "QR code is unavailable because your wallet identity is missing."
         }
         requestContact={requestContact}
         onClearRequestContact={() => handleRequestContactChange(null)}

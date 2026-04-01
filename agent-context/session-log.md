@@ -1,3 +1,28 @@
+## v1.105
+### Timestamp
+- 2026-04-01 19:15:08 EDT
+
+### Objective
+- Fix the Receive tab QR bootstrap so authenticated users get their real wallet identifier, and make the fallback message distinguish between a record that is still loading and one that is actually missing.
+
+### What Changed
+- Added `userIdentifier` to the shared user-settings bootstrap type, selected `users.user_identifier` in the server bootstrap query, and preserved that value in the legacy Cubid-data mapper that `useAuth` consumes.
+- Updated `ReceiveTab` to read `isLoadingUser` from `useAuth`, so the tab now shows a true loading message only while the authenticated user record is resolving and switches to a missing-identity message once loading is complete without a `user_identifier`.
+- Extended the Receive-tab tests to cover the missing-identity and still-loading cases, and documented the corrected QR bootstrap behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx shared/lib/userSettings/types.ts shared/api/hooks/useAuth.ts shared/api/services/supabaseService.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx shared/api/hooks/useAuth.test.tsx`
+
+### Files Edited
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.104
 ### Timestamp
 - 2026-04-01 19:05:54 EDT
