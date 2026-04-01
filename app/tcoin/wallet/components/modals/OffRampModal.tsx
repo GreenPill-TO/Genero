@@ -41,7 +41,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   });
 
   const [phoneCubidSDK, setPhoneCubidSDK] = useState("");
-  const [cubidSdk, setCubidSDK] = useState(null);
+  const [isPhoneLookupUnavailable, setIsPhoneLookupUnavailable] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
@@ -68,21 +68,47 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   }, [closeModal]);
 
   useEffect(() => {
+    let isActive = true;
     const loadSDK = async () => {
-      const { CubidSDK } = await import("cubid-sdk");
-      const cubid_sdk = new CubidSDK(57, "14475a54-5bbe-4f3f-81c7-ff4403ad0830");
-      const cubid_stamps = await cubid_sdk.fetchStamps({ user_id: userData?.user?.cubid_id });
-
-      const phoneStamp = cubid_stamps.all_stamps.find((item) => item.stamptype_string === "phone")?.uniquevalue;
-
-      if (phoneStamp) {
-        setPhoneCubidSDK(phoneStamp);
-        setValue("phone_number", phoneStamp);
+      const cubidUserId = userData?.user?.cubid_id;
+      if (!cubidUserId) {
+        if (isActive) {
+          setPhoneCubidSDK("");
+          setIsPhoneLookupUnavailable(false);
+        }
+        return;
       }
 
-      setCubidSDK(cubid_sdk);
+      try {
+        const { CubidSDK } = await import("cubid-sdk");
+        const cubid_sdk = new CubidSDK(57, "14475a54-5bbe-4f3f-81c7-ff4403ad0830");
+        const cubid_stamps = await cubid_sdk.fetchStamps({ user_id: cubidUserId });
+        const phoneStamp = cubid_stamps.all_stamps.find((item) => item.stamptype_string === "phone")?.uniquevalue;
+
+        if (!isActive) {
+          return;
+        }
+
+        if (phoneStamp) {
+          setPhoneCubidSDK(phoneStamp);
+          setValue("phone_number", phoneStamp);
+        } else {
+          setPhoneCubidSDK("");
+        }
+        setIsPhoneLookupUnavailable(false);
+      } catch (error) {
+        console.error("Unable to prefill the phone number from Cubid.", error);
+        if (!isActive) {
+          return;
+        }
+        setPhoneCubidSDK("");
+        setIsPhoneLookupUnavailable(true);
+      }
     };
-    loadSDK();
+    void loadSDK();
+    return () => {
+      isActive = false;
+    };
   }, [setValue, userData?.user?.cubid_id]);
 
   const sendOTP = async () => {
@@ -265,6 +291,11 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
           <div className={walletPanelMutedClass}>
             <p className={walletSectionLabelClass}>Phone verification</p>
+            {isPhoneLookupUnavailable ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                We couldn&apos;t load your verified phone automatically, so enter it manually below.
+              </p>
+            ) : null}
             <div className="mt-3">
           <Controller
             name="phone_number"

@@ -1,3 +1,26 @@
+## v1.93
+### Timestamp
+- 2026-04-01 00:02:00 EDT
+
+### Objective
+- Prevent the More-tab cash-out modal from crashing when Cubid phone-stamp lookup fails in local or degraded environments.
+
+### What Changed
+- Wrapped the Cubid SDK phone-stamp prefill in a fail-safe path so `fetchStamps(...)` errors no longer bubble into an unhandled runtime exception during modal mount.
+- Kept the cash-out modal usable after lookup failure by falling back to manual phone entry and showing a short explanatory note in the phone-verification section.
+- Added a focused regression test that simulates a Cubid 404 and confirms the modal stays mounted in the manual-entry state, then updated the functional and technical specs to document the graceful-degradation rule.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/modals/OffRampModal.tsx app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.92
 ### Timestamp
 - 2026-03-31 23:49:00 EDT
