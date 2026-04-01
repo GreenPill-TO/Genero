@@ -43,7 +43,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
   const { userData } = useAuth();
   const { burnMoney, senderWallet } = useSendMoney({ senderId: userData?.cubidData?.id });
-  const { exchangeRate, state: exchangeRateState } = useControlVariables();
+  const { exchangeRate, fallbackMessage } = useControlVariables();
 
   const donationAmount = watch("preferredDonationAmount");
   const estimatedCAD = donationAmount * exchangeRate;
@@ -77,7 +77,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       setCubidSDK(cubid_sdk);
     };
     loadSDK();
-  }, []);
+  }, [setValue, userData?.user?.cubid_id]);
 
   const sendOTP = async () => {
     const phone = phoneCubidSDK || watch("phone_number");
@@ -198,11 +198,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
             )}
           />
           <p>Estimated CAD: ${estimatedCAD.toFixed(2)}</p>
-          {exchangeRateState !== "ready" && (
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              CAD values are using a fallback estimate until the live city rate is indexed.
-            </p>
-          )}
+          {fallbackMessage ? <p className="text-xs text-amber-700 dark:text-amber-300">{fallbackMessage}</p> : null}
           {donationAmount > userBalance && (
             <p className="text-sm text-red-500">
               Warning: The entered TCOIN amount exceeds your available balance of {userBalance}.

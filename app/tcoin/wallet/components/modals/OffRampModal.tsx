@@ -49,7 +49,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
   const { userData } = useAuth();
   const { burnMoney, senderWallet } = useSendMoney({ senderId: userData?.cubidData?.id });
-  const { exchangeRate, state: exchangeRateState } = useControlVariables();
+  const { exchangeRate, fallbackMessage } = useControlVariables();
 
   const donationAmount = watch("preferredDonationAmount");
   const estimatedCAD = donationAmount * exchangeRate;
@@ -277,11 +277,9 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
             )}
           />
           <p className="mt-3 text-sm text-muted-foreground">Estimated CAD: ${estimatedCAD.toFixed(2)}</p>
-          {exchangeRateState !== "ready" && (
-            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-              CAD values are using a fallback estimate until the live city rate is indexed.
-            </p>
-          )}
+          {fallbackMessage ? (
+            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{fallbackMessage}</p>
+          ) : null}
           {donationAmount > userBalance && (
             <p className="mt-2 text-sm text-red-500">
               Warning: The entered TCOIN amount exceeds your available balance of {userBalance}.

@@ -1,3 +1,32 @@
+## v1.104
+### Timestamp
+- 2026-04-01 19:05:54 EDT
+
+### Objective
+- Make exchange-rate fallback messaging precise across the wallet surfaces and move the fallback CAD estimate off the hardcoded client constant into environment configuration.
+
+### What Changed
+- Refactored `useGetLatestExchangeRate` so it exposes state-specific fallback messaging for `empty` and `setup_required`, keeps `ready` free of warning copy, and reads the fallback CAD estimate from `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE` with `3.35` as the default.
+- Updated the wallet account card, Buy TCOIN, Top Up, and off-ramp modals, plus the SpareChange off-ramp modal, to render the shared precise fallback message instead of their older hand-written “live rate unavailable” variants.
+- Added hook regressions covering the new warning semantics and the env override, documented the behaviour in the functional and technical specs, and added the new variable to `.env.local.example`.
+
+### Verification
+- `pnpm exec eslint shared/hooks/useGetLatestExchangeRate.ts shared/hooks/useGetLatestExchangeRate.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.tsx app/tcoin/wallet/components/modals/TopUpModal.tsx app/tcoin/wallet/components/modals/BuyTcoinModal.tsx app/tcoin/wallet/components/modals/OffRampModal.tsx app/tcoin/sparechange/components/modals/OffRampModal.tsx`
+- `pnpm exec vitest run shared/hooks/useGetLatestExchangeRate.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.test.tsx app/tcoin/wallet/components/modals/TopUpModal.test.tsx app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+
+### Files Edited
+- `.env.local.example`
+- `shared/hooks/useGetLatestExchangeRate.ts`
+- `shared/hooks/useGetLatestExchangeRate.test.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/modals/TopUpModal.tsx`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `app/tcoin/sparechange/components/modals/OffRampModal.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.103
 ### Timestamp
 - 2026-04-01 18:49:53 EDT

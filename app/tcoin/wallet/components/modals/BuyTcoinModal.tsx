@@ -99,7 +99,7 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
 
   const pollTimerRef = useRef<number | null>(null);
   const previousStatusRef = useRef<OnrampCheckoutSession["status"] | null>(null);
-  const { exchangeRate, state: exchangeRateState } = useControlVariables();
+  const { exchangeRate, fallbackMessage } = useControlVariables();
 
   const safeExchangeRate =
     typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
@@ -370,11 +370,9 @@ export function BuyTcoinModal({ closeModal }: BuyTcoinModalProps) {
                 inputMode="decimal"
               />
               <p className="text-xs text-muted-foreground">{conversionPreview}</p>
-              {inputMode === "tcoin" && exchangeRateState !== "ready" && (
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  Live exchange rate is unavailable right now. The CAD preview is using a fallback estimate.
-                </p>
-              )}
+              {inputMode === "tcoin" && fallbackMessage ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">{fallbackMessage}</p>
+              ) : null}
             </div>
           </div>
 
