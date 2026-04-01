@@ -1,3 +1,27 @@
+## v1.95
+### Timestamp
+- 2026-04-01 00:42:00 EDT
+
+### Objective
+- Improve readability in the More tab by letting action-row body copy use the full available text width.
+
+### What Changed
+- Refactored the shared More-tab action row layout from a flex row into a three-column grid so the icon, text, and meta/chevron areas have explicit structure.
+- Moved the action-row description onto `col-[2/4]`, allowing the body copy in the Community defaults and Workspaces and previews cards to span the full right-side text area instead of wrapping in a narrow centre strip.
+- Added a focused More-tab regression test and updated the functional and technical specs to document the wider action-row copy behaviour.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.94
 ### Timestamp
 - 2026-04-01 00:27:00 EDT

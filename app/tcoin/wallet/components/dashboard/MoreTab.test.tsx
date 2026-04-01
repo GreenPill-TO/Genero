@@ -212,6 +212,18 @@ describe("MoreTab", () => {
     expect(onOpenHistory).toHaveBeenCalledTimes(1);
   });
 
+  it("lets action-row descriptions span the full text area", () => {
+    render(<MoreTab />);
+
+    const charityButton = screen.getByRole("button", { name: /Charity Contributions/i });
+    const description = screen.getByText(
+      /Review your current charity defaults and contribution totals, then change them if needed\./i
+    );
+
+    expect(charityButton.className).toContain("grid-cols-[auto_minmax(0,1fr)_auto]");
+    expect(description.className).toContain("col-[2/4]");
+  });
+
   it("opens the off-ramp modal", () => {
     render(<MoreTab />);
     fireEvent.click(

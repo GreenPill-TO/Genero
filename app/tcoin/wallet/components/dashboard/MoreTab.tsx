@@ -551,15 +551,10 @@ function ActionRow({
 }) {
   return (
     <button type="button" className={walletActionRowClass} onClick={onClick}>
-      <div className="flex min-w-0 items-start gap-4">
-        <span className={walletActionRowIconClass}>
-          <Icon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-950 dark:text-white">{title}</p>
-          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>
-        </div>
-      </div>
+      <span className={`${walletActionRowIconClass} row-span-2`}>
+        <Icon className="h-5 w-5" />
+      </span>
+      <p className="min-w-0 pr-2 text-sm font-semibold text-slate-950 dark:text-white">{title}</p>
       <div className="flex shrink-0 items-center gap-3 pl-2">
         {meta ? (
           <span className="hidden max-w-[150px] truncate text-right text-xs font-medium uppercase tracking-[0.18em] text-slate-400 dark:text-slate-400 sm:block">
@@ -568,6 +563,7 @@ function ActionRow({
         ) : null}
         <LuChevronRight className="h-5 w-5 text-slate-400 transition duration-200 group-hover:translate-x-0.5 dark:text-slate-500" />
       </div>
+      <p className="col-[2/4] min-w-0 text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>
     </button>
   );
 }

@@ -23,7 +23,7 @@ export const walletMetricTileClass =
   "rounded-[20px] border border-slate-200/70 bg-white/80 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none";
 
 export const walletActionRowClass =
-  "group flex w-full items-start justify-between gap-4 rounded-[22px] border border-slate-200/70 bg-white/82 px-4 py-4 text-left shadow-[0_18px_36px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-white/[0.08]";
+  "group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2 rounded-[22px] border border-slate-200/70 bg-white/82 px-4 py-4 text-left shadow-[0_18px_36px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-white/[0.08]";
 
 export const walletActionRowIconClass =
   "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200/80 bg-slate-50 text-slate-700 transition duration-200 group-hover:border-slate-300 group-hover:bg-white dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100 dark:group-hover:bg-white/[0.08]";
