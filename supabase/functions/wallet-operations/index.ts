@@ -1,6 +1,6 @@
 import { resolveAuthenticatedUser } from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import {
   connectWalletContact,
@@ -39,7 +39,7 @@ async function readBody(req: Request) {
 
 async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: resolveCorsHeaders(req) });
   }
 
   try {

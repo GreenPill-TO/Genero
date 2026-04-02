@@ -64,6 +64,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - The cash-out modal now treats Cubid phone-stamp lookup as optional in local and degraded environments: if the lookup fails, the modal stays usable and asks the user to type their phone number manually instead of crashing.
 - On small screens, where the footer omits the dedicated History tab, the More screen now includes a History button so transaction review remains reachable in the mobile navigation model.
 - When `/dashboard` is opened without an authenticated session in local preview mode, the page now shows a quiet wallet-preview state instead of attempting protected wallet reads, so the route remains explorable without noisy unauthorised errors.
+- In local Supabase development, wallet edge-function routes should now degrade to normal product responses (for example `401`, `404`, or explicit setup states) instead of failing with edge-runtime boot errors when the signed-in shell or Contacts invite flow touches them.
 - Resources page summarises links to the hackathon submission, whitepaper, presentation and open-source repository and ends with a return-home link.
 - Ecosystem page showcases related community projects and is linked from the Resources page and the landing footer.
 - Contact page contains a form that saves user requests to Supabase including IP addresses and separates the send button from the return-home link.

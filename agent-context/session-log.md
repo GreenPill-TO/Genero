@@ -1,3 +1,42 @@
+## v1.118
+### Timestamp
+- 2026-04-02 00:24 EDT
+
+### Objective
+- Fix the local Supabase edge-runtime boot failure caused by stale `corsHeaders` imports, then rerun the local wallet smoke flow against the Colima-backed stack.
+
+### What Changed
+- Standardized the affected Supabase edge-function entrypoints to import `resolveCorsHeaders` from the shared CORS helper and to answer `OPTIONS` requests with `resolveCorsHeaders(req)` instead of the removed `corsHeaders` symbol.
+- Verified there are no remaining stale `corsHeaders` references in `supabase/functions/**/*.ts` and ran focused ESLint on the touched edge domains.
+- Re-ran the local smoke pass against a wallet dev server pointed at the local Supabase URLs: the earlier edge-function `502` worker-boot failure is gone, and `citycoin-market` / `wallet-operations` now return real application responses (`404` / `401`) instead of runtime boot crashes. The smoke pass still uncovered a separate local auth issue where `POST /auth/v1/token?grant_type=pkce` times out with `504`, so the authenticated browser flow still does not complete locally.
+
+### Verification
+- `pnpm exec eslint supabase/functions/voucher-preferences/index.ts supabase/functions/onramp/index.ts supabase/functions/user-requests/index.ts supabase/functions/wallet-operations/index.ts supabase/functions/store-operations/index.ts supabase/functions/control-plane/index.ts supabase/functions/redemptions/index.ts supabase/functions/bia-service/index.ts supabase/functions/citycoin-market/index.ts supabase/functions/voucher-runtime/index.ts supabase/functions/governance/index.ts supabase/functions/payment-requests/index.ts supabase/functions/merchant-applications/index.ts`
+- `rg -n "corsHeaders" supabase/functions -g '*.ts'`
+- Local smoke checks against local Supabase:
+- `curl -I http://127.0.0.1:3002/dashboard`
+- `curl -i -X POST http://127.0.0.1:54321/functions/v1/citycoin-market/rate/current?citySlug=tcoin ...`
+- `curl -i http://127.0.0.1:54321/functions/v1/wallet-operations/contacts/imports ...`
+- Browser smoke via Playwright against `http://127.0.0.1:3002/dashboard?tab=contacts`
+
+### Files Edited
+- `supabase/functions/bia-service/index.ts`
+- `supabase/functions/citycoin-market/index.ts`
+- `supabase/functions/control-plane/index.ts`
+- `supabase/functions/governance/index.ts`
+- `supabase/functions/merchant-applications/index.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/payment-requests/index.ts`
+- `supabase/functions/redemptions/index.ts`
+- `supabase/functions/store-operations/index.ts`
+- `supabase/functions/user-requests/index.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/functions/voucher-runtime/index.ts`
+- `supabase/functions/wallet-operations/index.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.117
 ### Timestamp
 - 2026-04-02 00:13 EDT
