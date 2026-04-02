@@ -811,7 +811,10 @@ export async function listCityManagerStores(options: MerchantContext & { status:
   const { data: userRows, error: userRowsError } =
     applicantUserIds.length === 0
       ? { data: [], error: null }
-      : await options.supabase.from("users").select("id,full_name,email").in("id", applicantUserIds);
+      : await options.supabase
+          .from("users")
+          .select("id,full_name,username,email,phone,country,address,profile_image_url,created_at")
+          .in("id", applicantUserIds);
 
   if (userRowsError) {
     throw new Error(`Failed to load city-manager applicants: ${userRowsError.message}`);
@@ -865,7 +868,13 @@ export async function listCityManagerStores(options: MerchantContext & { status:
         ? {
             userId: applicantUserId,
             fullName: typeof applicant?.full_name === "string" ? applicant.full_name : null,
+            username: typeof applicant?.username === "string" ? applicant.username : null,
             email: typeof applicant?.email === "string" ? applicant.email : null,
+            phone: typeof applicant?.phone === "string" ? applicant.phone : null,
+            country: typeof applicant?.country === "string" ? applicant.country : null,
+            address: typeof applicant?.address === "string" ? applicant.address : null,
+            profileImageUrl: typeof applicant?.profile_image_url === "string" ? applicant.profile_image_url : null,
+            createdAt: typeof applicant?.created_at === "string" ? applicant.created_at : null,
           }
         : null,
       profile: profile

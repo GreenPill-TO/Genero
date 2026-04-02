@@ -1,3 +1,28 @@
+## v1.120
+### Timestamp
+- 2026-04-02 00:37 EDT
+
+### Objective
+- Make merchant applicants on the city-manager page inspectable so operators can review the person behind an application before approving or rejecting it.
+
+### What Changed
+- Extended the city-manager store-list payload so each applicant now includes username, phone, country, address, profile image URL, and account creation timestamp in addition to full name and email.
+- Turned the applicant name on `/city-manager` into a clear clickable control that opens a focused applicant-profile dialog instead of leaving the operator with a static text label.
+- Added a lightweight inspector layout in the dialog with avatar, full name, username, email, account age, country, phone, and address, while keeping the existing application-review controls in place.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/city-manager/page.tsx app/tcoin/wallet/city-manager/page.test.tsx shared/lib/merchantSignup/types.ts supabase/functions/_shared/merchantApplications.ts`
+- `pnpm exec vitest run app/tcoin/wallet/city-manager/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/city-manager/page.test.tsx`
+- `shared/lib/merchantSignup/types.ts`
+- `supabase/functions/_shared/merchantApplications.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.119
 ### Timestamp
 - 2026-04-02 00:31 EDT
