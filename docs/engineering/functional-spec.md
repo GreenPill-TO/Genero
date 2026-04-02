@@ -40,6 +40,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - On the public Resources page, the explanatory copy remains intact while each resource link is now scoped to a shorter CTA phrase instead of wrapping the full sentence, keeping the page easier to scan.
 - A dedicated public `/merchants` page now uses that same unauthenticated landing-shell styling and presents the merchant sales pitch around vouchers, lower fees, repeat visits, local merchant trade, and merchant governance, with a matching footer link so merchants can discover it from any public page.
 - The public `/merchants` page now follows the main landing page’s reading rhythm more closely: the hero clears the fixed header, a top-left `Return home` action is available immediately, and the merchant pitch is grouped into broader multi-paragraph sections instead of a stack of single-paragraph headings.
+- Both `Return home` controls on the public `/merchants` page now use the same plain-link treatment so the page does not mix two visual styles for the same action.
 - The leading statements inside the public `/merchants` body copy now use the same highlighted inline treatment as the main landing page, so merchant benefits read as part of the same public visual language rather than as plain bold labels.
 - Dashboard page (`/dashboard`) is publicly accessible without authentication.
 - Dashboard's public status is verified by a Vitest unit test covering the unauthenticated path list.

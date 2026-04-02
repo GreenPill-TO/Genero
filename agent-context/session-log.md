@@ -1,3 +1,23 @@
+## v1.140
+### Timestamp
+- 2026-04-02 13:59 EDT
+
+### Objective
+- Make the top `Return home` control on `/merchants` visually match the lower one.
+
+### What Changed
+- Removed the pill-style button treatment from the top `Return home` control on the public merchants page so both return links now share the same plain-link presentation.
+- Updated the required technical and functional specifications to record that the duplicated return-home actions intentionally use one consistent style.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/merchants/page.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/merchants/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.139
 ### Timestamp
 - 2026-04-02 13:53 EDT

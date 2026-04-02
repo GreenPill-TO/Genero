@@ -35,12 +35,7 @@ export default function MerchantsPage() {
       <main className="flex-grow pt-48 sm:pt-52 px-6 max-w-screen-xl mx-auto lg:w-3/5 space-y-10 bg-background">
         <section className="space-y-6">
           <div>
-            <Link
-              href="/"
-              className="inline-flex items-center rounded-full border border-foreground/20 px-4 py-2 text-sm hover:border-foreground/40"
-            >
-              Return home
-            </Link>
+            <Link href="/">Return home</Link>
           </div>
         </section>
 

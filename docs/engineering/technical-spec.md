@@ -96,6 +96,7 @@
     queries.
   - The wallet public-route allowlist now includes `/merchants`, and the unauthenticated footer plus sitemap both expose that new merchant-discovery page alongside the existing public landing resources.
   - The `/merchants` public page now uses a landing-page-style content rhythm with increased hero top spacing, a top-left return-home control, and grouped multi-paragraph sections, with focused tests guarding the new heading structure and dual return-home links.
+  - The duplicated `Return home` actions on `/merchants` now intentionally share the same plain link markup instead of mixing a pill-style button at the top with a text link at the bottom.
   - The `/merchants` page now also shares the landing page’s highlighted inline lead-statement treatment (`bg-gray-200 dark:bg-gray-700 px-1`) for its merchant-benefit paragraphs, with a focused page test guarding that visual contract.
   - The public contact route keeps its long-form invitation copy intact while constraining the WhatsApp anchor itself to the minimal CTA text, with a focused page test guarding the shorter hyperlink span.
   - The public resources route now follows the same link-scoping rule: long-form explanatory sentences remain plain text while only the shortest useful CTA fragment is wrapped in each anchor, with a focused page test covering the resulting link names and targets.
