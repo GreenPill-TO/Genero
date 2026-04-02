@@ -21,3 +21,6 @@ export const fileInputFieldClass =
 
 export const otpDigitFieldClass =
   `${formFieldSurfaceClass} h-10 w-10 rounded-md text-center text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`;
+
+export const authModalEmailFieldClass =
+  `${inputFieldClass} bg-white border-slate-300 text-slate-950 placeholder:text-slate-500 shadow-[0_1px_2px_rgba(15,23,42,0.08)] focus-visible:border-[#05656F] focus-visible:ring-[#05656F]/30 dark:border-white/10 dark:bg-slate-950/55 dark:text-foreground dark:placeholder:text-muted-foreground dark:shadow-none`;

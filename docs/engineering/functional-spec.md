@@ -14,6 +14,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Modal windows close when the Escape key is pressed, and zero-value requests prompt for confirmation before sending.
 - Sign-in flow presents six single-digit inputs that auto-focus, advance and accept pasted codes.
 - The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
+- In the public auth modal, the pre-OTP email field now uses a brighter light-mode input surface with stronger border and placeholder contrast so the “Enter your email” control remains clearly distinguishable from the modal background.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.
 - Closing line states "build up - not extract from - our communities" with space-dash-space style.

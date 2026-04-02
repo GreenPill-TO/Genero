@@ -1,13 +1,37 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, screen } from "@testing-library/react";
 import React from "react";
 import OTPForm from "./OTPForm";
 
 describe("OTPForm", () => {
+  it("uses the higher-contrast email field surface before OTP is sent", () => {
+    render(
+      <OTPForm
+        authMethod="email"
+        countryCode="+1"
+        contact="test@example.com"
+        passcode=""
+        setCountryCode={() => {}}
+        setContact={() => {}}
+        setPasscode={() => {}}
+        onSubmit={vi.fn()}
+        onResend={vi.fn()}
+        canResend={true}
+        isOtpSent={false}
+        errorMessage={null}
+        handleAuthMethodChange={() => {}}
+      />
+    );
+
+    const emailInput = screen.getByPlaceholderText("Enter your email");
+    expect(emailInput.className).toContain("bg-white");
+    expect(emailInput.className).toContain("border-slate-300");
+  });
+
   it("renders six inputs and handles typing and pasting", () => {
     const setPasscode = vi.fn();
-    const { getAllByRole } = render(
+    const { container } = render(
       <OTPForm
         authMethod="email"
         countryCode="+1"
@@ -25,7 +49,7 @@ describe("OTPForm", () => {
       />
     );
 
-    const inputs = getAllByRole("textbox");
+    const inputs = Array.from(container.querySelectorAll('input[inputmode="numeric"]'));
     expect(inputs).toHaveLength(6);
     expect(document.activeElement).toBe(inputs[0]);
 

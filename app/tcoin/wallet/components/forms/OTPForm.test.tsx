@@ -31,6 +31,9 @@ describe("OTPForm", () => {
     expect(emailInput.getAttribute("name")).toBe("email");
     expect(emailInput.getAttribute("autocomplete")).toBe("email");
     expect(emailInput.getAttribute("inputmode")).toBe("email");
+    expect(emailInput.className).toContain("bg-white");
+    expect(emailInput.className).toContain("border-slate-300");
+    expect(emailInput.className).toContain("placeholder:text-slate-500");
   });
 
   it("renders six inputs and handles typing and pasting", () => {

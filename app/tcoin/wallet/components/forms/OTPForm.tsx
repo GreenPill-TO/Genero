@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Button } from "@shared/components/ui/Button";
-import { otpDigitFieldClass } from "@shared/components/ui/formFieldStyles";
+import { authModalEmailFieldClass, otpDigitFieldClass } from "@shared/components/ui/formFieldStyles";
 import { Input } from "@shared/components/ui/Input";
 import { Loading } from "@shared/components/ui/Loading";
 import { Select } from "@shared/components/ui/Select";
@@ -141,6 +141,7 @@ function OTPForm({
             <Input
               id="auth-email"
               name="email"
+              className={authModalEmailFieldClass}
               elSize="md"
               variant="bordered"
               type="email"

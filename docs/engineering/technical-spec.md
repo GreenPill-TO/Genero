@@ -247,6 +247,7 @@
 - Internal links use root-relative URLs and rewrites map them to the wallet app, eliminating `/tcoin/wallet` from page paths.
 - `next.config.js` now declares explicit root rewrites for the main wallet/operator entry points (`/dashboard`, `/merchant`, `/admin`, `/city-manager`, `/city-admin`, `/welcome`, `/resources`, `/contact`, `/ecosystem`) before the generic non-API fallback rewrite, so hard reloads on those routes do not depend on the broad catch-all matcher alone.
 - Sign-in modals replace the single passcode field with six auto-advancing inputs that accept pasted codes.
+- The wallet and SpareChange auth forms now apply a dedicated `authModalEmailFieldClass` override to the pre-OTP email input, giving the public modal a higher-contrast light-mode field surface without changing the shared signed-in form-field tokens elsewhere in the app.
 - Wallet custody shares are normalised into `wallet_keys` (`user_id` + `namespace`) so multiple wallet addresses can reference one key via `wallet_key_id`; `wallet_list` no longer stores raw `app_share` directly.
 - `wallet_list` now carries the canonical EVM `public_key` for each wallet row, with a namespace-scoped uniqueness index so wallet-dependent app flows can rely on one stable recipient-wallet field.
 - `user_encrypted_share` rows are linked to the same `wallet_keys` record through `wallet_key_id`, enabling deterministic key reconstruction for wallets that share custody material.

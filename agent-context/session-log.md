@@ -1,3 +1,29 @@
+## v1.122
+### Timestamp
+- 2026-04-02 01:18 EDT
+
+### Objective
+- Improve light-mode contrast for the auth modal email input so the pre-OTP email field reads clearly as an editable control.
+
+### What Changed
+- Added a dedicated `authModalEmailFieldClass` token that keeps the auth modal email input white with a stronger light-mode border and placeholder colour while preserving the existing dark-mode behaviour.
+- Applied that higher-contrast field treatment to both wallet and SpareChange OTP auth forms so the shared sign-in flow stays visually consistent across apps.
+- Added focused regression checks to confirm the auth email field keeps the stronger light-mode surface classes.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/forms/OTPForm.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx shared/components/ui/formFieldStyles.ts`
+
+### Files Edited
+- `shared/components/ui/formFieldStyles.ts`
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.121
 ### Timestamp
 - 2026-04-02 00:51 EDT
