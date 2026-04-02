@@ -1,3 +1,26 @@
+## v1.137
+### Timestamp
+- 2026-04-02 13:39 EDT
+
+### Objective
+- Reduce the visual length of hyperlinks on the public Resources page without changing the body copy.
+
+### What Changed
+- Reworked the `/resources` body copy so each resource sentence remains intact while the anchors are limited to shorter CTA fragments such as `this hackathon submission`, `this Whitepaper`, `the presentation here`, and `on GitHub`.
+- Added a focused Resources page regression test that checks the shorter link names and confirms they still point to the expected targets.
+- Updated the required technical and functional specifications to record the public-link presentation rule on the Resources page as well.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/resources/page.tsx app/tcoin/wallet/resources/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/resources/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/resources/page.tsx`
+- `app/tcoin/wallet/resources/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.136
 ### Timestamp
 - 2026-04-02 13:33 EDT
