@@ -367,10 +367,10 @@ export function WalletHome({
   };
 
   return (
-    <div data-testid="wallet-home-layout" className="space-y-6 lg:space-y-4">
+    <div data-testid="wallet-home-layout" className="space-y-4 sm:space-y-6 lg:space-y-4">
       <div
         data-testid="wallet-home-summary-grid"
-        className="grid gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.95fr)] min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,1.05fr)_minmax(320px,0.92fr)]"
+        className="grid gap-4 sm:gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.95fr)] min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,1.05fr)_minmax(320px,0.92fr)]"
       >
         <AccountCard
           balance={userBalance}
@@ -394,7 +394,7 @@ export function WalletHome({
 
       <div
         data-testid="wallet-home-send-grid"
-        className="grid gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
+        className="grid gap-4 sm:gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
       >
         <div className="min-[1850px]:col-span-2">
           <SendCard
@@ -418,7 +418,7 @@ export function WalletHome({
 
       <div
         data-testid="wallet-home-support-grid"
-        className="grid gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] min-[1850px]:grid-cols-[minmax(0,1.08fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
+        className="grid gap-4 sm:gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] min-[1850px]:grid-cols-[minmax(0,1.08fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
       >
         <div className="min-[1850px]:col-span-2">
           <ContributionsCard
@@ -453,8 +453,8 @@ function EverydayActionsPanel({
   merchants: Awaited<ReturnType<typeof getVoucherMerchants>>["merchants"];
 }) {
   return (
-    <section className={`${walletPanelClass} flex flex-col gap-6 min-[1850px]:grid min-[1850px]:grid-cols-[minmax(0,0.92fr)_minmax(280px,0.88fr)] min-[1850px]:items-start`}>
-      <div className="space-y-5">
+    <section className={`${walletPanelClass} flex flex-col gap-4 sm:gap-6 min-[1850px]:grid min-[1850px]:grid-cols-[minmax(0,0.92fr)_minmax(280px,0.88fr)] min-[1850px]:items-start`}>
+      <div className="space-y-4 sm:space-y-5">
         <div className="space-y-3">
           <span className="inline-flex w-fit rounded-full border border-border/70 bg-background/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
             Everyday actions
@@ -466,7 +466,7 @@ function EverydayActionsPanel({
             </p>
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-2">
           <button type="button" className={walletActionButtonClass} onClick={() => onOpenTransactionHistory?.()}>
             View activity
           </button>
@@ -508,7 +508,7 @@ function MerchantsPanel({
           {merchants.map((merchant) => (
             <li
               key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-background/65 px-4 py-3"
+              className="flex items-center justify-between gap-3 border-b border-border/40 px-0 py-3 last:border-b-0 sm:rounded-2xl sm:border sm:border-border/50 sm:bg-background/65 sm:px-4"
             >
               <span>{merchant.displayName ?? `Store ${merchant.merchantStoreId}`}</span>
               <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -556,7 +556,7 @@ function RecentsPanel({
           No recent contacts yet. Your recent recipients and request interactions will show up here.
         </p>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-4">
           {recents.map((contact) => {
             const label = contact.full_name?.trim() || contact.username?.trim() || `User ${contact.id}`;
             const fallback = label.charAt(0).toUpperCase() || "?";

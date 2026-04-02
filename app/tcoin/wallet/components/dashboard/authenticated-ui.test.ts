@@ -5,6 +5,7 @@ import {
   walletChoiceCardClass,
   walletInteractiveSurfaceClass,
   walletMetricTileClass,
+  walletPanelClass,
   walletPanelMutedClass,
 } from "./authenticated-ui";
 
@@ -23,5 +24,15 @@ describe("authenticated interaction language", () => {
     expect(walletPanelMutedClass).not.toContain("before:bg-teal-600/40");
     expect(walletMetricTileClass).not.toContain("cursor-pointer");
     expect(walletMetricTileClass).not.toContain("before:bg-teal-600/40");
+  });
+
+  it("flattens static shells on phone widths before restoring cards on larger screens", () => {
+    expect(walletPanelClass).toContain("rounded-none");
+    expect(walletPanelClass).toContain("border-b");
+    expect(walletPanelClass).toContain("sm:rounded-[28px]");
+    expect(walletPanelMutedClass).toContain("border-t");
+    expect(walletPanelMutedClass).toContain("sm:rounded-[24px]");
+    expect(walletMetricTileClass).toContain("border-t");
+    expect(walletMetricTileClass).toContain("sm:rounded-[20px]");
   });
 });

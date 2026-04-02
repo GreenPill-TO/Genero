@@ -1,3 +1,28 @@
+## v1.117
+### Timestamp
+- 2026-04-02 00:13 EDT
+
+### Objective
+- Reduce mobile authenticated-dashboard chrome so phone-sized layouts use less nested card framing and more content space.
+
+### What Changed
+- Flattened the shared authenticated wallet panel primitives on phone widths so the main panel, muted panel, and metric-tile shells now read as transparent sections with horizontal dividers instead of stacked boxed cards.
+- Tightened the wallet home grids and spacing on small screens and adjusted the account/merchant sub-panels so the mobile home tab wastes less space on nested framing.
+- Added a regression to lock in the mobile-first flattening rule while keeping the larger-screen card styling intact from `sm` upwards.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/components/dashboard/AccountCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.116
 ### Timestamp
 - 2026-04-01 23:54 EDT

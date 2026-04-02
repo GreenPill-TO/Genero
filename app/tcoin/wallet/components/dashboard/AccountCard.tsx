@@ -38,7 +38,7 @@ export function AccountCard({
   };
 
   return (
-    <section className={`${walletPanelClass} flex h-full flex-col gap-6`}>
+    <section className={`${walletPanelClass} flex h-full flex-col gap-4 sm:gap-6`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-3">
           <span className="inline-flex rounded-full border border-border/70 bg-background/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
@@ -46,7 +46,7 @@ export function AccountCard({
           </span>
           <div className="space-y-2">
             <h2 className="text-2xl font-semibold tracking-[-0.04em]">Available balance</h2>
-            <p className="text-5xl font-semibold tracking-[-0.06em]">
+            <p className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
               {formatNumber(rest.balance.toString(), false)}
             </p>
             <p className="text-lg text-muted-foreground">
@@ -54,7 +54,7 @@ export function AccountCard({
             </p>
           </div>
         </div>
-        <div className={`${walletPanelMutedClass} min-w-[220px] space-y-3`}>
+        <div className={`${walletPanelMutedClass} w-full min-w-0 space-y-3 sm:min-w-[220px] sm:max-w-[320px]`}>
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               Today&apos;s estimate
@@ -70,7 +70,7 @@ export function AccountCard({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-0 sm:gap-3 sm:grid-cols-3">
         <div className={walletPanelMutedClass}>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Spendable now</p>
           <p className="mt-2 text-xl font-semibold">{formatNumber(balance.toString(), false)}</p>
