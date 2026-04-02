@@ -1,3 +1,27 @@
+## v1.152
+### Timestamp
+- 2026-04-02 15:31 EDT
+
+### Objective
+- Make welcome step 5 explain why the device name matters and replace the irrelevant wallet-ready notice with the actual device details we collect automatically.
+
+### What Changed
+- Added two short explanation paragraphs to step 5 clarifying that the custom device name helps identify and deactivate a device later if needed.
+- Replaced the old `Wallet already configured...` message with a small device-details panel that shows the auto-collected operating system, browser, and derived detected label used alongside the custom device name.
+- Added a focused regression ensuring the new step-5 explanation and auto-collected device fields render, while the old wallet-ready copy stays gone.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+- `curl -I http://localhost:3000/welcome`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.151
 ### Timestamp
 - 2026-04-02 15:20 EDT

@@ -135,6 +135,46 @@ const createUsernamePlaceholder = (fullName: string) =>
     .replace(/[^a-z0-9]+/g, ".")
     .replace(/^\.+|\.+$/g, "") || "tcoin.user";
 
+const getDetectedBrowserName = () => {
+  if (typeof navigator === "undefined") {
+    return "Unknown browser";
+  }
+
+  const brands = navigator.userAgentData?.brands
+    ?.map((brand) => brand.brand)
+    .filter((brand) => brand && brand.toLowerCase() !== "not a brand");
+
+  if (brands?.length) {
+    return brands.join(", ");
+  }
+
+  const userAgent = navigator.userAgent;
+  if (/edg\//i.test(userAgent)) return "Microsoft Edge";
+  if (/chrome\//i.test(userAgent) && !/edg\//i.test(userAgent)) return "Google Chrome";
+  if (/safari\//i.test(userAgent) && !/chrome\//i.test(userAgent)) return "Safari";
+  if (/firefox\//i.test(userAgent)) return "Firefox";
+
+  return "Unknown browser";
+};
+
+const getDetectedDeviceDetails = () => {
+  if (typeof navigator === "undefined") {
+    return {
+      platform: "Unknown platform",
+      browser: "Unknown browser",
+      label: "Unknown device",
+    };
+  }
+
+  const platform = navigator.userAgentData?.platform ?? navigator.platform ?? "Unknown platform";
+  const browser = getDetectedBrowserName();
+  return {
+    platform,
+    browser,
+    label: `${browser} on ${platform}`,
+  };
+};
+
 export default function WelcomePage() {
   const router = useRouter();
   const { userData, authData, isAuthenticated } = useAuth();
@@ -542,6 +582,7 @@ export default function WelcomePage() {
     bootstrap?.options.charities.find(
       (charity) => charity.name === DEFAULT_CHARITY_NAME || charity.value === DEFAULT_CHARITY_NAME
     ) ?? null;
+  const detectedDeviceDetails = useMemo(() => getDetectedDeviceDetails(), []);
 
   const openSignIn = () => {
     openModal({
@@ -1070,6 +1111,14 @@ export default function WelcomePage() {
 
             {wizardStep === 5 ? (
               <div className="space-y-4">
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    This name will help you recognize and deactivate a specific device later if you ever need to remove its wallet access.
+                  </p>
+                  <p>
+                    We will identify this device using the auto-collected details below together with any custom name you give it.
+                  </p>
+                </div>
                 <div>
                   <label htmlFor="deviceLabel" className="block text-sm font-medium mb-1">
                     Device name (optional)
@@ -1082,9 +1131,24 @@ export default function WelcomePage() {
                     className="w-full rounded border border-gray-300 bg-white p-2 text-black"
                   />
                 </div>
-                {walletReady ? (
-                  <p className="text-sm text-green-600">Wallet already configured for this app. You can continue.</p>
-                ) : (
+                <div className={`${walletPanelMutedClass} space-y-3 text-sm`}>
+                  <p className={walletSectionLabelClass}>Auto-collected device details</p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Operating system</p>
+                      <p className="font-medium text-foreground">{detectedDeviceDetails.platform}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Browser</p>
+                      <p className="font-medium text-foreground">{detectedDeviceDetails.browser}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Detected label</p>
+                      <p className="font-medium text-foreground">{detectedDeviceDetails.label}</p>
+                    </div>
+                  </div>
+                </div>
+                {!walletReady ? (
                   <WalletComponent
                     type="evm"
                     user_id={userData?.user?.cubid_id}
@@ -1128,7 +1192,7 @@ export default function WelcomePage() {
                       }
                     }}
                   />
-                )}
+                ) : null}
                 <div className="flex justify-between px-0">
                   <Button type="button" variant="outline" onClick={() => setWizardStep(4)}>
                     Back

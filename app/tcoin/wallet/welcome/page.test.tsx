@@ -478,4 +478,28 @@ describe("WelcomePage", () => {
       })
     );
   });
+
+  it("explains device naming and shows auto-collected device details on step 5", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap("draft", {
+        currentStep: 5,
+        completedSteps: [1, 2, 3, 4],
+        walletReady: true,
+      }),
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+
+    expect(screen.getByText(/help you recognize and deactivate a specific device later/i)).toBeTruthy();
+    expect(screen.getByText(/auto-collected details below together with any custom name you give it/i)).toBeTruthy();
+    expect(screen.getByText(/Auto-collected device details/i)).toBeTruthy();
+    expect(screen.getByText(/^Operating system$/i)).toBeTruthy();
+    expect(screen.getByText(/^Browser$/i)).toBeTruthy();
+    expect(screen.getByText(/^Detected label$/i)).toBeTruthy();
+    expect(screen.queryByText(/Wallet already configured/i)).toBeNull();
+  });
 });
