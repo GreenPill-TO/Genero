@@ -43,15 +43,45 @@ const createProfile = (overrides: Partial<any> = {}) => ({
   ...overrides,
 });
 
-const useAuthMock = vi.hoisted(() =>
-  vi.fn(() => ({
-    userData: {
-      cubidData: {
-        is_admin: false,
-        activeProfile: createProfile(),
-      },
+const createAuthState = (overrides: Partial<any> = {}) => ({
+  authData: {
+    user: {
+      id: "auth-user-123",
     },
-  }))
+  },
+  userData: {
+    cubidData: {
+      id: 123,
+      cubid_id: "cubid-123",
+      username: "taylorexample",
+      email: "taylor@example.com",
+      phone: "+14165550123",
+      full_name: "Taylor Example",
+      address: "123 Queen St W",
+      bio: "Testing profile output",
+      profile_image_url: null,
+      has_completed_intro: true,
+      is_new_user: false,
+      is_admin: false,
+      auth_user_id: null,
+      cubid_score: { score: 88 },
+      cubid_identity: { verified: true },
+      cubid_score_details: { phone: "verified" },
+      user_identifier: "wallet-user-123",
+      given_names: "Taylor",
+      family_name: "Example",
+      nickname: "Tay",
+      country: "CA",
+      created_at: "2026-03-15T00:00:00.000Z",
+      updated_at: "2026-03-20T00:00:00.000Z",
+      activeProfile: createProfile(),
+      ...overrides,
+    },
+  },
+});
+
+const useAuthMock = vi.hoisted(() =>
+  vi.fn(() => createAuthState())
 );
 const useControlPlaneAccessMock = vi.hoisted(() =>
   vi.fn(() => ({
@@ -82,10 +112,18 @@ vi.mock("@shared/hooks/useUserSettings", () => ({
     bootstrap: {
       user: {
         id: 123,
+        cubidId: "cubid-123",
+        userIdentifier: "wallet-user-123",
         fullName: "Taylor Example",
         firstName: "Taylor",
+        lastName: "Example",
+        nickname: "Tay",
         username: "taylorexample",
         email: "taylor@example.com",
+        phone: "+14165550123",
+        country: "CA",
+        hasCompletedIntro: true,
+        isNewUser: false,
         profileImageUrl: null,
       },
       preferences: {
@@ -162,14 +200,7 @@ describe("MoreTab", () => {
 
   beforeEach(() => {
     process.env.NEXT_PUBLIC_EXPLORER_URL = "https://env.example/address/";
-    useAuthMock.mockReturnValue({
-      userData: {
-        cubidData: {
-          is_admin: false,
-          activeProfile: createProfile(),
-        },
-      },
-    });
+    useAuthMock.mockReturnValue(createAuthState());
     useControlPlaneAccessMock.mockReturnValue({
       data: {
         canAccessAdminDashboard: false,
@@ -231,6 +262,20 @@ describe("MoreTab", () => {
       "min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.74fr)_minmax(280px,0.74fr)]"
     );
     expect(screen.getByTestId("more-tab-actions-grid").className).toContain("min-[1850px]:grid-cols-3");
+  });
+
+  it("renders every current public.users column with known values and empty rows", () => {
+    render(<MoreTab />);
+
+    expect(screen.getByTestId("more-tab-public-users-card")).toBeTruthy();
+    expect(screen.getByText("user_identifier")).toBeTruthy();
+    expect(screen.getByText("wallet-user-123")).toBeTruthy();
+    expect(screen.getByText("auth_user_id")).toBeTruthy();
+    expect(screen.getByText("auth-user-123")).toBeTruthy();
+    expect(screen.getByText("address")).toBeTruthy();
+    expect(screen.getByText("123 Queen St W")).toBeTruthy();
+    expect(screen.getByText("profile_image_url")).toBeTruthy();
+    expect(screen.getAllByText("Empty").length).toBeGreaterThan(0);
   });
 
   it("opens the off-ramp modal", () => {
@@ -322,14 +367,7 @@ describe("MoreTab", () => {
   });
 
   it("shows the admin dashboard shortcut when the user is an admin", () => {
-    useAuthMock.mockReturnValue({
-      userData: {
-        cubidData: {
-          is_admin: true,
-          activeProfile: createProfile(),
-        },
-      },
-    });
+    useAuthMock.mockReturnValue(createAuthState({ is_admin: true }));
     useControlPlaneAccessMock.mockReturnValue({
       data: {
         canAccessAdminDashboard: true,

@@ -1,3 +1,26 @@
+## v1.106
+### Timestamp
+- 2026-04-01 22:26:00 EDT
+
+### Objective
+- Add a bottom-of-More account-record card that shows every current `public.users` column alongside whatever value the authenticated wallet currently knows for that field.
+
+### What Changed
+- Added a schema-aligned `PUBLIC_USERS_COLUMNS` list and value-formatting helper to `MoreTab`, then rendered a new bottom section that lists each `public.users` column in order with the current authenticated value or an explicit empty placeholder.
+- Mapped the card values from the available wallet bootstrap, Cubid-style user payload, and auth session so fields like `auth_user_id`, `user_identifier`, names, contact details, booleans, timestamps, and JSON score blobs all render from the best available source.
+- Expanded the More-tab test coverage to assert that the new card renders, that known values appear in the right rows, and that empty database fields still remain visible.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.105
 ### Timestamp
 - 2026-04-01 19:15:08 EDT

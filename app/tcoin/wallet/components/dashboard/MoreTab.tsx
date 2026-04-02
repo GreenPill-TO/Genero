@@ -72,9 +72,59 @@ function formatThemeLabel(theme: string | null | undefined) {
   return "Follow system";
 }
 
+const PUBLIC_USERS_COLUMNS = [
+  "id",
+  "cubid_id",
+  "username",
+  "email",
+  "phone",
+  "full_name",
+  "address",
+  "bio",
+  "profile_image_url",
+  "has_completed_intro",
+  "is_new_user",
+  "is_admin",
+  "auth_user_id",
+  "cubid_score",
+  "cubid_identity",
+  "cubid_score_details",
+  "user_identifier",
+  "given_names",
+  "family_name",
+  "nickname",
+  "country",
+  "created_at",
+  "updated_at",
+] as const;
+
+function formatPublicUserValue(value: unknown) {
+  if (value == null) {
+    return "";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
   const { openModal, closeModal } = useModal();
-  const { userData } = useAuth();
+  const { userData, authData } = useAuth();
   const { bootstrap } = useUserSettings();
   const { senderWallet } = useSendMoney({
     senderId: userData?.cubidData?.id ?? 0,
@@ -270,6 +320,39 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
 
   const explorerBaseUrl = process.env.NEXT_PUBLIC_EXPLORER_URL || "https://explorer.example.com/address/";
   const explorerHref = senderWallet ? `${explorerBaseUrl}${senderWallet}` : null;
+  const publicUserRows = useMemo(() => {
+    const cubidData = userData?.cubidData;
+    const userRecord: Record<(typeof PUBLIC_USERS_COLUMNS)[number], unknown> = {
+      id: bootstrap?.user.id ?? cubidData?.id ?? null,
+      cubid_id: bootstrap?.user.cubidId ?? cubidData?.cubid_id ?? null,
+      username: bootstrap?.user.username ?? cubidData?.username ?? null,
+      email: bootstrap?.user.email ?? cubidData?.email ?? null,
+      phone: bootstrap?.user.phone ?? cubidData?.phone ?? null,
+      full_name: bootstrap?.user.fullName ?? cubidData?.full_name ?? null,
+      address: cubidData?.address ?? null,
+      bio: cubidData?.bio ?? null,
+      profile_image_url: bootstrap?.user.profileImageUrl ?? cubidData?.profile_image_url ?? null,
+      has_completed_intro: bootstrap?.user.hasCompletedIntro ?? cubidData?.has_completed_intro ?? null,
+      is_new_user: bootstrap?.user.isNewUser ?? cubidData?.is_new_user ?? null,
+      is_admin: cubidData?.is_admin ?? null,
+      auth_user_id: cubidData?.auth_user_id ?? authData?.user?.id ?? null,
+      cubid_score: cubidData?.cubid_score ?? null,
+      cubid_identity: cubidData?.cubid_identity ?? null,
+      cubid_score_details: cubidData?.cubid_score_details ?? null,
+      user_identifier: bootstrap?.user.userIdentifier ?? cubidData?.user_identifier ?? null,
+      given_names: bootstrap?.user.firstName ?? cubidData?.given_names ?? null,
+      family_name: bootstrap?.user.lastName ?? cubidData?.family_name ?? null,
+      nickname: bootstrap?.user.nickname ?? cubidData?.nickname ?? null,
+      country: bootstrap?.user.country ?? cubidData?.country ?? null,
+      created_at: cubidData?.created_at ?? null,
+      updated_at: cubidData?.updated_at ?? null,
+    };
+
+    return PUBLIC_USERS_COLUMNS.map((column) => ({
+      column,
+      value: formatPublicUserValue(userRecord[column]),
+    }));
+  }, [authData?.user?.id, bootstrap, userData?.cubidData]);
 
   const accountActions = [
     {
@@ -513,6 +596,48 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
           ))}
         </ActionSection>
       </div>
+
+      <section className={`${walletPanelClass} space-y-4`} data-testid="more-tab-public-users-card">
+        <div className="space-y-2">
+          <p className={walletSectionLabelClass}>Public users row</p>
+          <div className="space-y-1">
+            <h3 className="text-xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">
+              Current values from public.users
+            </h3>
+            <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Every current public.users column is listed below. Known values are shown from the authenticated wallet
+              state, and empty fields stay visible so missing data is easy to inspect.
+            </p>
+          </div>
+        </div>
+
+        <div className={`${walletPanelMutedClass} overflow-hidden p-0`}>
+          <div className="grid grid-cols-[minmax(140px,220px)_minmax(0,1fr)] border-b border-white/10 bg-slate-950/[0.03] text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:bg-white/[0.03] dark:text-slate-400">
+            <div className="px-4 py-3">Column</div>
+            <div className="px-4 py-3">Value</div>
+          </div>
+          <div className="divide-y divide-white/10">
+            {publicUserRows.map(({ column, value }) => {
+              const isEmpty = value.trim() === "";
+              return (
+                <div
+                  key={column}
+                  className="grid grid-cols-[minmax(140px,220px)_minmax(0,1fr)] items-start gap-4 px-4 py-3"
+                >
+                  <div className="font-mono text-xs text-slate-500 dark:text-slate-400">{column}</div>
+                  <div
+                    className={`min-w-0 break-words text-sm ${
+                      isEmpty ? "italic text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-200"
+                    }`}
+                  >
+                    {isEmpty ? "Empty" : value}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
