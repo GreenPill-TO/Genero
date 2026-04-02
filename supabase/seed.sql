@@ -508,7 +508,8 @@ INSERT INTO public.bia_registry (id, city_slug, code, name, center_lat, center_l
 VALUES
   ('11111111-1111-4111-8111-111111111111', 'tcoin', 'KING-WEST', 'King West', 43.6465000, -79.3923000, 'active', '{}'::jsonb, now(), now()),
   ('22222222-2222-4222-8222-222222222222', 'tcoin', 'RIVERDALE', 'Riverdale', 43.6714000, -79.3520000, 'active', '{}'::jsonb, now(), now()),
-  ('33333333-3333-4333-8333-333333333333', 'tcoin', 'YONGE', 'Yonge Corridor', 43.6669000, -79.3849000, 'inactive', '{}'::jsonb, now(), now())
+  ('33333333-3333-4333-8333-333333333333', 'tcoin', 'YONGE', 'Yonge Corridor', 43.6669000, -79.3849000, 'inactive', '{}'::jsonb, now(), now()),
+  ('44444444-4444-4444-8444-444444444443', 'tcoin', 'REST-OF-TORONTO', 'Rest of Toronto', 43.6532000, -79.3832000, 'active', '{}'::jsonb, now(), now())
 ON CONFLICT (id) DO UPDATE
 SET code = EXCLUDED.code,
     name = EXCLUDED.name,

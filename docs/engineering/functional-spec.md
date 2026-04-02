@@ -121,6 +121,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Wallet onboarding step 3 now opens a dedicated profile-picture editor modal immediately after image selection, using the same zoom and horizontal/vertical framing controls as Edit Profile before the cropped avatar is saved.
 - If the onboarding photo upload fails for storage/network reasons, step 3 now shows a picture-specific recovery message instead of surfacing low-level storage errors such as DNS/name-resolution failures.
 - Welcome step 4 now explains that the user’s transaction fees, paid instead of normal credit card fees, flow to the charity they choose, and that BIA selection is used to filter the local merchants shown in the wallet.
+- The seeded local BIA catalogue now includes a general `Rest of Toronto` option so local onboarding and settings are not limited to only the more specific seed BIAs.
 - Resetting a draft wallet signup now returns the user to the pre-start welcome card and stays there, instead of auto-reopening wizard step 1 after a brief flash of step 0.
 - Theme selection is stored per app instance and follows the user across devices, while still using a local cached value for first paint before authenticated bootstrap completes.
 - Charity selection is backed by a shared Supabase catalogue so wallet onboarding and settings modals always offer seeded local charity options instead of failing closed when the app profile lacks prior charity data.

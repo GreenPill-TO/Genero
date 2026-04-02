@@ -1,3 +1,22 @@
+## v1.150
+### Timestamp
+- 2026-04-02 15:13 EDT
+
+### Objective
+- Add a general-purpose `Rest of Toronto` BIA option to the seeded local catalogue.
+
+### What Changed
+- Added a new active `REST-OF-TORONTO` row to `public.bia_registry` in `supabase/seed.sql`, labelled `Rest of Toronto`, so local/dev seed data includes a catch-all Toronto option alongside the more specific BIAs.
+
+### Verification
+- `git diff --check -- supabase/seed.sql`
+
+### Files Edited
+- `supabase/seed.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.149
 ### Timestamp
 - 2026-04-02 15:08 EDT
