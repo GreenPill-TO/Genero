@@ -1,3 +1,25 @@
+## v1.129
+### Timestamp
+- 2026-04-02 09:49 EDT
+
+### Objective
+- Keep wallet signup reset on the true step-0 welcome state instead of auto-forwarding back into the wizard.
+
+### What Changed
+- Updated the wallet welcome-page reset handler to close the wizard client state after a successful reset, clear any staged profile-picture editor state, and leave the user on the pre-start welcome card.
+- Added a focused welcome-flow regression test that covers resetting a saved draft and verifies the UI stays on step 0 rather than reopening step 1.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.128
 ### Timestamp
 - 2026-04-02 09:58 EDT

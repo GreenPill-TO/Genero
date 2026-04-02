@@ -160,6 +160,9 @@ describe("WelcomePage", () => {
     process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "";
     startMutateAsync.mockResolvedValue({ signup: { currentStep: 1 } });
     saveStepMutateAsync.mockResolvedValue({ signup: { currentStep: 2 } });
+    resetMutateAsync.mockResolvedValue({
+      signup: { state: "none", currentStep: null },
+    });
     prepareProfilePictureMock.mockResolvedValue({
       file: new File(["avatar"], "avatar.png", { type: "image/png" }),
       previewUrl: "blob:welcome-avatar",
@@ -238,6 +241,23 @@ describe("WelcomePage", () => {
     expect(screen.getByText("Resume your signup")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Resume" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Reset" })).toBeTruthy();
+  });
+
+  it("returns to the step 0 welcome card after reset instead of reopening the wizard", async () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap("draft"),
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+
+    await waitFor(() => expect(resetMutateAsync).toHaveBeenCalled());
+    expect(screen.getByText("Welcome to TCOIN")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Start setup/i })).toBeTruthy();
+    expect(screen.queryByText(/Step 1 of 6/i)).toBeNull();
   });
 
   it("redirects completed users to the dashboard", () => {

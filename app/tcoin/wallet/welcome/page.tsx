@@ -117,6 +117,7 @@ export default function WelcomePage() {
   const resetSignup = useResetUserSignupMutation();
   const completeSignup = useCompleteUserSignupMutation();
   const [showWizard, setShowWizard] = useState(false);
+  const [showResetIntro, setShowResetIntro] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [deviceLabel, setDeviceLabel] = useState("");
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -323,6 +324,7 @@ export default function WelcomePage() {
   const handleStart = async () => {
     try {
       const next = await startSignup.mutateAsync();
+      setShowResetIntro(false);
       setShowWizard(true);
       setWizardStep(next.signup.currentStep ?? 1);
     } catch (error) {
@@ -339,8 +341,9 @@ export default function WelcomePage() {
       setProfilePictureSelection(null);
       setProfilePictureCrop(DEFAULT_CROP_STATE);
       setProfilePicturePreview(null);
-      setShowWizard(true);
-      setWizardStep(next.signup.currentStep ?? 1);
+      setShowResetIntro(next.signup.state === "none");
+      setShowWizard(false);
+      setWizardStep(1);
       toast.success("Signup reset.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to reset signup.");
@@ -353,6 +356,7 @@ export default function WelcomePage() {
         step: 1,
         payload: { introAccepted: true },
       });
+      setShowResetIntro(false);
       goToNextStep(next);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to save this step.");
@@ -602,7 +606,7 @@ export default function WelcomePage() {
 
   return (
     <div className={mainClass} data-testid="welcome-page-shell">
-      {!showWizard && bootstrap.signup.state === "none" ? (
+      {!showWizard && (bootstrap.signup.state === "none" || showResetIntro) ? (
         <section className={`${walletPanelClass} mx-auto w-full max-w-3xl space-y-6`} data-testid="welcome-primary-panel">
           <div className="space-y-3 text-center">
             <span className={walletBadgeClass}>Wallet setup</span>
@@ -640,6 +644,7 @@ export default function WelcomePage() {
             </Button>
             <Button
               onClick={() => {
+                setShowResetIntro(false);
                 setShowWizard(true);
                 setWizardStep(currentStep);
               }}
