@@ -1,3 +1,26 @@
+## v1.107
+### Timestamp
+- 2026-04-01 22:27:48 EDT
+
+### Objective
+- Make long identity fields in the More-tab `public.users` inspection card easier to read, especially `cubid_identity`.
+
+### What Changed
+- Added a wide-row treatment for JSON-heavy `public.users` fields in `MoreTab`, so `cubid_score`, `cubid_identity`, and `cubid_score_details` now render in a stacked, roomier layout instead of the tighter two-column row.
+- Switched object formatting to pretty-printed JSON and preserved wrapping with a monospace multi-line container, which gives long identity payloads more horizontal room and cleaner scanning.
+- Added a More-tab regression to assert that the long identity row uses the wide layout and keeps wrapped formatting.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.106
 ### Timestamp
 - 2026-04-01 22:26:00 EDT

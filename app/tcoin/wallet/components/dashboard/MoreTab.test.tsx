@@ -278,6 +278,14 @@ describe("MoreTab", () => {
     expect(screen.getAllByText("Empty").length).toBeGreaterThan(0);
   });
 
+  it("gives long identity fields extra room and preserves wrapping", () => {
+    render(<MoreTab />);
+
+    const identityRow = screen.getByTestId("public-users-row-cubid_identity");
+    expect(identityRow.className).toContain("space-y-2");
+    expect(screen.getByText(/"verified": true/i).className).toContain("whitespace-pre-wrap");
+  });
+
   it("opens the off-ramp modal", () => {
     render(<MoreTab />);
     fireEvent.click(

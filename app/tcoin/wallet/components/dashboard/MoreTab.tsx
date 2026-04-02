@@ -98,6 +98,12 @@ const PUBLIC_USERS_COLUMNS = [
   "updated_at",
 ] as const;
 
+const WIDE_PUBLIC_USERS_COLUMNS = new Set<(typeof PUBLIC_USERS_COLUMNS)[number]>([
+  "cubid_score",
+  "cubid_identity",
+  "cubid_score_details",
+]);
+
 function formatPublicUserValue(value: unknown) {
   if (value == null) {
     return "";
@@ -116,7 +122,7 @@ function formatPublicUserValue(value: unknown) {
   }
 
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value, null, 2);
   } catch {
     return String(value);
   }
@@ -619,10 +625,30 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
           <div className="divide-y divide-white/10">
             {publicUserRows.map(({ column, value }) => {
               const isEmpty = value.trim() === "";
+              const isWideValue = WIDE_PUBLIC_USERS_COLUMNS.has(column);
+
+              if (isWideValue) {
+                return (
+                  <div key={column} className="space-y-2 px-4 py-3" data-testid={`public-users-row-${column}`}>
+                    <div className="font-mono text-xs text-slate-500 dark:text-slate-400">{column}</div>
+                    <div
+                      className={`min-w-0 rounded-[18px] border border-white/10 px-3 py-3 font-mono text-xs leading-6 ${
+                        isEmpty
+                          ? "italic text-slate-400 dark:text-slate-500"
+                          : "whitespace-pre-wrap break-words text-slate-700 dark:text-slate-200"
+                      }`}
+                    >
+                      {isEmpty ? "Empty" : value}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={column}
                   className="grid grid-cols-[minmax(140px,220px)_minmax(0,1fr)] items-start gap-4 px-4 py-3"
+                  data-testid={`public-users-row-${column}`}
                 >
                   <div className="font-mono text-xs text-slate-500 dark:text-slate-400">{column}</div>
                   <div
