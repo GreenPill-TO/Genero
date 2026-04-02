@@ -237,6 +237,7 @@
 - Send tab uses a shared QR scanning modal instead of an embedded scanner, but still offers buttons to select a contact or paste a pay link and always displays the send form with amount inputs and a send button.
 - In Manual mode the Send tab shows a borderless oversized amount input with a CAD/TCOIN toggle, displays the converted value rounded to two decimals alongside the available balance and a "Use Max" shortcut, and only reveals scan or contact options once a positive amount is entered.
 - Receive tab renders its QR code with a white background for visibility in dark mode.
+- `ReceiveCard` now treats the QR stage as a fixed square white surface with explicit black/dark-slate copy inside it, so the QR panel keeps a 1:1 shape and its caption/loading text remains readable regardless of app theme.
 - Requests-to-pay modal styles Pay with the primary pink button and Ignore with a white button for clearer affordances.
 - Receive tab lists outgoing requests under a "Payment requests I have sent" heading and delete buttons call Supabase to set `is_active` to false.
 - Dark mode preference persists across tab switches via localStorage.

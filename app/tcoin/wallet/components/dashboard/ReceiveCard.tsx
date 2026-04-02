@@ -5,7 +5,6 @@ import { toast } from "react-toastify";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
-import useDarkMode from "@shared/hooks/useDarkMode";
 import { cn } from "@shared/utils/classnames";
 import { ContactSelectModal, ShareQrModal } from "@tcoin/wallet/components/modals";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
@@ -64,7 +63,6 @@ export function ReceiveCard({
   onDeleteRequest?: (requestId: number) => Promise<void>;
   showQrCode?: boolean;
 }) {
-  const { isDarkMode } = useDarkMode();
   const { openModal, closeModal } = useModal();
   void senderWallet;
 
@@ -424,31 +422,32 @@ export function ReceiveCard({
       </div>
       <div className="space-y-4">
         <div
+          data-testid="receive-qr-stage"
           className={cn(
-            "relative flex flex-col items-center justify-center rounded-[24px] transform transition duration-500 hover:scale-[1.01]",
-            qrWrapperClassName ?? "p-2"
+            "relative mx-auto flex aspect-square w-full max-w-[26rem] flex-col items-center justify-center gap-3 rounded-[24px] bg-white p-4 text-slate-950 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.45)] transition duration-500 hover:scale-[1.01] sm:p-5",
+            qrWrapperClassName
           )}
         >
           {shouldShowQrCode ? (
             qrCodeData ? (
               <>
-                <p className="mb-3 text-center text-base font-semibold text-slate-900 dark:text-white">
+                <p className="text-center text-base font-semibold text-slate-950">
                   {qrCaption}
                 </p>
                 <QRCode
                   value={qrCodeData}
                   size={250}
                   bgColor={qrBgColor ?? "transparent"}
-                  fgColor={qrFgColor ?? (isDarkMode ? "#fff" : "#000")}
+                  fgColor={qrFgColor ?? "#000"}
                 />
               </>
             ) : qrUnavailableReason ? (
-              <p className="text-center text-sm text-muted-foreground">{qrUnavailableReason}</p>
+              <p className="text-center text-sm text-slate-700">{qrUnavailableReason}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">Loading QR Code...</p>
+              <p className="text-center text-sm text-slate-700">Loading QR Code...</p>
             )
           ) : (
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-slate-700">
               QR code hidden while preparing a direct contact request.
             </p>
           )}

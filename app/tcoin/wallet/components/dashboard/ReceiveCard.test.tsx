@@ -344,6 +344,17 @@ describe("ReceiveCard", () => {
     ).toBeTruthy();
   });
 
+  it("keeps the QR stage square and uses dark text on the white card", () => {
+    renderReceiveCard();
+
+    const qrStage = screen.getByTestId("receive-qr-stage");
+    expect(qrStage.className).toContain("aspect-square");
+    expect(qrStage.className).toContain("bg-white");
+
+    const caption = screen.getByText(/Receive any amount/i);
+    expect(caption.className).toContain("text-slate-950");
+  });
+
   it("creates a targeted request after confirmation", async () => {
     const requestContact = {
       id: 15,

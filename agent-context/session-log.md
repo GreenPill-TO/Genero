@@ -1,3 +1,27 @@
+## v1.154
+### Timestamp
+- 2026-04-02 15:25 EDT
+
+### Objective
+- Fix the receive QR card so its white stage always stays square and its caption/loading text remains readable in dark mode.
+
+### What Changed
+- Made the QR stage in `ReceiveCard` a dedicated square white surface instead of a loosely sized wrapper, keeping the QR card at a consistent 1:1 shape.
+- Switched the QR caption and fallback copy to explicit slate text inside that white stage so strings like `Receive any amount` no longer disappear in dark mode.
+- Added a focused regression test that checks the QR stage keeps its square white contract and that the caption uses the dark text treatment.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `curl -I http://localhost:3000/dashboard?tab=receive`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.153
 ### Timestamp
 - 2026-04-02 16:22 EDT
