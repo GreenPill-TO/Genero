@@ -653,9 +653,9 @@ export default function WelcomePage() {
           </div>
           <div className={`${walletPanelMutedClass} space-y-4 text-sm text-muted-foreground`}>
             <p>Welcome to TCOIN, where we are trying to create a better local economic system around everyday Toronto life.</p>
-            <p>TCOIN is pegged to local transit value so the currency stays intuitive in daily use and easier to relate to than a speculative token price.</p>
+            <p>TCOIN is pegged to local transit value so the currency stays intuitive in daily use and stable in value over time.</p>
             <p>You will be asked which charity you support, and from then on a small percentage of your TCOIN activity will keep contributing to that charity.</p>
-            <p>Fun fact: when the TTC sold its first ticket, it cost 6 cents. If you could have held on to that price, you would have made more than 5,000% by now.</p>
+            <p>Fun fact: when the TTC sold its first ticket, it cost 6 cents. If you could have held on to that ticket, you would have made approx 5,500% by now, or 4% per year.</p>
           </div>
           <div className="flex justify-end">
             <Button onClick={() => void handleStart()} disabled={startSignup.isPending}>

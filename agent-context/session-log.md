@@ -1,3 +1,23 @@
+## v1.145
+### Timestamp
+- 2026-04-02 14:45 EDT
+
+### Objective
+- Refine the welcome-card economics copy so the stability framing and TTC ticket fact read more precisely.
+
+### What Changed
+- Replaced the transit-peg explanation so it now emphasises day-to-day intuitiveness and long-term value stability instead of contrasting TCOIN against speculative token pricing.
+- Updated the TTC ticket fun fact to refer to holding on to the ticket itself and to quantify the result as approximately `5,500%` total growth or `4%` per year.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.144
 ### Timestamp
 - 2026-04-02 14:39 EDT
