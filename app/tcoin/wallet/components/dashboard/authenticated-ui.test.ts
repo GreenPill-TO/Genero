@@ -7,6 +7,7 @@ import {
   walletMetricTileClass,
   walletPanelClass,
   walletPanelMutedClass,
+  walletRailPageClass,
 } from "./authenticated-ui";
 
 describe("authenticated interaction language", () => {
@@ -34,5 +35,12 @@ describe("authenticated interaction language", () => {
     expect(walletPanelMutedClass).toContain("sm:rounded-[24px]");
     expect(walletMetricTileClass).toContain("border-t");
     expect(walletMetricTileClass).toContain("sm:rounded-[20px]");
+  });
+
+  it("defines a shared desktop rail offset contract for sidebar pages", () => {
+    expect(walletRailPageClass).toContain("lg:pl-[9.5rem]");
+    expect(walletRailPageClass).toContain("xl:pl-[10.5rem]");
+    expect(walletRailPageClass).toContain("lg:max-w-[calc(90rem+8.25rem)]");
+    expect(walletRailPageClass).toContain("min-[1850px]:pl-[11rem]");
   });
 });

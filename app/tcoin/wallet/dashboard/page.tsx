@@ -21,6 +21,7 @@ import {
   WalletSection,
   walletActionButtonClass,
   walletPageClass,
+  walletRailPageClass,
 } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import { cn } from "@shared/utils/classnames";
 
@@ -65,7 +66,7 @@ export default function Dashboard() {
   const router = useRouter();
 
   const pageCopy = TAB_COPY[activeTab] ?? TAB_COPY.home;
-  const mainClass = cn(walletPageClass, "font-sans lg:pl-40 xl:pl-44");
+  const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans");
 
   const handleTabChange = useCallback(
     (next: string, options?: { showReceiveQr?: boolean }) => {

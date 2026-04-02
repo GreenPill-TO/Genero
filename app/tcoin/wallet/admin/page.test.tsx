@@ -241,9 +241,9 @@ describe("AdminDashboardPage", () => {
       expect(screen.getByText(/Request #4/)).toBeTruthy();
     });
 
-    const pageRoot = screen.getByText(/Admin dashboard/i).closest("div[class*='lg:pl-40']");
-    expect(pageRoot?.className).toContain("lg:pl-40");
-    expect(pageRoot?.className).toContain("xl:pl-44");
+    const pageRoot = screen.getByText(/Admin dashboard/i).closest("div[class*='lg:pl-[9.5rem]']");
+    expect(pageRoot?.className).toContain("lg:pl-[9.5rem]");
+    expect(pageRoot?.className).toContain("xl:pl-[10.5rem]");
     expect(screen.getByTestId("dashboard-footer")).toBeTruthy();
     expect(screen.getByText(/Dana/)).toBeTruthy();
     expect(screen.getByText(/lee@example.com/)).toBeTruthy();

@@ -1,3 +1,35 @@
+## v1.142
+### Timestamp
+- 2026-04-02 14:14 EDT
+
+### Objective
+- Fix the large-screen authenticated wallet shell so page content no longer slides under the fixed desktop sidebar rail.
+
+### What Changed
+- Added a dedicated shared desktop rail-offset contract, `walletRailPageClass`, in the authenticated UI primitives so sidebar-based pages expand their max width and clear the fixed rail with one shared inset definition instead of per-page padding hacks.
+- Switched `/dashboard`, `/merchant`, `/admin`, and `/city-manager` onto that shared rail class, and removed the stale `lg:pl-40 xl:pl-44` offsets from those routes as well as non-rail routes like `/welcome` and the contact detail page.
+- Updated the shared authenticated-ui regression test plus the operator page tests to assert the new rail-clearance class contract instead of the old page-local padding classes.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/admin/page.tsx app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/city-manager/page.tsx app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/merchant/page.tsx app/tcoin/wallet/merchant/page.test.tsx app/tcoin/wallet/welcome/page.tsx 'app/tcoin/wallet/dashboard/contacts/[id]/page.tsx'`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/merchant/page.test.tsx app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/admin/page.test.tsx`
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/city-manager/page.test.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/tcoin/wallet/merchant/page.test.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.141
 ### Timestamp
 - 2026-04-02 14:03 EDT

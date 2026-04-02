@@ -23,6 +23,7 @@ import {
   WalletPageIntro,
   walletPageClass,
   walletPanelMutedClass,
+  walletRailPageClass,
   walletSectionLabelClass,
 } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import { LuUser } from "react-icons/lu";
@@ -178,7 +179,7 @@ export default function CityManagerPage() {
     }
   };
 
-  const mainClass = cn(walletPageClass, "font-sans min-h-screen text-foreground lg:pl-40 xl:pl-44");
+  const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans min-h-screen text-foreground");
 
   const handleTabChange = (next: string) => {
     if (next === "home") {

@@ -38,6 +38,7 @@ import {
   WalletPageIntro,
   walletPageClass,
   walletPanelMutedClass,
+  walletRailPageClass,
 } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import {
   Select,
@@ -457,7 +458,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const controlPlaneAccess = useControlPlaneAccess("tcoin", !isLoading);
   const isMountedRef = useRef(true);
-  const mainClass = cn(walletPageClass, "font-sans min-h-screen text-foreground lg:pl-40 xl:pl-44");
+  const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans min-h-screen text-foreground");
 
   const [onRampRequests, setOnRampRequests] = useState<OnRampRequest[]>([]);
   const [offRampRequests, setOffRampRequests] = useState<OffRampRequest[]>([]);

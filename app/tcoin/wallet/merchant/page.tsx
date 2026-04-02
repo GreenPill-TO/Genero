@@ -31,6 +31,7 @@ import {
   WalletPageIntro,
   walletPageClass,
   walletPanelMutedClass,
+  walletRailPageClass,
 } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -143,7 +144,7 @@ export default function MerchantDashboardPage() {
   const isLive = appState === "live";
 
   const storeId = status?.storeId ?? null;
-  const mainClass = cn(walletPageClass, "font-sans min-h-screen text-foreground lg:pl-40 xl:pl-44");
+  const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans min-h-screen text-foreground");
 
   const handleTabChange = (next: string) => {
     if (next === "home") {

@@ -467,7 +467,7 @@ export default function WelcomePage() {
 
   const mainClass = cn(
     walletPageClass,
-    "min-h-screen justify-center font-sans lg:pl-40 xl:pl-44"
+    "min-h-screen justify-center font-sans"
   );
   const selectedPrimaryBiaId = communitySettings.primaryBiaId;
 

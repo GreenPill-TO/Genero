@@ -94,8 +94,8 @@ describe("MerchantDashboardPage", () => {
       expect(screen.getByRole("heading", { name: /Merchant Dashboard/i })).toBeTruthy();
     });
 
-    expect((container.firstChild as HTMLElement).className).toContain("lg:pl-40");
-    expect((container.firstChild as HTMLElement).className).toContain("xl:pl-44");
+    expect((container.firstChild as HTMLElement).className).toContain("lg:pl-[9.5rem]");
+    expect((container.firstChild as HTMLElement).className).toContain("xl:pl-[10.5rem]");
     expect(screen.getByTestId("dashboard-footer")).toBeTruthy();
   });
 });

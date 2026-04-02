@@ -4,6 +4,9 @@ import { cn } from "@shared/utils/classnames";
 export const walletPageClass =
   "mx-auto flex w-full max-w-[90rem] flex-col gap-4 px-0 pb-24 pt-3 sm:gap-6 sm:px-6 sm:pb-28 sm:pt-5 lg:gap-5 lg:px-5 lg:pb-8 lg:pt-5 xl:px-4 xl:pb-7 min-[1850px]:max-w-[112rem] min-[1850px]:px-6 min-[1850px]:pb-9";
 
+export const walletRailPageClass =
+  "lg:max-w-[calc(90rem+8.25rem)] lg:pl-[9.5rem] xl:max-w-[calc(90rem+9.5rem)] xl:pl-[10.5rem] min-[1850px]:max-w-[calc(112rem+9.5rem)] min-[1850px]:pl-[11rem]";
+
 export const walletPanelClass =
   "rounded-none border-0 border-b border-slate-200/70 bg-transparent px-5 py-5 text-slate-900 shadow-none sm:rounded-[28px] sm:border sm:border-white/10 sm:bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,247,249,0.88))] sm:p-5 sm:shadow-[0_24px_60px_rgba(15,23,42,0.12)] sm:backdrop-blur dark:border-white/10 dark:bg-transparent dark:text-slate-50 dark:sm:bg-[linear-gradient(180deg,rgba(18,25,34,0.94),rgba(10,15,21,0.92))] dark:sm:shadow-[0_32px_80px_rgba(2,6,23,0.5)]";
 
