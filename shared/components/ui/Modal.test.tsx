@@ -25,4 +25,20 @@ describe("Modal", () => {
     expect(screen.getByText("Wallet modal").className).toContain("font-sans");
     expect(screen.getByRole("button", { name: "✕" }).className).toContain("font-sans");
   });
+
+  it("omits empty title and description blocks when they are not provided", () => {
+    const { container } = render(
+      <Modal
+        modalContent={{
+          content: <div>Body only</div>,
+          elSize: "md",
+        }}
+        closeModal={vi.fn()}
+        modalThemeClassName="wallet-auth-shell font-sans"
+      />
+    );
+
+    expect(screen.getByText("Body only")).toBeTruthy();
+    expect(container.querySelector(".modal-title")).toBeNull();
+  });
 });

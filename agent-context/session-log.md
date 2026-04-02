@@ -1,3 +1,30 @@
+## v1.128
+### Timestamp
+- 2026-04-02 09:58 EDT
+
+### Objective
+- Refine wallet onboarding steps 2 and 3 so the user-details screen distinguishes required vs optional fields, and the profile-picture step uses the real avatar editor flow with clearer upload-error handling.
+
+### What Changed
+- Reworked onboarding step 2 into `Required to continue` and `Optional for now` panels, made first name/last name blank with `Mats` / `Sundin` placeholders for new signups, and relaxed continuation so only first name, last name, and phone verification are mandatory there.
+- Added a dedicated `WelcomeProfilePictureEditorModal` for onboarding step 3, reusing the circular avatar crop controls from Edit Profile so newly selected images are framed before upload instead of being accepted raw.
+- Updated step 3 to save the cropped avatar file and to translate low-level upload/network failures such as `name resolution failed` into a picture-specific recovery message instead of a misleading raw infrastructure toast.
+- Tightened modal-shell behaviour so content-only modals do not render empty title/description blocks, and added focused welcome-flow tests for the new step-2 grouping and step-3 editor-modal launch.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx app/tcoin/wallet/components/modals/WelcomeProfilePictureEditorModal.tsx shared/components/ui/Modal.tsx shared/components/ui/Modal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx shared/components/ui/Modal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `app/tcoin/wallet/components/modals/WelcomeProfilePictureEditorModal.tsx`
+- `shared/components/ui/Modal.tsx`
+- `shared/components/ui/Modal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.127
 ### Timestamp
 - 2026-04-02 09:41 EDT

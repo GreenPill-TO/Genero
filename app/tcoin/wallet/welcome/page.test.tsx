@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WelcomePage from "./page";
 
@@ -15,6 +15,8 @@ const completeMutateAsync = vi.fn();
 
 const useUserSettingsMock = vi.hoisted(() => vi.fn());
 const useAuthMock = vi.hoisted(() => vi.fn());
+const prepareProfilePictureMock = vi.hoisted(() => vi.fn());
+const uploadProfilePictureMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/dynamic", () => ({
   default: () => {
@@ -68,6 +70,23 @@ vi.mock("@shared/api/services/supabaseService", () => ({
   getActiveAppInstance: vi.fn(),
   normaliseDeviceInfo: vi.fn((value) => value),
   serialiseUserShare: vi.fn((value) => value),
+}));
+
+vi.mock("@shared/lib/profilePictureCrop", () => ({
+  prepareProfilePicture: (...args: any[]) => prepareProfilePictureMock(...args),
+  createCroppedProfilePictureFile: vi.fn(),
+  getProfilePictureCropFrame: vi.fn(() => ({
+    scaledWidth: 96,
+    scaledHeight: 96,
+    x: 0,
+    y: 0,
+    maxOffsetX: 0,
+    maxOffsetY: 0,
+  })),
+}));
+
+vi.mock("@shared/lib/supabase/profilePictures", () => ({
+  uploadProfilePicture: (...args: any[]) => uploadProfilePictureMock(...args),
 }));
 
 vi.mock("@shared/lib/supabase/client", () => ({
@@ -139,6 +158,15 @@ const createBootstrap = (
 describe("WelcomePage", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "";
+    startMutateAsync.mockResolvedValue({ signup: { currentStep: 1 } });
+    saveStepMutateAsync.mockResolvedValue({ signup: { currentStep: 2 } });
+    prepareProfilePictureMock.mockResolvedValue({
+      file: new File(["avatar"], "avatar.png", { type: "image/png" }),
+      previewUrl: "blob:welcome-avatar",
+      width: 1200,
+      height: 1600,
+    });
+    uploadProfilePictureMock.mockResolvedValue("https://example.com/avatar.png");
     useAuthMock.mockReturnValue({
       isAuthenticated: true,
       userData: null,
@@ -249,5 +277,48 @@ describe("WelcomePage", () => {
 
     expect(await screen.findByText(/This step is about the signup process itself/i)).toBeTruthy();
     expect(screen.getByText(/Your progress is saved step by step/i)).toBeTruthy();
+  });
+
+  it("shows required and optional groups on step 2 with Mats Sundin placeholders instead of prefilled names", async () => {
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Start setup/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Continue$/i }));
+
+    expect(await screen.findByText(/Required to continue/i)).toBeTruthy();
+    expect(screen.getByText(/Optional for now/i)).toBeTruthy();
+    expect(screen.getByText(/First name, last name, and phone verification are required/i)).toBeTruthy();
+    expect(screen.getByText(/Preferred name, username, and country can be added now or later/i)).toBeTruthy();
+    expect((screen.getByLabelText(/^First name$/i) as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText(/^First name$/i) as HTMLInputElement).placeholder).toBe("Mats");
+    expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).placeholder).toBe("Sundin");
+  });
+
+  it("opens the picture editor modal after choosing an image on step 3", async () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap("draft", {
+        currentStep: 3,
+        completedSteps: [1, 2],
+      }),
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    fireEvent.change(screen.getByLabelText(/Choose a profile picture/i), {
+      target: {
+        files: [new File(["avatar"], "avatar.png", { type: "image/png" })],
+      },
+    });
+
+    await waitFor(() => expect(prepareProfilePictureMock).toHaveBeenCalled());
+    expect(openModalMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        elSize: "xl",
+      })
+    );
   });
 });

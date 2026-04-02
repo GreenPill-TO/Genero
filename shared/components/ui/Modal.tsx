@@ -42,12 +42,16 @@ const Modal: React.FC<ModalProps> = ({
             : "bg-card"
         )}
       >
-        <h2 className={cn("modal-title text-lg font-bold", useWalletAuthTheme && "font-sans")}>
-          {modalContent?.title}
-        </h2>
-        <p className={cn("text-sm text-muted-foreground", useWalletAuthTheme && "font-sans")}>
-          {modalContent?.description}
-        </p>
+        {modalContent?.title ? (
+          <h2 className={cn("modal-title text-lg font-bold", useWalletAuthTheme && "font-sans")}>
+            {modalContent.title}
+          </h2>
+        ) : null}
+        {modalContent?.description ? (
+          <p className={cn("text-sm text-muted-foreground", useWalletAuthTheme && "font-sans")}>
+            {modalContent.description}
+          </p>
+        ) : null}
         <div className="mt-4">{modalContent?.content}</div>
         <div className="modal-action mt-0">
           <button
