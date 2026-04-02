@@ -1,3 +1,28 @@
+## v1.109
+### Timestamp
+- 2026-04-01 22:43 EDT
+
+### Objective
+- Stop forcing square profile photos in Edit Profile, and add a signed-in framing step so users can place any uploaded image correctly inside the circular avatar.
+
+### What Changed
+- Added a client-side profile-picture preparation and crop helper that reads the selected image dimensions, builds a local preview model, and exports the framed result as a cropped square PNG for upload.
+- Reworked the Edit Profile modal to accept any image, show a circular preview immediately after selection, and expose zoom plus horizontal or vertical positioning controls depending on the photo shape and crop state.
+- Updated the shared avatar image styling to use `object-cover`, and expanded the modal regression test to cover the new framing flow and cropped upload path.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx shared/lib/profilePictureCrop.ts shared/components/ui/Avatar.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `shared/lib/profilePictureCrop.ts`
+- `shared/components/ui/Avatar.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.108
 ### Timestamp
 - 2026-04-01 22:33:51 EDT

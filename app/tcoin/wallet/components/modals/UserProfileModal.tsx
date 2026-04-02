@@ -10,8 +10,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avata
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Label } from "@shared/components/ui/Label";
+import { Slider } from "@shared/components/ui/slider";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
 import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
+import {
+  createCroppedProfilePictureFile,
+  describeProfilePictureOrientation,
+  getProfilePictureCropFrame,
+  prepareProfilePicture,
+  type PreparedProfilePicture,
+  type ProfilePictureCropState,
+} from "@shared/lib/profilePictureCrop";
 import { dialCodes } from "@shared/utils/countryDialCodes";
 import { toast } from "react-toastify";
 import { LuUser } from "react-icons/lu";
@@ -37,6 +46,14 @@ type FormValues = {
   nickname: string;
   country: CountryOption | null;
 };
+
+const DEFAULT_CROP_STATE: ProfilePictureCropState = {
+  offsetX: 0,
+  offsetY: 0,
+  zoom: 1,
+};
+
+const CROP_PREVIEW_SIZE = 176;
 
 const buildCountryOptions = (): CountryOption[] => {
   const data = countryList().getData();
@@ -94,7 +111,9 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     const source = typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl.trim() : "";
     return source ? source : null;
   });
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarSelection, setAvatarSelection] = useState<PreparedProfilePicture | null>(null);
+  const [avatarCrop, setAvatarCrop] = useState<ProfilePictureCropState>(DEFAULT_CROP_STATE);
+  const [isPreparingAvatar, setIsPreparingAvatar] = useState(false);
 
   const {
     register,
@@ -123,34 +142,54 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   }, [initialFirstName, initialLastName, initialCountryOption, profile?.nickname, profile?.username, reset]);
 
   useEffect(() => {
-    if (avatarFile) {
+    if (avatarSelection) {
       return;
     }
     const source = typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl.trim() : "";
     setAvatarPreview(source ? source : null);
-  }, [profile?.profileImageUrl, avatarFile]);
+  }, [profile?.profileImageUrl, avatarSelection]);
 
   useEffect(() => {
     return () => {
       if (avatarPreview && avatarPreview.startsWith("blob:")) {
         URL.revokeObjectURL(avatarPreview);
       }
+      if (avatarSelection?.previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarSelection.previewUrl);
+      }
     };
-  }, [avatarPreview]);
+  }, [avatarPreview, avatarSelection]);
 
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (avatarPreview && avatarPreview.startsWith("blob:")) {
-      URL.revokeObjectURL(avatarPreview);
-    }
     if (file) {
-      const previewUrl = URL.createObjectURL(file);
-      setAvatarPreview(previewUrl);
-      setAvatarFile(file);
-    } else {
-      setAvatarPreview(typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl : null);
-      setAvatarFile(null);
+      setIsPreparingAvatar(true);
+      try {
+        const preparedImage = await prepareProfilePicture(file);
+        if (avatarSelection?.previewUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(avatarSelection.previewUrl);
+        }
+        if (avatarPreview && avatarPreview.startsWith("blob:")) {
+          URL.revokeObjectURL(avatarPreview);
+        }
+        setAvatarSelection(preparedImage);
+        setAvatarCrop(DEFAULT_CROP_STATE);
+        setAvatarPreview(preparedImage.previewUrl);
+      } catch (error) {
+        console.error("Error preparing profile picture", error);
+        toast.error("We couldn't prepare that image. Please try another one.");
+      } finally {
+        setIsPreparingAvatar(false);
+      }
+      return;
     }
+
+    if (avatarSelection?.previewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarSelection.previewUrl);
+    }
+    setAvatarSelection(null);
+    setAvatarCrop(DEFAULT_CROP_STATE);
+    setAvatarPreview(typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl : null);
   };
 
   const selectStyles = useMemo<StylesConfig<CountryOption, false>>(
@@ -175,8 +214,12 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
 
     try {
       let profileImageUrl = typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl : null;
-      if (avatarFile) {
-        profileImageUrl = await uploadProfilePicture(bootstrap.user.id, avatarFile);
+      if (avatarSelection) {
+        const croppedFile = await createCroppedProfilePictureFile({
+          source: avatarSelection,
+          crop: avatarCrop,
+        });
+        profileImageUrl = await uploadProfilePicture(bootstrap.user.id, croppedFile);
       }
 
       const firstName = values.firstName.trim();
@@ -207,6 +250,19 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
 
   const username = profile?.username ? `@${profile.username}` : undefined;
   const email = profile?.email ?? "";
+  const cropFrame = avatarSelection
+    ? getProfilePictureCropFrame({
+        imageWidth: avatarSelection.width,
+        imageHeight: avatarSelection.height,
+        cropSize: CROP_PREVIEW_SIZE,
+        offsetX: avatarCrop.offsetX,
+        offsetY: avatarCrop.offsetY,
+        zoom: avatarCrop.zoom,
+      })
+    : null;
+  const avatarOrientation = avatarSelection
+    ? describeProfilePictureOrientation(avatarSelection.width, avatarSelection.height)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -218,15 +274,34 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       </div>
 
       <div className={`${walletPanelMutedClass} flex flex-col gap-4 sm:flex-row sm:items-center`}>
-        <Avatar className="h-20 w-20">
-          {avatarPreview ? (
-            <AvatarImage src={avatarPreview} alt="Profile picture" />
-          ) : (
-            <AvatarFallback>
-              <LuUser />
-            </AvatarFallback>
-          )}
-        </Avatar>
+        {avatarSelection && cropFrame ? (
+          <div className="relative h-20 w-20 overflow-hidden rounded-full border border-white/10 bg-muted">
+            <div
+              aria-hidden="true"
+              className="absolute max-w-none"
+              style={{
+                width: `${cropFrame.scaledWidth}px`,
+                height: `${cropFrame.scaledHeight}px`,
+                left: `${cropFrame.x}px`,
+                top: `${cropFrame.y}px`,
+                backgroundImage: `url(${avatarSelection.previewUrl})`,
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                backgroundSize: "100% 100%",
+              }}
+            />
+          </div>
+        ) : (
+          <Avatar className="h-20 w-20">
+            {avatarPreview ? (
+              <AvatarImage src={avatarPreview} alt="Profile picture" />
+            ) : (
+              <AvatarFallback>
+                <LuUser />
+              </AvatarFallback>
+            )}
+          </Avatar>
+        )}
         <div className="flex-1 space-y-2">
           <div className="min-w-0">
             {username && <p className="text-sm font-semibold break-words">{username}</p>}
@@ -244,10 +319,111 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
               onChange={handleAvatarChange}
               className="block w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm"
             />
-            <p className="text-xs text-muted-foreground">Upload a square image for the best fit.</p>
+            <p className="text-xs text-muted-foreground">
+              Upload any image, then position it inside the circle the way it should appear across the wallet.
+            </p>
           </div>
         </div>
       </div>
+
+      {avatarSelection && cropFrame ? (
+        <div className={`${walletPanelMutedClass} space-y-4`}>
+          <div className="space-y-1">
+            <p className={walletSectionLabelClass}>Profile picture framing</p>
+            <p className="text-sm text-muted-foreground">
+              Adjust how your photo sits inside the circular avatar. This is the version that will be saved.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
+            <div className="flex justify-center lg:w-[220px] lg:justify-start">
+              <div
+                className="relative overflow-hidden rounded-full border border-white/10 bg-background shadow-sm"
+                style={{ width: CROP_PREVIEW_SIZE, height: CROP_PREVIEW_SIZE }}
+              >
+                <div
+                  aria-hidden="true"
+                  className="absolute max-w-none"
+                  style={{
+                    width: `${cropFrame.scaledWidth}px`,
+                    height: `${cropFrame.scaledHeight}px`,
+                    left: `${cropFrame.x}px`,
+                    top: `${cropFrame.y}px`,
+                    backgroundImage: `url(${avatarSelection.previewUrl})`,
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "100% 100%",
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="profile-picture-zoom">Zoom</Label>
+                  <span className="text-xs text-muted-foreground">{avatarCrop.zoom.toFixed(1)}x</span>
+                </div>
+                <Slider
+                  id="profile-picture-zoom"
+                  aria-label="Zoom"
+                  min={1}
+                  max={2.5}
+                  step={0.05}
+                  value={[avatarCrop.zoom]}
+                  onValueChange={([zoom]) =>
+                    setAvatarCrop((current) => ({ ...current, zoom: zoom ?? current.zoom }))
+                  }
+                />
+              </div>
+
+              {cropFrame.maxOffsetX > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="profile-picture-horizontal-position">Horizontal position</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {avatarOrientation === "landscape" ? "Most useful for wide photos" : "Available after zooming"}
+                    </span>
+                  </div>
+                  <Slider
+                    id="profile-picture-horizontal-position"
+                    aria-label="Horizontal position"
+                    min={-100}
+                    max={100}
+                    step={1}
+                    value={[avatarCrop.offsetX]}
+                    onValueChange={([offsetX]) =>
+                      setAvatarCrop((current) => ({ ...current, offsetX: offsetX ?? current.offsetX }))
+                    }
+                  />
+                </div>
+              ) : null}
+
+              {cropFrame.maxOffsetY > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="profile-picture-vertical-position">Vertical position</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {avatarOrientation === "portrait" ? "Most useful for tall photos" : "Available after zooming"}
+                    </span>
+                  </div>
+                  <Slider
+                    id="profile-picture-vertical-position"
+                    aria-label="Vertical position"
+                    min={-100}
+                    max={100}
+                    step={1}
+                    value={[avatarCrop.offsetY]}
+                    onValueChange={([offsetY]) =>
+                      setAvatarCrop((current) => ({ ...current, offsetY: offsetY ?? current.offsetY }))
+                    }
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className={`${walletPanelMutedClass} grid gap-4 sm:grid-cols-2`}>
@@ -322,7 +498,11 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
           <Button type="button" variant="ghost" onClick={closeModal} disabled={isSubmitting} className="rounded-full">
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || updateProfile.isPending} className="rounded-full">
+          <Button
+            type="submit"
+            disabled={isSubmitting || updateProfile.isPending || isPreparingAvatar}
+            className="rounded-full"
+          >
             {isSubmitting || updateProfile.isPending ? "Saving..." : "Save Changes"}
           </Button>
         </div>
