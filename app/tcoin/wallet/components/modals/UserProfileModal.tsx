@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import Select, { type StylesConfig } from "react-select";
+import Select, { type InputActionMeta, type StylesConfig } from "react-select";
 import countryList from "react-select-country-list";
 import { useUserSettings } from "@shared/hooks/useUserSettings";
 import { useUpdateUserProfileMutation } from "@shared/hooks/useUserSettingsMutations";
@@ -114,6 +114,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   const [avatarSelection, setAvatarSelection] = useState<PreparedProfilePicture | null>(null);
   const [avatarCrop, setAvatarCrop] = useState<ProfilePictureCropState>(DEFAULT_CROP_STATE);
   const [isPreparingAvatar, setIsPreparingAvatar] = useState(false);
+  const [countrySearchInput, setCountrySearchInput] = useState("");
 
   const {
     register,
@@ -205,6 +206,22 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     }),
     [errors.country]
   );
+
+  const isCountryMenuOpen = countrySearchInput.trim().length > 0;
+
+  const handleCountryInputChange = (nextValue: string, meta: InputActionMeta) => {
+    if (meta.action === "input-change") {
+      setCountrySearchInput(nextValue);
+      return nextValue;
+    }
+
+    if (meta.action === "input-blur" || meta.action === "menu-close" || meta.action === "set-value") {
+      setCountrySearchInput("");
+      return "";
+    }
+
+    return nextValue;
+  };
 
   const onSubmit = async (values: FormValues) => {
     if (!bootstrap?.user.id) {
@@ -466,7 +483,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
           </div>
 
           <div>
-            <Label htmlFor="country">Country</Label>
+            <Label htmlFor="country">Country or Country number</Label>
             <Controller
               name="country"
               control={control}
@@ -474,12 +491,32 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
               render={({ field }) => (
                 <Select
                   {...field}
+                  inputId="country"
                   options={countryOptions}
                   styles={selectStyles}
-                  placeholder="Select a country"
+                  placeholder="Type a country or country number"
                   classNamePrefix="country-select"
                   value={field.value}
-                  onChange={(option) => field.onChange(option)}
+                  openMenuOnFocus={false}
+                  menuIsOpen={isCountryMenuOpen}
+                  inputValue={countrySearchInput}
+                  noOptionsMessage={() =>
+                    isCountryMenuOpen ? "No matching country or dial code." : "Start typing to see options."
+                  }
+                  filterOption={(option, inputValue) => {
+                    const search = inputValue.trim().toLowerCase();
+                    if (!search) {
+                      return false;
+                    }
+                    return (
+                      option.label.toLowerCase().includes(search) || option.value.toLowerCase().includes(search)
+                    );
+                  }}
+                  onInputChange={handleCountryInputChange}
+                  onChange={(option) => {
+                    setCountrySearchInput("");
+                    field.onChange(option);
+                  }}
                   menuPortalTarget={typeof window !== "undefined" ? document.body : undefined}
                 />
               )}

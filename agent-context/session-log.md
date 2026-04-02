@@ -1,3 +1,26 @@
+## v1.110
+### Timestamp
+- 2026-04-01 22:47 EDT
+
+### Objective
+- Make the Edit Profile country field more intentional by changing the label and only showing matching country options after the user starts typing.
+
+### What Changed
+- Renamed the Edit Profile field to “Country or Country number” so the dial-code use case is explicit.
+- Updated the `react-select` configuration to keep the country menu closed on focus, open only once there is typed input, and filter against both the visible country label and the stored country code.
+- Added a focused modal regression to confirm the picker stays closed until typing begins and then reveals the matching option list.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.109
 ### Timestamp
 - 2026-04-01 22:43 EDT

@@ -131,6 +131,19 @@ describe("UserProfileModal", () => {
     expect(toastError).not.toHaveBeenCalled();
   });
 
+  it("only shows country choices after the user starts typing", async () => {
+    render(<UserProfileModal closeModal={closeModal} />);
+
+    const countryInput = screen.getByLabelText(/Country or Country number/i);
+
+    fireEvent.focus(countryInput);
+    expect(screen.queryByRole("option", { name: /^United States \(\+1\)$/i })).toBeNull();
+
+    fireEvent.change(countryInput, { target: { value: "United" } });
+
+    await waitFor(() => expect(screen.getByRole("option", { name: /^United States \(\+1\)$/i })).toBeTruthy());
+  });
+
   it("shows crop controls for a selected image and uploads the cropped result before saving", async () => {
     render(<UserProfileModal closeModal={closeModal} />);
 
