@@ -73,7 +73,7 @@ export function TransactionHistoryTab({
 
       try {
         const response = await getWalletTransactionHistory({ appContext: { citySlug: "tcoin" } });
-        const sourceRows = Array.isArray(response.entries) ? response.entries : [];
+        const sourceRows = Array.isArray(response.transactions) ? response.transactions : [];
 
         if (sourceRows.length === 0) {
           if (isMounted) {
@@ -97,10 +97,9 @@ export function TransactionHistoryTab({
             typeof row.currency === "string" && row.currency.trim() !== ""
               ? row.currency
               : "TCOIN";
-          const walletFrom = typeof row.wallet_account_from === "string" ? row.wallet_account_from : null;
-          const walletTo = typeof row.wallet_account_to === "string" ? row.wallet_account_to : null;
-          const createdAt =
-            typeof row.created_at === "string" ? row.created_at : null;
+          const walletFrom = typeof row.walletFrom === "string" ? row.walletFrom : null;
+          const walletTo = typeof row.walletTo === "string" ? row.walletTo : null;
+          const createdAt = typeof row.createdAt === "string" ? row.createdAt : null;
           const direction =
             row.direction === "received" || row.direction === "internal" ? row.direction : "sent";
 

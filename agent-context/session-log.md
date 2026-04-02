@@ -1,3 +1,31 @@
+## v1.160
+### Timestamp
+- 2026-04-02 18:37 EDT
+
+### Objective
+- Stop local `/dashboard?tab=history` from surfacing the missing `act_transaction_entries` schema error and align the History tab with the canonical wallet-operations response shape.
+
+### What Changed
+- Diagnosed the local root cause by inspecting the running local Postgres schema: `public.act_transactions` exists, but `public.act_transaction_entries` and the legacy `simple_transfer(...)` RPC do not, so the wallet history code was still depending on a legacy contract that the repo’s local migration chain never provisions.
+- Updated the shared wallet-operations history helpers to treat a missing local legacy transaction ledger as an empty-history condition instead of throwing a user-visible error, which keeps local History and recents usable while that legacy ledger remains absent.
+- Fixed `TransactionHistoryTab` to read the canonical `wallet-operations` response shape (`transactions` with camelCase fields) instead of the stale `entries` / snake_case payload it was still expecting.
+- Added focused regressions for both the missing-ledger backend fallback and the canonical history-tab response parsing path.
+
+### Verification
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\\dt public.act*"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\\df+ public.simple_transfer"`
+- `pnpm exec eslint supabase/functions/_shared/walletOperations.ts supabase/functions/_shared/walletOperations.test.ts app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx app/tcoin/wallet/components/dashboard/TransactionHistoryTab.test.tsx`
+- `pnpm exec vitest run supabase/functions/_shared/walletOperations.test.ts app/tcoin/wallet/components/dashboard/TransactionHistoryTab.test.tsx`
+
+### Files Edited
+- `supabase/functions/_shared/walletOperations.ts`
+- `supabase/functions/_shared/walletOperations.test.ts`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.159
 ### Timestamp
 - 2026-04-02 18:27 EDT

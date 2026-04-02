@@ -93,6 +93,18 @@ function toTimestamp(value: string | null | undefined): number {
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
 }
 
+function isMissingLegacyTransactionLedgerError(error: unknown): boolean {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : "";
+
+  return (
+    message.includes("Could not find the table 'public.act_transaction_entries'") ||
+    message.includes("relation \"public.act_transaction_entries\" does not exist")
+  );
+}
+
 function inferInviteSource(sources: string[]): string {
   const unique = Array.from(new Set(sources));
   if (unique.length === 0) {
@@ -656,6 +668,9 @@ async function listTransactionRowsForWallets(options: {
     .limit(options.limit);
 
   if (error) {
+    if (isMissingLegacyTransactionLedgerError(error)) {
+      return [];
+    }
     throw new Error(`Failed to load transaction entries: ${error.message}`);
   }
 
@@ -775,9 +790,15 @@ export async function getWalletContactTransactionHistory(
   ]);
 
   if (sentRows.error) {
+    if (isMissingLegacyTransactionLedgerError(sentRows.error)) {
+      return { transactions: [] };
+    }
     throw new Error(`Failed to load sent contact transactions: ${sentRows.error.message}`);
   }
   if (receivedRows.error) {
+    if (isMissingLegacyTransactionLedgerError(receivedRows.error)) {
+      return { transactions: [] };
+    }
     throw new Error(`Failed to load received contact transactions: ${receivedRows.error.message}`);
   }
 
@@ -986,3 +1007,7 @@ export async function sendWalletAdminNotification(
 
   return { ok: true };
 }
+
+export const __testOnly__ = {
+  isMissingLegacyTransactionLedgerError,
+};
