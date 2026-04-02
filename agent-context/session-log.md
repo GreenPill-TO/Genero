@@ -1,3 +1,28 @@
+## v1.155
+### Timestamp
+- 2026-04-02 15:31 EDT
+
+### Objective
+- Split the authenticated dashboard layout contract so broad overview tabs can fill the workspace while task-heavy tabs stay centred to a narrower working width on large screens.
+
+### What Changed
+- Updated `dashboard/page.tsx` so overview tabs (`home`, `more`) still use the full authenticated shell, while focused task tabs (`send`, `receive`, `contacts`, `history`) now cap only their inner content area at roughly `1000px`.
+- Kept the surrounding dashboard panel shell full width, so the new width cap applies to the working content and not the background frame.
+- Added a dashboard-page regression test that distinguishes uncapped home content from the narrower receive-tab content wrapper.
+- Updated the technical and functional specs to document the new overview-vs-task tab layout rule.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx`
+- `curl -I http://localhost:3000/dashboard?tab=receive`
+
+### Files Edited
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.154
 ### Timestamp
 - 2026-04-02 15:25 EDT

@@ -87,4 +87,16 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Open your wallet when you're ready")).toBeTruthy();
     expect(screen.queryByText("open-history")).toBeNull();
   });
+
+  it("keeps home content uncapped while narrowing focused task tabs", () => {
+    const { rerender } = render(<DashboardPage />);
+
+    expect(screen.getByTestId("dashboard-tab-content").className).toBe("w-full");
+
+    searchParamsMock.get = vi.fn((key: string) => (key === "tab" ? "receive" : null));
+    rerender(<DashboardPage />);
+
+    expect(screen.getByTestId("dashboard-tab-content").className).toContain("max-w-[62.5rem]");
+    expect(screen.getByText("receive")).toBeTruthy();
+  });
 });

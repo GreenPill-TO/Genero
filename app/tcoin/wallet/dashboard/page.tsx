@@ -26,6 +26,7 @@ import {
 import { cn } from "@shared/utils/classnames";
 
 const VALID_TAB_KEYS = new Set(["home", "receive", "send", "contacts", "more", "history"]);
+const FOCUSED_TAB_KEYS = new Set(["receive", "send", "contacts", "history"]);
 const TAB_COPY: Record<string, { title: string; description: string }> = {
   home: {
     title: "Your wallet",
@@ -67,6 +68,8 @@ export default function Dashboard() {
 
   const pageCopy = TAB_COPY[activeTab] ?? TAB_COPY.home;
   const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans");
+  const isFocusedTaskTab = FOCUSED_TAB_KEYS.has(activeTab);
+  const taskContentClass = cn("w-full", isFocusedTaskTab && "mx-auto max-w-[62.5rem]");
 
   const handleTabChange = useCallback(
     (next: string, options?: { showReceiveQr?: boolean }) => {
@@ -215,38 +218,44 @@ export default function Dashboard() {
   return (
     <ErrorBoundary fallback={<div className={mainClass}>Something went wrong.</div>}>
       <div className={mainClass}>
-        <WalletPageIntro
-          eyebrow="Authenticated wallet"
-          title={pageCopy.title}
-          description={pageCopy.description}
-          actions={
-            [
-              activeTab !== "send" ? (
-                <button
-                  key="send"
-                  type="button"
-                  className={walletActionButtonClass}
-                  onClick={() => handleTabChange("send")}
-                >
-                  Send money
-                </button>
-              ) : null,
-              activeTab !== "receive" ? (
-                <button
-                  key="receive"
-                  type="button"
-                  className={walletActionButtonClass}
-                  onClick={() => handleTabChange("receive")}
-                >
-                  Request money
-                </button>
-              ) : null,
-            ].filter(Boolean)
-          }
-        />
-        <WalletSection className="p-0">
-          <div className="p-5 sm:p-6">{content}</div>
-        </WalletSection>
+        <div data-testid="dashboard-tab-frame" className="w-full">
+          <WalletPageIntro
+            eyebrow="Authenticated wallet"
+            title={pageCopy.title}
+            description={pageCopy.description}
+            actions={
+              [
+                activeTab !== "send" ? (
+                  <button
+                    key="send"
+                    type="button"
+                    className={walletActionButtonClass}
+                    onClick={() => handleTabChange("send")}
+                  >
+                    Send money
+                  </button>
+                ) : null,
+                activeTab !== "receive" ? (
+                  <button
+                    key="receive"
+                    type="button"
+                    className={walletActionButtonClass}
+                    onClick={() => handleTabChange("receive")}
+                  >
+                    Request money
+                  </button>
+                ) : null,
+              ].filter(Boolean)
+            }
+          />
+          <WalletSection className="p-0">
+            <div className="p-5 sm:p-6">
+              <div data-testid="dashboard-tab-content" className={taskContentClass}>
+                {content}
+              </div>
+            </div>
+          </WalletSection>
+        </div>
         <DashboardFooter active={activeTab} onChange={(next) => handleTabChange(next)} />
       </div>
     </ErrorBoundary>
