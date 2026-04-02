@@ -1,3 +1,26 @@
+## v1.113
+### Timestamp
+- 2026-04-01 23:02 EDT
+
+### Objective
+- Make the More-tab Account centre use the friendlier preferred-name display rule the user expects.
+
+### What Changed
+- Updated the More-tab Account centre heading to prefer the saved preferred name (`nickname`) before falling back to the given name and only then to fuller legacy name fields.
+- Added focused regression coverage for both branches: one test confirms the preferred name is shown when present, and another confirms the heading falls back to the given name when the preferred name is blank.
+- Documented the Account centre naming rule in the technical and functional specs so future UI changes keep the same priority order.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.112
 ### Timestamp
 - 2026-04-01 22:59 EDT

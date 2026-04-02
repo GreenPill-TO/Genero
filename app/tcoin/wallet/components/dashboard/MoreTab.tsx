@@ -310,10 +310,12 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
   };
 
   const displayName =
+    bootstrap?.user?.nickname?.trim() ||
+    userData?.cubidData?.nickname?.trim() ||
     bootstrap?.user?.firstName?.trim() ||
+    userData?.cubidData?.given_names?.trim() ||
     bootstrap?.user?.fullName?.trim() ||
     userData?.cubidData?.full_name?.trim() ||
-    userData?.cubidData?.nickname?.trim() ||
     "Wallet member";
   const username = bootstrap?.user?.username ? `@${bootstrap.user.username}` : null;
   const email = bootstrap?.user?.email ?? null;

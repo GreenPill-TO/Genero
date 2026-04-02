@@ -43,6 +43,37 @@ const createProfile = (overrides: Partial<any> = {}) => ({
   ...overrides,
 });
 
+const createBootstrap = (overrides: Partial<any> = {}) => ({
+  user: {
+    id: 123,
+    cubidId: "cubid-123",
+    userIdentifier: "wallet-user-123",
+    fullName: "Taylor Example",
+    firstName: "Taylor",
+    lastName: "Example",
+    nickname: "Tay",
+    username: "taylorexample",
+    email: "taylor@example.com",
+    phone: "+14165550123",
+    country: "CA",
+    hasCompletedIntro: true,
+    isNewUser: false,
+    profileImageUrl: null,
+    ...overrides,
+  },
+  preferences: {
+    charity: "Food Bank",
+    selectedCause: "Food Bank",
+    theme: "system",
+    primaryBiaId: "1",
+    secondaryBiaIds: [],
+  },
+  options: {
+    charities: [{ id: "1", name: "Food Bank", value: "Food Bank" }],
+    bias: [{ id: "1", code: "DTA", name: "Downtown" }],
+  },
+});
+
 const createAuthState = (overrides: Partial<any> = {}) => ({
   authData: {
     user: {
@@ -83,6 +114,11 @@ const createAuthState = (overrides: Partial<any> = {}) => ({
 const useAuthMock = vi.hoisted(() =>
   vi.fn(() => createAuthState())
 );
+const useUserSettingsMock = vi.hoisted(() =>
+  vi.fn(() => ({
+    bootstrap: createBootstrap(),
+  }))
+);
 const useControlPlaneAccessMock = vi.hoisted(() =>
   vi.fn(() => ({
     data: {
@@ -108,37 +144,7 @@ vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
   updateVoucherPreferences: updateVoucherPreferencesMock,
 }));
 vi.mock("@shared/hooks/useUserSettings", () => ({
-  useUserSettings: () => ({
-    bootstrap: {
-      user: {
-        id: 123,
-        cubidId: "cubid-123",
-        userIdentifier: "wallet-user-123",
-        fullName: "Taylor Example",
-        firstName: "Taylor",
-        lastName: "Example",
-        nickname: "Tay",
-        username: "taylorexample",
-        email: "taylor@example.com",
-        phone: "+14165550123",
-        country: "CA",
-        hasCompletedIntro: true,
-        isNewUser: false,
-        profileImageUrl: null,
-      },
-      preferences: {
-        charity: "Food Bank",
-        selectedCause: "Food Bank",
-        theme: "system",
-        primaryBiaId: "1",
-        secondaryBiaIds: [],
-      },
-      options: {
-        charities: [{ id: "1", name: "Food Bank", value: "Food Bank" }],
-        bias: [{ id: "1", code: "DTA", name: "Downtown" }],
-      },
-    },
-  }),
+  useUserSettings: () => useUserSettingsMock(),
 }));
 
 vi.mock("@shared/hooks/useSendMoney", () => ({
@@ -201,6 +207,9 @@ describe("MoreTab", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_EXPLORER_URL = "https://env.example/address/";
     useAuthMock.mockReturnValue(createAuthState());
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap(),
+    });
     useControlPlaneAccessMock.mockReturnValue({
       data: {
         canAccessAdminDashboard: false,
@@ -360,6 +369,34 @@ describe("MoreTab", () => {
     expect(explorerLink.getAttribute("href")).toBe(
       "https://env.example/address/0xabc1234567890def1234567890abcdef1234567"
     );
+  });
+
+  it("shows the preferred name in the Account centre when one exists", () => {
+    render(<MoreTab />);
+
+    expect(screen.getByRole("heading", { name: "Tay" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Taylor" })).toBeNull();
+  });
+
+  it("falls back to the given name in the Account centre when preferred name is empty", () => {
+    useAuthMock.mockReturnValue(
+      createAuthState({
+        nickname: "",
+        given_names: "Taylor",
+        full_name: "Taylor Example",
+      })
+    );
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap({
+        nickname: "",
+        firstName: "Taylor",
+        fullName: "Taylor Example",
+      }),
+    });
+
+    render(<MoreTab />);
+
+    expect(screen.getByRole("heading", { name: "Taylor" })).toBeTruthy();
   });
 
   it("copies the wallet address from More", async () => {
