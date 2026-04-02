@@ -1,3 +1,26 @@
+## v1.134
+### Timestamp
+- 2026-04-02 13:19 EDT
+
+### Objective
+- Reduce the visual length of the public Contact page hyperlink without changing the surrounding body copy.
+
+### What Changed
+- Adjusted the `/contact` intro paragraph so the invitation text stays in plain prose and only the word `WhatsApp` remains hyperlinked.
+- Added a focused Contact page regression test to guard that shorter anchor text contract.
+- Updated the required technical and functional specifications to record the public-link presentation tweak.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/contact/page.tsx app/tcoin/wallet/contact/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/contact/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/contact/page.tsx`
+- `app/tcoin/wallet/contact/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.133
 ### Timestamp
 - 2026-04-02 12:55 EDT

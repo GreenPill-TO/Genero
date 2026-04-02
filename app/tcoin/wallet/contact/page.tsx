@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import Link from "next/link";
 import { useState } from "react";
 import { Input } from "@shared/components/ui/Input";
@@ -42,7 +43,10 @@ export default function ContactPage() {
         <h1 className="font-extrabold text-center my-5">Contact</h1>
         <p>
           Get in Touch? Help out? We want to hear from you. We're a small and friendly team and would love your input, insights and any help you can offer. {" "}
-          <Link href="https://chat.whatsapp.com/EXF4AkkksYA0fY26nQhrTv" target="_blank">Join our WhatsApp</Link>
+          Join our{" "}
+          <Link href="https://chat.whatsapp.com/EXF4AkkksYA0fY26nQhrTv" target="_blank">
+            WhatsApp
+          </Link>
         </p>
         {submitted ? (
           <>
