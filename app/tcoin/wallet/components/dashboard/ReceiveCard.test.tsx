@@ -355,6 +355,16 @@ describe("ReceiveCard", () => {
     expect(caption.className).toContain("text-slate-950");
   });
 
+  it("shows a rounded combined TCOIN and CAD caption above the QR code", () => {
+    renderReceiveCard({
+      qrTcoinAmount: "3.912345678 TCOIN",
+      qrCadAmount: "$13.10",
+    });
+
+    expect(screen.getByText("Receive 3.91 TCOIN ($13.10)")).toBeTruthy();
+    expect(screen.queryByText(/3\.912345678/)).toBeNull();
+  });
+
   it("creates a targeted request after confirmation", async () => {
     const requestContact = {
       id: 15,

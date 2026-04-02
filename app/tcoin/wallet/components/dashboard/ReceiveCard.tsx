@@ -232,13 +232,12 @@ export function ReceiveCard({
     });
   };
 
-  const rawAmount = qrTcoinAmount?.trim() ?? "";
-  const cleanedAmount = rawAmount
-    .replace(new RegExp(`\\s*${uppercaseToken}\\s*$`, "i"), "")
-    .trim();
-  const hasAmount = cleanedAmount !== "" && cleanedAmount !== "0.00";
-  const qrCaption = hasAmount
-    ? `Receive ${cleanedAmount} ${uppercaseToken}`
+  const parsedQrTcoinAmount = parseAmountFromString(qrTcoinAmount);
+  const parsedQrCadAmount = parseAmountFromString(qrCadAmount);
+  const qrCaption = parsedQrTcoinAmount
+    ? `Receive ${formatRequestAmount(parsedQrTcoinAmount)}${
+        parsedQrCadAmount ? ` (${formatCadAmount(parsedQrCadAmount)})` : ""
+      }`
     : "Receive any amount";
 
   const formatContactName = (contact: Hypodata) =>

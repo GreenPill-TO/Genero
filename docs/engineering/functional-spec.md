@@ -109,6 +109,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - The `/admin` dashboard surfaces explicit legacy ramp-schema errors when required legacy tables, columns, or relationships are missing instead of showing a generic request-loading failure.
 - Incoming payment request modals use the pink primary button for Pay and a white button for Ignore.
 - Receive tab surfaces "Payment requests I have sent" with delete buttons that deactivate the underlying requests.
+- When the Receive tab has an entered amount, the QR card caption now shows one rounded combined summary such as `Receive 3.91 TCOIN ($13.10)` instead of exposing long transient decimal strings while conversions settle.
 - Newly created users land on `/welcome`, which suggests a unique username, indicates when Continue is blocked, and confirms phone verification inline.
 - Wallet user-managed settings are now backed by one shared app-scoped user-settings service, so `/welcome`, Edit Profile, theme selection, charity selection, and BIA preferences all read from the same normalized bootstrap payload and save through the same contract.
 - That shared user-settings bootstrap now also carries a persisted wallet experience preference. Missing or invalid legacy values resolve to `Clean and simple mode` at runtime until the user explicitly chooses otherwise.

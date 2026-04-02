@@ -1,3 +1,26 @@
+## v1.163
+### Timestamp
+- 2026-04-02 19:14 EDT
+
+### Objective
+- Clean up the Receive-tab QR caption so it stops surfacing long transient decimals while CAD/TCOIN amounts are being entered and shows the paired TCOIN/CAD summary in one clear line.
+
+### What Changed
+- Updated `ReceiveCard` to derive the QR caption from parsed numeric TCOIN and CAD amounts instead of reusing the raw in-progress input string.
+- Rounded the displayed TCOIN amount to two decimals and, when available, appended the corresponding CAD value in parentheses so the caption reads like `Receive 3.91 TCOIN ($13.10)`.
+- Added a focused regression test that guards the rounded combined caption and ensures the long raw decimal string no longer leaks into the QR stage.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.162
 ### Timestamp
 - 2026-04-02 18:44 EDT
