@@ -551,7 +551,7 @@ export async function getUserSettingsBootstrap(options: {
       options.supabase
         .from("users")
         .select(
-          "id,cubid_id,user_identifier,email,phone,full_name,nickname,username,country,profile_image_url,has_completed_intro,is_new_user"
+          "id,cubid_id,user_identifier,email,phone,full_name,nickname,username,country,address,profile_image_url,has_completed_intro,is_new_user"
         )
         .eq("id", options.userId)
         .limit(1)
@@ -625,6 +625,7 @@ export async function getUserSettingsBootstrap(options: {
       nickname: toNullableString(userRow.nickname),
       username: toNullableString(userRow.username),
       country: toNullableString(userRow.country),
+      address: toNullableString(userRow.address),
       profileImageUrl: toNullableString(userRow.profile_image_url),
       hasCompletedIntro: Boolean(userRow.has_completed_intro),
       isNewUser: typeof userRow.is_new_user === "boolean" ? userRow.is_new_user : null,
@@ -678,6 +679,7 @@ export async function updateUserProfile(options: {
   const lastName = toNullableString(options.payload.lastName);
   const nickname = "nickname" in options.payload ? toNullableString(options.payload.nickname) : undefined;
   const country = "country" in options.payload ? toNullableString(options.payload.country) : undefined;
+  const address = "address" in options.payload ? toNullableString(options.payload.address) : undefined;
   const profileImageUrl =
     "profileImageUrl" in options.payload ? toNullableString(options.payload.profileImageUrl) : undefined;
   const usernameInput = "username" in options.payload ? toNullableString(options.payload.username) : undefined;
@@ -699,6 +701,9 @@ export async function updateUserProfile(options: {
   }
   if ("country" in options.payload) {
     updates.country = country;
+  }
+  if ("address" in options.payload) {
+    updates.address = address;
   }
   if ("profileImageUrl" in options.payload) {
     updates.profile_image_url = profileImageUrl;
@@ -1150,7 +1155,7 @@ function mapBootstrapToCubidData(bootstrap: Awaited<ReturnType<typeof getUserSet
     email: bootstrap.user.email,
     phone: bootstrap.user.phone,
     full_name: bootstrap.user.fullName,
-    address: null,
+    address: bootstrap.user.address,
     bio: null,
     profile_image_url: bootstrap.user.profileImageUrl,
     has_completed_intro: bootstrap.user.hasCompletedIntro,

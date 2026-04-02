@@ -1,3 +1,28 @@
+## v1.119
+### Timestamp
+- 2026-04-02 00:31 EDT
+
+### Objective
+- Add address capture to wallet Edit Profile, match the merchant-signup style more closely, and clarify how banking details are used.
+
+### What Changed
+- Added an editable address field to the wallet Edit Profile modal, using a multi-line address input similar to the merchant signup flow rather than a cramped single-line field.
+- Added two tooltip explanations in the Banking info section: one at the section level clarifying that banking details are not shared with other users, and one on the address field clarifying that the address is only needed before withdrawals.
+- Extended the shared user-settings bootstrap and profile-update contract so `address` now round-trips through the Edit Profile modal instead of being dropped from the wallet bootstrap mapper.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx shared/lib/userSettings/types.ts supabase/functions/_shared/userSettings.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.118
 ### Timestamp
 - 2026-04-02 00:24 EDT

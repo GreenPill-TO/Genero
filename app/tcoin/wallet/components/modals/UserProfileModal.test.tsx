@@ -27,6 +27,7 @@ vi.mock("@shared/hooks/useUserSettings", () => ({
         nickname: "Tester",
         username: "testuser",
         country: "Canada (+1)",
+        address: "123 Queen St W, Toronto, ON",
         profileImageUrl: null,
         hasCompletedIntro: false,
         isNewUser: true,
@@ -118,6 +119,7 @@ describe("UserProfileModal", () => {
     fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: "Doe" } });
     fireEvent.change(screen.getByLabelText(/Preferred name/i), { target: { value: "JD" } });
     fireEvent.change(screen.getByLabelText(/Username/i), { target: { value: "janedoe" } });
+    fireEvent.change(screen.getByLabelText(/^Address$/i), { target: { value: "456 King St W, Toronto, ON" } });
 
     fireEvent.click(screen.getByRole("button", { name: /Save Changes/i }));
 
@@ -129,6 +131,7 @@ describe("UserProfileModal", () => {
       username: "janedoe",
       nickname: "JD",
       country: "Canada (+1)",
+      address: "456 King St W, Toronto, ON",
       profileImageUrl: null,
     });
     expect(toastSuccess).toHaveBeenCalled();
@@ -147,6 +150,15 @@ describe("UserProfileModal", () => {
     fireEvent.change(countryInput, { target: { value: "United" } });
 
     await waitFor(() => expect(screen.getByRole("option", { name: /^United States \(\+1\)$/i })).toBeTruthy());
+  });
+
+  it("shows tooltip copy for banking privacy and address requirements", () => {
+    render(<UserProfileModal closeModal={closeModal} />);
+
+    expect(screen.getByLabelText(/This info won't be shared with other users\./i)).toBeTruthy();
+    expect(
+      screen.getByLabelText(/We only need an address before any withdrawals, so you can leave this blank until then\./i)
+    ).toBeTruthy();
   });
 
   it("shows crop controls for a selected image and uploads the cropped result before saving", async () => {

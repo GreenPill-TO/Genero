@@ -11,7 +11,9 @@ import { Button } from "@shared/components/ui/Button";
 import { fileInputFieldClass, reactSelectFieldShellClass } from "@shared/components/ui/formFieldStyles";
 import { Input } from "@shared/components/ui/Input";
 import { Label } from "@shared/components/ui/Label";
+import { Textarea } from "@shared/components/ui/TextArea";
 import { Slider } from "@shared/components/ui/slider";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@shared/components/ui/tooltip";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
 import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
 import {
@@ -24,7 +26,7 @@ import {
 } from "@shared/lib/profilePictureCrop";
 import { dialCodes } from "@shared/utils/countryDialCodes";
 import { toast } from "react-toastify";
-import { LuUser } from "react-icons/lu";
+import { LuCircleHelp, LuUser } from "react-icons/lu";
 import {
   walletBadgeClass,
   walletPanelMutedClass,
@@ -46,6 +48,7 @@ type FormValues = {
   username: string;
   nickname: string;
   country: CountryOption | null;
+  address: string;
 };
 
 const DEFAULT_CROP_STATE: ProfilePictureCropState = {
@@ -131,6 +134,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       username: profile?.username ?? "",
       nickname: profile?.nickname ?? "",
       country: initialCountryOption,
+      address: profile?.address ?? "",
     },
   });
 
@@ -141,8 +145,9 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       username: profile?.username ?? "",
       nickname: profile?.nickname ?? "",
       country: initialCountryOption,
+      address: profile?.address ?? "",
     });
-  }, [initialFirstName, initialLastName, initialCountryOption, profile?.nickname, profile?.username, reset]);
+  }, [initialFirstName, initialLastName, initialCountryOption, profile?.address, profile?.nickname, profile?.username, reset]);
 
   useEffect(() => {
     if (avatarSelection) {
@@ -280,6 +285,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       const firstName = values.firstName.trim();
       const lastName = values.lastName.trim();
       const countryValue = values.country?.label ?? values.country?.value ?? "";
+      const address = values.address.trim();
       const nickname = values.nickname.trim();
       const username = values.username.trim().toLowerCase();
 
@@ -289,6 +295,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
         username: username || null,
         nickname: nickname || null,
         country: countryValue || null,
+        address: address || null,
         profileImageUrl,
       });
       toast.success("Profile updated successfully.");
@@ -328,6 +335,25 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   const avatarOrientation = avatarSelection
     ? describeProfilePictureOrientation(avatarSelection.width, avatarSelection.height)
     : null;
+
+  const renderTooltip = (message: string) => (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+            aria-label={message}
+          >
+            <LuCircleHelp className="h-4 w-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-balance">
+          {message}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 
   return (
     <div className="space-y-6">
@@ -493,7 +519,10 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className={`${walletPanelMutedClass} space-y-4`}>
           <div className="space-y-1">
-            <p className={walletSectionLabelClass}>Banking info</p>
+            <div className="flex items-center gap-2">
+              <p className={walletSectionLabelClass}>Banking info</p>
+              {renderTooltip("This info won't be shared with other users.")}
+            </div>
             <p className="text-sm text-muted-foreground">
               These details describe you as the account holder and help the wallet present your profile consistently.
             </p>
@@ -561,6 +590,19 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
               <Input id="phone" type="tel" value={bootstrap.user.phone ?? ""} readOnly disabled />
               <p className="mt-1 text-xs text-muted-foreground">Phone updates stay in the verified onboarding flow.</p>
             </div>
+          </div>
+
+          <div>
+            <div className="mb-1 flex items-center gap-2">
+              <Label htmlFor="address">Address</Label>
+              {renderTooltip("We only need an address before any withdrawals, so you can leave this blank until then.")}
+            </div>
+            <Textarea
+              id="address"
+              {...register("address")}
+              placeholder="123 Main St, Toronto, ON M5V 2T6"
+              className="min-h-24"
+            />
           </div>
         </div>
 

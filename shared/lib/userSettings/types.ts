@@ -32,6 +32,7 @@ export type UserSettingsUser = {
   nickname: string | null;
   username: string | null;
   country: string | null;
+  address: string | null;
   profileImageUrl: string | null;
   hasCompletedIntro: boolean;
   isNewUser: boolean | null;
@@ -74,6 +75,7 @@ export type UpdateUserProfileInput = {
   nickname?: string | null;
   username?: string | null;
   country?: string | null;
+  address?: string | null;
   profileImageUrl?: string | null;
 };
 

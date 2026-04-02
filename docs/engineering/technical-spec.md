@@ -95,6 +95,7 @@
   - Edge app-context resolution is now strict: when multiple `ref_app_instances` rows match an app/city pair, callers must provide `environment` explicitly instead of silently falling through to the first row.
   - The user-settings edge function now resolves CORS headers per request and only reflects explicitly allowed frontend origins (`USER_SETTINGS_ALLOWED_ORIGINS`, site URL envs, plus localhost defaults) instead of sending a wildcard origin header.
   - Edge-function entrypoints that still handle raw `OPTIONS` requests now all use the same request-aware `resolveCorsHeaders(req)` helper. That keeps local and deployed runtimes aligned with the shared CORS contract and avoids boot failures from stale imports of removed CORS constants.
+  - The shared user-settings bootstrap and profile-update contract now include `users.address`, so Edit Profile, legacy Cubid-data mapping, and any wallet surfaces that display profile addresses all read the same canonical value instead of treating address as write-only or always null.
 
 ## Extensibility
 
