@@ -167,6 +167,31 @@ describe("Navbar session control", () => {
     expect(openModal.mock.calls[0][0].title).toBe("Experience mode");
   });
 
+  it("uses a switch-mode label when the current experience mode is simple", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        user: {
+          nickname: "Tester",
+          firstName: "Test",
+          fullName: "Test User",
+          username: "testuser",
+          email: "test@example.com",
+          profileImageUrl: "https://example.com/avatar.png",
+        },
+        preferences: {
+          experienceMode: "simple",
+        },
+      },
+    });
+
+    render(<Navbar />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Switch mode/i }));
+
+    expect(openModal).toHaveBeenCalled();
+    expect(openModal.mock.calls[0][0].title).toBe("Switch mode");
+  });
+
   it("logs the user out from the dropdown", () => {
     render(<Navbar />);
 

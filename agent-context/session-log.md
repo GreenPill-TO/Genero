@@ -1,3 +1,26 @@
+## v1.159
+### Timestamp
+- 2026-04-02 18:27 EDT
+
+### Objective
+- Make the authenticated header’s mode-setting entry read more naturally in simple mode by changing the label from `Experience mode` to `Switch mode`.
+
+### What Changed
+- Updated the authenticated header account-menu action so it derives its label from the active wallet experience mode.
+- In simple mode the menu item and opened modal now use `Switch mode`, while advanced mode keeps `Experience mode`.
+- Added a focused navbar regression covering the simple-mode label and modal title.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.158
 ### Timestamp
 - 2026-04-02 17:34 EDT

@@ -39,6 +39,8 @@ export default function Navbar({ title }: { title?: string }) {
   const pathname = usePathname();
   const appEnvironment = (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase();
   const showDeleteProfile = NON_PRODUCTION_ENVIRONMENTS.has(appEnvironment);
+  const experienceMode = bootstrap?.preferences?.experienceMode ?? "simple";
+  const experienceModeMenuLabel = experienceMode === "simple" ? "Switch mode" : "Experience mode";
 
   const onAuth = () => {
     openModal({ content: <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />, elSize: "4xl" });
@@ -115,7 +117,7 @@ export default function Navbar({ title }: { title?: string }) {
   const handleExperienceMode = () => {
     openModal({
       content: <ExperienceModeModal closeModal={closeModal} />,
-      title: "Experience mode",
+      title: experienceModeMenuLabel,
       description: "Choose whether this wallet should stay clean and simple or keep the full advanced surface visible.",
     });
   };
@@ -192,7 +194,7 @@ export default function Navbar({ title }: { title?: string }) {
                 )}
                 onClick={handleExperienceMode}
               >
-                Experience mode
+                {experienceModeMenuLabel}
               </button>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
