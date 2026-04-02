@@ -508,12 +508,14 @@ export default function WelcomePage() {
             <span className={walletBadgeClass}>Wallet setup</span>
             <div className="space-y-2">
               <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">Welcome to TCOIN</h1>
-              <p className="text-sm text-muted-foreground">Set up your profile, community defaults, and wallet in one flow.</p>
+              <p className="text-sm text-muted-foreground">A local currency designed to build up our communities instead of extracting from them.</p>
             </div>
           </div>
           <div className={`${walletPanelMutedClass} space-y-4 text-sm text-muted-foreground`}>
-            <p>Your setup is saved step by step, so you can come back later if you need to.</p>
-            <p>You will add your user details, choose a profile picture, choose your community settings, connect your wallet, and then head to the dashboard.</p>
+            <p>Welcome to TCOIN, where we are trying to create a better local economic system around everyday Toronto life.</p>
+            <p>TCOIN is pegged to local transit value so the currency stays intuitive in daily use and easier to relate to than a speculative token price.</p>
+            <p>You will be asked which charity you support, and from then on a small percentage of your TCOIN activity will keep contributing to that charity.</p>
+            <p>Fun fact: when the TTC sold its first ticket, it cost 6 cents. If you could have held on to that price, you would have made more than 5,000% by now.</p>
           </div>
           <div className="flex justify-end">
             <Button onClick={() => void handleStart()} disabled={startSignup.isPending}>
@@ -560,8 +562,9 @@ export default function WelcomePage() {
           <div className="space-y-6">
             {wizardStep === 1 ? (
               <div className={`${walletPanelMutedClass} space-y-4 text-sm text-muted-foreground`}>
-                <p>TCOIN works best when your profile, community preferences, and wallet are all configured together.</p>
-                <p>This signup is resumable. If you leave part-way through, you will be able to resume from your saved step next time.</p>
+                <p>This step is about the signup process itself: we will set up your profile, community defaults, and wallet access together so the app is ready to use when you land in the dashboard.</p>
+                <p>You will add your user details, choose a profile picture, choose your charity and neighbourhood preferences, and then connect your wallet.</p>
+                <p>Your progress is saved step by step, so if you leave part-way through you can come back and resume from where you stopped.</p>
               </div>
             ) : null}
 

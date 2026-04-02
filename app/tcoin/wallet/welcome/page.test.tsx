@@ -162,6 +162,8 @@ describe("WelcomePage", () => {
     expect(screen.getByTestId("welcome-page-shell").className).toContain("font-sans");
     expect(screen.getByTestId("welcome-primary-panel")).toBeTruthy();
     expect(screen.getByText("Welcome to TCOIN")).toBeTruthy();
+    expect(screen.getByText(/create a better local economic system/i)).toBeTruthy();
+    expect(screen.getByText(/more than 5,000%/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Start setup/i })).toBeTruthy();
   });
 
@@ -238,5 +240,14 @@ describe("WelcomePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Resume" }));
 
     expect(screen.getByRole("button", { name: "Skip" })).toBeTruthy();
+  });
+
+  it("uses step 1 for signup-process guidance after the welcome card", async () => {
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Start setup/i }));
+
+    expect(await screen.findByText(/This step is about the signup process itself/i)).toBeTruthy();
+    expect(screen.getByText(/Your progress is saved step by step/i)).toBeTruthy();
   });
 });

@@ -1,3 +1,26 @@
+## v1.127
+### Timestamp
+- 2026-04-02 09:41 EDT
+
+### Objective
+- Separate the wallet `/welcome` intro copy from the signup-process copy so the first screen feels like a true welcome and step 1 focuses on how onboarding works.
+
+### What Changed
+- Rewrote the pre-start `/welcome` card to introduce TCOIN as a community-focused local currency, including the transit-value framing, charity contribution model, and a TTC fare fact instead of repeating the signup instructions.
+- Rewrote wizard step 1 so it now explains the signup process itself: what information will be collected, how the wallet setup is staged, and that progress is saved for resuming later.
+- Added focused test coverage to keep the new welcome copy and step-1 signup guidance distinct in the wallet onboarding flow.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.126
 ### Timestamp
 - 2026-04-02 18:07 EDT
