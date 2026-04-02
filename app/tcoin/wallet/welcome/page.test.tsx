@@ -381,4 +381,25 @@ describe("WelcomePage", () => {
       })
     );
   });
+
+  it("lets the empty profile picture button open the same chooser as the file input on step 3", async () => {
+    const inputClickSpy = vi.spyOn(HTMLInputElement.prototype, "click");
+
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap("draft", {
+        currentStep: 3,
+        completedSteps: [1, 2],
+      }),
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    fireEvent.click(screen.getByRole("button", { name: /Add profile picture/i }));
+
+    expect(inputClickSpy).toHaveBeenCalled();
+    inputClickSpy.mockRestore();
+  });
 });

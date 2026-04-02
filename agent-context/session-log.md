@@ -1,3 +1,26 @@
+## v1.148
+### Timestamp
+- 2026-04-02 15:03 EDT
+
+### Objective
+- Make the empty avatar on welcome step 3 act as a direct upload entry point instead of forcing users to target only the file input.
+
+### What Changed
+- Wrapped the empty step-3 avatar preview in a button that opens the same hidden file-picker path as the `Choose a profile picture` input.
+- Kept the file-selection flow single-sourced by routing the avatar click through the existing file input rather than adding a second upload handler.
+- Added a focused regression proving the empty avatar button triggers the file chooser affordance.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.147
 ### Timestamp
 - 2026-04-02 14:58 EDT

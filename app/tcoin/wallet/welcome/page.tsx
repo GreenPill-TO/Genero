@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Select, { type StylesConfig } from "react-select";
@@ -155,6 +155,7 @@ export default function WelcomePage() {
   const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false);
   const [isPreparingProfilePicture, setIsPreparingProfilePicture] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const signupProfilePictureInputRef = useRef<HTMLInputElement | null>(null);
   const [communitySettings, setCommunitySettings] = useState<CommunitySettingsForm>({
     charity: "",
     selectedCause: "",
@@ -649,6 +650,10 @@ export default function WelcomePage() {
     setProfilePicturePreview(source || null);
   };
 
+  const openProfilePicturePicker = () => {
+    signupProfilePictureInputRef.current?.click();
+  };
+
   const signupAvatarPreviewFrame = profilePictureSelection
     ? getProfilePictureCropFrame({
         imageWidth: profilePictureSelection.width,
@@ -884,15 +889,22 @@ export default function WelcomePage() {
                       />
                     </div>
                   ) : (
-                    <Avatar className="h-24 w-24">
-                      {profilePicturePreview ? (
-                        <AvatarImage src={profilePicturePreview} alt="Profile picture preview" />
-                      ) : (
-                        <AvatarFallback>
-                          <LuUser />
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
+                    <button
+                      type="button"
+                      aria-label={profilePicturePreview ? "Adjust profile picture" : "Add profile picture"}
+                      className="rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={openProfilePicturePicker}
+                    >
+                      <Avatar className="h-24 w-24">
+                        {profilePicturePreview ? (
+                          <AvatarImage src={profilePicturePreview} alt="Profile picture preview" />
+                        ) : (
+                          <AvatarFallback>
+                            <LuUser />
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                    </button>
                   )}
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
@@ -902,6 +914,7 @@ export default function WelcomePage() {
                       Choose a profile picture
                     </label>
                     <input
+                      ref={signupProfilePictureInputRef}
                       id="signupProfilePicture"
                       name="signupProfilePicture"
                       type="file"
