@@ -6,6 +6,10 @@ import {
   createPaymentRequest,
   getOutgoingPaymentRequests,
 } from "@shared/lib/edge/paymentRequestsClient";
+import {
+  createPaymentRequestLink,
+} from "@shared/lib/edge/paymentRequestLinksClient";
+import type { PaymentRequestLinkMode } from "@shared/lib/edge/paymentRequestLinks";
 import { ReceiveCard } from "./ReceiveCard";
 import { Hypodata, InvoicePayRequest } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
@@ -23,33 +27,83 @@ export function ReceiveTab({
   contacts,
   showQrCode = true,
 }: ReceiveTabProps) {
-  const { userData, isLoadingUser } = useAuth();
+  const { authData, userData, isLoadingUser } = useAuth();
   const { exchangeRate } = useControlVariables();
 
   const user_id = userData?.cubidData.id;
-  const nano_id = userData?.cubidData.user_identifier;
-  const normalizedNanoId =
-    typeof nano_id === "string" && nano_id.trim() !== "" ? nano_id.trim() : null;
   const [qrCodeData, setQrCodeData] = useState("");
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");
   const [qrCadAmount, setQrCadAmount] = useState("");
+  const [qrLinkMode, setQrLinkMode] = useState<PaymentRequestLinkMode>("rotating_multi_use");
+  const [qrLinkExpiresAt, setQrLinkExpiresAt] = useState<string | null>(null);
+  const [isGeneratingQrLink, setIsGeneratingQrLink] = useState(false);
+  const [qrLinkError, setQrLinkError] = useState<string | null>(null);
   const [requestContact, setRequestContact] = useState<Hypodata | null>(
     contact ?? null
   );
   const [openRequests, setOpenRequests] = useState<InvoicePayRequest[]>([]);
 
+  const parsePositiveAmount = useCallback((value: string) => {
+    const cleaned = value.replace(/[^\d.]/g, "");
+    const parsed = Number.parseFloat(cleaned);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+    return parsed;
+  }, []);
+
+  const requestedAmount = parsePositiveAmount(qrTcoinAmount);
+  const shouldGenerateQrLink = Boolean(authData?.user) && showQrCode && !requestContact;
+
+  const mintQrLink = useCallback(
+    async (mode: PaymentRequestLinkMode) => {
+      if (!authData?.user) {
+        setQrCodeData("");
+        setQrLinkExpiresAt(null);
+        return;
+      }
+
+      setIsGeneratingQrLink(true);
+      try {
+        const { link } = await createPaymentRequestLink({
+          amountRequested: requestedAmount,
+          mode,
+          appContext: { citySlug: "tcoin" },
+        });
+        setQrCodeData(link.url ?? "");
+        setQrLinkExpiresAt(link.expiresAt);
+        setQrLinkError(null);
+      } catch (error) {
+        console.error("Failed to create payment request link:", error);
+        setQrCodeData("");
+        setQrLinkExpiresAt(null);
+        setQrLinkError("Unable to generate a pay link right now.");
+      } finally {
+        setIsGeneratingQrLink(false);
+      }
+    },
+    [authData?.user, requestedAmount]
+  );
+
   useEffect(() => {
-    if (!normalizedNanoId) {
+    if (!shouldGenerateQrLink) {
       setQrCodeData("");
+      setQrLinkExpiresAt(null);
       return;
     }
 
-    setQrCodeData(JSON.stringify({ nano_id: normalizedNanoId, timestamp: Date.now() }));
-    const interval = setInterval(() => {
-      setQrCodeData(JSON.stringify({ nano_id: normalizedNanoId, timestamp: Date.now() }));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [normalizedNanoId]);
+    void mintQrLink(qrLinkMode);
+
+    if (qrLinkMode !== "rotating_multi_use") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void mintQrLink("rotating_multi_use");
+    }, 45_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [mintQrLink, qrLinkMode, shouldGenerateQrLink]);
 
   const handleQrTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^\d.]/g, "");
@@ -195,6 +249,10 @@ export function ReceiveTab({
         qrCodeData={qrCodeData}
         qrTcoinAmount={qrTcoinAmount}
         qrCadAmount={qrCadAmount}
+        qrLinkMode={qrLinkMode}
+        qrLinkExpiresAt={qrLinkExpiresAt}
+        isGeneratingQrCode={isGeneratingQrLink}
+        onSwitchQrLinkMode={setQrLinkMode}
         handleQrTcoinChange={handleQrTcoinChange}
         handleQrCadChange={handleQrCadChange}
         senderWallet=""
@@ -205,11 +263,9 @@ export function ReceiveTab({
         qrFgColor="#000"
         qrWrapperClassName="bg-white p-1"
         qrUnavailableReason={
-          normalizedNanoId
-            ? null
-            : isLoadingUser
-              ? "QR code is still loading your wallet identity."
-              : "QR code is unavailable because your wallet identity is missing."
+          isLoadingUser && !authData?.user
+            ? "QR code is still loading your wallet session."
+            : qrLinkError
         }
         requestContact={requestContact}
         onClearRequestContact={() => handleRequestContactChange(null)}

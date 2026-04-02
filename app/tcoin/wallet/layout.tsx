@@ -5,7 +5,7 @@ import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
 import { WalletConnectErrorGuard } from "@shared/providers/walletconnect-error-guard";
 import "@tcoin/wallet/styles/app.scss";
-import ContentLayout, { publicPaths } from "./ContentLayout";
+import ContentLayout, { isPublicWalletPath } from "./ContentLayout";
 import dynamic from "next/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
@@ -34,7 +34,7 @@ function WalletRuntimeProviders({
 }>) {
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
-  const shouldMountWalletProviders = isAuthenticated && !publicPaths.includes(pathname);
+  const shouldMountWalletProviders = isAuthenticated && !isPublicWalletPath(pathname);
   const modalThemeClassName = shouldMountWalletProviders
     ? "wallet-auth-shell font-sans"
     : undefined;

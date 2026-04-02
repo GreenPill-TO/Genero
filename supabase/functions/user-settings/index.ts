@@ -3,6 +3,7 @@ import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appC
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import {
+  clearPendingPaymentIntent,
   completeSignup,
   ensureAuthenticatedUserRecord,
   getLegacyCubidData,
@@ -11,6 +12,7 @@ import {
   listPersonas,
   registerWalletCustody,
   resetSignup,
+  savePendingPaymentIntent,
   saveSignupStep,
   startSignup,
   updateLegacyCubidData,
@@ -227,6 +229,29 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await completeSignup({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          appContext,
+        })
+      );
+    }
+
+    if (req.method === "POST" && pathname === "/signup/pending-payment-intent") {
+      return jsonResponse(
+        req,
+        await savePendingPaymentIntent({
+          supabase: auth.serviceRole,
+          userId: Number(auth.userRow.id),
+          appContext,
+          payload: body ?? {},
+        })
+      );
+    }
+
+    if (req.method === "POST" && pathname === "/signup/pending-payment-intent/clear") {
+      return jsonResponse(
+        req,
+        await clearPendingPaymentIntent({
           supabase: auth.serviceRole,
           userId: Number(auth.userRow.id),
           appContext,

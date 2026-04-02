@@ -13,12 +13,20 @@ import "react-toastify/dist/ReactToastify.css";
 
 export const publicPaths = ["/", "/resources", "/contact", "/ecosystem", "/merchants"];
 
+export function isPublicWalletPath(pathname: string | null | undefined) {
+  if (!pathname) {
+    return false;
+  }
+
+  return publicPaths.includes(pathname) || pathname.startsWith("/pay/");
+}
+
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
   useIndexerTrigger({ enabled: !isLoading && isAuthenticated });
   const router = useRouter();
   const pathname = usePathname();
-  const isPublic = publicPaths.includes(pathname);
+  const isPublic = isPublicWalletPath(pathname);
   const bypassAuthInLocalDev =
     process.env.NODE_ENV !== "production" &&
     ["local", "development"].includes(

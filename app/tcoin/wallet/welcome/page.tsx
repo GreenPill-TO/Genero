@@ -216,6 +216,7 @@ export default function WelcomePage() {
   const usernameValueFromBootstrap = bootstrap?.user.username ?? "";
   const currentStep = bootstrap?.signup.currentStep ?? wizardStep;
   const walletReady = bootstrap?.signup.walletReady === true || walletReadyLocal;
+  const pendingPaymentIntent = bootstrap?.signup.pendingPaymentIntent ?? null;
   const activePlaceholderName = SIGNUP_PLACEHOLDER_NAMES[placeholderIndex] ?? SIGNUP_PLACEHOLDER_NAMES[0];
   const rotatingNamePlaceholder = useMemo(() => splitFullName(activePlaceholderName), [activePlaceholderName]);
   const nicknamePlaceholder = rotatingNamePlaceholder.firstName || activePlaceholderName;
@@ -298,9 +299,11 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (bootstrap?.signup.state === "completed") {
-      router.replace("/dashboard");
+      router.replace(
+        pendingPaymentIntent ? "/dashboard?tab=send&resumePayment=1" : "/dashboard"
+      );
     }
-  }, [bootstrap?.signup.state, router]);
+  }, [bootstrap?.signup.state, pendingPaymentIntent, router]);
 
   useEffect(() => {
     if (hasStartedTypingDetails) {
@@ -594,7 +597,9 @@ export default function WelcomePage() {
     try {
       await completeSignup.mutateAsync();
       toast.success("Welcome to TCOIN.");
-      router.push("/dashboard");
+      router.push(
+        pendingPaymentIntent ? "/dashboard?tab=send&resumePayment=1" : "/dashboard"
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to complete signup.");
     }

@@ -17,6 +17,19 @@ type UserEmailRow = {
   createdAt: string | null;
 };
 
+type PendingPaymentIntent = {
+  recipientUserId: number;
+  recipientName: string | null;
+  recipientUsername: string | null;
+  recipientProfileImageUrl: string | null;
+  recipientWalletAddress: string | null;
+  recipientUserIdentifier: string | null;
+  amountRequested: number | null;
+  sourceToken: string | null;
+  sourceMode: "rotating_multi_use" | "single_use" | null;
+  createdAt: string | null;
+};
+
 function isRecord(value: unknown): value is JsonRecord {
   return value != null && typeof value === "object" && !Array.isArray(value);
 }
@@ -279,6 +292,33 @@ function isMissingTableError(message: string | undefined): boolean {
   );
 }
 
+export function normalisePendingPaymentIntent(value: unknown): PendingPaymentIntent | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const recipientUserId = toNullableInteger(value.recipientUserId);
+  if (recipientUserId == null) {
+    return null;
+  }
+
+  return {
+    recipientUserId,
+    recipientName: toNullableString(value.recipientName),
+    recipientUsername: toNullableString(value.recipientUsername),
+    recipientProfileImageUrl: toNullableString(value.recipientProfileImageUrl),
+    recipientWalletAddress: toNullableString(value.recipientWalletAddress),
+    recipientUserIdentifier: toNullableString(value.recipientUserIdentifier),
+    amountRequested: toNullableNumber(value.amountRequested),
+    sourceToken: toNullableString(value.sourceToken),
+    sourceMode:
+      value.sourceMode === "single_use" || value.sourceMode === "rotating_multi_use"
+        ? value.sourceMode
+        : null,
+    createdAt: toNullableString(value.createdAt),
+  };
+}
+
 function resolveSignupMetadata(value: unknown) {
   const metadata = ensureObject(value);
 
@@ -294,6 +334,7 @@ function resolveSignupMetadata(value: unknown) {
     lastSavedAt: toNullableString(metadata.lastSavedAt),
     completedAt: toNullableString(metadata.completedAt),
     phoneVerified: metadata.phoneVerified === true,
+    pendingPaymentIntent: normalisePendingPaymentIntent(metadata.pendingPaymentIntent),
   };
 }
 
@@ -1083,6 +1124,7 @@ export async function getUserSettingsBootstrap(options: {
           : (signup.completedSteps as Array<1 | 2 | 3 | 4 | 5 | 6 | 7>),
       walletReady,
       phoneVerified,
+      pendingPaymentIntent: signup.pendingPaymentIntent,
     },
     options: {
       charities: ((charitiesError && isMissingTableError(charitiesError.message) ? [] : charitiesResult.data) ?? []).map((row: any) => ({
@@ -1294,6 +1336,7 @@ export async function startSignup(options: {
     lastSavedAt: nowIso,
     completedAt: null,
     phoneVerified: false,
+    pendingPaymentIntent: signup.pendingPaymentIntent,
   };
 
   const { error: updateError } = await options.supabase
@@ -1355,6 +1398,7 @@ export async function saveSignupStep(options: {
     lastSavedAt: nowIso,
     completedAt: null,
     phoneVerified: existingSignup.phoneVerified,
+    pendingPaymentIntent: existingSignup.pendingPaymentIntent,
   };
 
   if (step === 1) {
@@ -1593,6 +1637,7 @@ export async function completeSignup(options: {
             lastSavedAt: nowIso,
             completedAt: nowIso,
             phoneVerified: bootstrap.signup.phoneVerified,
+            pendingPaymentIntent: existingSignup.pendingPaymentIntent,
           },
         }),
         onboarding_state: buildUpdatedOnboardingState(appProfile.onboarding_state, 7),
@@ -1608,6 +1653,92 @@ export async function completeSignup(options: {
 
   if (profileUpdateError) {
     throw new Error(`Failed to finalize signup state: ${profileUpdateError.message}`);
+  }
+
+  return getUserSettingsBootstrap({
+    supabase: options.supabase,
+    userId: options.userId,
+    appContext: options.appContext,
+  });
+}
+
+export async function savePendingPaymentIntent(options: {
+  supabase: any;
+  userId: number;
+  appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
+  payload: JsonRecord;
+}) {
+  const appProfile = await ensureAppProfile({
+    supabase: options.supabase,
+    userId: options.userId,
+    appInstanceId: options.appContext.appInstanceId,
+  });
+  const existingSignup = resolveSignupMetadata(ensureObject(appProfile.metadata).signup);
+  const pendingPaymentIntent = normalisePendingPaymentIntent(options.payload);
+
+  if (!pendingPaymentIntent) {
+    throw new Error("A valid pending payment intent is required.");
+  }
+
+  const nextSignup = {
+    ...existingSignup,
+    pendingPaymentIntent,
+  };
+
+  const { error } = await options.supabase
+    .from("app_user_profiles")
+    .update({
+      metadata: buildUpdatedMetadata({
+        currentMetadata: appProfile.metadata,
+        signup: nextSignup,
+      }),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", options.userId)
+    .eq("app_instance_id", options.appContext.appInstanceId);
+
+  if (error) {
+    throw new Error(`Failed to save pending payment intent: ${error.message}`);
+  }
+
+  return getUserSettingsBootstrap({
+    supabase: options.supabase,
+    userId: options.userId,
+    appContext: options.appContext,
+  });
+}
+
+export async function clearPendingPaymentIntent(options: {
+  supabase: any;
+  userId: number;
+  appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
+}) {
+  const appProfile = await ensureAppProfile({
+    supabase: options.supabase,
+    userId: options.userId,
+    appInstanceId: options.appContext.appInstanceId,
+  });
+  const existingSignup = resolveSignupMetadata(ensureObject(appProfile.metadata).signup);
+
+  const nextSignup = {
+    ...existingSignup,
+    pendingPaymentIntent: null,
+  };
+
+  const { error } = await options.supabase
+    .from("app_user_profiles")
+    .update({
+      metadata: buildUpdatedMetadata({
+        currentMetadata: appProfile.metadata,
+        signup: nextSignup,
+      }),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", options.userId)
+    .eq("app_instance_id", options.appContext.appInstanceId);
+
+  if (error) {
+    throw new Error(`Failed to clear pending payment intent: ${error.message}`);
   }
 
   return getUserSettingsBootstrap({

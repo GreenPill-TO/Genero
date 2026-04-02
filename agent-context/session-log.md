@@ -1,3 +1,57 @@
+## v1.164
+### Timestamp
+- 2026-04-02 19:41 EDT
+
+### Objective
+- Replace Receive-tab QR payloads with public `https://www.tcoin.me/pay/<token>` links that survive sign-in and onboarding, while keeping Send and QR scanning compatible with both the new pay-link contract and the legacy base64 links during the transition.
+
+### What Changed
+- Added `public.payment_request_links` through `supabase/migrations/20260402201500_v1.11_payment_request_links.sql`, including opaque token hashes, recipient/user linkage, optional requested amount, mode (`rotating_multi_use` or `single_use`), expiry, and single-use consumption audit fields.
+- Added the new `payment-links` edge function plus shared helpers/client types to create authenticated pay links, resolve them publicly, and consume single-use links only after successful payment completion.
+- Updated Receive so QR generation now mints public `https://www.tcoin.me/pay/<token>` links by default, rotates them every 45 seconds with a 60-second TTL, and supports an opt-in long-lived one-time QR mode with a 30-day expiry.
+- Added the new public wallet route `app/tcoin/wallet/pay/[token]/page.tsx`, made `/pay/...` public in the shared wallet shell, and used that page as the canonical continuation surface after sign-in.
+- Extended user-settings bootstrap/signup metadata with `pendingPaymentIntent`, plus save/clear endpoints and React Query mutations, so incomplete users can go through `/welcome` and still land back in prefilled Send afterwards.
+- Updated dashboard Send to accept `paymentLink` and `resumePayment` query parameters, resolve new pay-link tokens, keep legacy `?pay=<base64>` handling for pasted/scanned links, and consume single-use pay links after successful payment.
+- Updated welcome completion/redirect behaviour so onboarding with a pending payment intent now routes back to `/dashboard?tab=send&resumePayment=1` instead of dropping the user on a generic dashboard entry.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/SendTab.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx app/tcoin/wallet/components/modals/QrScanModal.tsx app/tcoin/wallet/components/modals/QrScanModal.test.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx 'app/tcoin/wallet/pay/[token]/page.tsx' 'app/tcoin/wallet/pay/[token]/page.test.tsx' app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/ContentLayout.test.tsx app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx shared/lib/userSettings/types.ts shared/lib/userSettings/client.ts shared/hooks/useUserSettingsMutations.ts shared/lib/edge/paymentRequestLinks.ts shared/lib/edge/paymentRequestLinksClient.ts shared/lib/walletPayLinks.ts supabase/functions/_shared/paymentRequestLinks.ts supabase/functions/payment-links/index.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts supabase/functions/user-settings/index.ts`
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx 'app/tcoin/wallet/pay/[token]/page.test.tsx' app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `.env.local.example`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `app/tcoin/wallet/components/modals/QrScanModal.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/wallet/pay/[token]/page.tsx`
+- `app/tcoin/wallet/pay/[token]/page.test.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `shared/hooks/useUserSettingsMutations.ts`
+- `shared/lib/edge/paymentRequestLinks.ts`
+- `shared/lib/edge/paymentRequestLinksClient.ts`
+- `shared/lib/userSettings/client.ts`
+- `shared/lib/userSettings/types.ts`
+- `shared/lib/walletPayLinks.ts`
+- `supabase/functions/_shared/paymentRequestLinks.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/payment-links/index.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/migrations/20260402201500_v1.11_payment_request_links.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.163
 ### Timestamp
 - 2026-04-02 19:14 EDT

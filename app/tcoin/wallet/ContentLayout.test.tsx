@@ -83,4 +83,17 @@ describe("ContentLayout", () => {
     expect(screen.getByTestId("wallet-layout-scroll-region").className).toBe("");
     expect(screen.queryByTestId("wallet-navbar")).toBeNull();
   });
+
+  it("treats pay-link routes as public wallet paths", () => {
+    usePathnameMock.mockReturnValue("/pay/opaque-token");
+
+    render(
+      <ContentLayout>
+        <div>pay</div>
+      </ContentLayout>
+    );
+
+    expect(screen.getByTestId("wallet-layout-root").className).not.toContain("wallet-auth-frame");
+    expect(screen.queryByTestId("wallet-navbar")).toBeNull();
+  });
 });

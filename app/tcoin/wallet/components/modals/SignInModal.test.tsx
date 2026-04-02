@@ -144,4 +144,35 @@ describe("SignInModal", () => {
     });
     document.body.removeChild(container);
   });
+
+  it("supports an explicit post-auth redirect override", async () => {
+    const closeModal = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42, has_completed_intro: true }, error: null });
+
+    act(() => {
+      root.render(
+        <SignInModal
+          closeModal={closeModal}
+          extraObject={{ isSignIn: true }}
+          postAuthRedirect="/pay/opaque-token"
+        />
+      );
+    });
+
+    await act(async () => {
+      await verifySuccess?.();
+    });
+
+    expect(push).toHaveBeenCalledWith("/pay/opaque-token");
+    expect(closeModal).toHaveBeenCalled();
+
+    act(() => {
+      root.unmount();
+    });
+    document.body.removeChild(container);
+  });
 });

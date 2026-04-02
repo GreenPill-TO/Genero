@@ -7,6 +7,7 @@ const useAuthMock = vi.hoisted(() => vi.fn());
 const useUserSettingsMock = vi.hoisted(() => vi.fn());
 const pushMock = vi.hoisted(() => vi.fn());
 const contactsTabPropsMock = vi.hoisted(() => vi.fn());
+const sendTabPropsMock = vi.hoisted(() => vi.fn());
 const searchParamsMock = vi.hoisted(
   () =>
     ({
@@ -46,7 +47,10 @@ vi.mock("@tcoin/wallet/components/dashboard", () => ({
     contactsTabPropsMock(props);
     return <div>contacts</div>;
   },
-  SendTab: () => <div>send</div>,
+  SendTab: (props: any) => {
+    sendTabPropsMock(props);
+    return <div>send</div>;
+  },
   ReceiveTab: () => <div>receive</div>,
   MoreTab: () => <div>more</div>,
   TransactionHistoryTab: ({ onBackToDashboard }: { onBackToDashboard?: () => void }) => (
@@ -82,6 +86,7 @@ describe("DashboardPage", () => {
     });
     pushMock.mockReset();
     contactsTabPropsMock.mockReset();
+    sendTabPropsMock.mockReset();
     searchParamsMock.get = vi.fn(() => null);
   });
 
@@ -197,5 +202,49 @@ describe("DashboardPage", () => {
 
     const props = contactsTabPropsMock.mock.calls.at(-1)?.[0];
     expect(props.showInviteEmptyState).toBe(false);
+  });
+
+  it("passes public pay-link query params and pending intents into send", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        preferences: {
+          experienceMode: "advanced",
+        },
+        signup: {
+          pendingPaymentIntent: {
+            recipientUserId: 42,
+            recipientName: "Taylor Example",
+            recipientUsername: "tay",
+            recipientProfileImageUrl: null,
+            recipientWalletAddress: "0xwallet",
+            recipientUserIdentifier: "taylor-example",
+            amountRequested: 13.1,
+            sourceToken: "opaque-token",
+            sourceMode: "rotating_multi_use",
+            createdAt: "2026-04-02T10:00:00.000Z",
+          },
+        },
+      },
+      isLoading: false,
+    });
+    searchParamsMock.get = vi.fn((key: string) => {
+      if (key === "tab") return "send";
+      if (key === "paymentLink") return "opaque-token";
+      if (key === "resumePayment") return "1";
+      return null;
+    });
+
+    render(<DashboardPage />);
+
+    expect(sendTabPropsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentLinkToken: "opaque-token",
+        resumePendingPayment: true,
+        pendingPaymentIntent: expect.objectContaining({
+          recipientUserId: 42,
+          sourceToken: "opaque-token",
+        }),
+      })
+    );
   });
 });

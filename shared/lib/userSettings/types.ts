@@ -2,6 +2,18 @@ export type UserSettingsTheme = "system" | "light" | "dark";
 export type UserSettingsExperienceMode = "simple" | "advanced";
 export type UserSignupState = "none" | "draft" | "completed";
 export type UserSignupStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type UserSettingsPendingPaymentIntent = {
+  recipientUserId: number;
+  recipientName: string | null;
+  recipientUsername: string | null;
+  recipientProfileImageUrl: string | null;
+  recipientWalletAddress: string | null;
+  recipientUserIdentifier: string | null;
+  amountRequested: number | null;
+  sourceToken: string | null;
+  sourceMode: "rotating_multi_use" | "single_use" | null;
+  createdAt: string | null;
+};
 
 export type UserSettingsAppContext = {
   appSlug: string;
@@ -69,6 +81,7 @@ export type UserSettingsSignup = {
   completedSteps: UserSignupStep[];
   walletReady: boolean;
   phoneVerified: boolean;
+  pendingPaymentIntent: UserSettingsPendingPaymentIntent | null;
 };
 
 export type UserSettingsBootstrap = {
@@ -108,3 +121,5 @@ export type SaveUserSignupStepInput = {
   step: UserSignupStep;
   payload?: Record<string, unknown>;
 };
+
+export type SavePendingPaymentIntentInput = UserSettingsPendingPaymentIntent;

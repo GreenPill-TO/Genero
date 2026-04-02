@@ -7,6 +7,7 @@ import {
   normaliseExperienceMode,
   normaliseEmailAddress,
   normaliseManagedEmails,
+  normalisePendingPaymentIntent,
   normaliseUserIdentifierCandidate,
 } from "./userSettings";
 
@@ -89,6 +90,41 @@ describe("experience mode helpers", () => {
 
   it("keeps advanced when it is explicitly selected", () => {
     expect(normaliseExperienceMode("advanced")).toBe("advanced");
+  });
+});
+
+describe("pending payment intent helpers", () => {
+  it("normalises valid pending payment intents", () => {
+    expect(
+      normalisePendingPaymentIntent({
+        recipientUserId: "42",
+        recipientName: "Taylor Example",
+        recipientUsername: "tay",
+        recipientProfileImageUrl: "https://example.com/avatar.png",
+        recipientWalletAddress: "0xwallet",
+        recipientUserIdentifier: "taylor-example",
+        amountRequested: "13.1",
+        sourceToken: "opaque-token",
+        sourceMode: "rotating_multi_use",
+        createdAt: "2026-04-02T12:00:00.000Z",
+      })
+    ).toEqual({
+      recipientUserId: 42,
+      recipientName: "Taylor Example",
+      recipientUsername: "tay",
+      recipientProfileImageUrl: "https://example.com/avatar.png",
+      recipientWalletAddress: "0xwallet",
+      recipientUserIdentifier: "taylor-example",
+      amountRequested: 13.1,
+      sourceToken: "opaque-token",
+      sourceMode: "rotating_multi_use",
+      createdAt: "2026-04-02T12:00:00.000Z",
+    });
+  });
+
+  it("rejects pending payment intents without a recipient user id", () => {
+    expect(normalisePendingPaymentIntent({ recipientName: "Taylor Example" })).toBeNull();
+    expect(normalisePendingPaymentIntent(null)).toBeNull();
   });
 });
 

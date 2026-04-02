@@ -10,12 +10,17 @@ import { ContactSelectModal, ShareQrModal } from "@tcoin/wallet/components/modal
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Hypodata, InvoicePayRequest } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
+import type { PaymentRequestLinkMode } from "@shared/lib/edge/paymentRequestLinks";
 import { walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
 
 export function ReceiveCard({
   qrCodeData,
   qrTcoinAmount,
   qrCadAmount,
+  qrLinkMode = "rotating_multi_use",
+  qrLinkExpiresAt = null,
+  isGeneratingQrCode = false,
+  onSwitchQrLinkMode,
   handleQrTcoinChange,
   handleQrCadChange,
   senderWallet,
@@ -39,6 +44,10 @@ export function ReceiveCard({
   qrCodeData: string;
   qrTcoinAmount: string;
   qrCadAmount: string;
+  qrLinkMode?: PaymentRequestLinkMode;
+  qrLinkExpiresAt?: string | null;
+  isGeneratingQrCode?: boolean;
+  onSwitchQrLinkMode?: (mode: PaymentRequestLinkMode) => void;
   handleQrTcoinChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleQrCadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   senderWallet: string;
@@ -239,6 +248,18 @@ export function ReceiveCard({
         parsedQrCadAmount ? ` (${formatCadAmount(parsedQrCadAmount)})` : ""
       }`
     : "Receive any amount";
+  const qrModeLabel =
+    qrLinkMode === "single_use" ? "Long-lived one-time QR" : "Rotating secure QR";
+  const qrModeDescription =
+    qrLinkMode === "single_use"
+      ? "This link stops rotating, but it will work only once."
+      : "This link refreshes automatically while this screen stays open.";
+  const qrExpiryLabel = qrLinkExpiresAt
+    ? new Date(qrLinkExpiresAt).toLocaleTimeString("en-CA", {
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null;
 
   const formatContactName = (contact: Hypodata) =>
     contact.full_name?.trim() || contact.username?.trim() || "Unknown";
@@ -430,6 +451,16 @@ export function ReceiveCard({
           {shouldShowQrCode ? (
             qrCodeData ? (
               <>
+                <div className="space-y-1 text-center">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-700">
+                    {qrModeLabel}
+                  </p>
+                  {qrExpiryLabel ? (
+                    <p className="text-xs text-slate-700">
+                      Expires at {qrExpiryLabel}
+                    </p>
+                  ) : null}
+                </div>
                 <p className="text-center text-base font-semibold text-slate-950">
                   {qrCaption}
                 </p>
@@ -439,11 +470,33 @@ export function ReceiveCard({
                   bgColor={qrBgColor ?? "transparent"}
                   fgColor={qrFgColor ?? "#000"}
                 />
+                <div className="space-y-2 text-center">
+                  <p className="text-xs text-slate-700">{qrModeDescription}</p>
+                  {onSwitchQrLinkMode ? (
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-slate-900 underline underline-offset-4"
+                      onClick={() =>
+                        onSwitchQrLinkMode(
+                          qrLinkMode === "single_use"
+                            ? "rotating_multi_use"
+                            : "single_use"
+                        )
+                      }
+                    >
+                      {qrLinkMode === "single_use"
+                        ? "Back to rotating QR"
+                        : "Switch to long-lived QR"}
+                    </button>
+                  ) : null}
+                </div>
               </>
             ) : qrUnavailableReason ? (
               <p className="text-center text-sm text-slate-700">{qrUnavailableReason}</p>
             ) : (
-              <p className="text-center text-sm text-slate-700">Loading QR Code...</p>
+              <p className="text-center text-sm text-slate-700">
+                {isGeneratingQrCode ? "Generating pay link..." : "Loading QR Code..."}
+              </p>
             )
           ) : (
             <p className="text-center text-sm text-slate-700">

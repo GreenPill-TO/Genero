@@ -17,7 +17,10 @@ import { ErrorBoundary } from "@shared/components/ErrorBoundary";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { Hypodata } from "@tcoin/wallet/components/dashboard";
-import type { UserSettingsExperienceMode } from "@shared/lib/userSettings/types";
+import type {
+  UserSettingsExperienceMode,
+  UserSettingsPendingPaymentIntent,
+} from "@shared/lib/userSettings/types";
 import {
   WalletPageIntro,
   WalletSection,
@@ -91,6 +94,8 @@ export default function Dashboard() {
   });
   const searchParams = useSearchParams();
   const requestedTab = (searchParams.get("tab") ?? "home").toLowerCase();
+  const paymentLinkToken = searchParams.get("paymentLink");
+  const shouldResumePendingPayment = searchParams.get("resumePayment") === "1";
   const [activeTab, setActiveTab] = useState("home");
   const [sendRecipient, setSendRecipient] = useState<Hypodata | null>(null);
   const [requestRecipient, setRequestRecipient] = useState<Hypodata | null>(null);
@@ -98,6 +103,8 @@ export default function Dashboard() {
   const [receiveQrVisible, setReceiveQrVisible] = useState(true);
   const router = useRouter();
   const experienceMode: UserSettingsExperienceMode = bootstrap?.preferences.experienceMode ?? "simple";
+  const pendingPaymentIntent: UserSettingsPendingPaymentIntent | null =
+    bootstrap?.signup?.pendingPaymentIntent ?? null;
   const validTabs = useMemo(
     () => (experienceMode === "simple" ? new Set(["home", "receive", "send", "contacts", "history"]) : VALID_TAB_KEYS),
     [experienceMode]
@@ -191,6 +198,9 @@ export default function Dashboard() {
           recipient={sendRecipient}
           onRecipientChange={setSendRecipient}
           contacts={cachedContacts ?? undefined}
+          paymentLinkToken={paymentLinkToken}
+          resumePendingPayment={shouldResumePendingPayment}
+          pendingPaymentIntent={pendingPaymentIntent}
         />
       );
     }
@@ -225,10 +235,13 @@ export default function Dashboard() {
     sendRecipient,
     requestRecipient,
     cachedContacts,
+    paymentLinkToken,
+    pendingPaymentIntent,
     receiveQrVisible,
     experienceMode,
     handleTabChange,
     handleContactsResolved,
+    shouldResumePendingPayment,
   ]);
 
   useEffect(() => {

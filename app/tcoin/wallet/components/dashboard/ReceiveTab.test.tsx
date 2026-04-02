@@ -35,12 +35,37 @@ const createPaymentRequestMock = vi.hoisted(() =>
   }))
 );
 const cancelPaymentRequestMock = vi.hoisted(() => vi.fn(async () => ({ request: { id: 5 } })));
+const createPaymentRequestLinkMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    link: {
+      token: "opaque-token",
+      state: "ready",
+      mode: "rotating_multi_use",
+      amountRequested: null,
+      expiresAt: "2026-04-02T12:00:00.000Z",
+      consumedAt: null,
+      url: "https://www.tcoin.me/pay/opaque-token",
+      recipient: {
+        id: 42,
+        fullName: "Hubert",
+        username: "hubert",
+        profileImageUrl: null,
+        walletAddress: "0xabc",
+        userIdentifier: "hubert",
+      },
+    },
+  }))
+);
 const useAuthMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
   getOutgoingPaymentRequests: getOutgoingPaymentRequestsMock,
   createPaymentRequest: createPaymentRequestMock,
   cancelPaymentRequest: cancelPaymentRequestMock,
+}));
+
+vi.mock("@shared/lib/edge/paymentRequestLinksClient", () => ({
+  createPaymentRequestLink: createPaymentRequestLinkMock,
 }));
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
@@ -67,12 +92,13 @@ describe("ReceiveTab", () => {
     getOutgoingPaymentRequestsMock.mockClear();
     createPaymentRequestMock.mockClear();
     cancelPaymentRequestMock.mockClear();
+    createPaymentRequestLinkMock.mockClear();
     useAuthMock.mockReturnValue({
       isLoadingUser: false,
+      authData: { user: { id: "auth-user-1" } },
       userData: {
         cubidData: {
           id: 42,
-          user_identifier: "nano-1",
           wallet_address: "0xabc",
           full_name: "Hubert",
         },
@@ -150,17 +176,17 @@ describe("ReceiveTab", () => {
     });
   });
 
-  it("generates QR payloads when a wallet identifier exists even if the numeric user id is missing", async () => {
+  it("generates public pay links for the QR code", async () => {
     useAuthMock.mockReturnValue({
       isLoadingUser: false,
       userData: {
         cubidData: {
-          id: null,
-          user_identifier: "nano-only",
+          id: 42,
           wallet_address: "0xabc",
           full_name: "Hubert",
         },
       },
+      authData: { user: { id: "auth-user-1" } },
     });
 
     render(<ReceiveTab />);
@@ -169,21 +195,26 @@ describe("ReceiveTab", () => {
       await Promise.resolve();
     });
 
-    expect(receiveCardProps.qrCodeData).toContain("\"nano_id\":\"nano-only\"");
+    expect(createPaymentRequestLinkMock).toHaveBeenCalledWith({
+      amountRequested: null,
+      mode: "rotating_multi_use",
+      appContext: { citySlug: "tcoin" },
+    });
+    expect(receiveCardProps.qrCodeData).toBe("https://www.tcoin.me/pay/opaque-token");
     expect(receiveCardProps.qrUnavailableReason).toBeNull();
   });
 
-  it("surfaces an unavailable message when no wallet identifier is present", async () => {
+  it("surfaces an unavailable message when there is no wallet session yet", async () => {
     useAuthMock.mockReturnValue({
       isLoadingUser: false,
       userData: {
         cubidData: {
           id: 42,
-          user_identifier: null,
           wallet_address: "0xabc",
           full_name: "Hubert",
         },
       },
+      authData: null,
     });
 
     render(<ReceiveTab />);
@@ -193,15 +224,14 @@ describe("ReceiveTab", () => {
     });
 
     expect(receiveCardProps.qrCodeData).toBe("");
-    expect(receiveCardProps.qrUnavailableReason).toBe(
-      "QR code is unavailable because your wallet identity is missing."
-    );
+    expect(receiveCardProps.qrUnavailableReason).toBeNull();
   });
 
   it("surfaces a loading message while the authenticated user record is still resolving", async () => {
     useAuthMock.mockReturnValue({
       isLoadingUser: true,
       userData: null,
+      authData: null,
     });
 
     render(<ReceiveTab />);
@@ -212,7 +242,7 @@ describe("ReceiveTab", () => {
 
     expect(receiveCardProps.qrCodeData).toBe("");
     expect(receiveCardProps.qrUnavailableReason).toBe(
-      "QR code is still loading your wallet identity."
+      "QR code is still loading your wallet session."
     );
   });
 });

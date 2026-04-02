@@ -151,6 +151,7 @@ const createBootstrap = (
     completedSteps: overrides?.completedSteps ?? (signupState === "draft" ? [1, 2] : []),
     walletReady: overrides?.walletReady ?? false,
     phoneVerified: true,
+    pendingPaymentIntent: null,
   },
   options: {
     charities: [
@@ -277,6 +278,35 @@ describe("WelcomePage", () => {
     render(<WelcomePage />);
 
     expect(replaceMock).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("redirects completed users with pending payments back into send", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        ...createBootstrap("completed"),
+        signup: {
+          ...createBootstrap("completed").signup,
+          pendingPaymentIntent: {
+            recipientUserId: 42,
+            recipientName: "Taylor Example",
+            recipientUsername: "tay",
+            recipientProfileImageUrl: null,
+            recipientWalletAddress: "0xwallet",
+            recipientUserIdentifier: "taylor-example",
+            amountRequested: 13.1,
+            sourceToken: "opaque-token",
+            sourceMode: "rotating_multi_use",
+            createdAt: "2026-04-02T12:00:00.000Z",
+          },
+        },
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    expect(replaceMock).toHaveBeenCalledWith("/dashboard?tab=send&resumePayment=1");
   });
 
   it("shows the step 5 skip button in development", () => {

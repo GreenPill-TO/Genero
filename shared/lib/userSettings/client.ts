@@ -1,6 +1,7 @@
 import { createClient } from "@shared/lib/supabase/client";
 import { resolveUserSettingsAppContext } from "./context";
 import type {
+  SavePendingPaymentIntentInput,
   SaveUserSignupStepInput,
   UpdateUserPreferencesInput,
   UpdateUserProfileInput,
@@ -128,6 +129,26 @@ export async function completeUserSignup(
   appContext?: Partial<UserSettingsAppContext> | null
 ): Promise<UserSettingsBootstrap> {
   return invokeUserSettings<UserSettingsBootstrap>("/signup/complete", {
+    method: "POST",
+    appContext,
+  });
+}
+
+export async function savePendingPaymentIntent(
+  input: SavePendingPaymentIntentInput,
+  appContext?: Partial<UserSettingsAppContext> | null
+): Promise<UserSettingsBootstrap> {
+  return invokeUserSettings<UserSettingsBootstrap>("/signup/pending-payment-intent", {
+    method: "POST",
+    body: input as unknown as Record<string, unknown>,
+    appContext,
+  });
+}
+
+export async function clearPendingPaymentIntent(
+  appContext?: Partial<UserSettingsAppContext> | null
+): Promise<UserSettingsBootstrap> {
+  return invokeUserSettings<UserSettingsBootstrap>("/signup/pending-payment-intent/clear", {
     method: "POST",
     appContext,
   });

@@ -2,7 +2,9 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  clearPendingPaymentIntent,
   completeUserSignup,
+  savePendingPaymentIntent,
   resetUserSignup,
   saveUserSignupStep,
   startUserSignup,
@@ -11,6 +13,7 @@ import {
 } from "@shared/lib/userSettings/client";
 import { resolveUserSettingsAppContext } from "@shared/lib/userSettings/context";
 import type {
+  SavePendingPaymentIntentInput,
   SaveUserSignupStepInput,
   UpdateUserPreferencesInput,
   UpdateUserProfileInput,
@@ -96,6 +99,35 @@ export function useCompleteUserSignupMutation(appContext?: Partial<UserSettingsA
 
   return useMutation({
     mutationFn: () => completeUserSignup(resolved),
+    onSuccess: async () => {
+      await invalidate();
+    },
+  });
+}
+
+export function useSavePendingPaymentIntentMutation(
+  appContext?: Partial<UserSettingsAppContext> | null
+) {
+  const invalidate = useInvalidateUserSettings(appContext);
+  const resolved = resolveUserSettingsAppContext(appContext);
+
+  return useMutation({
+    mutationFn: (input: SavePendingPaymentIntentInput) =>
+      savePendingPaymentIntent(input, resolved),
+    onSuccess: async () => {
+      await invalidate();
+    },
+  });
+}
+
+export function useClearPendingPaymentIntentMutation(
+  appContext?: Partial<UserSettingsAppContext> | null
+) {
+  const invalidate = useInvalidateUserSettings(appContext);
+  const resolved = resolveUserSettingsAppContext(appContext);
+
+  return useMutation({
+    mutationFn: () => clearPendingPaymentIntent(resolved),
     onSuccess: async () => {
       await invalidate();
     },

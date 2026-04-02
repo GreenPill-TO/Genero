@@ -44,9 +44,10 @@ type SignInModalProps = {
   extraObject: {
     isSignIn: boolean;
   };
+  postAuthRedirect?: string | null;
 };
 
-function SignInModal({ closeModal }: SignInModalProps) {
+function SignInModal({ closeModal, postAuthRedirect }: SignInModalProps) {
   const [authMethod, setAuthMethod] = useState<"phone" | "email">("email");
   const [countryCode, setCountryCode] = useState("+1");
   const [contact, setContact] = useState("");
@@ -73,7 +74,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const verifyCodeMut = useVerifyPasscodeMutation({
     onSuccessCallback: async () => {
       toast.success("Passcode verified successfully!");
-      const destination = await handlePostAuthentication(fullContact);
+      const destination = postAuthRedirect ?? (await handlePostAuthentication(fullContact));
       if (!destination) return;
       closeModal();
       router.push(destination);
