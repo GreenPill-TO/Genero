@@ -72,6 +72,22 @@ const DEFAULT_CROP_STATE: ProfilePictureCropState = {
 };
 
 const SIGNUP_AVATAR_PREVIEW_SIZE = 96;
+const SIGNUP_PLACEHOLDER_ROTATION_MS = 3000;
+const SIGNUP_PLACEHOLDER_NAMES = [
+  "Mats Sundin",
+  "Nathan Philips",
+  "The Weeknd",
+  "Carlton The Bear",
+  "Mel Lastman",
+  "Kyle Lowry",
+  "John Candy",
+  "Joe Carter",
+  "Drake",
+  "Wayne Gretzky",
+  "Rob Ford",
+  "Larry Tannenbaum",
+  "Olivia Chow",
+];
 
 const buildCountryOptions = (): CountryOption[] => {
   const data = countryList().getData();
@@ -107,6 +123,13 @@ const splitFullName = (fullName: string | null | undefined) => {
   };
 };
 
+const createUsernamePlaceholder = (fullName: string) =>
+  fullName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.+|\.+$/g, "") || "tcoin.user";
+
 export default function WelcomePage() {
   const router = useRouter();
   const { userData, authData, isAuthenticated } = useAuth();
@@ -127,6 +150,7 @@ export default function WelcomePage() {
   const [profilePictureCrop, setProfilePictureCrop] = useState<ProfilePictureCropState>(DEFAULT_CROP_STATE);
   const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false);
   const [isPreparingProfilePicture, setIsPreparingProfilePicture] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [communitySettings, setCommunitySettings] = useState<CommunitySettingsForm>({
     charity: "",
     selectedCause: "",
@@ -141,6 +165,10 @@ export default function WelcomePage() {
   const usernameValueFromBootstrap = bootstrap?.user.username ?? "";
   const currentStep = bootstrap?.signup.currentStep ?? wizardStep;
   const walletReady = bootstrap?.signup.walletReady === true || walletReadyLocal;
+  const activePlaceholderName = SIGNUP_PLACEHOLDER_NAMES[placeholderIndex] ?? SIGNUP_PLACEHOLDER_NAMES[0];
+  const rotatingNamePlaceholder = useMemo(() => splitFullName(activePlaceholderName), [activePlaceholderName]);
+  const nicknamePlaceholder = rotatingNamePlaceholder.firstName || activePlaceholderName;
+  const usernamePlaceholder = useMemo(() => createUsernamePlaceholder(activePlaceholderName), [activePlaceholderName]);
 
   const {
     register,
@@ -213,6 +241,14 @@ export default function WelcomePage() {
       router.replace("/dashboard");
     }
   }, [bootstrap?.signup.state, router]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setPlaceholderIndex((currentIndex) => (currentIndex + 1) % SIGNUP_PLACEHOLDER_NAMES.length);
+    }, SIGNUP_PLACEHOLDER_ROTATION_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     if (!bootstrap) {
@@ -688,7 +724,7 @@ export default function WelcomePage() {
                         </label>
                         <input
                           id="firstName"
-                          placeholder="Mats"
+                          placeholder={rotatingNamePlaceholder.firstName}
                           className={nativeFieldClass}
                           {...register("firstName", { required: "First name is required" })}
                         />
@@ -700,7 +736,7 @@ export default function WelcomePage() {
                         </label>
                         <input
                           id="lastName"
-                          placeholder="Sundin"
+                          placeholder={rotatingNamePlaceholder.lastName}
                           className={nativeFieldClass}
                           {...register("lastName", { required: "Last name is required" })}
                         />
@@ -737,7 +773,7 @@ export default function WelcomePage() {
                       </label>
                       <input
                         id="nickname"
-                        placeholder="Mats"
+                        placeholder={nicknamePlaceholder}
                         className={nativeFieldClass}
                         {...register("nickname")}
                       />
@@ -748,7 +784,7 @@ export default function WelcomePage() {
                       </label>
                       <input
                         id="username"
-                        placeholder="mats.sundin"
+                        placeholder={usernamePlaceholder}
                         className={nativeFieldClass}
                         {...register("username", {
                           maxLength: {

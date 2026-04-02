@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WelcomePage from "./page";
 
@@ -185,6 +185,7 @@ describe("WelcomePage", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   it("renders the start state for a first-time user", () => {
@@ -299,13 +300,20 @@ describe("WelcomePage", () => {
     expect(screen.getByText(/Your progress is saved step by step/i)).toBeTruthy();
   });
 
-  it("shows required and optional groups on step 2 with Mats Sundin placeholders instead of prefilled names", async () => {
+  it("shows rotating Toronto placeholders on step 2 instead of prefilled names", async () => {
+    vi.useFakeTimers();
+
     render(<WelcomePage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Start setup/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /^Continue$/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Start setup/i }));
+    });
 
-    expect(await screen.findByText(/Required to continue/i)).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
+    });
+
+    expect(screen.getByText(/Required to continue/i)).toBeTruthy();
     expect(screen.getByText(/Optional for now/i)).toBeTruthy();
     expect(screen.getByText(/First name, last name, and phone verification are required/i)).toBeTruthy();
     expect(screen.getByText(/Preferred name, username, and country can be added now or later/i)).toBeTruthy();
@@ -313,6 +321,17 @@ describe("WelcomePage", () => {
     expect((screen.getByLabelText(/^First name$/i) as HTMLInputElement).placeholder).toBe("Mats");
     expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).placeholder).toBe("Sundin");
+    expect((screen.getByLabelText(/^Preferred name$/i) as HTMLInputElement).placeholder).toBe("Mats");
+    expect((screen.getByLabelText(/^Username$/i) as HTMLInputElement).placeholder).toBe("mats.sundin");
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect((screen.getByLabelText(/^First name$/i) as HTMLInputElement).placeholder).toBe("Nathan");
+    expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).placeholder).toBe("Philips");
+    expect((screen.getByLabelText(/^Preferred name$/i) as HTMLInputElement).placeholder).toBe("Nathan");
+    expect((screen.getByLabelText(/^Username$/i) as HTMLInputElement).placeholder).toBe("nathan.philips");
   });
 
   it("opens the picture editor modal after choosing an image on step 3", async () => {

@@ -1,3 +1,26 @@
+## v1.143
+### Timestamp
+- 2026-04-02 14:28 EDT
+
+### Objective
+- Rotate the welcome step-2 name placeholders so the identity examples feel livelier than a single static `Mats Sundin`.
+
+### What Changed
+- Added a shared rotating placeholder list for the welcome user-details step, cycling every three seconds through Toronto-flavoured example names instead of keeping one fixed placeholder.
+- Derived the first-name, last-name, preferred-name, and username placeholders from the same active full-name entry so all four fields stay visually in sync.
+- Updated the welcome-page regression test to assert the initial `Mats Sundin` placeholders and the timed rotation to `Nathan Philips`.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.142
 ### Timestamp
 - 2026-04-02 14:14 EDT
