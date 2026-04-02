@@ -1,6 +1,7 @@
 type JsonRecord = Record<string, unknown>;
 
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,32}$/;
+const AUTO_USER_IDENTIFIER_PREFIX = "user-";
 
 function isRecord(value: unknown): value is JsonRecord {
   return value != null && typeof value === "object" && !Array.isArray(value);
@@ -12,6 +13,111 @@ function toNullableString(value: unknown): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+export function normaliseUserIdentifierCandidate(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalised = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/[-._]{2,}/g, "-")
+    .replace(/^[-._]+|[-._]+$/g, "");
+
+  if (normalised.length < 3) {
+    return null;
+  }
+
+  return normalised.slice(0, 32);
+}
+
+export function buildFallbackUserIdentifier(userId: number): string {
+  return `${AUTO_USER_IDENTIFIER_PREFIX}${userId}`;
+}
+
+export function isFallbackUserIdentifier(value: unknown, userId: number): boolean {
+  return toNullableString(value)?.toLowerCase() === buildFallbackUserIdentifier(userId);
+}
+
+export function buildUserIdentifierVariant(base: string, suffix: number): string {
+  if (suffix <= 0) {
+    return base;
+  }
+
+  const suffixText = `-${suffix}`;
+  const trimmedBase = base.slice(0, Math.max(3, 32 - suffixText.length)).replace(/[-._]+$/g, "");
+  return `${trimmedBase}${suffixText}`;
+}
+
+async function ensureUserIdentifier(options: {
+  supabase: any;
+  userId: number;
+  preferredCandidate?: unknown;
+  replaceFallback?: boolean;
+}) {
+  const { data: userRow, error: userError } = await options.supabase
+    .from("users")
+    .select("id,username,user_identifier")
+    .eq("id", options.userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (userError) {
+    throw new Error(`Failed to load user identifier state: ${userError.message}`);
+  }
+
+  const currentIdentifier = toNullableString(userRow?.user_identifier);
+  const shouldReplaceFallback = options.replaceFallback === true && isFallbackUserIdentifier(currentIdentifier, options.userId);
+
+  if (currentIdentifier && !shouldReplaceFallback) {
+    return currentIdentifier;
+  }
+
+  const baseIdentifier =
+    normaliseUserIdentifierCandidate(options.preferredCandidate) ??
+    normaliseUserIdentifierCandidate(userRow?.username) ??
+    buildFallbackUserIdentifier(options.userId);
+
+  let suffix = 0;
+  let nextIdentifier = buildUserIdentifierVariant(baseIdentifier, suffix);
+
+  while (true) {
+    const { data: existingUser, error: existingError } = await options.supabase
+      .from("users")
+      .select("id")
+      .eq("user_identifier", nextIdentifier)
+      .neq("id", options.userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingError) {
+      throw new Error(`Failed to validate user identifier: ${existingError.message}`);
+    }
+
+    if (!existingUser?.id) {
+      break;
+    }
+
+    suffix += 1;
+    nextIdentifier = buildUserIdentifierVariant(baseIdentifier, suffix);
+  }
+
+  const { error: updateError } = await options.supabase
+    .from("users")
+    .update({
+      user_identifier: nextIdentifier,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", options.userId);
+
+  if (updateError) {
+    throw new Error(`Failed to persist user identifier: ${updateError.message}`);
+  }
+
+  return nextIdentifier;
 }
 
 function toNullableNumber(value: unknown): number | null {
@@ -608,6 +714,13 @@ export async function updateUserProfile(options: {
     }
   }
 
+  await ensureUserIdentifier({
+    supabase: options.supabase,
+    userId: options.userId,
+    preferredCandidate: username ?? undefined,
+    replaceFallback: true,
+  });
+
   return getUserSettingsBootstrap({
     supabase: options.supabase,
     userId: options.userId,
@@ -1193,6 +1306,11 @@ export async function ensureAuthenticatedUserRecord(options: {
     throw new Error("Unable to resolve authenticated user id.");
   }
 
+  await ensureUserIdentifier({
+    supabase: options.supabase,
+    userId,
+  });
+
   const bootstrap = await getUserSettingsBootstrap({
     supabase: options.supabase,
     userId,
@@ -1323,6 +1441,11 @@ export async function registerWalletCustody(options: {
   if (shareError) {
     throw new Error(`Failed to upsert encrypted user share: ${shareError.message}`);
   }
+
+  await ensureUserIdentifier({
+    supabase: options.supabase,
+    userId: options.userId,
+  });
 
   const bootstrap = await getUserSettingsBootstrap({
     supabase: options.supabase,

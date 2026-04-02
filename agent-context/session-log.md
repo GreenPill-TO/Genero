@@ -1,3 +1,26 @@
+## v1.108
+### Timestamp
+- 2026-04-01 22:33:51 EDT
+
+### Objective
+- Patch the missing `user_identifier` write path so wallet setup and related authenticated flows actually create the shareable identifier that receive-QR lookup depends on.
+
+### What Changed
+- Added identifier-generation helpers in the shared user-settings backend to normalize username-based candidates, fall back to deterministic `user-<id>` identifiers, and suffix collisions safely within the length budget.
+- Wired those helpers into the canonical authenticated-user, profile-update, and wallet-custody registration flows so missing identifiers are backfilled, fallback identifiers can upgrade to username-based ones, and step 5 wallet setup now guarantees an identifier exists after custody registration.
+- Added focused unit coverage for the identifier helper rules and re-ran the welcome/auth tests to confirm the wallet-setup path still behaves correctly.
+
+### Verification
+- `pnpm exec eslint supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts app/tcoin/wallet/welcome/page.tsx`
+- `pnpm exec vitest run supabase/functions/_shared/userSettings.test.ts shared/api/hooks/useAuth.test.tsx app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.107
 ### Timestamp
 - 2026-04-01 22:27:48 EDT
