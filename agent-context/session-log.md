@@ -1,3 +1,26 @@
+## v1.139
+### Timestamp
+- 2026-04-02 13:53 EDT
+
+### Objective
+- Make the `/merchants` lead-in statements visually match the main landing page.
+
+### What Changed
+- Replaced the merchant page’s plain bold lead-in phrases with the same highlighted inline treatment used on the main landing page (`bg-gray-200 dark:bg-gray-700 px-1`).
+- Added a focused merchants-page regression test that verifies the shared landing-style highlight classes on representative lead statements.
+- Updated the required technical and functional specifications to record that public-site visual-language alignment.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/merchants/page.tsx app/tcoin/wallet/merchants/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/merchants/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/merchants/page.tsx`
+- `app/tcoin/wallet/merchants/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.138
 ### Timestamp
 - 2026-04-02 13:47 EDT

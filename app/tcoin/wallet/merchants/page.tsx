@@ -59,56 +59,61 @@ export default function MerchantsPage() {
         <section className="space-y-4">
           <h2 className="font-extrabold text-center">Benefits for Merchants</h2>
           <p className="leading-8">
-            <strong>Sell more, upfront.</strong> TCOIN lets you mint vouchers that work like
-            digital gift cards. Customers can prepay and spend later—giving you cash flow today
-            and guaranteed future business.
+            <span className="bg-gray-200 dark:bg-gray-700 px-1">Sell more, upfront.</span> TCOIN
+            lets you mint vouchers that work like digital gift cards. Customers can prepay and
+            spend later—giving you cash flow today and guaranteed future business.
           </p>
           <p className="leading-8">
-            <strong>More useful than gift cards.</strong> Unlike traditional gift cards, your
-            vouchers aren’t locked to your store. They can be traded across participating
-            merchants, making them far more flexible—and more appealing to customers.
+            <span className="bg-gray-200 dark:bg-gray-700 px-1">More useful than gift cards.</span>{" "}
+            Unlike traditional gift cards, your vouchers aren’t locked to your store. They can be
+            traded across participating merchants, making them far more flexible—and more appealing
+            to customers.
           </p>
           <p className="leading-8">
-            <strong>Lower fees, better margins.</strong> Cash out at fees lower than typical
-            credit card rates. Or avoid fees entirely by trading vouchers directly with other
-            merchants.
+            <span className="bg-gray-200 dark:bg-gray-700 px-1">Lower fees, better margins.</span>{" "}
+            Cash out at fees lower than typical credit card rates. Or avoid fees entirely by
+            trading vouchers directly with other merchants.
           </p>
           <p className="leading-8">
-            <strong>Keep customers coming back.</strong> Prepaid value encourages repeat visits and
-            builds stronger customer relationships over time.
+            <span className="bg-gray-200 dark:bg-gray-700 px-1">Keep customers coming back.</span>{" "}
+            Prepaid value encourages repeat visits and builds stronger customer relationships over
+            time.
           </p>
         </section>
 
         <section className="space-y-4">
           <h2 className="font-extrabold text-center">Grow Through the Network</h2>
           <p className="leading-8">
-            <strong>Attract values-driven customers.</strong> Choose a charity to support with your
-            transaction fees. Customers know their spending contributes to something meaningful.
+            <span className="bg-gray-200 dark:bg-gray-700 px-1">
+              Attract values-driven customers.
+            </span>{" "}
+            Choose a charity to support with your transaction fees. Customers know their spending
+            contributes to something meaningful.
           </p>
           <p className="leading-8">
-            <strong>Have a voice in the system.</strong> You’re not just a participant—you help
-            shape the network. Support and influence representatives who guide governance and key
-            decisions.
+            <span className="bg-gray-200 dark:bg-gray-700 px-1">Have a voice in the system.</span>{" "}
+            You’re not just a participant—you help shape the network. Support and influence
+            representatives who guide governance and key decisions.
           </p>
           <p className="leading-8">
-            <strong>Keep value moving locally.</strong> Instead of losing margin to extractive
-            payment rails, you can participate in a system built to keep value circulating among
-            nearby customers, charities, and businesses.
+            <span className="bg-gray-200 dark:bg-gray-700 px-1">Keep value moving locally.</span>{" "}
+            Instead of losing margin to extractive payment rails, you can participate in a system
+            built to keep value circulating among nearby customers, charities, and businesses.
           </p>
         </section>
 
         <section className="space-y-4 pb-2">
           <h2 className="font-extrabold text-center">Simple to Start</h2>
           <p className="leading-8">
-            <strong>Join a merchant network.</strong> Accept vouchers from other businesses and use
-            what you earn to spend within the network. It’s like exchanging value with other
-            merchants—no middleman, no friction.
+            <span className="bg-gray-200 dark:bg-gray-700 px-1">Join a merchant network.</span>{" "}
+            Accept vouchers from other businesses and use what you earn to spend within the
+            network. It’s like exchanging value with other merchants—no middleman, no friction.
           </p>
           <p className="leading-8">
-            <strong>Start with the basics.</strong> No complex setup. Mint vouchers, accept
-            payments, and start participating right away. The first step is to log in, sign up as
-            an individual. Then go to the Merchant Signup Page and let us know about where you are
-            and what you sell.
+            <span className="bg-gray-200 dark:bg-gray-700 px-1">Start with the basics.</span> No
+            complex setup. Mint vouchers, accept payments, and start participating right away. The
+            first step is to log in, sign up as an individual. Then go to the Merchant Signup Page
+            and let us know about where you are and what you sell.
           </p>
           <p>
             <Link href="/">Return home</Link>

@@ -33,6 +33,18 @@ describe("MerchantsPage", () => {
     expect(screen.getAllByRole("link", { name: "Return home" })).toHaveLength(2);
   });
 
+  it("uses landing-page highlight styling for lead-in statements", () => {
+    render(<MerchantsPage />);
+
+    const customerLead = screen.getAllByText("Attract values-driven customers.")[0];
+    const networkLead = screen.getAllByText("Join a merchant network.")[0];
+
+    expect(customerLead.tagName).toBe("SPAN");
+    expect(customerLead.className).toContain("bg-gray-200");
+    expect(customerLead.className).toContain("dark:bg-gray-700");
+    expect(networkLead.className).toContain("px-1");
+  });
+
   it("exports SEO metadata", () => {
     expect(metadata).toMatchObject({
       title: "TCOIN for Merchants",
