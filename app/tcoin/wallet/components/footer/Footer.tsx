@@ -32,6 +32,7 @@ export function Footer() {
             <button type="button" className="link-btn underline hover:underline" onClick={() => void handleToggleTheme()}>
               {isDarkMode ? "Light Mode" : "Dark Mode"}
             </button>
+            <Link href="/merchants">Merchants</Link>
             <Link href="/resources">Resources</Link>
             <Link href="/ecosystem">Ecosystem</Link>
             <Link href="https://github.com/GreenPill-TO/TorontoCoin" target="_blank" rel="noopener noreferrer">

@@ -35,6 +35,12 @@ describe("Footer", () => {
     expect(link.getAttribute("href")).toBe("/ecosystem");
   });
 
+  it("includes merchants link", () => {
+    const { getByText } = render(<Footer />);
+    const link = getByText("Merchants");
+    expect(link.getAttribute("href")).toBe("/merchants");
+  });
+
   it("opens github link in a new tab", () => {
     render(<Footer />);
     const link = screen.getByText("GitHub");

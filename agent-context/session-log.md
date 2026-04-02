@@ -1,3 +1,32 @@
+## v1.133
+### Timestamp
+- 2026-04-02 12:55 EDT
+
+### Objective
+- Add a public merchant-sales page to the wallet site and surface it from the unauthenticated footer.
+
+### What Changed
+- Added a new public `/merchants` page using the same landing-header, body-width, and footer shell as the other unauthenticated wallet pages, and structured the provided merchant copy into a focused sales page.
+- Added a `Merchants` link to the shared unauthenticated footer, added `/merchants` to the wallet public-route allowlist, and included the page in the public sitemap.
+- Added focused tests for the new page, footer link, and sitemap entry, and updated the required technical/functional specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/components/footer/Footer.tsx app/tcoin/wallet/components/footer/Footer.test.tsx app/tcoin/wallet/merchants/page.tsx app/tcoin/wallet/merchants/page.test.tsx app/tcoin/wallet/sitemap.ts app/tcoin/wallet/sitemap.test.ts app/tcoin/wallet/page.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/footer/Footer.test.tsx app/tcoin/wallet/merchants/page.test.tsx app/tcoin/wallet/sitemap.test.ts`
+
+### Files Edited
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/components/footer/Footer.tsx`
+- `app/tcoin/wallet/components/footer/Footer.test.tsx`
+- `app/tcoin/wallet/merchants/page.tsx`
+- `app/tcoin/wallet/merchants/page.test.tsx`
+- `app/tcoin/wallet/sitemap.ts`
+- `app/tcoin/wallet/sitemap.test.ts`
+- `app/tcoin/wallet/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.132
 ### Timestamp
 - 2026-04-02 12:33 EDT
