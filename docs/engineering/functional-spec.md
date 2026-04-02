@@ -29,6 +29,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Headings are extra bold for greater emphasis.
 - Supports demurrage logic (e.g., 1% monthly balance decay).
 - Footer uses a white background with black text.
+- On unauthenticated wallet pages, the footer theme link now reflects the resolved current theme on first paint, so a system-light visitor immediately sees `Dark Mode` and a system-dark visitor immediately sees `Light Mode` without needing a throwaway first click.
 - The "<open my wallet>" link is left aligned within the right margin.
 - Tagline appears as normal text with spacing below it.
 - Header split into three columns: blank left, centre matches body width with banner and right-aligned tagline, right column holds "<open my wallet>".

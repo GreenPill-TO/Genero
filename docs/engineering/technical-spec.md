@@ -96,6 +96,7 @@
     queries.
   - The wallet public-route allowlist now includes `/merchants`, and the unauthenticated footer plus sitemap both expose that new merchant-discovery page alongside the existing public landing resources.
   - The public contact route keeps its long-form invitation copy intact while constraining the WhatsApp anchor itself to the minimal CTA text, with a focused page test guarding the shorter hyperlink span.
+  - The shared `useDarkMode` hook now derives its initial `themeMode` / `isDarkMode` state from cached or system preference during first render instead of defaulting to light until effects run, which keeps the unauthenticated footer toggle label aligned with the currently resolved theme on initial paint.
   - Edge app-context resolution is now strict: when multiple `ref_app_instances` rows match an app/city pair, callers must provide `environment` explicitly instead of silently falling through to the first row.
   - The user-settings edge function now resolves CORS headers per request and only reflects explicitly allowed frontend origins (`USER_SETTINGS_ALLOWED_ORIGINS`, site URL envs, plus localhost defaults) instead of sending a wildcard origin header.
   - Edge-function entrypoints that still handle raw `OPTIONS` requests now all use the same request-aware `resolveCorsHeaders(req)` helper. That keeps local and deployed runtimes aligned with the shared CORS contract and avoids boot failures from stale imports of removed CORS constants.

@@ -1,3 +1,27 @@
+## v1.135
+### Timestamp
+- 2026-04-02 13:26 EDT
+
+### Objective
+- Make the unauthenticated footer theme link reflect the real current theme on first paint so it does not need a throwaway first click.
+
+### What Changed
+- Updated the shared `useDarkMode` hook to initialize from cached theme preference or the current system preference during the first render instead of defaulting to light and correcting later in an effect.
+- Added a focused hook regression for the system-dark and cached-light first-render cases, plus a footer test that guards the public theme-link label when following system mode.
+- Updated the required technical and functional specifications to capture the footer-theme behaviour change.
+
+### Verification
+- `pnpm exec eslint shared/hooks/useDarkMode.tsx shared/hooks/useDarkMode.test.tsx app/tcoin/wallet/components/footer/Footer.test.tsx`
+- `pnpm exec vitest run shared/hooks/useDarkMode.test.tsx app/tcoin/wallet/components/footer/Footer.test.tsx`
+
+### Files Edited
+- `shared/hooks/useDarkMode.tsx`
+- `shared/hooks/useDarkMode.test.tsx`
+- `app/tcoin/wallet/components/footer/Footer.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.134
 ### Timestamp
 - 2026-04-02 13:19 EDT
