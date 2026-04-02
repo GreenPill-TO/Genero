@@ -1,3 +1,29 @@
+## v1.151
+### Timestamp
+- 2026-04-02 15:20 EDT
+
+### Objective
+- Seed `Universal Basic Income` as the default catch-all charity option and let welcome step 4 continue without a manual charity pick by falling back to that default.
+
+### What Changed
+- Added `Universal Basic Income` to the local `public.charities` seed rows in `supabase/seed.sql`.
+- Updated welcome step 4 so `Continue` no longer blocks on an unset charity, and pressing it with no explicit charity now auto-selects `Universal Basic Income` before saving.
+- Kept the primary BIA requirement unchanged while making the charity field feel optional in the UI.
+- Expanded the welcome-page test coverage to assert the new charity fallback behaviour.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+- `git diff --check -- supabase/seed.sql`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `supabase/seed.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.150
 ### Timestamp
 - 2026-04-02 15:13 EDT

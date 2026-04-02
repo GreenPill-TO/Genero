@@ -150,7 +150,10 @@ const createBootstrap = (
     phoneVerified: true,
   },
   options: {
-    charities: [{ id: "1", name: "Food Bank", value: "Food Bank" }],
+    charities: [
+      { id: "1", name: "Food Bank", value: "Food Bank" },
+      { id: "2", name: "Universal Basic Income", value: "Universal Basic Income" },
+    ],
     bias: [{ id: "1", code: "DTA", name: "Downtown" }],
   },
 });
@@ -437,5 +440,42 @@ describe("WelcomePage", () => {
 
     expect(screen.getByText(/transaction fees you pay here, in place of normal credit card fees, will go to a charity of your choice/i)).toBeTruthy();
     expect(screen.getByText(/we will filter and show you local merchants based on the bia you select here/i)).toBeTruthy();
+  });
+
+  it("auto-selects Universal Basic Income on step 4 if no charity has been chosen yet", async () => {
+    saveStepMutateAsync.mockResolvedValue({ signup: { currentStep: 5 } });
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        ...createBootstrap("draft", {
+          currentStep: 4,
+          completedSteps: [1, 2, 3],
+        }),
+        preferences: {
+          theme: "system" as const,
+          charity: "",
+          selectedCause: "",
+          primaryBiaId: "1",
+          secondaryBiaIds: [],
+        },
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
+
+    await waitFor(() =>
+      expect(saveStepMutateAsync).toHaveBeenCalledWith({
+        step: 4,
+        payload: expect.objectContaining({
+          charity: "Universal Basic Income",
+          selectedCause: "Universal Basic Income",
+          primaryBiaId: "1",
+        }),
+      })
+    );
   });
 });

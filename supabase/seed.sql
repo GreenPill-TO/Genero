@@ -23,6 +23,17 @@ ON CONFLICT (slug) DO UPDATE
 SET display_name = EXCLUDED.display_name,
     symbol = EXCLUDED.symbol;
 
+INSERT INTO public.charities (id, name, value)
+VALUES
+  ('a1111111-1111-4111-8111-111111111111', 'Daily Bread Food Bank', 'daily-bread-food-bank'),
+  ('a2222222-2222-4222-8222-222222222222', 'Native Women''s Resource Centre of Toronto', 'native-womens-resource-centre-of-toronto'),
+  ('a3333333-3333-4333-8333-333333333333', 'Parkdale Community Food Bank', 'parkdale-community-food-bank'),
+  ('a4444444-4444-4444-8444-444444444444', 'Universal Basic Income', 'Universal Basic Income')
+ON CONFLICT (value) DO UPDATE
+SET
+  name = EXCLUDED.name,
+  updated_at = timezone('utc', now());
+
 WITH apps AS (
   SELECT id, slug FROM public.ref_apps WHERE slug IN ('wallet', 'sparechange', 'contracts')
 ), city AS (

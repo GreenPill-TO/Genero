@@ -73,6 +73,7 @@ const DEFAULT_CROP_STATE: ProfilePictureCropState = {
 
 const SIGNUP_AVATAR_PREVIEW_SIZE = 96;
 const SIGNUP_PLACEHOLDER_ROTATION_MS = 3000;
+const DEFAULT_CHARITY_NAME = "Universal Basic Income";
 const SIGNUP_PLACEHOLDER_NAMES = [
   "Mats Sundin",
   "Nathan Philips",
@@ -441,11 +442,21 @@ export default function WelcomePage() {
 
   const saveCommunitySettingsStep = async () => {
     try {
+      const fallbackCharity = communitySettings.charity || defaultCharityOption?.name || defaultCharityOption?.value || "";
+
+      if (!communitySettings.charity && fallbackCharity) {
+        setCommunitySettings((prev) => ({
+          ...prev,
+          charity: fallbackCharity,
+          selectedCause: fallbackCharity,
+        }));
+      }
+
       const next = await saveSignupStep.mutateAsync({
         step: 4,
         payload: {
-          charity: communitySettings.charity,
-          selectedCause: communitySettings.selectedCause || communitySettings.charity,
+          charity: fallbackCharity,
+          selectedCause: communitySettings.selectedCause || fallbackCharity,
           primaryBiaId: communitySettings.primaryBiaId,
           secondaryBiaIds: communitySettings.secondaryBiaIds.filter((biaId) => biaId !== communitySettings.primaryBiaId),
         },
@@ -527,6 +538,10 @@ export default function WelcomePage() {
     "min-h-screen justify-center font-sans"
   );
   const selectedPrimaryBiaId = communitySettings.primaryBiaId;
+  const defaultCharityOption =
+    bootstrap?.options.charities.find(
+      (charity) => charity.name === DEFAULT_CHARITY_NAME || charity.value === DEFAULT_CHARITY_NAME
+    ) ?? null;
 
   const openSignIn = () => {
     openModal({
@@ -1045,7 +1060,7 @@ export default function WelcomePage() {
                   <Button
                     type="button"
                     onClick={() => void saveCommunitySettingsStep()}
-                    disabled={saveSignupStep.isPending || !communitySettings.charity || !communitySettings.primaryBiaId}
+                    disabled={saveSignupStep.isPending || !communitySettings.primaryBiaId}
                   >
                     {saveSignupStep.isPending ? "Saving..." : "Continue"}
                   </Button>
