@@ -88,6 +88,7 @@ const SIGNUP_PLACEHOLDER_NAMES = [
   "Larry Tannenbaum",
   "Olivia Chow",
 ];
+const DEFAULT_SIGNUP_COUNTRY = "CA";
 
 const buildCountryOptions = (): CountryOption[] => {
   const data = countryList().getData();
@@ -110,6 +111,9 @@ const getInitialCountryOption = (country: string | null | undefined, options: Co
     options.find((option) => option.label.toLowerCase() === normalised || option.value.toLowerCase() === normalised) ?? null
   );
 };
+
+const getDefaultSignupCountryOption = (options: CountryOption[]) =>
+  options.find((option) => option.value === DEFAULT_SIGNUP_COUNTRY) ?? null;
 
 const splitFullName = (fullName: string | null | undefined) => {
   if (!fullName) {
@@ -158,6 +162,7 @@ export default function WelcomePage() {
     secondaryBiaIds: [],
   });
   const countryOptions = useMemo(() => buildCountryOptions(), []);
+  const defaultSignupCountryOption = useMemo(() => getDefaultSignupCountryOption(countryOptions), [countryOptions]);
   const totalSteps = 6;
   const canSkipWalletSetup = ["development", "local"].includes(
     (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
@@ -183,7 +188,7 @@ export default function WelcomePage() {
       lastName: "",
       nickname: "",
       username: "",
-      country: null,
+      country: defaultSignupCountryOption,
     },
   });
 
@@ -275,7 +280,9 @@ export default function WelcomePage() {
       lastName: shouldPrepopulateDetails ? nameParts.lastName : "",
       nickname: shouldPrepopulateDetails ? bootstrap.user.nickname ?? "" : "",
       username: shouldPrepopulateDetails ? bootstrap.user.username ?? "" : "",
-      country: shouldPrepopulateDetails ? getInitialCountryOption(bootstrap.user.country, countryOptions) : null,
+      country: shouldPrepopulateDetails
+        ? getInitialCountryOption(bootstrap.user.country, countryOptions) ?? defaultSignupCountryOption
+        : defaultSignupCountryOption,
     });
     setWizardStep(bootstrap.signup.currentStep ?? 1);
     setPhoneVerified(bootstrap.signup.phoneVerified);
@@ -285,7 +292,7 @@ export default function WelcomePage() {
       primaryBiaId: bootstrap.preferences.primaryBiaId ?? "",
       secondaryBiaIds: bootstrap.preferences.secondaryBiaIds ?? [],
     });
-  }, [bootstrap, countryOptions, reset]);
+  }, [bootstrap, countryOptions, defaultSignupCountryOption, reset]);
 
   useEffect(() => {
     if (!showWizard && bootstrap?.signup.state === "draft") {

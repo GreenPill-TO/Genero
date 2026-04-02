@@ -1,3 +1,26 @@
+## v1.147
+### Timestamp
+- 2026-04-02 14:58 EDT
+
+### Objective
+- Default the welcome step-2 country selector to Canada as real form data instead of leaving it empty.
+
+### What Changed
+- Added a canonical welcome-step default country of `CA` and resolved it from the country options list so fresh onboarding sessions start with Canada selected.
+- Updated the bootstrap reset path so draft/completed users still keep their saved country when present, while missing country values fall back to the same Canada default.
+- Extended the welcome-page regression to assert that Canada stays selected while the rotating placeholder examples change only in the text fields.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.146
 ### Timestamp
 - 2026-04-02 14:53 EDT

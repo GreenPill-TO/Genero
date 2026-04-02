@@ -323,6 +323,7 @@ describe("WelcomePage", () => {
     expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).placeholder).toBe("Sundin");
     expect((screen.getByLabelText(/^Preferred name$/i) as HTMLInputElement).placeholder).toBe("Mats");
     expect((screen.getByLabelText(/^Username$/i) as HTMLInputElement).placeholder).toBe("mats.sundin");
+    expect(screen.getByText(/^Canada \(\+1\)$/i)).toBeTruthy();
 
     act(() => {
       vi.advanceTimersByTime(3000);
@@ -332,6 +333,7 @@ describe("WelcomePage", () => {
     expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).placeholder).toBe("Philips");
     expect((screen.getByLabelText(/^Preferred name$/i) as HTMLInputElement).placeholder).toBe("Nathan");
     expect((screen.getByLabelText(/^Username$/i) as HTMLInputElement).placeholder).toBe("nathan.philips");
+    expect(screen.getByText(/^Canada \(\+1\)$/i)).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText(/^First name$/i), {
       target: { value: "A" },
