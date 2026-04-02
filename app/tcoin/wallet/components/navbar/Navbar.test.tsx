@@ -11,6 +11,7 @@ const useCameraAvailabilityMock = vi.fn();
 
 const useAuthMock = vi.fn();
 const useUserSettingsMock = vi.fn();
+const toastInfo = vi.fn();
 
 vi.mock("@shared/contexts/ModalContext", () => ({
   useModal: () => ({ openModal, closeModal }),
@@ -36,6 +37,12 @@ vi.mock("@shared/components/ui/dropdown-menu", () => ({
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock("react-toastify", () => ({
+  toast: {
+    info: (...args: unknown[]) => toastInfo(...args),
+  },
 }));
 
 vi.mock("@shared/hooks/useUserSettings", () => ({
@@ -69,6 +76,7 @@ vi.mock("@tcoin/wallet/components/modals/SignInModal", () => ({
 
 describe("Navbar session control", () => {
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "development";
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
       writable: true,
@@ -119,6 +127,7 @@ describe("Navbar session control", () => {
     openModal.mockReset();
     closeModal.mockReset();
     signOut.mockReset();
+    toastInfo.mockReset();
     useUserSettingsMock.mockReset();
   });
 
@@ -152,6 +161,22 @@ describe("Navbar session control", () => {
     fireEvent.click(screen.getByRole("button", { name: /Log Out/i }));
 
     expect(signOut).toHaveBeenCalled();
+  });
+
+  it("shows the delete-profile action outside production and explains that it is not wired yet", () => {
+    render(<Navbar />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Delete this profile/i }));
+
+    expect(toastInfo).toHaveBeenCalledWith("Profile deletion is not wired yet in this environment.");
+  });
+
+  it("hides the delete-profile action in production", () => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "production";
+
+    render(<Navbar />);
+
+    expect(screen.queryByRole("button", { name: /Delete this profile/i })).toBeNull();
   });
 
   it("opens a large responsive QR scanner modal from the camera button", () => {

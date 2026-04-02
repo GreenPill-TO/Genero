@@ -1,3 +1,27 @@
+## v1.144
+### Timestamp
+- 2026-04-02 14:39 EDT
+
+### Objective
+- Add a non-production-only `Delete this profile` action to the authenticated header account menu without exposing it in production.
+
+### What Changed
+- Added a second account-menu action below `Log Out` in the authenticated wallet header, labelled `Delete this profile`, and gated it to non-production app environments only.
+- Reused `NEXT_PUBLIC_APP_ENVIRONMENT` as the UI gate because the wallet already depends on that app-environment contract for other local/development-only affordances.
+- Wired the new action to a clear informational toast for now because there is not yet a real profile-deletion backend mutation in the wallet stack.
+- Added navbar regressions covering the non-production visibility/toast path and the production-hidden path.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.143
 ### Timestamp
 - 2026-04-02 14:28 EDT

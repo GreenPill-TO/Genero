@@ -20,10 +20,12 @@ import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileMod
 import { usePathname } from "next/navigation";
 import { LuCamera, LuChevronDown, LuUser } from "react-icons/lu";
 import { QrScanModal } from "@tcoin/wallet/components/modals";
+import { toast } from "react-toastify";
 import NavLink from "./NavLink";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 
 const PHONE_BREAKPOINT = 768;
+const NON_PRODUCTION_ENVIRONMENTS = new Set(["", "local", "development", "dev", "staging", "test"]);
 
 export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
@@ -34,6 +36,8 @@ export default function Navbar({ title }: { title?: string }) {
   const lastScrollY = useRef(0);
 
   const pathname = usePathname();
+  const appEnvironment = (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase();
+  const showDeleteProfile = NON_PRODUCTION_ENVIRONMENTS.has(appEnvironment);
 
   const onAuth = () => {
     openModal({ content: <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />, elSize: "4xl" });
@@ -105,6 +109,10 @@ export default function Navbar({ title }: { title?: string }) {
 
   const handleLogout = () => {
     signOut();
+  };
+
+  const handleDeleteProfile = () => {
+    toast.info("Profile deletion is not wired yet in this environment.");
   };
 
   const Account = () => {
@@ -190,6 +198,20 @@ export default function Navbar({ title }: { title?: string }) {
                 Log Out
               </button>
             </DropdownMenuItem>
+            {showDeleteProfile ? (
+              <DropdownMenuItem asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "w-full cursor-pointer rounded-sm px-2 py-1.5 text-left text-sm text-red-600 dark:text-red-400",
+                    "transition-colors hover:bg-red-50 hover:text-red-700 focus:outline-none dark:hover:bg-red-500/10 dark:hover:text-red-300"
+                  )}
+                  onClick={handleDeleteProfile}
+                >
+                  Delete this profile
+                </button>
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       );
