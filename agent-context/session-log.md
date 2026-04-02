@@ -1,3 +1,27 @@
+## v1.146
+### Timestamp
+- 2026-04-02 14:53 EDT
+
+### Objective
+- Make the welcome step-2 placeholders get out of the user’s way as soon as they start typing, and move country into the required details card above phone verification.
+
+### What Changed
+- Changed the rotating welcome placeholders so they stop immediately once any text detail field receives user input, and all remaining example placeholders clear to blank instead of continuing to cycle.
+- Moved the Country selector into the left `Required to continue` card, positioned above the phone verification block.
+- Updated step-2 copy and validation so first name, last name, country, and phone verification are treated as the required onboarding details, while preferred name and username remain optional.
+- Expanded the welcome-page test to cover placeholder freeze/clear behaviour and the new country-before-phone layout.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.145
 ### Timestamp
 - 2026-04-02 14:45 EDT

@@ -195,7 +195,7 @@ describe("WelcomePage", () => {
     expect(screen.getByTestId("welcome-primary-panel")).toBeTruthy();
     expect(screen.getByText("Welcome to TCOIN")).toBeTruthy();
     expect(screen.getByText(/create a better local economic system/i)).toBeTruthy();
-    expect(screen.getByText(/more than 5,000%/i)).toBeTruthy();
+    expect(screen.getByText(/approx 5,500% by now, or 4% per year/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /Start setup/i })).toBeTruthy();
   });
 
@@ -315,8 +315,8 @@ describe("WelcomePage", () => {
 
     expect(screen.getByText(/Required to continue/i)).toBeTruthy();
     expect(screen.getByText(/Optional for now/i)).toBeTruthy();
-    expect(screen.getByText(/First name, last name, and phone verification are required/i)).toBeTruthy();
-    expect(screen.getByText(/Preferred name, username, and country can be added now or later/i)).toBeTruthy();
+    expect(screen.getByText(/First name, last name, country, and phone verification are required/i)).toBeTruthy();
+    expect(screen.getByText(/Preferred name and username can be added now or later/i)).toBeTruthy();
     expect((screen.getByLabelText(/^First name$/i) as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText(/^First name$/i) as HTMLInputElement).placeholder).toBe("Mats");
     expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).value).toBe("");
@@ -332,6 +332,25 @@ describe("WelcomePage", () => {
     expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).placeholder).toBe("Philips");
     expect((screen.getByLabelText(/^Preferred name$/i) as HTMLInputElement).placeholder).toBe("Nathan");
     expect((screen.getByLabelText(/^Username$/i) as HTMLInputElement).placeholder).toBe("nathan.philips");
+
+    fireEvent.change(screen.getByLabelText(/^First name$/i), {
+      target: { value: "A" },
+    });
+
+    expect((screen.getByLabelText(/^First name$/i) as HTMLInputElement).placeholder).toBe("");
+    expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).placeholder).toBe("");
+    expect((screen.getByLabelText(/^Preferred name$/i) as HTMLInputElement).placeholder).toBe("");
+    expect((screen.getByLabelText(/^Username$/i) as HTMLInputElement).placeholder).toBe("");
+
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+
+    expect((screen.getByLabelText(/^Last name$/i) as HTMLInputElement).placeholder).toBe("");
+
+    const countryLabel = screen.getByText(/^Country$/i);
+    const phoneHeading = screen.getByText(/^Phone verification$/i);
+    expect(countryLabel.compareDocumentPosition(phoneHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("opens the picture editor modal after choosing an image on step 3", async () => {

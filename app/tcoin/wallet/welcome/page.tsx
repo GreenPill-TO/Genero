@@ -187,6 +187,15 @@ export default function WelcomePage() {
     },
   });
 
+  const watchedFirstName = watch("firstName");
+  const watchedLastName = watch("lastName");
+  const watchedNickname = watch("nickname");
+  const watchedUsername = watch("username");
+  const watchedCountry = watch("country");
+  const hasStartedTypingDetails = [watchedFirstName, watchedLastName, watchedNickname, watchedUsername].some((value) =>
+    value?.trim()
+  );
+
   const countrySelectStyles = useMemo<StylesConfig<CountryOption, false>>(
     () => ({
       control: (base) => ({
@@ -243,12 +252,16 @@ export default function WelcomePage() {
   }, [bootstrap?.signup.state, router]);
 
   useEffect(() => {
+    if (hasStartedTypingDetails) {
+      return;
+    }
+
     const intervalId = window.setInterval(() => {
       setPlaceholderIndex((currentIndex) => (currentIndex + 1) % SIGNUP_PLACEHOLDER_NAMES.length);
     }, SIGNUP_PLACEHOLDER_ROTATION_MS);
 
     return () => window.clearInterval(intervalId);
-  }, []);
+  }, [hasStartedTypingDetails]);
 
   useEffect(() => {
     if (!bootstrap) {
@@ -715,7 +728,7 @@ export default function WelcomePage() {
                   <div className={`${walletPanelMutedClass} space-y-4 lg:h-full`}>
                     <div className="space-y-1">
                       <p className={walletSectionLabelClass}>Required to continue</p>
-                      <p className="text-sm text-muted-foreground">First name, last name, and phone verification are required.</p>
+                      <p className="text-sm text-muted-foreground">First name, last name, country, and phone verification are required.</p>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
@@ -724,7 +737,7 @@ export default function WelcomePage() {
                         </label>
                         <input
                           id="firstName"
-                          placeholder={rotatingNamePlaceholder.firstName}
+                          placeholder={hasStartedTypingDetails ? "" : rotatingNamePlaceholder.firstName}
                           className={nativeFieldClass}
                           {...register("firstName", { required: "First name is required" })}
                         />
@@ -736,12 +749,35 @@ export default function WelcomePage() {
                         </label>
                         <input
                           id="lastName"
-                          placeholder={rotatingNamePlaceholder.lastName}
+                          placeholder={hasStartedTypingDetails ? "" : rotatingNamePlaceholder.lastName}
                           className={nativeFieldClass}
                           {...register("lastName", { required: "Last name is required" })}
                         />
                         {errors.lastName ? <p className="mt-1 text-xs text-red-500">{errors.lastName.message}</p> : null}
                       </div>
+                    </div>
+                    <div>
+                      <label htmlFor="country" className="block text-sm font-medium mb-1">
+                        Country
+                      </label>
+                      <Controller
+                        control={control}
+                        name="country"
+                        rules={{ required: "Country is required" }}
+                        render={({ field }) => (
+                          <Select
+                            {...field}
+                            inputId="country"
+                            options={countryOptions}
+                            placeholder="Select a country"
+                            styles={countrySelectStyles}
+                            className={reactSelectFieldShellClass}
+                            value={field.value}
+                            onChange={(option) => field.onChange(option)}
+                          />
+                        )}
+                      />
+                      {errors.country ? <p className="mt-1 text-xs text-red-500">{errors.country.message}</p> : null}
                     </div>
                     <div className="rounded-2xl border border-slate-200/70 bg-white/80 p-3 text-black dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
                       <p className="mb-2 text-sm font-medium">Phone verification</p>
@@ -765,7 +801,7 @@ export default function WelcomePage() {
                   <div className={`${walletPanelMutedClass} space-y-4 lg:h-full`}>
                     <div className="space-y-1">
                       <p className={walletSectionLabelClass}>Optional for now</p>
-                      <p className="text-sm text-muted-foreground">Preferred name, username, and country can be added now or later.</p>
+                      <p className="text-sm text-muted-foreground">Preferred name and username can be added now or later.</p>
                     </div>
                     <div>
                       <label htmlFor="nickname" className="block text-sm font-medium mb-1">
@@ -773,7 +809,7 @@ export default function WelcomePage() {
                       </label>
                       <input
                         id="nickname"
-                        placeholder={nicknamePlaceholder}
+                        placeholder={hasStartedTypingDetails ? "" : nicknamePlaceholder}
                         className={nativeFieldClass}
                         {...register("nickname")}
                       />
@@ -784,7 +820,7 @@ export default function WelcomePage() {
                       </label>
                       <input
                         id="username"
-                        placeholder={usernamePlaceholder}
+                        placeholder={hasStartedTypingDetails ? "" : usernamePlaceholder}
                         className={nativeFieldClass}
                         {...register("username", {
                           maxLength: {
@@ -796,27 +832,6 @@ export default function WelcomePage() {
                         })}
                       />
                       {errors.username ? <p className="mt-1 text-xs text-red-500">{errors.username.message}</p> : null}
-                    </div>
-                    <div>
-                      <label htmlFor="country" className="block text-sm font-medium mb-1">
-                        Country
-                      </label>
-                      <Controller
-                        control={control}
-                        name="country"
-                        render={({ field }) => (
-                          <Select
-                            {...field}
-                            options={countryOptions}
-                            placeholder="Select a country"
-                            styles={countrySelectStyles}
-                            className={reactSelectFieldShellClass}
-                            value={field.value}
-                            onChange={(option) => field.onChange(option)}
-                          />
-                        )}
-                      />
-                      {errors.country ? <p className="mt-1 text-xs text-red-500">{errors.country.message}</p> : null}
                     </div>
                   </div>
                 </div>
@@ -830,8 +845,9 @@ export default function WelcomePage() {
                       isSubmitting ||
                       saveSignupStep.isPending ||
                       !phoneVerified ||
-                      !watch("firstName") ||
-                      !watch("lastName")
+                      !watchedFirstName ||
+                      !watchedLastName ||
+                      !watchedCountry
                     }
                   >
                     {isSubmitting || saveSignupStep.isPending ? "Saving..." : "Continue"}
