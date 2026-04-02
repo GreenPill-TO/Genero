@@ -142,6 +142,8 @@ describe("Navbar session control", () => {
 
     expect(openModal).toHaveBeenCalled();
     expect(openModal.mock.calls[0][0].title).toBe("Edit Profile");
+    expect(openModal.mock.calls[0][0].elSize).toBe("5xl");
+    expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
   });
 
   it("logs the user out from the dropdown", () => {

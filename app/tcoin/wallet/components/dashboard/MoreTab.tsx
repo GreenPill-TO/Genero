@@ -232,6 +232,7 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     openModal({
       content: <UserProfileModal closeModal={closeModal} />,
       isResponsive: true,
+      elSize: "5xl",
       title: "Edit Profile",
       description: "Update your name, photo, username, and account details.",
     });

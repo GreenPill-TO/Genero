@@ -10,28 +10,30 @@ const toastSuccess = vi.fn();
 const toastError = vi.fn();
 const uploadProfilePictureMock = vi.fn();
 const prepareProfilePictureMock = vi.fn();
+const prepareProfilePictureFromUrlMock = vi.fn();
 const createCroppedProfilePictureFileMock = vi.fn();
 const getProfilePictureCropFrameMock = vi.fn();
+const bootstrapUser = {
+  id: 123,
+  cubidId: "cubid-123",
+  email: "test@example.com",
+  phone: "+1 555 123 4567",
+  fullName: "Test User",
+  firstName: "Test",
+  lastName: "User",
+  nickname: "Tester",
+  username: "testuser",
+  country: "Canada (+1)",
+  address: "123 Queen St W, Toronto, ON",
+  profileImageUrl: null as string | null,
+  hasCompletedIntro: false,
+  isNewUser: true,
+};
 
 vi.mock("@shared/hooks/useUserSettings", () => ({
   useUserSettings: () => ({
     bootstrap: {
-      user: {
-        id: 123,
-        cubidId: "cubid-123",
-        email: "test@example.com",
-        phone: "+1 555 123 4567",
-        fullName: "Test User",
-        firstName: "Test",
-        lastName: "User",
-        nickname: "Tester",
-        username: "testuser",
-        country: "Canada (+1)",
-        address: "123 Queen St W, Toronto, ON",
-        profileImageUrl: null,
-        hasCompletedIntro: false,
-        isNewUser: true,
-      },
+      user: bootstrapUser,
     },
   }),
 }));
@@ -49,6 +51,7 @@ vi.mock("@shared/lib/supabase/profilePictures", () => ({
 
 vi.mock("@shared/lib/profilePictureCrop", () => ({
   prepareProfilePicture: (...args: any[]) => prepareProfilePictureMock(...args),
+  prepareProfilePictureFromUrl: (...args: any[]) => prepareProfilePictureFromUrlMock(...args),
   createCroppedProfilePictureFile: (...args: any[]) => createCroppedProfilePictureFileMock(...args),
   describeProfilePictureOrientation: (width: number, height: number) => {
     if (width > height) return "landscape";
@@ -67,6 +70,7 @@ vi.mock("react-toastify", () => ({
 
 describe("UserProfileModal", () => {
   beforeEach(() => {
+    bootstrapUser.profileImageUrl = null;
     class ResizeObserverMock {
       observe() {}
       unobserve() {}
@@ -79,6 +83,12 @@ describe("UserProfileModal", () => {
     prepareProfilePictureMock.mockImplementation(async (file: File) => ({
       file,
       previewUrl: "blob:avatar-preview",
+      width: 1200,
+      height: 1800,
+    }));
+    prepareProfilePictureFromUrlMock.mockImplementation(async () => ({
+      file: new File(["existing"], "existing-avatar.png", { type: "image/png" }),
+      previewUrl: "blob:existing-avatar-preview",
       width: 1200,
       height: 1800,
     }));
@@ -112,6 +122,8 @@ describe("UserProfileModal", () => {
   it("submits updated profile details", async () => {
     render(<UserProfileModal closeModal={closeModal} />);
 
+    expect(screen.getByText(/^Picture$/i)).toBeTruthy();
+    expect(screen.getByText(/^Email$/i)).toBeTruthy();
     expect(screen.getByText(/Banking info/i)).toBeTruthy();
     expect(screen.getByText(/Info used in this app/i)).toBeTruthy();
 
@@ -159,6 +171,16 @@ describe("UserProfileModal", () => {
     expect(
       screen.getByLabelText(/We only need an address before any withdrawals, so you can leave this blank until then\./i)
     ).toBeTruthy();
+  });
+
+  it("renders the profile editor as four panels", () => {
+    render(<UserProfileModal closeModal={closeModal} />);
+
+    expect(screen.getByTestId("profile-picture-panel")).toBeTruthy();
+    expect(screen.getByTestId("profile-email-panel")).toBeTruthy();
+    expect(screen.getByTestId("profile-banking-panel")).toBeTruthy();
+    expect(screen.getByTestId("profile-app-info-panel")).toBeTruthy();
+    expect((screen.getByLabelText(/Email address/i) as HTMLInputElement).value).toBe("test@example.com");
   });
 
   it("shows crop controls for a selected image and uploads the cropped result before saving", async () => {
@@ -212,5 +234,21 @@ describe("UserProfileModal", () => {
         profileImageUrl: "https://example.com/avatar.png",
       })
     );
+  });
+
+  it("can reopen an existing profile picture for framing", async () => {
+    bootstrapUser.profileImageUrl = "https://example.com/existing-avatar.png";
+
+    render(<UserProfileModal closeModal={closeModal} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Adjust current photo/i }));
+
+    await waitFor(() =>
+      expect(prepareProfilePictureFromUrlMock).toHaveBeenCalledWith(
+        "https://example.com/existing-avatar.png",
+        "testuser"
+      )
+    );
+    expect(screen.getByText(/Profile picture framing/i)).toBeTruthy();
   });
 });

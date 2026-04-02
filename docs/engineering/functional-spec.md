@@ -15,7 +15,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Sign-in flow presents six single-digit inputs that auto-focus, advance and accept pasted codes.
 - The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
 - In the public auth modal, the pre-OTP email field now uses a brighter light-mode input surface with stronger border and placeholder contrast so the “Enter your email” control remains clearly distinguishable from the modal background.
-- Local Supabase OTP testing now has a dedicated startup helper, `pnpm supabase:start:local`, which keeps the Colima-backed GoTrue container quiet during OTP email sends by patching the missing local mailer-host allow-list after startup.
+- Local Supabase OTP testing now has a dedicated startup helper, `pnpm supabase:start:local`, which keeps the Colima-backed GoTrue container quiet during OTP email sends and gateway-auth checks by patching the missing local mailer-host allow-list after startup.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.
 - Closing line states "build up - not extract from - our communities" with space-dash-space style.
@@ -105,6 +105,8 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Across the app-facing wallet and SpareChange flows, editable fields now share one consistent surfaced background treatment so inputs remain visually distinct from the panels behind them; the same treatment now reaches shared text fields, textareas, selects, search inputs, file pickers, onboarding forms, and OTP code boxes.
 - In wallet Edit Profile, the second section is now framed as `Banking info` and contains `Given name(s)`, last name, country, and phone, while the final section is labeled `Info used in this app` for the username and preferred-name fields.
 - In wallet Edit Profile, Banking info now also includes a multi-line address field styled like the merchant-signup address capture, plus tooltip guidance that this section is private to the account and that address is only needed before withdrawals.
+- On larger wallet screens, Edit Profile now opens in a wider modal and arranges its four panels (`Picture`, `Email`, `Banking info`, and `Info used in this app`) in two columns so the form uses horizontal space before asking the user to scroll.
+- Wallet Edit Profile now lets users reopen an existing saved profile photo in the framing editor, so zoom and horizontal/vertical positioning are available even when they are refining the current picture rather than uploading a new one.
 - The More-tab Account centre now greets the user with their preferred name when one is set; if that field is blank, it falls back to the given name instead of showing the fuller legal-style name first.
 - The authenticated header account widget now shows the user’s saved profile picture when available, and opening it surfaces the two most important identity details first: preferred name and email.
 - Buy TCOIN checkout now treats wallet readiness as an explicit product state: if `wallet_list.public_key` is missing, the user is told to finish wallet setup before checkout can start, rather than silently falling back to another wallet field.

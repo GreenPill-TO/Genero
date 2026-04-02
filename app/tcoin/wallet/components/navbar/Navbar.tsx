@@ -97,6 +97,7 @@ export default function Navbar({ title }: { title?: string }) {
     openModal({
       content: <UserProfileModal closeModal={closeModal} />,
       isResponsive: true,
+      elSize: "5xl",
       title: "Edit Profile",
       description: "Update your personal information and preferences.",
     });

@@ -52,6 +52,23 @@ export async function prepareProfilePicture(file: File): Promise<PreparedProfile
   }
 }
 
+export async function prepareProfilePictureFromUrl(url: string, fallbackName = "avatar"): Promise<PreparedProfilePicture> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Unable to load the current profile picture.");
+  }
+
+  const blob = await response.blob();
+  const mimeType = blob.type || "image/png";
+  const extension = mimeType.split("/")[1] || "png";
+  const file = new File([blob], `${fallbackName}.${extension}`, {
+    type: mimeType,
+    lastModified: Date.now(),
+  });
+
+  return prepareProfilePicture(file);
+}
+
 export function getProfilePictureCropFrame(options: CropFrameOptions) {
   const imageWidth = Math.max(1, options.imageWidth);
   const imageHeight = Math.max(1, options.imageHeight);

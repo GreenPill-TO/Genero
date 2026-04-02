@@ -8,7 +8,7 @@ export interface ModalContentType {
   content?: ReactNode | null;
   title?: string;
   description?: string;
-  elSize?: "sm" | "md" | "lg" | "xl" | "2xl" | "4xl";
+  elSize?: "sm" | "md" | "lg" | "xl" | "2xl" | "4xl" | "5xl";
   isResponsive?: boolean;
 }
 interface ModalContextType {

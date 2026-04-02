@@ -21,6 +21,7 @@ import {
   describeProfilePictureOrientation,
   getProfilePictureCropFrame,
   prepareProfilePicture,
+  prepareProfilePictureFromUrl,
   type PreparedProfilePicture,
   type ProfilePictureCropState,
 } from "@shared/lib/profilePictureCrop";
@@ -121,6 +122,11 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   const [isPreparingAvatar, setIsPreparingAvatar] = useState(false);
   const [countrySearchInput, setCountrySearchInput] = useState("");
 
+  const existingProfileImageUrl = useMemo(() => {
+    const source = typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl.trim() : "";
+    return source || null;
+  }, [profile?.profileImageUrl]);
+
   const {
     register,
     handleSubmit,
@@ -153,9 +159,8 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     if (avatarSelection) {
       return;
     }
-    const source = typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl.trim() : "";
-    setAvatarPreview(source ? source : null);
-  }, [profile?.profileImageUrl, avatarSelection]);
+    setAvatarPreview(existingProfileImageUrl);
+  }, [existingProfileImageUrl, avatarSelection]);
 
   useEffect(() => {
     return () => {
@@ -197,7 +202,35 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     }
     setAvatarSelection(null);
     setAvatarCrop(DEFAULT_CROP_STATE);
-    setAvatarPreview(typeof profile?.profileImageUrl === "string" ? profile.profileImageUrl : null);
+    setAvatarPreview(existingProfileImageUrl);
+  };
+
+  const handleEditCurrentPhoto = async () => {
+    if (!existingProfileImageUrl) {
+      return;
+    }
+
+    setIsPreparingAvatar(true);
+    try {
+      const preparedImage = await prepareProfilePictureFromUrl(
+        existingProfileImageUrl,
+        profile?.username?.trim() || "profile-picture"
+      );
+      if (avatarSelection?.previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarSelection.previewUrl);
+      }
+      if (avatarPreview && avatarPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+      setAvatarSelection(preparedImage);
+      setAvatarCrop(DEFAULT_CROP_STATE);
+      setAvatarPreview(preparedImage.previewUrl);
+    } catch (error) {
+      console.error("Error preparing existing profile picture", error);
+      toast.error("We couldn't open your current photo for editing. Please try again.");
+    } finally {
+      setIsPreparingAvatar(false);
+    }
   };
 
   const selectStyles = useMemo<StylesConfig<CountryOption, false>>(
@@ -363,161 +396,199 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
           Keep the personal details tied to this wallet current and easy to recognize.
         </p>
       </div>
-
-      <div className={`${walletPanelMutedClass} flex flex-col gap-4 sm:flex-row sm:items-center`}>
-        {avatarSelection && avatarPreviewFrame ? (
-          <div className="relative h-20 w-20 overflow-hidden rounded-full border border-white/10 bg-muted">
-            <div
-              aria-hidden="true"
-              className="absolute max-w-none"
-              style={{
-                width: `${avatarPreviewFrame.scaledWidth}px`,
-                height: `${avatarPreviewFrame.scaledHeight}px`,
-                left: `${avatarPreviewFrame.x}px`,
-                top: `${avatarPreviewFrame.y}px`,
-                backgroundImage: `url(${avatarSelection.previewUrl})`,
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-                backgroundSize: "100% 100%",
-              }}
-            />
-          </div>
-        ) : (
-          <Avatar className="h-20 w-20">
-            {avatarPreview ? (
-              <AvatarImage src={avatarPreview} alt="Profile picture" />
-            ) : (
-              <AvatarFallback>
-                <LuUser />
-              </AvatarFallback>
-            )}
-          </Avatar>
-        )}
-        <div className="flex-1 space-y-2">
-          <div className="min-w-0">
-            {username && <p className="text-sm font-semibold break-words">{username}</p>}
-            {email && <p className="text-sm text-muted-foreground break-words">{email}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="profilePicture" className={walletSectionLabelClass}>
-              Profile picture
-            </Label>
-            <input
-              id="profilePicture"
-              name="profilePicture"
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarChange}
-              className={fileInputFieldClass}
-            />
-            <p className="text-xs text-muted-foreground">
-              Upload any image, then position it inside the circle the way it should appear across the wallet.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {avatarSelection && cropFrame ? (
-        <div className={`${walletPanelMutedClass} space-y-4`}>
-          <div className="space-y-1">
-            <p className={walletSectionLabelClass}>Profile picture framing</p>
-            <p className="text-sm text-muted-foreground">
-              Adjust how your photo sits inside the circular avatar. This is the version that will be saved.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
-            <div className="flex justify-center lg:w-[220px] lg:justify-start">
-              <div
-                className="relative overflow-hidden rounded-full border border-white/10 bg-background shadow-sm"
-                style={{ width: CROP_PREVIEW_SIZE, height: CROP_PREVIEW_SIZE }}
-              >
-                <div
-                  aria-hidden="true"
-                  className="absolute max-w-none"
-                  style={{
-                    width: `${cropFrame.scaledWidth}px`,
-                    height: `${cropFrame.scaledHeight}px`,
-                    left: `${cropFrame.x}px`,
-                    top: `${cropFrame.y}px`,
-                    backgroundImage: `url(${avatarSelection.previewUrl})`,
-                    backgroundPosition: "center",
-                    backgroundRepeat: "no-repeat",
-                    backgroundSize: "100% 100%",
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <Label htmlFor="profile-picture-zoom">Zoom</Label>
-                  <span className="text-xs text-muted-foreground">{avatarCrop.zoom.toFixed(1)}x</span>
-                </div>
-                <Slider
-                  id="profile-picture-zoom"
-                  aria-label="Zoom"
-                  min={1}
-                  max={2.5}
-                  step={0.05}
-                  value={[avatarCrop.zoom]}
-                  onValueChange={([zoom]) =>
-                    setAvatarCrop((current) => ({ ...current, zoom: zoom ?? current.zoom }))
-                  }
-                />
-              </div>
-
-              {cropFrame.maxOffsetX > 0 ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor="profile-picture-horizontal-position">Horizontal position</Label>
-                    <span className="text-xs text-muted-foreground">
-                      {avatarOrientation === "landscape" ? "Most useful for wide photos" : "Available after zooming"}
-                    </span>
-                  </div>
-                  <Slider
-                    id="profile-picture-horizontal-position"
-                    aria-label="Horizontal position"
-                    min={-100}
-                    max={100}
-                    step={1}
-                    value={[avatarCrop.offsetX]}
-                    onValueChange={([offsetX]) =>
-                      setAvatarCrop((current) => ({ ...current, offsetX: offsetX ?? current.offsetX }))
-                    }
-                  />
-                </div>
-              ) : null}
-
-              {cropFrame.maxOffsetY > 0 ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <Label htmlFor="profile-picture-vertical-position">Vertical position</Label>
-                    <span className="text-xs text-muted-foreground">
-                      {avatarOrientation === "portrait" ? "Most useful for tall photos" : "Available after zooming"}
-                    </span>
-                  </div>
-                  <Slider
-                    id="profile-picture-vertical-position"
-                    aria-label="Vertical position"
-                    min={-100}
-                    max={100}
-                    step={1}
-                    value={[avatarCrop.offsetY]}
-                    onValueChange={([offsetY]) =>
-                      setAvatarCrop((current) => ({ ...current, offsetY: offsetY ?? current.offsetY }))
-                    }
-                  />
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className={`${walletPanelMutedClass} space-y-4`}>
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+          <div className={`${walletPanelMutedClass} space-y-4 lg:h-full`} data-testid="profile-picture-panel">
+            <div className="space-y-1">
+              <p className={walletSectionLabelClass}>Picture</p>
+              <p className="text-sm text-muted-foreground">
+                Upload any image, then frame it the way it should appear across the wallet.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
+              <div className="flex items-start justify-center sm:justify-start">
+                {avatarSelection && avatarPreviewFrame ? (
+                  <div className="relative h-20 w-20 overflow-hidden rounded-full border border-white/10 bg-muted">
+                    <div
+                      aria-hidden="true"
+                      className="absolute max-w-none"
+                      style={{
+                        width: `${avatarPreviewFrame.scaledWidth}px`,
+                        height: `${avatarPreviewFrame.scaledHeight}px`,
+                        left: `${avatarPreviewFrame.x}px`,
+                        top: `${avatarPreviewFrame.y}px`,
+                        backgroundImage: `url(${avatarSelection.previewUrl})`,
+                        backgroundPosition: "center",
+                        backgroundRepeat: "no-repeat",
+                        backgroundSize: "100% 100%",
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <Avatar className="h-20 w-20">
+                    {avatarPreview ? (
+                      <AvatarImage src={avatarPreview} alt="Profile picture" />
+                    ) : (
+                      <AvatarFallback>
+                        <LuUser />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="profilePicture" className={walletSectionLabelClass}>
+                    Profile picture
+                  </Label>
+                  <input
+                    id="profilePicture"
+                    name="profilePicture"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className={fileInputFieldClass}
+                  />
+                </div>
+
+                {existingProfileImageUrl && !avatarSelection ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleEditCurrentPhoto}
+                    disabled={isPreparingAvatar}
+                    className="rounded-full"
+                  >
+                    {isPreparingAvatar ? "Opening current photo..." : "Adjust current photo"}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            {avatarSelection && cropFrame ? (
+              <div className="space-y-4 border-t border-slate-200/60 pt-4 dark:border-white/10">
+                <div className="space-y-1">
+                  <p className={walletSectionLabelClass}>Profile picture framing</p>
+                  <p className="text-sm text-muted-foreground">
+                    Adjust how your photo sits inside the circular avatar. This is the version that will be saved.
+                  </p>
+                </div>
+
+                <div className="grid gap-5 sm:grid-cols-[160px_minmax(0,1fr)] sm:items-start">
+                  <div className="flex justify-center sm:justify-start">
+                    <div
+                      className="relative overflow-hidden rounded-full border border-white/10 bg-background shadow-sm"
+                      style={{ width: CROP_PREVIEW_SIZE, height: CROP_PREVIEW_SIZE }}
+                    >
+                      <div
+                        aria-hidden="true"
+                        className="absolute max-w-none"
+                        style={{
+                          width: `${cropFrame.scaledWidth}px`,
+                          height: `${cropFrame.scaledHeight}px`,
+                          left: `${cropFrame.x}px`,
+                          top: `${cropFrame.y}px`,
+                          backgroundImage: `url(${avatarSelection.previewUrl})`,
+                          backgroundPosition: "center",
+                          backgroundRepeat: "no-repeat",
+                          backgroundSize: "100% 100%",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="profile-picture-zoom">Zoom</Label>
+                        <span className="text-xs text-muted-foreground">{avatarCrop.zoom.toFixed(1)}x</span>
+                      </div>
+                      <Slider
+                        id="profile-picture-zoom"
+                        aria-label="Zoom"
+                        min={1}
+                        max={2.5}
+                        step={0.05}
+                        value={[avatarCrop.zoom]}
+                        onValueChange={([zoom]) =>
+                          setAvatarCrop((current) => ({ ...current, zoom: zoom ?? current.zoom }))
+                        }
+                      />
+                    </div>
+
+                    {cropFrame.maxOffsetX > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <Label htmlFor="profile-picture-horizontal-position">Horizontal position</Label>
+                          <span className="text-xs text-muted-foreground">
+                            {avatarOrientation === "landscape" ? "Most useful for wide photos" : "Available after zooming"}
+                          </span>
+                        </div>
+                        <Slider
+                          id="profile-picture-horizontal-position"
+                          aria-label="Horizontal position"
+                          min={-100}
+                          max={100}
+                          step={1}
+                          value={[avatarCrop.offsetX]}
+                          onValueChange={([offsetX]) =>
+                            setAvatarCrop((current) => ({ ...current, offsetX: offsetX ?? current.offsetX }))
+                          }
+                        />
+                      </div>
+                    ) : null}
+
+                    {cropFrame.maxOffsetY > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <Label htmlFor="profile-picture-vertical-position">Vertical position</Label>
+                          <span className="text-xs text-muted-foreground">
+                            {avatarOrientation === "portrait" ? "Most useful for tall photos" : "Available after zooming"}
+                          </span>
+                        </div>
+                        <Slider
+                          id="profile-picture-vertical-position"
+                          aria-label="Vertical position"
+                          min={-100}
+                          max={100}
+                          step={1}
+                          value={[avatarCrop.offsetY]}
+                          onValueChange={([offsetY]) =>
+                            setAvatarCrop((current) => ({ ...current, offsetY: offsetY ?? current.offsetY }))
+                          }
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className={`${walletPanelMutedClass} space-y-4 lg:h-full`} data-testid="profile-email-panel">
+            <div className="space-y-1">
+              <p className={walletSectionLabelClass}>Email</p>
+              <p className="text-sm text-muted-foreground">
+                This is the address used for verification and account recovery in this wallet.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="profile-email">Email address</Label>
+                <Input id="profile-email" type="email" value={email} readOnly disabled />
+              </div>
+              {username ? (
+                <p className="text-sm font-semibold break-words">{username}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Add a username below so people in the app can find you more easily.</p>
+              )}
+            </div>
+          </div>
+
+          <div className={`${walletPanelMutedClass} space-y-4 lg:h-full`} data-testid="profile-banking-panel">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <p className={walletSectionLabelClass}>Banking info</p>
@@ -606,7 +677,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
           </div>
         </div>
 
-        <div className={`${walletPanelMutedClass} space-y-4`}>
+        <div className={`${walletPanelMutedClass} space-y-4 lg:h-full`} data-testid="profile-app-info-panel">
           <div className="space-y-1">
             <p className={walletSectionLabelClass}>Info used in this app</p>
             <p className="text-sm text-muted-foreground">
@@ -638,6 +709,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
             <Label htmlFor="nickname">Preferred name</Label>
             <Input id="nickname" {...register("nickname")} placeholder="What should we call you?" />
           </div>
+        </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">

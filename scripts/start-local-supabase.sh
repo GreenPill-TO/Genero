@@ -49,7 +49,7 @@ with open(env_json_path) as env_file:
     envs = json.load(env_file)
 
 envs = [env for env in envs if not env.startswith("GOTRUE_MAILER_EXTERNAL_HOSTS=")]
-envs.append("GOTRUE_MAILER_EXTERNAL_HOSTS=localhost,127.0.0.1")
+envs.append("GOTRUE_MAILER_EXTERNAL_HOSTS=localhost,127.0.0.1,kong")
 
 parts = [
     "docker",

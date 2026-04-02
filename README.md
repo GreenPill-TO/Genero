@@ -25,7 +25,7 @@ For local Supabase work under Colima, start the trimmed local stack with:
 ```bash
 pnpm supabase:start:local
 ```
-That helper switches to the `colima-varrun` Docker context when available and reapplies the GoTrue mailer-host patch needed to suppress local `GOTRUE_MAILER_EXTERNAL_HOSTS` warnings.
+That helper switches to the `colima-varrun` Docker context when available and reapplies the GoTrue mailer-host patch needed to suppress local `GOTRUE_MAILER_EXTERNAL_HOSTS` warnings for browser and gateway traffic (`localhost`, `127.0.0.1`, and the local `kong` gateway host).
 
 Open `http://localhost:3000` in your browser. Next.js will serve the app configured by `NEXT_PUBLIC_CITYCOIN` and `NEXT_PUBLIC_APP_NAME`.
 

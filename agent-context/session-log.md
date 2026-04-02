@@ -1,3 +1,34 @@
+## v1.124
+### Timestamp
+- 2026-04-02 02:17 EDT
+
+### Objective
+- Rework wallet Edit Profile so desktop-sized screens can use a wider two-column layout, separate email from the photo controls, and let existing profile photos reopen in the framing editor.
+
+### What Changed
+- Split wallet Edit Profile into four panels: `Picture`, `Email`, `Banking info`, and `Info used in this app`, with a `lg` two-column grid so larger screens use width instead of stacking every section vertically.
+- Added `prepareProfilePictureFromUrl` and an `Adjust current photo` action so an already-saved profile image can be reopened in the same zoom and horizontal/vertical framing editor instead of forcing users to upload a new file first.
+- Added a wider `5xl` modal size and assigned it specifically to wallet Edit Profile launches from both the authenticated navbar and the More tab, so the new four-panel layout has enough room to reduce desktop scrolling.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx shared/lib/profilePictureCrop.ts shared/components/ui/Modal.tsx shared/contexts/ModalContext.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- Browser pass with the Playwright CLI against `http://127.0.0.1:3000/dashboard?tab=more` confirmed the modal opens from the More tab after local OTP auth; full loaded-form verification was blocked locally because `user-settings/bootstrap` is currently returning `401 Unauthorized` in that environment.
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `shared/lib/profilePictureCrop.ts`
+- `shared/components/ui/Modal.tsx`
+- `shared/contexts/ModalContext.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.123
 ### Timestamp
 - 2026-04-02 01:58 EDT
@@ -7,7 +38,7 @@
 
 ### What Changed
 - Normalized the local Supabase `site_url` and redirect allow-list in the local `supabase/config.toml` so the local browser-facing hosts are explicit and match the wallet dev hosts we actually use.
-- Added `scripts/start-local-supabase.sh` plus the `pnpm supabase:start:local` package script to start the trimmed local Supabase stack and then recreate the GoTrue container with `GOTRUE_MAILER_EXTERNAL_HOSTS=localhost,127.0.0.1`, which the CLI config does not currently expose.
+- Added `scripts/start-local-supabase.sh` plus the `pnpm supabase:start:local` package script to start the trimmed local Supabase stack and then recreate the GoTrue container with `GOTRUE_MAILER_EXTERNAL_HOSTS=localhost,127.0.0.1,kong`, which the CLI config does not currently expose.
 - Documented the local Supabase helper in `README.md` so the warning fix is repeatable instead of relying on one-off manual container surgery.
 
 ### Verification

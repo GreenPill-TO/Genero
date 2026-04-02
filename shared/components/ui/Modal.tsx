@@ -21,6 +21,7 @@ const Modal: React.FC<ModalProps> = ({
     xl: "max-w-xl",
     "2xl": "max-w-2xl",
     "4xl": "max-w-4xl",
+    "5xl": "max-w-5xl",
   };
   const useWalletAuthTheme = Boolean(modalThemeClassName);
 

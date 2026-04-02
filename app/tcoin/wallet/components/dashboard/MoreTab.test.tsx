@@ -325,6 +325,8 @@ describe("MoreTab", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Edit Profile/i })[0]);
     expect(openModal).toHaveBeenCalled();
     expect(openModal.mock.calls[0][0].title).toBe("Edit Profile");
+    expect(openModal.mock.calls[0][0].elSize).toBe("5xl");
+    expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
   });
 
   it("opens the theme selector", () => {
