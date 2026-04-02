@@ -667,7 +667,7 @@ export default function WelcomePage() {
           <div className="space-y-6">
             {wizardStep === 1 ? (
               <div className={`${walletPanelMutedClass} space-y-4 text-sm text-muted-foreground`}>
-                <p>This step is about the signup process itself: we will set up your profile, community defaults, and wallet access together so the app is ready to use when you land in the dashboard.</p>
+                <p>Let's set up your profile, community defaults, and wallet access together so the app is ready to use when you land in the dashboard.</p>
                 <p>You will add your user details, choose a profile picture, choose your charity and neighbourhood preferences, and then connect your wallet.</p>
                 <p>Your progress is saved step by step, so if you leave part-way through you can come back and resume from where you stopped.</p>
               </div>

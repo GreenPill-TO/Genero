@@ -295,7 +295,7 @@ describe("WelcomePage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Start setup/i }));
 
-    expect(await screen.findByText(/This step is about the signup process itself/i)).toBeTruthy();
+    expect(await screen.findByText(/Let's set up your profile, community defaults, and wallet access together/i)).toBeTruthy();
     expect(screen.getByText(/Your progress is saved step by step/i)).toBeTruthy();
   });
 

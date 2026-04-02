@@ -1,3 +1,25 @@
+## v1.130
+### Timestamp
+- 2026-04-02 12:18 EDT
+
+### Objective
+- Tighten the wallet onboarding step-1 lead sentence so it starts more directly and conversationally.
+
+### What Changed
+- Replaced the step-1 opener in wallet `/welcome` from “This step is about the signup process itself: we will …” to a shorter “Let’s …” sentence while keeping the rest of the signup guidance unchanged.
+- Updated the focused welcome-flow test expectation and the required spec/session artefacts to reflect the revised copy.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.129
 ### Timestamp
 - 2026-04-02 09:49 EDT
