@@ -5,12 +5,15 @@ import { jsonResponse } from "../_shared/responses.ts";
 import {
   connectWalletContact,
   getWalletContactDetail,
+  listWalletContactImports,
   getWalletContactTransactionHistory,
   getWalletTransactionHistory,
   listWalletContacts,
   listWalletRecents,
   lookupWalletUserByIdentifier,
+  queueWalletContactInviteBatch,
   recordWalletTransfer,
+  saveWalletContactImports,
   sendWalletAdminNotification,
   sendWalletSuccessNotification,
   updateWalletContactState,
@@ -85,6 +88,34 @@ async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "GET" && /^\/contacts\/\d+$/.test(pathname)) {
       return jsonResponse(req, await getWalletContactDetail({ ...base, contactId: Number(pathname.split("/")[2]) }));
+    }
+
+    if (req.method === "GET" && pathname === "/contacts/imports") {
+      return jsonResponse(req, await listWalletContactImports(base));
+    }
+
+    if (req.method === "POST" && pathname === "/contacts/imports") {
+      return jsonResponse(
+        req,
+        await saveWalletContactImports({
+          ...base,
+          granted: typeof body?.granted === "boolean" ? body.granted : false,
+          source: typeof body?.source === "string" ? body.source : undefined,
+          contacts: body?.contacts,
+        })
+      );
+    }
+
+    if (req.method === "POST" && pathname === "/contacts/invite-batches") {
+      return jsonResponse(
+        req,
+        await queueWalletContactInviteBatch({
+          ...base,
+          subject: typeof body?.subject === "string" ? body.subject : "",
+          message: typeof body?.message === "string" ? body.message : "",
+          recipients: body?.recipients,
+        })
+      );
     }
 
     if (req.method === "GET" && pathname === "/recents") {

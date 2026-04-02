@@ -1,3 +1,31 @@
+## v1.116
+### Timestamp
+- 2026-04-01 23:54 EDT
+
+### Objective
+- Turn the empty Contacts tab into a real invite-onboarding flow that can save imported contacts, collect manual email addresses, and queue an editable invite batch instead of stopping at a dead-end placeholder.
+
+### What Changed
+- Reworked the wallet Contacts empty state into a guided collaboration-first flow with friendlier copy, explicit loading behaviour, browser contact import where supported, manual “add another” email entry, saved imported-contact selection, and an editable invite note before queueing.
+- Added typed `wallet-operations` support for contact-import persistence and invite batching, including new `/contacts/imports` and `/contacts/invite-batches` routes plus matching client contracts.
+- Added an idempotent `v1.07` migration that creates app-scoped tables for saved contact-import approval, imported email contacts, invite batches, and batch recipients.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ContactsTab.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx shared/lib/edge/walletOperations.ts shared/lib/edge/walletOperationsClient.ts supabase/functions/_shared/walletOperations.ts supabase/functions/wallet-operations/index.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+- `shared/lib/edge/walletOperations.ts`
+- `shared/lib/edge/walletOperationsClient.ts`
+- `supabase/functions/_shared/walletOperations.ts`
+- `supabase/functions/wallet-operations/index.ts`
+- `supabase/migrations/20260402001000_v1.07_contact_invite_batches.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.115
 ### Timestamp
 - 2026-04-01 23:27 EDT
