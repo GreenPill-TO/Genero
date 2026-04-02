@@ -113,6 +113,9 @@ describe("Navbar session control", () => {
           email: "test@example.com",
           profileImageUrl: "https://example.com/avatar.png",
         },
+        preferences: {
+          experienceMode: "advanced",
+        },
       },
     });
     useCameraAvailabilityMock.mockReturnValue({
@@ -153,6 +156,15 @@ describe("Navbar session control", () => {
     expect(openModal.mock.calls[0][0].title).toBe("Edit Profile");
     expect(openModal.mock.calls[0][0].elSize).toBe("5xl");
     expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+  });
+
+  it("opens the experience-mode modal from the dropdown", () => {
+    render(<Navbar />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Experience mode/i }));
+
+    expect(openModal).toHaveBeenCalled();
+    expect(openModal.mock.calls[0][0].title).toBe("Experience mode");
   });
 
   it("logs the user out from the dropdown", () => {

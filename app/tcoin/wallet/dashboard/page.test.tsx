@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const useAuthMock = vi.hoisted(() => vi.fn());
+const useUserSettingsMock = vi.hoisted(() => vi.fn());
 const pushMock = vi.hoisted(() => vi.fn());
 const contactsTabPropsMock = vi.hoisted(() => vi.fn());
 const searchParamsMock = vi.hoisted(
@@ -15,6 +16,10 @@ const searchParamsMock = vi.hoisted(
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock("@shared/hooks/useUserSettings", () => ({
+  useUserSettings: () => useUserSettingsMock(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -36,6 +41,7 @@ vi.mock("@tcoin/wallet/components/dashboard", () => ({
   WalletHome: ({ onOpenTransactionHistory }: { onOpenTransactionHistory?: () => void }) => (
     <button onClick={() => onOpenTransactionHistory?.()}>open-history</button>
   ),
+  SimpleWalletHome: () => <div>simple-home</div>,
   ContactsTab: (props: any) => {
     contactsTabPropsMock(props);
     return <div>contacts</div>;
@@ -65,6 +71,14 @@ describe("DashboardPage", () => {
       isAuthenticated: true,
       error: null,
       isLoadingUser: false,
+    });
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        preferences: {
+          experienceMode: "advanced",
+        },
+      },
+      isLoading: false,
     });
     pushMock.mockReset();
     contactsTabPropsMock.mockReset();
@@ -105,6 +119,38 @@ describe("DashboardPage", () => {
     expect(screen.getByText("receive")).toBeTruthy();
   });
 
+  it("renders the simplified home and hides more in simple mode", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        preferences: {
+          experienceMode: "simple",
+        },
+      },
+      isLoading: false,
+    });
+
+    render(<DashboardPage />);
+
+    expect(screen.getByText("simple-home")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Send money/i })).toBeNull();
+  });
+
+  it("redirects simple-mode more requests back to home", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        preferences: {
+          experienceMode: "simple",
+        },
+      },
+      isLoading: false,
+    });
+    searchParamsMock.get = vi.fn((key: string) => (key === "tab" ? "more" : null));
+
+    render(<DashboardPage />);
+
+    expect(pushMock).toHaveBeenCalledWith("/dashboard");
+  });
+
   it("stabilizes the contacts resolver so repeated identical results do not loop", () => {
     searchParamsMock.get = vi.fn((key: string) => (key === "tab" ? "contacts" : null));
     render(<DashboardPage />);
@@ -134,5 +180,22 @@ describe("DashboardPage", () => {
       resolveContacts?.([{ ...records[0] }]);
     });
     expect(contactsTabPropsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("disables the invite empty state in simple-mode contacts", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        preferences: {
+          experienceMode: "simple",
+        },
+      },
+      isLoading: false,
+    });
+    searchParamsMock.get = vi.fn((key: string) => (key === "tab" ? "contacts" : null));
+
+    render(<DashboardPage />);
+
+    const props = contactsTabPropsMock.mock.calls.at(-1)?.[0];
+    expect(props.showInviteEmptyState).toBe(false);
   });
 });

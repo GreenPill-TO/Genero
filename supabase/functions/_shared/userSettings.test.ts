@@ -4,6 +4,7 @@ import {
   buildUserIdentifierVariant,
   getLatestWalletListRow,
   isFallbackUserIdentifier,
+  normaliseExperienceMode,
   normaliseEmailAddress,
   normaliseManagedEmails,
   normaliseUserIdentifierCandidate,
@@ -76,6 +77,18 @@ describe("managed email helpers", () => {
         { email: "beta@example.com", isPrimary: false },
       ])
     ).toThrow(/exactly one primary/i);
+  });
+});
+
+describe("experience mode helpers", () => {
+  it("defaults missing or invalid values to simple mode", () => {
+    expect(normaliseExperienceMode(undefined)).toBe("simple");
+    expect(normaliseExperienceMode(null)).toBe("simple");
+    expect(normaliseExperienceMode("unexpected")).toBe("simple");
+  });
+
+  it("keeps advanced when it is explicitly selected", () => {
+    expect(normaliseExperienceMode("advanced")).toBe("advanced");
   });
 });
 

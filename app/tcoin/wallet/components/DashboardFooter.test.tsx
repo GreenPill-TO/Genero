@@ -59,4 +59,15 @@ describe("DashboardFooter", () => {
     expect(getAllByTestId("sidebar-home")[0].className).toContain("text-xs");
     expect(getAllByTestId("sidebar-home")[0].className).toContain("font-sans");
   });
+
+  it("swaps mobile more for history in simple mode and removes the desktop more item", () => {
+    const { getAllByTestId, queryAllByTestId } = render(
+      <DashboardFooter active="history" onChange={() => {}} experienceMode="simple" />
+    );
+
+    expect(getAllByTestId("footer-history")[0]).toBeTruthy();
+    expect(queryAllByTestId("footer-more")).toHaveLength(0);
+    expect(getAllByTestId("sidebar-history")[0]).toBeTruthy();
+    expect(queryAllByTestId("sidebar-more")).toHaveLength(0);
+  });
 });

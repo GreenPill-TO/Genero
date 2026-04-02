@@ -1,6 +1,7 @@
 export type UserSettingsTheme = "system" | "light" | "dark";
+export type UserSettingsExperienceMode = "simple" | "advanced";
 export type UserSignupState = "none" | "draft" | "completed";
-export type UserSignupStep = 1 | 2 | 3 | 4 | 5 | 6;
+export type UserSignupStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type UserSettingsAppContext = {
   appSlug: string;
@@ -48,6 +49,8 @@ export type UserSettingsUser = {
 
 export type UserSettingsPreferences = {
   theme: UserSettingsTheme;
+  experienceMode: UserSettingsExperienceMode;
+  hasExplicitExperienceMode: boolean;
   charity: string | null;
   selectedCause: string | null;
   primaryBiaId: string | null;
@@ -60,6 +63,7 @@ export type UserSettingsOptions = {
 };
 
 export type UserSettingsSignup = {
+  flow: string;
   state: UserSignupState;
   currentStep: UserSignupStep | null;
   completedSteps: UserSignupStep[];
@@ -93,6 +97,7 @@ export type UpdateUserProfileInput = {
 
 export type UpdateUserPreferencesInput = {
   theme?: UserSettingsTheme;
+  experienceMode?: UserSettingsExperienceMode;
   charity?: string | null;
   selectedCause?: string | null;
   primaryBiaId?: string | null;

@@ -137,12 +137,15 @@ const createBootstrap = (
   },
   preferences: {
     theme: "system" as const,
+    experienceMode: "simple" as const,
+    hasExplicitExperienceMode: false,
     charity: "Food Bank",
     selectedCause: "Food Bank",
     primaryBiaId: "1",
     secondaryBiaIds: [],
   },
   signup: {
+    flow: "general-user-v2",
     state: signupState,
     currentStep: overrides?.currentStep ?? (signupState === "draft" ? 3 : null),
     completedSteps: overrides?.completedSteps ?? (signupState === "draft" ? [1, 2] : []),
@@ -261,7 +264,7 @@ describe("WelcomePage", () => {
     await waitFor(() => expect(resetMutateAsync).toHaveBeenCalled());
     expect(screen.getByText("Welcome to TCOIN")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Start setup/i })).toBeTruthy();
-    expect(screen.queryByText(/Step 1 of 6/i)).toBeNull();
+    expect(screen.queryByText(/Step 1 of 7/i)).toBeNull();
   });
 
   it("redirects completed users to the dashboard", () => {
@@ -280,8 +283,8 @@ describe("WelcomePage", () => {
     process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "development";
     useUserSettingsMock.mockReturnValue({
       bootstrap: createBootstrap("draft", {
-        currentStep: 5,
-        completedSteps: [1, 2, 3, 4],
+        currentStep: 6,
+        completedSteps: [1, 2, 3, 4, 5],
       }),
       isLoading: false,
       refetch: vi.fn(),
@@ -299,7 +302,9 @@ describe("WelcomePage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Start setup/i }));
 
-    expect(await screen.findByText(/Let's set up your profile, community defaults, and wallet access together/i)).toBeTruthy();
+    expect(
+      await screen.findByText(/Let's set up your profile, community defaults, wallet experience, and wallet access together/i)
+    ).toBeTruthy();
     expect(screen.getByText(/Your progress is saved step by step/i)).toBeTruthy();
   });
 
@@ -452,6 +457,8 @@ describe("WelcomePage", () => {
         }),
         preferences: {
           theme: "system" as const,
+          experienceMode: "simple" as const,
+          hasExplicitExperienceMode: false,
           charity: "",
           selectedCause: "",
           primaryBiaId: "1",
@@ -479,11 +486,88 @@ describe("WelcomePage", () => {
     );
   });
 
-  it("explains device naming and shows auto-collected device details on step 5", () => {
+  it("requires an explicit experience-mode choice for new-flow drafts on step 5", async () => {
     useUserSettingsMock.mockReturnValue({
       bootstrap: createBootstrap("draft", {
         currentStep: 5,
         completedSteps: [1, 2, 3, 4],
+      }),
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+
+    expect(screen.getByText(/Choose the wallet experience/i)).toBeTruthy();
+    expect((screen.getByRole("button", { name: /^Continue$/i }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("preselects simple mode for legacy drafts that have no explicit experience mode yet", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        ...createBootstrap("draft", {
+          currentStep: 5,
+          completedSteps: [1, 2, 3, 4, 6],
+        }),
+        signup: {
+          ...createBootstrap("draft").signup,
+          flow: "general-user-v1",
+          state: "draft",
+          currentStep: 5,
+          completedSteps: [1, 2, 3, 4, 6],
+        },
+        preferences: {
+          ...createBootstrap("draft").preferences,
+          experienceMode: "simple" as const,
+          hasExplicitExperienceMode: false,
+        },
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+
+    const continueButton = screen.getByRole("button", { name: /^Continue$/i });
+    expect((continueButton as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("saves the selected experience mode on step 5", async () => {
+    saveStepMutateAsync.mockResolvedValue({ signup: { currentStep: 6 } });
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap("draft", {
+        currentStep: 5,
+        completedSteps: [1, 2, 3, 4],
+      }),
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    fireEvent.click(screen.getByRole("button", { name: /Advanced mode/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
+
+    await waitFor(() =>
+      expect(saveStepMutateAsync).toHaveBeenCalledWith({
+        step: 5,
+        payload: {
+          experienceMode: "advanced",
+        },
+      })
+    );
+  });
+
+  it("explains device naming and shows auto-collected device details on step 6", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap("draft", {
+        currentStep: 6,
+        completedSteps: [1, 2, 3, 4, 5],
         walletReady: true,
       }),
       isLoading: false,

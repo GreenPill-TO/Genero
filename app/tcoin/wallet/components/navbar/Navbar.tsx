@@ -17,6 +17,7 @@ import { cn } from "@shared/utils/classnames";
 
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
+import { ExperienceModeModal } from "@tcoin/wallet/components/modals/ExperienceModeModal";
 import { usePathname } from "next/navigation";
 import { LuCamera, LuChevronDown, LuUser } from "react-icons/lu";
 import { QrScanModal } from "@tcoin/wallet/components/modals";
@@ -111,6 +112,14 @@ export default function Navbar({ title }: { title?: string }) {
     signOut();
   };
 
+  const handleExperienceMode = () => {
+    openModal({
+      content: <ExperienceModeModal closeModal={closeModal} />,
+      title: "Experience mode",
+      description: "Choose whether this wallet should stay clean and simple or keep the full advanced surface visible.",
+    });
+  };
+
   const handleDeleteProfile = () => {
     toast.info("Profile deletion is not wired yet in this environment.");
   };
@@ -174,6 +183,18 @@ export default function Navbar({ title }: { title?: string }) {
               </div>
             </div>
             <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <button
+                type="button"
+                className={cn(
+                  "w-full cursor-pointer rounded-sm px-2 py-1.5 text-left text-sm",
+                  "transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none"
+                )}
+                onClick={handleExperienceMode}
+              >
+                Experience mode
+              </button>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <button
                 type="button"

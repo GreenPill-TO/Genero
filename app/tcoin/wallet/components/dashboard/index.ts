@@ -1,4 +1,5 @@
 export * from "./WalletHome";
+export * from "./SimpleWalletHome";
 export * from "./ContributionsCard";
 export * from "./ReceiveCard";
 export * from "./SendCard";

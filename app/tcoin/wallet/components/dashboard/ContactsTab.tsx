@@ -62,6 +62,7 @@ interface ContactsTabProps {
   onRequest?: (contact: Hypodata) => void;
   initialContacts?: ContactRecord[];
   onContactsResolved?: (contacts: ContactRecord[]) => void;
+  showInviteEmptyState?: boolean;
 }
 
 type ManualInviteRow = {
@@ -146,6 +147,7 @@ export function ContactsTab({
   onRequest,
   initialContacts,
   onContactsResolved,
+  showInviteEmptyState = true,
 }: ContactsTabProps) {
   const { userData } = useAuth();
   const [contacts, setContacts] = useState<ContactRecord[]>(initialContacts ?? []);
@@ -306,7 +308,7 @@ export function ContactsTab({
   };
 
   const showEmptyInviteFlow =
-    !isLoadingContacts && contacts.length === 0 && search.trim().length === 0;
+    showInviteEmptyState && !isLoadingContacts && contacts.length === 0 && search.trim().length === 0;
 
   return (
     <div className="space-y-5">
@@ -356,6 +358,10 @@ export function ContactsTab({
         </div>
       ) : showEmptyInviteFlow ? (
         <ContactsInviteEmptyState inviterName={inviterName} inviterEmail={inviterEmail} />
+      ) : contacts.length === 0 ? (
+        <div className={walletPanelMutedClass}>
+          <p className="text-sm text-muted-foreground">No contacts yet.</p>
+        </div>
       ) : (
         <ul className="space-y-3">
           {filtered.map((contact) => {

@@ -5,6 +5,7 @@ import React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   WalletHome,
+  SimpleWalletHome,
   ContactsTab,
   SendTab,
   ReceiveTab,
@@ -16,6 +17,7 @@ import { ErrorBoundary } from "@shared/components/ErrorBoundary";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { Hypodata } from "@tcoin/wallet/components/dashboard";
+import type { UserSettingsExperienceMode } from "@shared/lib/userSettings/types";
 import {
   WalletPageIntro,
   WalletSection,
@@ -24,6 +26,7 @@ import {
   walletRailPageClass,
 } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import { cn } from "@shared/utils/classnames";
+import { useUserSettings } from "@shared/hooks/useUserSettings";
 
 const VALID_TAB_KEYS = new Set(["home", "receive", "send", "contacts", "more", "history"]);
 const FOCUSED_TAB_KEYS = new Set(["receive", "send", "contacts", "history"]);
@@ -83,6 +86,9 @@ const TAB_COPY: Record<string, { title: string; description: string }> = {
 
 export default function Dashboard() {
   const { error, isAuthenticated, isLoadingUser } = useAuth();
+  const { bootstrap, isLoading: isLoadingSettings } = useUserSettings({
+    enabled: isAuthenticated,
+  });
   const searchParams = useSearchParams();
   const requestedTab = (searchParams.get("tab") ?? "home").toLowerCase();
   const [activeTab, setActiveTab] = useState("home");
@@ -91,14 +97,47 @@ export default function Dashboard() {
   const [cachedContacts, setCachedContacts] = useState<ContactRecord[] | null>(null);
   const [receiveQrVisible, setReceiveQrVisible] = useState(true);
   const router = useRouter();
+  const experienceMode: UserSettingsExperienceMode = bootstrap?.preferences.experienceMode ?? "simple";
+  const validTabs = useMemo(
+    () => (experienceMode === "simple" ? new Set(["home", "receive", "send", "contacts", "history"]) : VALID_TAB_KEYS),
+    [experienceMode]
+  );
 
   const pageCopy = TAB_COPY[activeTab] ?? TAB_COPY.home;
   const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans");
-  const isFocusedTaskTab = FOCUSED_TAB_KEYS.has(activeTab);
+  const isFocusedTaskTab = FOCUSED_TAB_KEYS.has(activeTab) || (experienceMode === "simple" && activeTab === "home");
   const taskContentClass = cn("w-full", isFocusedTaskTab && "mx-auto max-w-[62.5rem]");
+  const introActions =
+    activeTab === "home" && experienceMode === "simple"
+      ? null
+      : [
+          activeTab !== "send" ? (
+            <button
+              key="send"
+              type="button"
+              className={walletActionButtonClass}
+              onClick={() => handleTabChange("send")}
+            >
+              Send money
+            </button>
+          ) : null,
+          activeTab !== "receive" ? (
+            <button
+              key="receive"
+              type="button"
+              className={walletActionButtonClass}
+              onClick={() => handleTabChange("receive")}
+            >
+              Request money
+            </button>
+          ) : null,
+        ].filter(Boolean);
 
   const handleTabChange = useCallback(
     (next: string, options?: { showReceiveQr?: boolean }) => {
+      if (!validTabs.has(next)) {
+        next = "home";
+      }
       setActiveTab(next);
       if (next === "home") {
         router.push("/dashboard");
@@ -109,7 +148,7 @@ export default function Dashboard() {
         setReceiveQrVisible(options?.showReceiveQr ?? true);
       }
     },
-    [router]
+    [router, validTabs]
   );
 
   const handleContactsResolved = useCallback((records: ContactRecord[]) => {
@@ -119,6 +158,9 @@ export default function Dashboard() {
   const content = useMemo(() => {
     if (isLoadingUser || error) return null;
     if (activeTab === "home") {
+      if (experienceMode === "simple") {
+        return <SimpleWalletHome tokenLabel="TCOIN" />;
+      }
       return (
         <WalletHome
           tokenLabel="TCOIN"
@@ -129,6 +171,7 @@ export default function Dashboard() {
     if (activeTab === "contacts") {
       return (
         <ContactsTab
+          showInviteEmptyState={experienceMode !== "simple"}
           initialContacts={cachedContacts ?? undefined}
           onContactsResolved={handleContactsResolved}
           onSend={(contact) => {
@@ -183,6 +226,7 @@ export default function Dashboard() {
     requestRecipient,
     cachedContacts,
     receiveQrVisible,
+    experienceMode,
     handleTabChange,
     handleContactsResolved,
   ]);
@@ -194,16 +238,23 @@ export default function Dashboard() {
   }, [requestRecipient, receiveQrVisible]);
 
   useEffect(() => {
-    if (VALID_TAB_KEYS.has(requestedTab) && requestedTab !== activeTab) {
-      setActiveTab(requestedTab);
+    const nextTab = requestedTab === "more" && experienceMode === "simple" ? "home" : requestedTab;
+    if (!validTabs.has(nextTab)) {
+      return;
     }
-  }, [requestedTab, activeTab]);
+    if (requestedTab === "more" && experienceMode === "simple") {
+      router.push("/dashboard");
+    }
+    if (nextTab !== activeTab) {
+      setActiveTab(nextTab);
+    }
+  }, [requestedTab, activeTab, experienceMode, router, validTabs]);
 
   if (error) {
     return <div className={mainClass}>Error loading data: {error.message}</div>;
   }
 
-  if (isLoadingUser) return <div className={mainClass}> ... Loading </div>;
+  if (isLoadingUser || (isAuthenticated && isLoadingSettings && !bootstrap)) return <div className={mainClass}> ... Loading </div>;
 
   if (!isAuthenticated) {
     return (
@@ -254,30 +305,7 @@ export default function Dashboard() {
             eyebrow="Authenticated wallet"
             title={pageCopy.title}
             description={pageCopy.description}
-            actions={
-              [
-                activeTab !== "send" ? (
-                  <button
-                    key="send"
-                    type="button"
-                    className={walletActionButtonClass}
-                    onClick={() => handleTabChange("send")}
-                  >
-                    Send money
-                  </button>
-                ) : null,
-                activeTab !== "receive" ? (
-                  <button
-                    key="receive"
-                    type="button"
-                    className={walletActionButtonClass}
-                    onClick={() => handleTabChange("receive")}
-                  >
-                    Request money
-                  </button>
-                ) : null,
-              ].filter(Boolean)
-            }
+            actions={introActions}
           />
           <WalletSection className="p-0">
             <div className="p-5 sm:p-6">
@@ -287,7 +315,7 @@ export default function Dashboard() {
             </div>
           </WalletSection>
         </div>
-        <DashboardFooter active={activeTab} onChange={(next) => handleTabChange(next)} />
+        <DashboardFooter active={activeTab} onChange={(next) => handleTabChange(next)} experienceMode={experienceMode} />
       </div>
     </ErrorBoundary>
   );

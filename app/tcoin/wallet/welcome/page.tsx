@@ -36,11 +36,13 @@ import WelcomeProfilePictureEditorModal from "@tcoin/wallet/components/modals/We
 import { LuUser } from "react-icons/lu";
 import {
   walletBadgeClass,
+  walletChoiceCardClass,
   walletPageClass,
   walletPanelClass,
   walletPanelMutedClass,
   walletSectionLabelClass,
 } from "@tcoin/wallet/components/dashboard/authenticated-ui";
+import type { UserSettingsExperienceMode } from "@shared/lib/userSettings/types";
 
 const WalletComponent = dynamic(() => import("cubid-wallet").then((mod) => mod.WalletComponent), { ssr: false });
 const CubidWidget = dynamic(() => import("cubid-sdk").then((mod) => mod.CubidWidget), { ssr: false });
@@ -74,6 +76,7 @@ const DEFAULT_CROP_STATE: ProfilePictureCropState = {
 const SIGNUP_AVATAR_PREVIEW_SIZE = 96;
 const SIGNUP_PLACEHOLDER_ROTATION_MS = 3000;
 const DEFAULT_CHARITY_NAME = "Universal Basic Income";
+const SIGNUP_FLOW_VERSION = "general-user-v2";
 const SIGNUP_PLACEHOLDER_NAMES = [
   "Mats Sundin",
   "Nathan Philips",
@@ -203,9 +206,10 @@ export default function WelcomePage() {
     primaryBiaId: "",
     secondaryBiaIds: [],
   });
+  const [experienceModeChoice, setExperienceModeChoice] = useState<UserSettingsExperienceMode | "">("");
   const countryOptions = useMemo(() => buildCountryOptions(), []);
   const defaultSignupCountryOption = useMemo(() => getDefaultSignupCountryOption(countryOptions), [countryOptions]);
-  const totalSteps = 6;
+  const totalSteps = 7;
   const canSkipWalletSetup = ["development", "local"].includes(
     (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
   );
@@ -334,6 +338,9 @@ export default function WelcomePage() {
       primaryBiaId: bootstrap.preferences.primaryBiaId ?? "",
       secondaryBiaIds: bootstrap.preferences.secondaryBiaIds ?? [],
     });
+    const shouldPreselectExperienceMode =
+      bootstrap.preferences.hasExplicitExperienceMode || bootstrap.signup.flow !== SIGNUP_FLOW_VERSION;
+    setExperienceModeChoice(shouldPreselectExperienceMode ? bootstrap.preferences.experienceMode : "");
   }, [bootstrap, countryOptions, defaultSignupCountryOption, reset]);
 
   useEffect(() => {
@@ -439,6 +446,7 @@ export default function WelcomePage() {
       setProfilePictureSelection(null);
       setProfilePictureCrop(DEFAULT_CROP_STATE);
       setProfilePicturePreview(null);
+      setExperienceModeChoice("");
       setShowResetIntro(next.signup.state === "none");
       setShowWizard(false);
       setWizardStep(1);
@@ -507,6 +515,25 @@ export default function WelcomePage() {
     }
   };
 
+  const saveExperienceModeStep = async () => {
+    if (!experienceModeChoice) {
+      toast.error("Choose either clean and simple mode or advanced mode to continue.");
+      return;
+    }
+
+    try {
+      const next = await saveSignupStep.mutateAsync({
+        step: 5,
+        payload: {
+          experienceMode: experienceModeChoice,
+        },
+      });
+      goToNextStep(next);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save your wallet experience mode.");
+    }
+  };
+
   const saveProfilePictureStep = async () => {
     if (!bootstrap?.user.id) {
       toast.error("We could not determine your account. Please try signing in again.");
@@ -551,7 +578,7 @@ export default function WelcomePage() {
   const saveWalletStep = async (skipWalletSetup = false) => {
     try {
       const next = await saveSignupStep.mutateAsync({
-        step: 5,
+        step: 6,
         payload: {
           deviceLabel: deviceLabel.trim() || null,
           skipWalletSetup,
@@ -784,8 +811,8 @@ export default function WelcomePage() {
           <div className="space-y-6">
             {wizardStep === 1 ? (
               <div className={`${walletPanelMutedClass} space-y-4 text-sm text-muted-foreground`}>
-                <p>Let's set up your profile, community defaults, and wallet access together so the app is ready to use when you land in the dashboard.</p>
-                <p>You will add your user details, choose a profile picture, choose your charity and neighbourhood preferences, and then connect your wallet.</p>
+                <p>Let's set up your profile, community defaults, wallet experience, and wallet access together so the app is ready to use when you land in the dashboard.</p>
+                <p>You will add your user details, choose a profile picture, pick your charity and neighbourhood preferences, choose a simpler or fuller wallet view, and then connect your wallet.</p>
                 <p>Your progress is saved step by step, so if you leave part-way through you can come back and resume from where you stopped.</p>
               </div>
             ) : null}
@@ -1110,6 +1137,60 @@ export default function WelcomePage() {
             ) : null}
 
             {wizardStep === 5 ? (
+              <div className="space-y-5">
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    Choose the wallet experience that should greet you every time you open TCOIN.
+                  </p>
+                  <p>
+                    You can start with a quieter beginner-friendly view or keep the fuller wallet with more tools and settings visible from the start.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    {
+                      id: "simple" as const,
+                      title: "Clean and simple mode",
+                      description:
+                        "A quieter wallet focused on balance, buying more, and the everyday actions most people need first.",
+                    },
+                    {
+                      id: "advanced" as const,
+                      title: "Advanced mode",
+                      description:
+                        "The full wallet with history, richer settings, routing options, and the broader dashboard surfaces visible.",
+                    },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={cn(
+                        walletChoiceCardClass,
+                        experienceModeChoice === option.id
+                          ? "border-teal-500/70 bg-teal-50 text-slate-950 shadow-[0_20px_44px_rgba(8,145,178,0.16)] dark:bg-teal-500/10 dark:text-white"
+                          : ""
+                      )}
+                      onClick={() => setExperienceModeChoice(option.id)}
+                    >
+                      <div className="space-y-2">
+                        <p className="text-base font-semibold">{option.title}</p>
+                        <p className="text-sm text-muted-foreground">{option.description}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between px-0">
+                  <Button type="button" variant="outline" onClick={() => setWizardStep(4)}>
+                    Back
+                  </Button>
+                  <Button type="button" onClick={() => void saveExperienceModeStep()} disabled={saveSignupStep.isPending || !experienceModeChoice}>
+                    {saveSignupStep.isPending ? "Saving..." : "Continue"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {wizardStep === 6 ? (
               <div className="space-y-4">
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <p>
@@ -1194,7 +1275,7 @@ export default function WelcomePage() {
                   />
                 ) : null}
                 <div className="flex justify-between px-0">
-                  <Button type="button" variant="outline" onClick={() => setWizardStep(4)}>
+                  <Button type="button" variant="outline" onClick={() => setWizardStep(5)}>
                     Back
                   </Button>
                   <div className="flex gap-2">
@@ -1211,7 +1292,7 @@ export default function WelcomePage() {
               </div>
             ) : null}
 
-            {wizardStep === 6 ? (
+            {wizardStep === 7 ? (
               <div className="space-y-6">
                 <div className="text-center space-y-2">
                   <h2 className="text-2xl font-semibold">You’re all set</h2>
@@ -1225,7 +1306,7 @@ export default function WelcomePage() {
                   </p>
                 )}
                 <div className="flex justify-between px-0">
-                  <Button type="button" variant="outline" onClick={() => setWizardStep(5)}>
+                  <Button type="button" variant="outline" onClick={() => setWizardStep(6)}>
                     Back
                   </Button>
                   <Button type="button" onClick={() => void finishSignup()} disabled={completeSignup.isPending}>

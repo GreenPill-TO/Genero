@@ -1,3 +1,43 @@
+## v1.158
+### Timestamp
+- 2026-04-02 17:34 EDT
+
+### Objective
+- Add a persisted wallet experience-mode choice to onboarding and use it to introduce a simpler signed-in wallet shell for users who do not need the full dashboard surface.
+
+### What Changed
+- Extended the shared user-settings contract with `preferences.experienceMode`, defaulting missing or invalid legacy metadata to `simple` at bootstrap time while still allowing `advanced` to round-trip through the existing app-profile metadata path.
+- Expanded the wallet onboarding flow from six steps to seven by inserting a dedicated experience-mode step after community settings; fresh v2 drafts now require an explicit choice, while legacy drafts with no stored mode are preselected to `simple` so old onboarding sessions can continue.
+- Added a new `SimpleWalletHome` and made `/dashboard` mode-aware: simple mode now hides the More tab, redirects `?tab=more` back to home, uses the narrower focused-content layout for home, and removes the empty-contacts invite onboarding in favour of a plain empty state.
+- Added an `Experience mode` entry to the authenticated header account menu, backed by a dedicated modal so users can switch between simple and advanced later without relying on the More tab being visible.
+- Added focused tests across the bootstrap helper, welcome flow, dashboard shell, contacts tab, and authenticated header so the new mode contract is exercised from persistence through UI behaviour.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/components/dashboard/ContactsTab.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/modals/ExperienceModeModal.tsx shared/lib/userSettings/types.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts app/tcoin/wallet/components/modals/index.ts`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx supabase/functions/_shared/userSettings.test.ts`
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/index.ts`
+- `app/tcoin/wallet/components/modals/ExperienceModeModal.tsx`
+- `app/tcoin/wallet/components/modals/index.ts`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.157
 ### Timestamp
 - 2026-04-02 16:01 EDT

@@ -221,6 +221,15 @@ describe("ContactsTab", () => {
     expect(onContactsResolved).not.toHaveBeenCalled();
   });
 
+  it("shows a plain empty contacts state when invite onboarding is disabled", async () => {
+    fetchContactsForOwnerMock.mockResolvedValue([]);
+
+    render(<ContactsTab onSend={vi.fn()} showInviteEmptyState={false} />);
+
+    expect(await screen.findByText("No contacts yet.")).toBeTruthy();
+    expect(screen.queryByText(/It looks empty here/i)).toBeNull();
+  });
+
   it("shows a friendly invite workflow when no contacts exist", async () => {
     fetchContactsForOwnerMock.mockResolvedValue([]);
 

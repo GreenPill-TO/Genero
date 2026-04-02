@@ -3,6 +3,7 @@ type JsonRecord = Record<string, unknown>;
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,32}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const AUTO_USER_IDENTIFIER_PREFIX = "user-";
+const SIGNUP_FLOW_VERSION = "general-user-v2";
 
 type ManagedEmailInput = {
   email: string;
@@ -232,6 +233,17 @@ function normaliseTheme(value: unknown): "system" | "light" | "dark" {
   return "system";
 }
 
+export function normaliseExperienceMode(value: unknown): "simple" | "advanced" {
+  return value === "advanced" ? "advanced" : "simple";
+}
+
+function resolveStoredExperienceMode(value: unknown): "simple" | "advanced" | null {
+  if (value === "simple" || value === "advanced") {
+    return value;
+  }
+  return null;
+}
+
 function ensureObject(value: unknown): JsonRecord {
   return isRecord(value) ? { ...value } : {};
 }
@@ -245,7 +257,7 @@ function dedupeStepList(value: unknown): number[] {
     new Set(
       value
         .map((entry) => Number(entry))
-        .filter((entry) => Number.isInteger(entry) && entry >= 1 && entry <= 6)
+        .filter((entry) => Number.isInteger(entry) && entry >= 1 && entry <= 7)
     )
   ).sort((a, b) => a - b);
 }
@@ -275,13 +287,41 @@ function resolveSignupMetadata(value: unknown) {
     status: metadata.status === "completed" ? "completed" : metadata.status === "draft" ? "draft" : null,
     currentStep: (() => {
       const parsed = Number(metadata.currentStep);
-      return Number.isInteger(parsed) && parsed >= 1 && parsed <= 6 ? parsed : null;
+      return Number.isInteger(parsed) && parsed >= 1 && parsed <= 7 ? parsed : null;
     })(),
     completedSteps: dedupeStepList(metadata.completedSteps),
     startedAt: toNullableString(metadata.startedAt),
     lastSavedAt: toNullableString(metadata.lastSavedAt),
     completedAt: toNullableString(metadata.completedAt),
     phoneVerified: metadata.phoneVerified === true,
+  };
+}
+
+function normaliseSignupForExperienceMode(options: {
+  signup: ReturnType<typeof resolveSignupMetadata>;
+  hasExplicitExperienceMode: boolean;
+}) {
+  const { signup, hasExplicitExperienceMode } = options;
+  if (signup.status !== "draft" || hasExplicitExperienceMode || signup.flow === SIGNUP_FLOW_VERSION) {
+    return signup;
+  }
+
+  return {
+    ...signup,
+    currentStep: signup.currentStep != null && signup.currentStep >= 5 ? 5 : signup.currentStep,
+    completedSteps: Array.from(
+      new Set(
+        signup.completedSteps.map((step) => {
+          if (step === 5) {
+            return 6;
+          }
+          if (step === 6) {
+            return 7;
+          }
+          return step;
+        })
+      )
+    ).sort((a, b) => a - b),
   };
 }
 
@@ -716,14 +756,27 @@ async function findUserIdByEmail(options: {
 function buildUpdatedMetadata(options: {
   currentMetadata: unknown;
   theme?: "system" | "light" | "dark";
+  experienceMode?: "simple" | "advanced" | null;
   signup?: JsonRecord | null;
 }) {
   const metadata = ensureObject(options.currentMetadata);
 
-  if (options.theme) {
+  if (options.theme || options.experienceMode !== undefined) {
     const appearance = ensureObject(metadata.appearance);
-    appearance.theme = options.theme;
-    metadata.appearance = appearance;
+    if (options.theme) {
+      appearance.theme = options.theme;
+    }
+    if (options.experienceMode === null) {
+      delete appearance.experienceMode;
+    } else if (options.experienceMode) {
+      appearance.experienceMode = options.experienceMode;
+    }
+
+    if (Object.keys(appearance).length === 0) {
+      delete metadata.appearance;
+    } else {
+      metadata.appearance = appearance;
+    }
   }
 
   if (options.signup === null) {
@@ -970,7 +1023,11 @@ export async function getUserSettingsBootstrap(options: {
 
   const metadata = ensureObject(appProfile.metadata);
   const appearance = ensureObject(metadata.appearance);
-  const signup = resolveSignupMetadata(metadata.signup);
+  const storedExperienceMode = resolveStoredExperienceMode(appearance.experienceMode);
+  const signup = normaliseSignupForExperienceMode({
+    signup: resolveSignupMetadata(metadata.signup),
+    hasExplicitExperienceMode: storedExperienceMode != null,
+  });
   const charityPreferences = ensureObject(appProfile.charity_preferences);
   const { firstName, lastName } = splitFullName(toNullableString(userRow.full_name));
   const emails = await loadActiveUserEmails({
@@ -1009,18 +1066,21 @@ export async function getUserSettingsBootstrap(options: {
     app: options.appContext,
     preferences: {
       theme: normaliseTheme(appearance.theme),
+      experienceMode: normaliseExperienceMode(storedExperienceMode),
+      hasExplicitExperienceMode: storedExperienceMode != null,
       charity: toNullableString(charityPreferences.charity),
       selectedCause: toNullableString(charityPreferences.selected_cause),
       primaryBiaId: biaSelection.primaryBiaId,
       secondaryBiaIds: biaSelection.secondaryBiaIds,
     },
     signup: {
+      flow: signup.flow,
       state: signupState,
-      currentStep: signupState === "none" ? null : ((signup.currentStep ?? (signupState === "completed" ? 6 : 1)) as 1 | 2 | 3 | 4 | 5 | 6),
+      currentStep: signupState === "none" ? null : ((signup.currentStep ?? (signupState === "completed" ? 7 : 1)) as 1 | 2 | 3 | 4 | 5 | 6 | 7),
       completedSteps:
         signupState === "completed"
-          ? [1, 2, 3, 4, 5, 6]
-          : (signup.completedSteps as Array<1 | 2 | 3 | 4 | 5 | 6>),
+          ? [1, 2, 3, 4, 5, 6, 7]
+          : (signup.completedSteps as Array<1 | 2 | 3 | 4 | 5 | 6 | 7>),
       walletReady,
       phoneVerified,
     },
@@ -1134,6 +1194,8 @@ export async function updateUserPreferences(options: {
   const nextMetadata = buildUpdatedMetadata({
     currentMetadata: appProfile.metadata,
     theme: "theme" in options.payload ? normaliseTheme(options.payload.theme) : undefined,
+    experienceMode:
+      "experienceMode" in options.payload ? normaliseExperienceMode(options.payload.experienceMode) : undefined,
   });
 
   let nextCharityPreferences = appProfile.charity_preferences;
@@ -1224,7 +1286,7 @@ export async function startSignup(options: {
 
   const nowIso = new Date().toISOString();
   const nextSignup = {
-    flow: "general-user-v1",
+    flow: SIGNUP_FLOW_VERSION,
     status: "draft",
     currentStep: 1,
     completedSteps: [],
@@ -1265,8 +1327,8 @@ export async function saveSignupStep(options: {
   payload: JsonRecord;
 }) {
   const step = Number(options.payload.step);
-  if (!Number.isInteger(step) || step < 1 || step > 5) {
-    throw new Error("Signup step must be between 1 and 5.");
+  if (!Number.isInteger(step) || step < 1 || step > 6) {
+    throw new Error("Signup step must be between 1 and 6.");
   }
 
   const rawPayload = isRecord(options.payload.payload) ? options.payload.payload : {};
@@ -1275,13 +1337,19 @@ export async function saveSignupStep(options: {
     userId: options.userId,
     appInstanceId: options.appContext.appInstanceId,
   });
-  const existingSignup = resolveSignupMetadata(ensureObject(appProfile.metadata).signup);
+  const metadata = ensureObject(appProfile.metadata);
+  const appearance = ensureObject(metadata.appearance);
+  const storedExperienceMode = resolveStoredExperienceMode(appearance.experienceMode);
+  const existingSignup = normaliseSignupForExperienceMode({
+    signup: resolveSignupMetadata(metadata.signup),
+    hasExplicitExperienceMode: storedExperienceMode != null,
+  });
   const nowIso = new Date().toISOString();
 
   const nextSignup = {
-    flow: "general-user-v1",
+    flow: SIGNUP_FLOW_VERSION,
     status: "draft",
-    currentStep: Math.min(6, step + 1),
+    currentStep: Math.min(7, step + 1),
     completedSteps: Array.from(new Set([...(existingSignup.completedSteps ?? []), step])).sort((a, b) => a - b),
     startedAt: existingSignup.startedAt ?? nowIso,
     lastSavedAt: nowIso,
@@ -1352,6 +1420,22 @@ export async function saveSignupStep(options: {
   }
 
   if (step === 5) {
+    const experienceMode = resolveStoredExperienceMode(rawPayload.experienceMode);
+    if (!experienceMode) {
+      throw new Error("Choose either clean and simple mode or advanced mode.");
+    }
+
+    await updateUserPreferences({
+      supabase: options.supabase,
+      userId: options.userId,
+      appContext: options.appContext,
+      payload: {
+        experienceMode,
+      },
+    });
+  }
+
+  if (step === 6) {
     const skipWalletSetup = rawPayload.skipWalletSetup === true;
     const walletReady = await resolveWalletReady({
       supabase: options.supabase,
@@ -1427,6 +1511,7 @@ export async function resetSignup(options: {
         charity_preferences: null,
         metadata: buildUpdatedMetadata({
           currentMetadata: appProfile.metadata,
+          experienceMode: null,
           signup: null,
         }),
         onboarding_state: buildUpdatedOnboardingState(appProfile.onboarding_state, null),
@@ -1468,9 +1553,9 @@ export async function completeSignup(options: {
     appContext: options.appContext,
   });
 
-  const requiredSteps = [1, 2, 3, 4, 5];
+  const requiredSteps = [1, 2, 3, 4, 5, 6];
   const hasAllSteps = requiredSteps.every((step) =>
-    bootstrap.signup.completedSteps.includes(step as 1 | 2 | 3 | 4 | 5 | 6)
+    bootstrap.signup.completedSteps.includes(step as 1 | 2 | 3 | 4 | 5 | 6 | 7)
   );
   const walletRequirementSatisfied = bootstrap.signup.walletReady || allowsWalletSkip(options.appContext.environment);
 
@@ -1500,17 +1585,17 @@ export async function completeSignup(options: {
         metadata: buildUpdatedMetadata({
           currentMetadata: appProfile.metadata,
           signup: {
-            flow: "general-user-v1",
+            flow: SIGNUP_FLOW_VERSION,
             status: "completed",
-            currentStep: 6,
-            completedSteps: [1, 2, 3, 4, 5, 6],
+            currentStep: 7,
+            completedSteps: [1, 2, 3, 4, 5, 6, 7],
             startedAt: existingSignup.startedAt ?? nowIso,
             lastSavedAt: nowIso,
             completedAt: nowIso,
             phoneVerified: bootstrap.signup.phoneVerified,
           },
         }),
-        onboarding_state: buildUpdatedOnboardingState(appProfile.onboarding_state, 6),
+        onboarding_state: buildUpdatedOnboardingState(appProfile.onboarding_state, 7),
         updated_at: nowIso,
       })
       .eq("user_id", options.userId)

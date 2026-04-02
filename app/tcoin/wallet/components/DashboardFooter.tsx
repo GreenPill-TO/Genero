@@ -1,35 +1,59 @@
 import React from "react";
 import { Home, QrCode, Send, Users, Settings, History } from "lucide-react";
 import { cn } from "@shared/utils/classnames";
+import type { UserSettingsExperienceMode } from "@shared/lib/userSettings/types";
 
 interface FooterProps {
   active: string;
   onChange: (key: string) => void;
+  experienceMode?: UserSettingsExperienceMode;
 }
 
-const mobileItems = [
-  { key: "home", label: "Home", icon: Home },
-  { key: "receive", label: "Receive", icon: QrCode },
-  { key: "send", label: "Send", icon: Send },
-  { key: "contacts", label: "Contacts", icon: Users },
-  { key: "more", label: "More", icon: Settings },
-];
+function getMobileItems(experienceMode: UserSettingsExperienceMode) {
+  return experienceMode === "simple"
+    ? [
+        { key: "home", label: "Home", icon: Home },
+        { key: "receive", label: "Receive", icon: QrCode },
+        { key: "send", label: "Send", icon: Send },
+        { key: "contacts", label: "Contacts", icon: Users },
+        { key: "history", label: "History", icon: History },
+      ]
+    : [
+        { key: "home", label: "Home", icon: Home },
+        { key: "receive", label: "Receive", icon: QrCode },
+        { key: "send", label: "Send", icon: Send },
+        { key: "contacts", label: "Contacts", icon: Users },
+        { key: "more", label: "More", icon: Settings },
+      ];
+}
 
-const desktopItems = [
-  { key: "home", label: "Home", icon: Home },
-  { key: "receive", label: "Receive", icon: QrCode },
-  { key: "send", label: "Send", icon: Send },
-  { key: "contacts", label: "Contacts", icon: Users },
-  { key: "history", label: "History", icon: History },
-  { key: "more", label: "More", icon: Settings },
-];
+function getDesktopItems(experienceMode: UserSettingsExperienceMode) {
+  return experienceMode === "simple"
+    ? [
+        { key: "home", label: "Home", icon: Home },
+        { key: "receive", label: "Receive", icon: QrCode },
+        { key: "send", label: "Send", icon: Send },
+        { key: "contacts", label: "Contacts", icon: Users },
+        { key: "history", label: "History", icon: History },
+      ]
+    : [
+        { key: "home", label: "Home", icon: Home },
+        { key: "receive", label: "Receive", icon: QrCode },
+        { key: "send", label: "Send", icon: Send },
+        { key: "contacts", label: "Contacts", icon: Users },
+        { key: "history", label: "History", icon: History },
+        { key: "more", label: "More", icon: Settings },
+      ];
+}
 
-export function DashboardFooter({ active, onChange }: FooterProps) {
+export function DashboardFooter({ active, onChange, experienceMode = "advanced" }: FooterProps) {
   const handleSelect = (key: string) => {
     onChange(key);
     window.scrollTo({ top: 0 });
     document.dispatchEvent(new Event("hide-header"));
   };
+  const mobileItems = getMobileItems(experienceMode);
+  const desktopItems = getDesktopItems(experienceMode);
 
   const renderItem = ({
     key,
@@ -80,7 +104,7 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
     );
   };
 
-  const more = desktopItems.find((item) => item.key === "more")!;
+  const more = desktopItems.find((item) => item.key === "more");
   const middle = desktopItems.filter((item) => item.key !== "more");
 
   return (
@@ -119,15 +143,17 @@ export function DashboardFooter({ active, onChange }: FooterProps) {
             ))}
           </div>
 
-          <div className="w-full px-3">
-            {renderItem({
-              key: more.key,
-              label: more.label,
-              Icon: more.icon,
-              testId: `sidebar-${more.key}`,
-              compact: true,
-            })}
-          </div>
+          {more ? (
+            <div className="w-full px-3">
+              {renderItem({
+                key: more.key,
+                label: more.label,
+                Icon: more.icon,
+                testId: `sidebar-${more.key}`,
+                compact: true,
+              })}
+            </div>
+          ) : null}
         </div>
       </nav>
     </>
