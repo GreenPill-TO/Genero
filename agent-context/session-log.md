@@ -1,3 +1,30 @@
+## v1.161
+### Timestamp
+- 2026-04-02 18:51 EDT
+
+### Objective
+- Formalize the missing local wallet transfer ledger contract so local History and transfer bookkeeping can work on a real schema/RPC instead of relying only on the new empty-history fallback.
+
+### What Changed
+- Added a new `v1.10` idempotent migration that extends `public.act_transactions` with the wallet-transfer fields the app already expects: `transaction_category`, `amount`, `currency`, `token_price`, `wallet_account_from`, and `wallet_account_to`.
+- Added a compatibility view, `public.act_transaction_entries`, backed by `act_transactions`, so existing local history/recents queries can continue reading the legacy ledger name without duplicating storage.
+- Added a `public.simple_transfer(...)` RPC that resolves the wallet app instance, inserts a transfer row into `act_transactions`, and returns the inserted accounting record for downstream notification and history flows.
+- Applied that migration to the local Supabase database and verified it end-to-end by creating a real transfer row between seeded wallet identities and reading it back through `act_transaction_entries`.
+
+### Verification
+- `git diff --check -- supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\\d+ public.act_transactions"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select user_id, public_key from public.v_wallet_identities_v1 order by user_id limit 5;"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select (t).id as id, (t).amount as amount from (select public.simple_transfer('0x2222222222222222222222222222222222222002','0x1111111111111111111111111111111111111001',3.35,12.5,1001) as t) s;"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select id, amount, currency, wallet_account_from, wallet_account_to, transaction_category from public.act_transaction_entries order by created_at desc limit 3;"`
+
+### Files Edited
+- `supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.160
 ### Timestamp
 - 2026-04-02 18:37 EDT
