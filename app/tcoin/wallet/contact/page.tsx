@@ -67,7 +67,13 @@ export default function ContactPage() {
             </div>
             <div>
               <label className="mr-2" htmlFor="message">Message</label>
-              <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} required />
+              <Textarea
+                id="message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="min-h-40"
+                required
+              />
             </div>
             {submitError && (
               <p className="text-red-600 dark:text-red-400" role="alert">

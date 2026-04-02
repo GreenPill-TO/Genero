@@ -26,4 +26,10 @@ describe("ContactPage", () => {
     );
     expect(screen.queryByRole("link", { name: "Join our WhatsApp" })).toBeNull();
   });
+
+  it("renders a taller message textarea", () => {
+    render(<ContactPage />);
+
+    expect(screen.getByLabelText("Message").className).toContain("min-h-40");
+  });
 });

@@ -1,3 +1,26 @@
+## v1.138
+### Timestamp
+- 2026-04-02 13:47 EDT
+
+### Objective
+- Increase the height of the public Contact page message input.
+
+### What Changed
+- Added a page-local `min-h-40` override to the `/contact` message textarea so longer outreach notes have more visible drafting space.
+- Extended the Contact page regression test to verify the taller message textarea class is present.
+- Updated the required technical and functional specifications to record the taller public-contact message field.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/contact/page.tsx app/tcoin/wallet/contact/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/contact/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/contact/page.tsx`
+- `app/tcoin/wallet/contact/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.137
 ### Timestamp
 - 2026-04-02 13:39 EDT
