@@ -1,3 +1,26 @@
+## v1.112
+### Timestamp
+- 2026-04-01 22:59 EDT
+
+### Objective
+- Make the Edit Profile modal sectioning clearer by separating account-holder details from wallet-local display settings.
+
+### What Changed
+- Reorganized the Edit Profile form so the first details card is now labeled `Banking info` and contains `Given name(s)`, last name, country, and phone.
+- Relabeled the final details card as `Info used in this app`, leaving username and preferred name grouped as wallet-local profile settings.
+- Expanded the modal regression to assert the new section headings and the updated `Given name(s)` field label.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.111
 ### Timestamp
 - 2026-04-01 22:56 EDT

@@ -480,20 +480,87 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       ) : null}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className={`${walletPanelMutedClass} grid gap-4 sm:grid-cols-2`}>
-          <div>
-            <Label htmlFor="firstName">First name</Label>
-            <Input id="firstName" {...register("firstName", { required: "First name is required" })} />
-            {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName.message}</p>}
+        <div className={`${walletPanelMutedClass} space-y-4`}>
+          <div className="space-y-1">
+            <p className={walletSectionLabelClass}>Banking info</p>
+            <p className="text-sm text-muted-foreground">
+              These details describe you as the account holder and help the wallet present your profile consistently.
+            </p>
           </div>
-          <div>
-            <Label htmlFor="lastName">Last name</Label>
-            <Input id="lastName" {...register("lastName", { required: "Last name is required" })} />
-            {errors.lastName && <p className="mt-1 text-sm text-red-500">{errors.lastName.message}</p>}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="firstName">Given name(s)</Label>
+              <Input id="firstName" {...register("firstName", { required: "First name is required" })} />
+              {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="lastName">Last name</Label>
+              <Input id="lastName" {...register("lastName", { required: "Last name is required" })} />
+              {errors.lastName && <p className="mt-1 text-sm text-red-500">{errors.lastName.message}</p>}
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="country">Country or Country number</Label>
+              <Controller
+                name="country"
+                control={control}
+                rules={{ required: "Country is required" }}
+                render={({ field }) => (
+                  <Select
+                    {...field}
+                    inputId="country"
+                    options={countryOptions}
+                    styles={selectStyles}
+                    placeholder="Type a country or country number"
+                    className={`text-sm ${reactSelectFieldShellClass}`}
+                    classNamePrefix="country-select"
+                    value={field.value}
+                    openMenuOnFocus={false}
+                    menuIsOpen={isCountryMenuOpen}
+                    inputValue={countrySearchInput}
+                    noOptionsMessage={() =>
+                      isCountryMenuOpen ? "No matching country or dial code." : "Start typing to see options."
+                    }
+                    filterOption={(option, inputValue) => {
+                      const search = inputValue.trim().toLowerCase();
+                      if (!search) {
+                        return false;
+                      }
+                      return (
+                        option.label.toLowerCase().includes(search) || option.value.toLowerCase().includes(search)
+                      );
+                    }}
+                    onInputChange={handleCountryInputChange}
+                    onChange={(option) => {
+                      setCountrySearchInput("");
+                      field.onChange(option);
+                    }}
+                    menuPortalTarget={typeof window !== "undefined" ? document.body : undefined}
+                  />
+                )}
+              />
+              {errors.country && <p className="mt-1 text-sm text-red-500">{errors.country.message}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="phone">Phone number</Label>
+              <Input id="phone" type="tel" value={bootstrap.user.phone ?? ""} readOnly disabled />
+              <p className="mt-1 text-xs text-muted-foreground">Phone updates stay in the verified onboarding flow.</p>
+            </div>
           </div>
         </div>
 
         <div className={`${walletPanelMutedClass} space-y-4`}>
+          <div className="space-y-1">
+            <p className={walletSectionLabelClass}>Info used in this app</p>
+            <p className="text-sm text-muted-foreground">
+              These settings shape how your name and handle appear inside this wallet experience.
+            </p>
+          </div>
+
           <div>
             <Label htmlFor="username">Username</Label>
             <Input
@@ -517,55 +584,6 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
           <div>
             <Label htmlFor="nickname">Preferred name</Label>
             <Input id="nickname" {...register("nickname")} placeholder="What should we call you?" />
-          </div>
-
-          <div>
-            <Label htmlFor="country">Country or Country number</Label>
-            <Controller
-              name="country"
-              control={control}
-              rules={{ required: "Country is required" }}
-              render={({ field }) => (
-                <Select
-                  {...field}
-                  inputId="country"
-                  options={countryOptions}
-                  styles={selectStyles}
-                  placeholder="Type a country or country number"
-                  className={`text-sm ${reactSelectFieldShellClass}`}
-                  classNamePrefix="country-select"
-                  value={field.value}
-                  openMenuOnFocus={false}
-                  menuIsOpen={isCountryMenuOpen}
-                  inputValue={countrySearchInput}
-                  noOptionsMessage={() =>
-                    isCountryMenuOpen ? "No matching country or dial code." : "Start typing to see options."
-                  }
-                  filterOption={(option, inputValue) => {
-                    const search = inputValue.trim().toLowerCase();
-                    if (!search) {
-                      return false;
-                    }
-                    return (
-                      option.label.toLowerCase().includes(search) || option.value.toLowerCase().includes(search)
-                    );
-                  }}
-                  onInputChange={handleCountryInputChange}
-                  onChange={(option) => {
-                    setCountrySearchInput("");
-                    field.onChange(option);
-                  }}
-                  menuPortalTarget={typeof window !== "undefined" ? document.body : undefined}
-                />
-              )}
-            />
-            {errors.country && <p className="mt-1 text-sm text-red-500">{errors.country.message}</p>}
-          </div>
-
-          <div>
-            <Label htmlFor="phone">Phone number</Label>
-            <Input id="phone" type="tel" value={bootstrap.user.phone ?? ""} readOnly disabled />
-            <p className="mt-1 text-xs text-muted-foreground">Phone updates stay in the verified onboarding flow.</p>
           </div>
         </div>
 

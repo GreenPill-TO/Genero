@@ -109,7 +109,10 @@ describe("UserProfileModal", () => {
   it("submits updated profile details", async () => {
     render(<UserProfileModal closeModal={closeModal} />);
 
-    fireEvent.change(screen.getByLabelText(/First name/i), { target: { value: "Jane" } });
+    expect(screen.getByText(/Banking info/i)).toBeTruthy();
+    expect(screen.getByText(/Info used in this app/i)).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText(/Given name\(s\)/i), { target: { value: "Jane" } });
     fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: "Doe" } });
     fireEvent.change(screen.getByLabelText(/Preferred name/i), { target: { value: "JD" } });
     fireEvent.change(screen.getByLabelText(/Username/i), { target: { value: "janedoe" } });
