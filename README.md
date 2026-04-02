@@ -21,6 +21,12 @@ The project integrates Supabase for storage, Cubid for identity and wallet manag
    pnpm dev
    ```
 
+For local Supabase work under Colima, start the trimmed local stack with:
+```bash
+pnpm supabase:start:local
+```
+That helper switches to the `colima-varrun` Docker context when available and reapplies the GoTrue mailer-host patch needed to suppress local `GOTRUE_MAILER_EXTERNAL_HOSTS` warnings.
+
 Open `http://localhost:3000` in your browser. Next.js will serve the app configured by `NEXT_PUBLIC_CITYCOIN` and `NEXT_PUBLIC_APP_NAME`.
 
 ## Scripts
@@ -28,6 +34,7 @@ Open `http://localhost:3000` in your browser. Next.js will serve the app configu
 - `pnpm dev` – run the development server
 - `pnpm build` – create a production build
 - `pnpm start` – start the production server
+- `pnpm supabase:start:local` – start the local Supabase stack for this repo and patch local GoTrue mailer host handling
 - `pnpm lint` – run ESLint
 
 ## Project Structure

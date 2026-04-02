@@ -1,3 +1,32 @@
+## v1.123
+### Timestamp
+- 2026-04-02 01:58 EDT
+
+### Objective
+- Stabilize the local Colima-backed Supabase auth stack by removing the recurring GoTrue `GOTRUE_MAILER_EXTERNAL_HOSTS` warning during OTP traffic.
+
+### What Changed
+- Normalized the local Supabase `site_url` and redirect allow-list in the local `supabase/config.toml` so the local browser-facing hosts are explicit and match the wallet dev hosts we actually use.
+- Added `scripts/start-local-supabase.sh` plus the `pnpm supabase:start:local` package script to start the trimmed local Supabase stack and then recreate the GoTrue container with `GOTRUE_MAILER_EXTERNAL_HOSTS=localhost,127.0.0.1`, which the CLI config does not currently expose.
+- Documented the local Supabase helper in `README.md` so the warning fix is repeatable instead of relying on one-off manual container surgery.
+
+### Verification
+- `pnpm supabase:start:local`
+- `docker inspect supabase_auth_Genero --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E '^GOTRUE_MAILER_EXTERNAL_HOSTS='`
+- `curl -sS -X POST http://localhost:54321/auth/v1/otp ...`
+- `curl -sS -X POST http://127.0.0.1:54321/auth/v1/otp ...`
+- `curl -sS -X POST http://127.0.0.1:54321/auth/v1/verify ...`
+- `docker logs --since 5s supabase_auth_Genero`
+
+### Files Edited
+- `supabase/config.toml`
+- `scripts/start-local-supabase.sh`
+- `package.json`
+- `README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.122
 ### Timestamp
 - 2026-04-02 01:18 EDT
