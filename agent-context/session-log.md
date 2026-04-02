@@ -1,3 +1,35 @@
+## v1.125
+### Timestamp
+- 2026-04-02 02:29 EDT
+
+### Objective
+- Add multi-email management to wallet Edit Profile while preserving a primary email, soft-delete history, and active-email uniqueness in Supabase.
+
+### What Changed
+- Added `public.user_email_addresses` by migration as the canonical account-email history table, with one active unique email across the whole system, one active primary email per user, soft-delete timestamps, and a trigger that keeps `public.users.email` synced to the current primary address.
+- Extended wallet user-settings bootstrap and profile updates so Edit Profile now reads and saves a full active email list while keeping `bootstrap.user.email` as the compatibility primary-email mirror for the rest of the app.
+- Reworked the Edit Profile email panel into a managed list: users can add another email, choose a different primary email, and remove non-primary emails, while the UI blocks removing the only remaining email or deleting the primary email before another primary is selected.
+- Updated auth-side user resolution and ensure-user flows to look up active emails from the new history table and to retain authenticated email addresses without wiping any other saved active emails.
+- Seeded the local development users into the new email-history table so fresh local resets start with consistent primary-email records.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx shared/lib/userSettings/types.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts supabase/functions/_shared/auth.ts supabase/functions/user-settings/index.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx supabase/functions/_shared/userSettings.test.ts shared/api/hooks/useAuth.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/migrations/20260402024500_v1.08_user_email_history.sql`
+- `supabase/seed.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.124
 ### Timestamp
 - 2026-04-02 02:17 EDT

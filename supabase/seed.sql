@@ -69,6 +69,24 @@ SET username = EXCLUDED.username,
     country = EXCLUDED.country,
     updated_at = now();
 
+INSERT INTO public.user_email_addresses (user_id, email, is_primary, created_at, updated_at)
+SELECT
+  u.id,
+  lower(u.email),
+  true,
+  u.created_at,
+  u.updated_at
+FROM public.users u
+WHERE u.id IN (1001, 1002, 1003, 1004)
+  AND u.email IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.user_email_addresses ue
+    WHERE ue.user_id = u.id
+      AND ue.email = lower(u.email)
+      AND ue.deleted_at IS NULL
+  );
+
 INSERT INTO public.roles (user_id, role, assigned_by, app_instance_id, created_at)
 SELECT 1001, 'admin', 1001, ai.id, now()
 FROM public.ref_app_instances ai

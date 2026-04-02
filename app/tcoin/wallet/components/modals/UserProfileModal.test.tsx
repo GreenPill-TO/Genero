@@ -17,6 +17,14 @@ const bootstrapUser = {
   id: 123,
   cubidId: "cubid-123",
   email: "test@example.com",
+  emails: [
+    {
+      id: 1,
+      email: "test@example.com",
+      isPrimary: true,
+      createdAt: "2026-04-02T00:00:00.000Z",
+    },
+  ],
   phone: "+1 555 123 4567",
   fullName: "Test User",
   firstName: "Test",
@@ -71,6 +79,14 @@ vi.mock("react-toastify", () => ({
 describe("UserProfileModal", () => {
   beforeEach(() => {
     bootstrapUser.profileImageUrl = null;
+    bootstrapUser.emails = [
+      {
+        id: 1,
+        email: "test@example.com",
+        isPrimary: true,
+        createdAt: "2026-04-02T00:00:00.000Z",
+      },
+    ];
     class ResizeObserverMock {
       observe() {}
       unobserve() {}
@@ -142,6 +158,12 @@ describe("UserProfileModal", () => {
       lastName: "Doe",
       username: "janedoe",
       nickname: "JD",
+      emails: [
+        {
+          email: "test@example.com",
+          isPrimary: true,
+        },
+      ],
       country: "Canada (+1)",
       address: "456 King St W, Toronto, ON",
       profileImageUrl: null,
@@ -180,7 +202,66 @@ describe("UserProfileModal", () => {
     expect(screen.getByTestId("profile-email-panel")).toBeTruthy();
     expect(screen.getByTestId("profile-banking-panel")).toBeTruthy();
     expect(screen.getByTestId("profile-app-info-panel")).toBeTruthy();
-    expect((screen.getByLabelText(/Email address/i) as HTMLInputElement).value).toBe("test@example.com");
+    expect((screen.getByLabelText(/Email address 1/i) as HTMLInputElement).value).toBe("test@example.com");
+  });
+
+  it("lets the user add another email and choose a different primary email", async () => {
+    render(<UserProfileModal closeModal={closeModal} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Add another email/i }));
+    fireEvent.change(screen.getByLabelText(/Email address 2/i), {
+      target: { value: "other@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Make primary/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Save Changes/i }));
+
+    await waitFor(() => expect(updateProfileMutateAsync).toHaveBeenCalled());
+    expect(updateProfileMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emails: [
+          {
+            email: "test@example.com",
+            isPrimary: false,
+          },
+          {
+            email: "other@example.com",
+            isPrimary: true,
+          },
+        ],
+      })
+    );
+  });
+
+  it("keeps the only email locked as the primary email", () => {
+    render(<UserProfileModal closeModal={closeModal} />);
+
+    expect(screen.getByText(/^Primary$/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Remove$/i }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(/There must always be at least one email address on the account\./i)).toBeTruthy();
+  });
+
+  it("requires a different primary email before removing the current primary", () => {
+    bootstrapUser.emails = [
+      {
+        id: 1,
+        email: "test@example.com",
+        isPrimary: true,
+        createdAt: "2026-04-02T00:00:00.000Z",
+      },
+      {
+        id: 2,
+        email: "backup@example.com",
+        isPrimary: false,
+        createdAt: "2026-04-02T00:05:00.000Z",
+      },
+    ];
+
+    render(<UserProfileModal closeModal={closeModal} />);
+
+    const removeButtons = screen.getAllByRole("button", { name: /^Remove$/i });
+    expect(removeButtons[0]?.hasAttribute("disabled")).toBe(true);
+    expect(removeButtons[1]?.hasAttribute("disabled")).toBe(false);
+    expect(screen.getByText(/Choose a different primary email before removing this one\./i)).toBeTruthy();
   });
 
   it("shows crop controls for a selected image and uploads the cropped result before saving", async () => {

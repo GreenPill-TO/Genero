@@ -86,7 +86,9 @@ async function handleRequest(req: Request): Promise<Response> {
           supabase: serviceRole,
           authUser,
           appContext,
-          payload: body ?? {},
+          authMethod: typeof body?.authMethod === "string" ? body.authMethod : null,
+          fullContact: typeof body?.fullContact === "string" ? body.fullContact : null,
+          cubidId: typeof body?.cubidId === "string" ? body.cubidId : null,
         })
       );
     }

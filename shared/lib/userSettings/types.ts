@@ -20,11 +20,19 @@ export type UserSettingsBiaOption = {
   name: string;
 };
 
+export type UserSettingsEmail = {
+  id: number | null;
+  email: string;
+  isPrimary: boolean;
+  createdAt: string | null;
+};
+
 export type UserSettingsUser = {
   id: number;
   cubidId: string;
   userIdentifier: string | null;
   email: string | null;
+  emails: UserSettingsEmail[];
   phone: string | null;
   fullName: string | null;
   firstName: string;
@@ -74,6 +82,10 @@ export type UpdateUserProfileInput = {
   lastName?: string;
   nickname?: string | null;
   username?: string | null;
+  emails?: Array<{
+    email: string;
+    isPrimary?: boolean;
+  }>;
   country?: string | null;
   address?: string | null;
   profileImageUrl?: string | null;

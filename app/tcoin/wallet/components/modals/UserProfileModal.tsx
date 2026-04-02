@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import Select, { type InputActionMeta, type StylesConfig } from "react-select";
 import countryList from "react-select-country-list";
 import { useUserSettings } from "@shared/hooks/useUserSettings";
@@ -48,6 +48,10 @@ type FormValues = {
   lastName: string;
   username: string;
   nickname: string;
+  emails: Array<{
+    email: string;
+    isPrimary: boolean;
+  }>;
   country: CountryOption | null;
   address: string;
 };
@@ -99,6 +103,57 @@ const getInitialCountryOption = (country: string | null | undefined, options: Co
   );
 };
 
+const getInitialEmails = (
+  profile:
+    | {
+        email?: string | null;
+        emails?: Array<{
+          email: string;
+          isPrimary: boolean;
+        }>;
+      }
+    | null
+    | undefined
+) => {
+  const knownEmails = Array.isArray(profile?.emails)
+    ? profile.emails
+        .map((entry) => ({
+          email: typeof entry.email === "string" ? entry.email.trim().toLowerCase() : "",
+          isPrimary: entry.isPrimary === true,
+        }))
+        .filter((entry) => entry.email.length > 0)
+    : [];
+
+  if (knownEmails.length > 0) {
+    if (knownEmails.length === 1) {
+      return [{ ...knownEmails[0], isPrimary: true }];
+    }
+
+    const hasPrimary = knownEmails.some((entry) => entry.isPrimary);
+    return knownEmails.map((entry, index) => ({
+      email: entry.email,
+      isPrimary: hasPrimary ? entry.isPrimary : index === 0,
+    }));
+  }
+
+  const fallbackEmail = typeof profile?.email === "string" ? profile.email.trim().toLowerCase() : "";
+  if (fallbackEmail) {
+    return [
+      {
+        email: fallbackEmail,
+        isPrimary: true,
+      },
+    ];
+  }
+
+  return [
+    {
+      email: "",
+      isPrimary: true,
+    },
+  ];
+};
+
 const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   const { bootstrap } = useUserSettings();
   const updateProfile = useUpdateUserProfileMutation();
@@ -108,6 +163,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   const profile = bootstrap?.user;
   const [initialFirstName, initialLastName] = useMemo(() => splitFullName(profile?.fullName), [profile?.fullName]);
   const countryOptions = useMemo(() => buildCountryOptions(), []);
+  const initialEmails = useMemo(() => getInitialEmails(profile), [profile]);
   const initialCountryOption = useMemo(
     () => getInitialCountryOption(profile?.country, countryOptions),
     [profile?.country, countryOptions]
@@ -132,6 +188,8 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     handleSubmit,
     control,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     defaultValues: {
@@ -139,10 +197,16 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       lastName: initialLastName,
       username: profile?.username ?? "",
       nickname: profile?.nickname ?? "",
+      emails: initialEmails,
       country: initialCountryOption,
       address: profile?.address ?? "",
     },
   });
+  const { fields: emailFields, append: appendEmail, remove: removeEmail } = useFieldArray({
+    control,
+    name: "emails",
+  });
+  const safeWatchedEmails = watch("emails", initialEmails);
 
   useEffect(() => {
     reset({
@@ -150,10 +214,11 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       lastName: initialLastName,
       username: profile?.username ?? "",
       nickname: profile?.nickname ?? "",
+      emails: initialEmails,
       country: initialCountryOption,
       address: profile?.address ?? "",
     });
-  }, [initialFirstName, initialLastName, initialCountryOption, profile?.address, profile?.nickname, profile?.username, reset]);
+  }, [initialEmails, initialFirstName, initialLastName, initialCountryOption, profile?.address, profile?.nickname, profile?.username, reset]);
 
   useEffect(() => {
     if (avatarSelection) {
@@ -231,6 +296,39 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     } finally {
       setIsPreparingAvatar(false);
     }
+  };
+
+  useEffect(() => {
+    if (safeWatchedEmails.length !== 1) {
+      return;
+    }
+
+    if (safeWatchedEmails[0]?.isPrimary) {
+      return;
+    }
+
+    setValue("emails.0.isPrimary", true, { shouldDirty: true });
+  }, [safeWatchedEmails, setValue]);
+
+  const setPrimaryEmail = (index: number) => {
+    safeWatchedEmails.forEach((_, currentIndex) => {
+      setValue(`emails.${currentIndex}.isPrimary`, currentIndex === index, { shouldDirty: true });
+    });
+  };
+
+  const addAnotherEmail = () => {
+    appendEmail({
+      email: "",
+      isPrimary: safeWatchedEmails.length === 0,
+    });
+  };
+
+  const removeManagedEmail = (index: number) => {
+    if (safeWatchedEmails.length <= 1 || safeWatchedEmails[index]?.isPrimary) {
+      return;
+    }
+
+    removeEmail(index);
   };
 
   const selectStyles = useMemo<StylesConfig<CountryOption, false>>(
@@ -321,12 +419,17 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       const address = values.address.trim();
       const nickname = values.nickname.trim();
       const username = values.username.trim().toLowerCase();
+      const emails = values.emails.map((entry) => ({
+        email: entry.email.trim().toLowerCase(),
+        isPrimary: entry.isPrimary,
+      }));
 
       await updateProfile.mutateAsync({
         firstName,
         lastName,
         username: username || null,
         nickname: nickname || null,
+        emails,
         country: countryValue || null,
         address: address || null,
         profileImageUrl,
@@ -344,7 +447,6 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
   }
 
   const username = profile?.username ? `@${profile.username}` : undefined;
-  const email = profile?.email ?? "";
   const avatarPreviewFrame = avatarSelection
     ? getProfilePictureCropFrame({
         imageWidth: avatarSelection.width,
@@ -571,15 +673,74 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
             <div className="space-y-1">
               <p className={walletSectionLabelClass}>Email</p>
               <p className="text-sm text-muted-foreground">
-                This is the address used for verification and account recovery in this wallet.
+                Keep one primary email on the account, and add other active addresses as needed. Deleted emails are retired
+                from this account but can be reused later elsewhere.
               </p>
             </div>
 
             <div className="space-y-3">
-              <div>
-                <Label htmlFor="profile-email">Email address</Label>
-                <Input id="profile-email" type="email" value={email} readOnly disabled />
-              </div>
+              {emailFields.map((field, index) => {
+                const isPrimary = safeWatchedEmails[index]?.isPrimary === true || safeWatchedEmails.length === 1;
+                const disableRemove = safeWatchedEmails.length <= 1 || isPrimary;
+                const emailError = errors.emails?.[index]?.email?.message;
+
+                return (
+                  <div key={field.id} className="space-y-2 rounded-2xl border border-slate-200/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Label htmlFor={`email-${field.id}`}>Email address {index + 1}</Label>
+                      <div className="flex items-center gap-2">
+                        {isPrimary ? (
+                          <span className={walletBadgeClass}>Primary</span>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="rounded-full px-3 py-1 text-xs"
+                            onClick={() => setPrimaryEmail(index)}
+                          >
+                            Make primary
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="rounded-full px-3 py-1 text-xs"
+                          onClick={() => removeManagedEmail(index)}
+                          disabled={disableRemove}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                    <Input
+                      id={`email-${field.id}`}
+                      type="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      placeholder="name@example.com"
+                      {...register(`emails.${index}.email`, {
+                        required: "Email address is required.",
+                        pattern: {
+                          value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                          message: "Enter a valid email address.",
+                        },
+                      })}
+                    />
+                    {emailError ? <p className="text-sm text-red-500">{emailError}</p> : null}
+                    {disableRemove ? (
+                      <p className="text-xs text-muted-foreground">
+                        {safeWatchedEmails.length <= 1
+                          ? "There must always be at least one email address on the account."
+                          : "Choose a different primary email before removing this one."}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
+
+              <Button type="button" variant="ghost" onClick={addAnotherEmail} className="rounded-full">
+                Add another email
+              </Button>
               {username ? (
                 <p className="text-sm font-semibold break-words">{username}</p>
               ) : (

@@ -3,6 +3,8 @@ import {
   buildFallbackUserIdentifier,
   buildUserIdentifierVariant,
   isFallbackUserIdentifier,
+  normaliseEmailAddress,
+  normaliseManagedEmails,
   normaliseUserIdentifierCandidate,
 } from "./userSettings";
 
@@ -29,5 +31,49 @@ describe("user identifier helpers", () => {
     expect(buildUserIdentifierVariant("abcdefghijklmnopqrstuvwxyzabcdef", 9)).toBe(
       "abcdefghijklmnopqrstuvwxyzabcd-9"
     );
+  });
+});
+
+describe("managed email helpers", () => {
+  it("normalises email addresses to trimmed lowercase values", () => {
+    expect(normaliseEmailAddress("  Taylor.Example@Example.com ")).toBe("taylor.example@example.com");
+    expect(normaliseEmailAddress("not-an-email")).toBeNull();
+  });
+
+  it("auto-selects the only email as primary", () => {
+    expect(normaliseManagedEmails([{ email: "Taylor.Example@Example.com", isPrimary: false }])).toEqual([
+      {
+        email: "taylor.example@example.com",
+        isPrimary: true,
+      },
+    ]);
+  });
+
+  it("dedupes duplicate emails and keeps exactly one explicit primary in multi-email mode", () => {
+    expect(
+      normaliseManagedEmails([
+        { email: "alpha@example.com", isPrimary: false },
+        { email: "ALPHA@example.com", isPrimary: false },
+        { email: "beta@example.com", isPrimary: true },
+      ])
+    ).toEqual([
+      {
+        email: "alpha@example.com",
+        isPrimary: false,
+      },
+      {
+        email: "beta@example.com",
+        isPrimary: true,
+      },
+    ]);
+  });
+
+  it("rejects multi-email payloads without exactly one primary email", () => {
+    expect(() =>
+      normaliseManagedEmails([
+        { email: "alpha@example.com", isPrimary: false },
+        { email: "beta@example.com", isPrimary: false },
+      ])
+    ).toThrow(/exactly one primary/i);
   });
 });

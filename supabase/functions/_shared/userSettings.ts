@@ -1,7 +1,20 @@
 type JsonRecord = Record<string, unknown>;
 
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,32}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const AUTO_USER_IDENTIFIER_PREFIX = "user-";
+
+type ManagedEmailInput = {
+  email: string;
+  isPrimary: boolean;
+};
+
+type UserEmailRow = {
+  id: number | null;
+  email: string;
+  isPrimary: boolean;
+  createdAt: string | null;
+};
 
 function isRecord(value: unknown): value is JsonRecord {
   return value != null && typeof value === "object" && !Array.isArray(value);
@@ -13,6 +26,62 @@ function toNullableString(value: unknown): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+export function normaliseEmailAddress(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalised = value.trim().toLowerCase();
+  if (!normalised || !EMAIL_PATTERN.test(normalised)) {
+    return null;
+  }
+
+  return normalised;
+}
+
+export function normaliseManagedEmails(value: unknown): ManagedEmailInput[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Emails must be provided as a list.");
+  }
+
+  const deduped = new Map<string, ManagedEmailInput>();
+
+  for (const entry of value) {
+    if (!isRecord(entry)) {
+      throw new Error("Each email entry must be an object.");
+    }
+
+    const email = normaliseEmailAddress(entry.email);
+    if (!email) {
+      throw new Error("Each email must be a valid email address.");
+    }
+
+    const next = deduped.get(email) ?? { email, isPrimary: false };
+    next.isPrimary = next.isPrimary || entry.isPrimary === true;
+    deduped.set(email, next);
+  }
+
+  const emails = Array.from(deduped.values());
+  if (emails.length === 0) {
+    throw new Error("At least one email address is required.");
+  }
+
+  if (emails.length === 1) {
+    return [{ ...emails[0], isPrimary: true }];
+  }
+
+  const primaryEmails = emails.filter((entry) => entry.isPrimary);
+  if (primaryEmails.length !== 1) {
+    throw new Error("Select exactly one primary email address.");
+  }
+
+  const primaryEmail = primaryEmails[0]?.email;
+  return emails.map((entry) => ({
+    email: entry.email,
+    isPrimary: entry.email === primaryEmail,
+  }));
 }
 
 export function normaliseUserIdentifierCandidate(value: unknown): string | null {
@@ -344,6 +413,288 @@ async function resolveBiaSelection(options: {
   };
 }
 
+async function loadActiveUserEmails(options: {
+  supabase: any;
+  userId: number;
+  fallbackEmail?: string | null;
+}): Promise<UserEmailRow[]> {
+  const { data, error } = await options.supabase
+    .from("user_email_addresses")
+    .select("id,email,is_primary,created_at")
+    .eq("user_id", options.userId)
+    .is("deleted_at", null)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (isMissingTableError(error.message)) {
+      const fallbackEmail = normaliseEmailAddress(options.fallbackEmail);
+      return fallbackEmail
+        ? [
+            {
+              id: null,
+              email: fallbackEmail,
+              isPrimary: true,
+              createdAt: null,
+            },
+          ]
+        : [];
+    }
+
+    throw new Error(`Failed to load user emails: ${error.message}`);
+  }
+
+  const emails = (data ?? [])
+    .map((row: any) => ({
+      id: toNullableInteger(row.id),
+      email: normaliseEmailAddress(row.email),
+      isPrimary: row.is_primary === true,
+      createdAt: toNullableString(row.created_at),
+    }))
+    .filter((row: UserEmailRow) => Boolean(row.email)) as UserEmailRow[];
+
+  if (emails.length > 0) {
+    return emails;
+  }
+
+  const fallbackEmail = normaliseEmailAddress(options.fallbackEmail);
+  return fallbackEmail
+    ? [
+        {
+          id: null,
+          email: fallbackEmail,
+          isPrimary: true,
+          createdAt: null,
+        },
+      ]
+    : [];
+}
+
+async function syncUserEmailAddresses(options: {
+  supabase: any;
+  userId: number;
+  emails: ManagedEmailInput[];
+}) {
+  const normalisedEmails = normaliseManagedEmails(options.emails);
+  const primaryEmail = normalisedEmails.find((entry) => entry.isPrimary)?.email ?? normalisedEmails[0]?.email ?? null;
+
+  const { data: existingRows, error: existingError } = await options.supabase
+    .from("user_email_addresses")
+    .select("id,email,is_primary")
+    .eq("user_id", options.userId)
+    .is("deleted_at", null);
+
+  if (existingError) {
+    if (isMissingTableError(existingError.message)) {
+      if (normalisedEmails.length > 1) {
+        throw new Error("Multiple email addresses are not configured in this environment.");
+      }
+
+      const { error: fallbackUpdateError } = await options.supabase
+        .from("users")
+        .update({
+          email: primaryEmail,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", options.userId);
+
+      if (fallbackUpdateError) {
+        throw new Error(`Failed to update primary email: ${fallbackUpdateError.message}`);
+      }
+
+      return;
+    }
+
+    throw new Error(`Failed to load user email state: ${existingError.message}`);
+  }
+
+  const { data: conflictingRows, error: conflictingError } = await options.supabase
+    .from("user_email_addresses")
+    .select("id,email,user_id")
+    .in(
+      "email",
+      normalisedEmails.map((entry) => entry.email)
+    )
+    .is("deleted_at", null)
+    .neq("user_id", options.userId);
+
+  if (conflictingError) {
+    throw new Error(`Failed to validate email availability: ${conflictingError.message}`);
+  }
+
+  if ((conflictingRows ?? []).length > 0) {
+    throw new Error("One of those email addresses is already connected to another active account.");
+  }
+
+  const existingByEmail = new Map<string, { id: number; email: string; isPrimary: boolean }>();
+  for (const row of existingRows ?? []) {
+    const email = normaliseEmailAddress(row.email);
+    const id = toNullableInteger(row.id);
+    if (!email || id == null) {
+      continue;
+    }
+    existingByEmail.set(email, {
+      id,
+      email,
+      isPrimary: row.is_primary === true,
+    });
+  }
+
+  const nowIso = new Date().toISOString();
+  const requestedEmails = new Set(normalisedEmails.map((entry) => entry.email));
+  const removedRowIds = Array.from(existingByEmail.values())
+    .filter((row) => !requestedEmails.has(row.email))
+    .map((row) => row.id);
+
+  if (removedRowIds.length > 0) {
+    const { error: deleteError } = await options.supabase
+      .from("user_email_addresses")
+      .update({
+        is_primary: false,
+        deleted_at: nowIso,
+        updated_at: nowIso,
+      })
+      .in("id", removedRowIds);
+
+    if (deleteError) {
+      throw new Error(`Failed to retire removed emails: ${deleteError.message}`);
+    }
+  }
+
+  for (const entry of normalisedEmails) {
+    const existingRow = existingByEmail.get(entry.email);
+    if (existingRow) {
+      if (existingRow.isPrimary === entry.isPrimary) {
+        continue;
+      }
+
+      const { error: updateError } = await options.supabase
+        .from("user_email_addresses")
+        .update({
+          is_primary: entry.isPrimary,
+          updated_at: nowIso,
+        })
+        .eq("id", existingRow.id);
+
+      if (updateError) {
+        throw new Error(`Failed to update email status: ${updateError.message}`);
+      }
+
+      continue;
+    }
+
+    const { error: insertError } = await options.supabase.from("user_email_addresses").insert({
+      user_id: options.userId,
+      email: entry.email,
+      is_primary: entry.isPrimary,
+      created_at: nowIso,
+      updated_at: nowIso,
+    });
+
+    if (insertError) {
+      throw new Error(`Failed to save email address: ${insertError.message}`);
+    }
+  }
+
+  const { error: userUpdateError } = await options.supabase
+    .from("users")
+    .update({
+      email: primaryEmail,
+      updated_at: nowIso,
+    })
+    .eq("id", options.userId);
+
+  if (userUpdateError) {
+    throw new Error(`Failed to update primary email: ${userUpdateError.message}`);
+  }
+}
+
+async function ensureUserEmailsPresent(options: {
+  supabase: any;
+  userId: number;
+  emails: string[];
+}) {
+  const existingEmails = await loadActiveUserEmails({
+    supabase: options.supabase,
+    userId: options.userId,
+  });
+
+  const requested = Array.from(
+    new Set(options.emails.map((value) => normaliseEmailAddress(value)).filter((value): value is string => Boolean(value)))
+  );
+
+  if (requested.length === 0) {
+    return;
+  }
+
+  const existingByEmail = new Map(existingEmails.map((entry) => [entry.email, entry]));
+  const merged = existingEmails.map((entry) => ({
+    email: entry.email,
+    isPrimary: entry.isPrimary,
+  }));
+
+  for (const email of requested) {
+    if (!existingByEmail.has(email)) {
+      merged.push({
+        email,
+        isPrimary: merged.length === 0,
+      });
+    }
+  }
+
+  if (!merged.some((entry) => entry.isPrimary) && merged.length > 0) {
+    merged[0]!.isPrimary = true;
+  }
+
+  await syncUserEmailAddresses({
+    supabase: options.supabase,
+    userId: options.userId,
+    emails: merged,
+  });
+}
+
+async function findUserIdByEmail(options: {
+  supabase: any;
+  email: string;
+}): Promise<number | null> {
+  const normalisedEmail = normaliseEmailAddress(options.email);
+  if (!normalisedEmail) {
+    return null;
+  }
+
+  const { data, error } = await options.supabase
+    .from("user_email_addresses")
+    .select("user_id")
+    .eq("email", normalisedEmail)
+    .is("deleted_at", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (!isMissingTableError(error.message)) {
+      throw new Error(`Failed to resolve user by email history: ${error.message}`);
+    }
+  } else {
+    const userId = toNullableInteger(data?.user_id);
+    if (userId != null) {
+      return userId;
+    }
+  }
+
+  const { data: fallbackData, error: fallbackError } = await options.supabase
+    .from("users")
+    .select("id")
+    .eq("email", normalisedEmail)
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackError) {
+    throw new Error(`Failed to resolve user by email: ${fallbackError.message}`);
+  }
+
+  return toNullableInteger(fallbackData?.id);
+}
+
 function buildUpdatedMetadata(options: {
   currentMetadata: unknown;
   theme?: "system" | "light" | "dark";
@@ -604,6 +955,12 @@ export async function getUserSettingsBootstrap(options: {
   const signup = resolveSignupMetadata(metadata.signup);
   const charityPreferences = ensureObject(appProfile.charity_preferences);
   const { firstName, lastName } = splitFullName(toNullableString(userRow.full_name));
+  const emails = await loadActiveUserEmails({
+    supabase: options.supabase,
+    userId: options.userId,
+    fallbackEmail: toNullableString(userRow.email),
+  });
+  const primaryEmail = emails.find((entry) => entry.isPrimary)?.email ?? emails[0]?.email ?? toNullableString(userRow.email);
 
   const phoneVerified = Boolean(userRow.phone) || signup.phoneVerified;
   const signupState = Boolean(userRow.has_completed_intro)
@@ -617,7 +974,8 @@ export async function getUserSettingsBootstrap(options: {
       id: Number(userRow.id),
       cubidId: typeof userRow.cubid_id === "string" ? userRow.cubid_id : "",
       userIdentifier: toNullableString(userRow.user_identifier),
-      email: toNullableString(userRow.email),
+      email: primaryEmail,
+      emails,
       phone: toNullableString(userRow.phone),
       fullName: toNullableString(userRow.full_name),
       firstName,
@@ -678,6 +1036,7 @@ export async function updateUserProfile(options: {
   const firstName = toNullableString(options.payload.firstName);
   const lastName = toNullableString(options.payload.lastName);
   const nickname = "nickname" in options.payload ? toNullableString(options.payload.nickname) : undefined;
+  const emails = "emails" in options.payload ? normaliseManagedEmails(options.payload.emails) : undefined;
   const country = "country" in options.payload ? toNullableString(options.payload.country) : undefined;
   const address = "address" in options.payload ? toNullableString(options.payload.address) : undefined;
   const profileImageUrl =
@@ -710,6 +1069,14 @@ export async function updateUserProfile(options: {
   }
   if ("username" in options.payload) {
     updates.username = username;
+  }
+
+  if (emails) {
+    await syncUserEmailAddresses({
+      supabase: options.supabase,
+      userId: options.userId,
+      emails,
+    });
   }
 
   if (Object.keys(updates).length > 0) {
@@ -1232,29 +1599,33 @@ export async function ensureAuthenticatedUserRecord(options: {
 }) {
   const contact = toNullableString(options.fullContact);
   const authMethod = toNullableString(options.authMethod)?.toLowerCase();
+  const authEmail = normaliseEmailAddress(options.authUser.email);
+  const contactEmail = authMethod === "phone" ? null : normaliseEmailAddress(contact);
 
-  const lookupQueries = [
+  const [authUserRowResult, authEmailUserId, phoneContactResult, contactEmailUserId] = await Promise.all([
     options.supabase.from("users").select("id").eq("auth_user_id", options.authUser.id).limit(1).maybeSingle(),
-    options.authUser.email
-      ? options.supabase.from("users").select("id").eq("email", options.authUser.email).limit(1).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+    authEmail ? findUserIdByEmail({ supabase: options.supabase, email: authEmail }) : Promise.resolve(null),
     authMethod === "phone" && contact
       ? options.supabase.from("users").select("id").eq("phone", contact).limit(1).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    authMethod !== "phone" && contact
-      ? options.supabase.from("users").select("id").eq("email", contact).limit(1).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-  ];
+    contactEmail ? findUserIdByEmail({ supabase: options.supabase, email: contactEmail }) : Promise.resolve(null),
+  ]);
 
-  const results = await Promise.all(lookupQueries);
-  for (const result of results) {
-    if (result.error) {
-      throw new Error(`Failed to resolve user row: ${result.error.message}`);
-    }
+  if (authUserRowResult.error) {
+    throw new Error(`Failed to resolve user row: ${authUserRowResult.error.message}`);
+  }
+  if (phoneContactResult.error) {
+    throw new Error(`Failed to resolve user row: ${phoneContactResult.error.message}`);
   }
 
-  const existing = results.map((result) => result.data).find((row) => row?.id);
-  let userId = toInteger(existing?.id);
+  const existingCandidates = [
+    toNullableInteger(authUserRowResult.data?.id),
+    authEmailUserId,
+    toNullableInteger(phoneContactResult.data?.id),
+    contactEmailUserId,
+  ].filter((value): value is number => value != null);
+
+  let userId = existingCandidates[0] ?? null;
   let created = false;
 
   if (userId == null) {
@@ -1273,9 +1644,9 @@ export async function ensureAuthenticatedUserRecord(options: {
     if (authMethod === "phone" && contact) {
       payload.phone = contact;
     } else if (contact) {
-      payload.email = contact;
-    } else if (options.authUser.email) {
-      payload.email = options.authUser.email;
+      payload.email = contactEmail ?? contact;
+    } else if (authEmail) {
+      payload.email = authEmail;
     }
 
     const { data: inserted, error: insertError } = await options.supabase
@@ -1294,8 +1665,8 @@ export async function ensureAuthenticatedUserRecord(options: {
     const patch: Record<string, unknown> = {
       auth_user_id: options.authUser.id,
     };
-    if (options.authUser.email) {
-      patch.email = options.authUser.email;
+    if (authEmail) {
+      patch.email = authEmail;
     }
     if (authMethod === "phone" && contact) {
       patch.phone = contact;
@@ -1309,6 +1680,16 @@ export async function ensureAuthenticatedUserRecord(options: {
 
   if (userId == null) {
     throw new Error("Unable to resolve authenticated user id.");
+  }
+
+  const managedEmails = [contactEmail, authEmail].filter((value): value is string => Boolean(value));
+
+  if (managedEmails.length > 0) {
+    await ensureUserEmailsPresent({
+      supabase: options.supabase,
+      userId,
+      emails: managedEmails,
+    });
   }
 
   await ensureUserIdentifier({

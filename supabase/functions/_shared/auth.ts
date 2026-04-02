@@ -52,6 +52,23 @@ function resolveBearerToken(req: Request): string {
   return token;
 }
 
+function normaliseEmail(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalised = value.trim().toLowerCase();
+  return normalised.length > 0 ? normalised : null;
+}
+
+function isMissingTableError(message: string | undefined): boolean {
+  if (!message) {
+    return false;
+  }
+
+  return message.includes("does not exist") || message.includes("Could not find the table") || message.includes("schema cache");
+}
+
 export async function resolveAuthenticatedUser(req: Request) {
   const serviceRole = createServiceRoleClient();
   const token = resolveBearerToken(req);
@@ -77,11 +94,49 @@ export async function resolveAuthenticatedUser(req: Request) {
   }
 
   let userRow = authUserRow;
-  if (!userRow && authUser.email) {
+  const authEmail = normaliseEmail(authUser.email);
+
+  if (!userRow && authEmail) {
+    const { data: emailHistoryRow, error: emailHistoryError } = await serviceRole
+      .from("user_email_addresses")
+      .select("user_id")
+      .eq("email", authEmail)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (emailHistoryError && !isMissingTableError(emailHistoryError.message)) {
+      throw new Error(`Failed to resolve user row by email history: ${emailHistoryError.message}`);
+    }
+
+    const historyUserId =
+      typeof emailHistoryRow?.user_id === "number"
+        ? emailHistoryRow.user_id
+        : typeof emailHistoryRow?.user_id === "string"
+          ? Number.parseInt(emailHistoryRow.user_id, 10)
+          : null;
+
+    if (historyUserId != null && Number.isFinite(historyUserId)) {
+      const { data: emailHistoryUserRow, error: historyUserRowError } = await serviceRole
+        .from("users")
+        .select("id,email,auth_user_id,cubid_id")
+        .eq("id", historyUserId)
+        .limit(1)
+        .maybeSingle();
+
+      if (historyUserRowError) {
+        throw new Error(`Failed to resolve user row from email history: ${historyUserRowError.message}`);
+      }
+
+      userRow = emailHistoryUserRow;
+    }
+  }
+
+  if (!userRow && authEmail) {
     const { data: emailUserRow, error: emailRowError } = await serviceRole
       .from("users")
       .select("id,email,auth_user_id,cubid_id")
-      .eq("email", authUser.email)
+      .eq("email", authEmail)
       .limit(1)
       .maybeSingle();
 
