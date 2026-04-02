@@ -1,3 +1,26 @@
+## v1.115
+### Timestamp
+- 2026-04-01 23:27 EDT
+
+### Objective
+- Make the authenticated header account widget reflect the saved user identity more clearly by showing the profile picture and prioritizing preferred name plus email.
+
+### What Changed
+- Updated the navbar account widget to source identity chrome from the normalized wallet user-settings bootstrap first, including the saved profile image.
+- Changed both the closed account trigger and the opened dropdown summary to lead with preferred name and email instead of the old username-first summary.
+- Expanded the navbar regression to assert the preferred-name summary and the presence of the saved profile-image source in the account widget.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.114
 ### Timestamp
 - 2026-04-01 23:04 EDT

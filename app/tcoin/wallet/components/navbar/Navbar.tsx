@@ -12,6 +12,7 @@ import {
 } from "@shared/components/ui/dropdown-menu";
 import { useModal } from "@shared/contexts/ModalContext";
 import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
+import { useUserSettings } from "@shared/hooks/useUserSettings";
 import { cn } from "@shared/utils/classnames";
 
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
@@ -27,6 +28,7 @@ const PHONE_BREAKPOINT = 768;
 export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
   const { isAuthenticated, userData, signOut } = useAuth();
+  const { bootstrap } = useUserSettings();
   const { hasCamera } = useCameraAvailability();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -106,10 +108,20 @@ export default function Navbar({ title }: { title?: string }) {
 
   const Account = () => {
     if (isAuthenticated) {
-      const profileImage = userData?.cubidData?.profile_image_url as unknown;
-      const username = userData?.cubidData?.username;
-      const email = userData?.cubidData?.email ?? userData?.user?.email;
-      const displayName = userData?.cubidData?.full_name?.trim() || username || "Account";
+      const profileImage =
+        bootstrap?.user?.profileImageUrl ||
+        ((userData?.cubidData?.profile_image_url as unknown) ?? undefined);
+      const username = bootstrap?.user?.username ?? userData?.cubidData?.username;
+      const email = bootstrap?.user?.email ?? userData?.cubidData?.email ?? userData?.user?.email;
+      const preferredName =
+        bootstrap?.user?.nickname?.trim() ||
+        userData?.cubidData?.nickname?.trim() ||
+        bootstrap?.user?.firstName?.trim() ||
+        userData?.cubidData?.given_names?.trim() ||
+        bootstrap?.user?.fullName?.trim() ||
+        userData?.cubidData?.full_name?.trim() ||
+        username ||
+        "Account";
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -128,7 +140,7 @@ export default function Navbar({ title }: { title?: string }) {
                 )}
               </Avatar>
               <span className="hidden min-w-0 sm:block">
-                <span className="block truncate text-sm font-semibold">{displayName}</span>
+                <span className="block truncate text-sm font-semibold">{preferredName}</span>
                 <span className="block truncate text-xs text-slate-500 dark:text-slate-300">
                   {email ?? "Wallet settings"}
                 </span>
@@ -137,9 +149,20 @@ export default function Navbar({ title }: { title?: string }) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={12} className="w-64 space-y-3 p-4 font-sans">
-            <div className="space-y-1">
-              {username && <p className="truncate text-sm font-semibold">@{username}</p>}
-              {email && <p className="truncate text-sm text-muted-foreground">{email}</p>}
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12">
+                {typeof profileImage === "string" ? (
+                  <AvatarImage src={profileImage} alt={`${preferredName} avatar`} />
+                ) : (
+                  <AvatarFallback>
+                    <LuUser />
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <div className="min-w-0 space-y-1">
+                <p className="truncate text-sm font-semibold">{preferredName}</p>
+                {email && <p className="truncate text-sm text-muted-foreground">{email}</p>}
+              </div>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

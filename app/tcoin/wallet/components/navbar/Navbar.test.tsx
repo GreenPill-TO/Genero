@@ -10,9 +10,20 @@ const signOut = vi.fn();
 const useCameraAvailabilityMock = vi.fn();
 
 const useAuthMock = vi.fn();
+const useUserSettingsMock = vi.fn();
 
 vi.mock("@shared/contexts/ModalContext", () => ({
   useModal: () => ({ openModal, closeModal }),
+}));
+
+vi.mock("@shared/components/ui/Avatar", () => ({
+  Avatar: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div className={className}>{children}</div>
+  ),
+  AvatarImage: ({ src, alt }: { src?: string; alt?: string }) => (
+    <div role="img" aria-label={alt} data-src={src} />
+  ),
+  AvatarFallback: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("@shared/components/ui/dropdown-menu", () => ({
@@ -25,6 +36,10 @@ vi.mock("@shared/components/ui/dropdown-menu", () => ({
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock("@shared/hooks/useUserSettings", () => ({
+  useUserSettings: () => useUserSettingsMock(),
 }));
 
 vi.mock("@shared/hooks/useCameraAvailability", () => ({
@@ -71,12 +86,26 @@ describe("Navbar session control", () => {
           username: "testuser",
           email: "test@example.com",
           profile_image_url: null,
+          nickname: "Tester",
+          given_names: "Test",
         },
         user: {
           email: "test@example.com",
         },
       },
       signOut,
+    });
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: {
+        user: {
+          nickname: "Tester",
+          firstName: "Test",
+          fullName: "Test User",
+          username: "testuser",
+          email: "test@example.com",
+          profileImageUrl: "https://example.com/avatar.png",
+        },
+      },
     });
     useCameraAvailabilityMock.mockReturnValue({
       hasCamera: true,
@@ -90,15 +119,20 @@ describe("Navbar session control", () => {
     openModal.mockReset();
     closeModal.mockReset();
     signOut.mockReset();
+    useUserSettingsMock.mockReset();
   });
 
-  it("shows the session dropdown with user details", () => {
+  it("shows the session dropdown with preferred name, email, and profile picture", () => {
     const { container } = render(<Navbar />);
     const nav = container.querySelector("nav");
 
     expect(nav?.className).toContain("font-sans");
-    expect(screen.getByText("@testuser")).toBeTruthy();
+    expect(screen.getAllByText("Tester")).toHaveLength(2);
     expect(screen.getAllByText("test@example.com")).toHaveLength(2);
+    const avatarImages = screen.getAllByRole("img", { name: /avatar/i });
+    expect(avatarImages.some((image) => image.getAttribute("data-src")?.includes("https://example.com/avatar.png"))).toBe(
+      true
+    );
   });
 
   it("opens the edit profile modal from the dropdown", () => {
