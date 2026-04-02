@@ -11,6 +11,7 @@ const toastError = vi.fn();
 const uploadProfilePictureMock = vi.fn();
 const prepareProfilePictureMock = vi.fn();
 const createCroppedProfilePictureFileMock = vi.fn();
+const getProfilePictureCropFrameMock = vi.fn();
 
 vi.mock("@shared/hooks/useUserSettings", () => ({
   useUserSettings: () => ({
@@ -53,14 +54,7 @@ vi.mock("@shared/lib/profilePictureCrop", () => ({
     if (height > width) return "portrait";
     return "square";
   },
-  getProfilePictureCropFrame: () => ({
-    scaledWidth: 176,
-    scaledHeight: 264,
-    x: 0,
-    y: -44,
-    maxOffsetX: 0,
-    maxOffsetY: 44,
-  }),
+  getProfilePictureCropFrame: (...args: any[]) => getProfilePictureCropFrameMock(...args),
 }));
 
 vi.mock("react-toastify", () => ({
@@ -86,6 +80,14 @@ describe("UserProfileModal", () => {
       previewUrl: "blob:avatar-preview",
       width: 1200,
       height: 1800,
+    }));
+    getProfilePictureCropFrameMock.mockImplementation(({ cropSize }: { cropSize: number }) => ({
+      scaledWidth: cropSize,
+      scaledHeight: cropSize * 1.5,
+      x: 0,
+      y: cropSize * -0.25,
+      maxOffsetX: 0,
+      maxOffsetY: cropSize * 0.25,
     }));
     createCroppedProfilePictureFileMock.mockImplementation(
       async () => new File(["cropped"], "avatar-cropped.png", { type: "image/png" })
@@ -159,6 +161,16 @@ describe("UserProfileModal", () => {
 
     await waitFor(() => expect(prepareProfilePictureMock).toHaveBeenCalledWith(file));
     expect(screen.getByText(/Profile picture framing/i)).toBeTruthy();
+    expect(getProfilePictureCropFrameMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cropSize: 80,
+      })
+    );
+    expect(getProfilePictureCropFrameMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cropSize: 176,
+      })
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /Save Changes/i }));
 

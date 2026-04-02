@@ -1,3 +1,26 @@
+## v1.114
+### Timestamp
+- 2026-04-01 23:04 EDT
+
+### Objective
+- Fix the Edit Profile avatar editor so the small summary preview and the larger crop editor show the same framing.
+
+### What Changed
+- Split the Edit Profile avatar preview rendering into two crop-frame calculations: one for the 80px summary circle and one for the 176px editor circle.
+- Kept both previews tied to the same underlying crop state, so changing zoom or offset now yields the same apparent crop at two different sizes instead of reusing one mismatched pixel frame.
+- Expanded the modal regression to assert that crop-frame calculation happens for both preview sizes during an image edit session.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.113
 ### Timestamp
 - 2026-04-01 23:02 EDT

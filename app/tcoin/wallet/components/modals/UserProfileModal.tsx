@@ -54,6 +54,7 @@ const DEFAULT_CROP_STATE: ProfilePictureCropState = {
   zoom: 1,
 };
 
+const AVATAR_PREVIEW_SIZE = 80;
 const CROP_PREVIEW_SIZE = 176;
 
 const buildCountryOptions = (): CountryOption[] => {
@@ -304,6 +305,16 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
 
   const username = profile?.username ? `@${profile.username}` : undefined;
   const email = profile?.email ?? "";
+  const avatarPreviewFrame = avatarSelection
+    ? getProfilePictureCropFrame({
+        imageWidth: avatarSelection.width,
+        imageHeight: avatarSelection.height,
+        cropSize: AVATAR_PREVIEW_SIZE,
+        offsetX: avatarCrop.offsetX,
+        offsetY: avatarCrop.offsetY,
+        zoom: avatarCrop.zoom,
+      })
+    : null;
   const cropFrame = avatarSelection
     ? getProfilePictureCropFrame({
         imageWidth: avatarSelection.width,
@@ -328,16 +339,16 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       </div>
 
       <div className={`${walletPanelMutedClass} flex flex-col gap-4 sm:flex-row sm:items-center`}>
-        {avatarSelection && cropFrame ? (
+        {avatarSelection && avatarPreviewFrame ? (
           <div className="relative h-20 w-20 overflow-hidden rounded-full border border-white/10 bg-muted">
             <div
               aria-hidden="true"
               className="absolute max-w-none"
               style={{
-                width: `${cropFrame.scaledWidth}px`,
-                height: `${cropFrame.scaledHeight}px`,
-                left: `${cropFrame.x}px`,
-                top: `${cropFrame.y}px`,
+                width: `${avatarPreviewFrame.scaledWidth}px`,
+                height: `${avatarPreviewFrame.scaledHeight}px`,
+                left: `${avatarPreviewFrame.x}px`,
+                top: `${avatarPreviewFrame.y}px`,
                 backgroundImage: `url(${avatarSelection.previewUrl})`,
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
