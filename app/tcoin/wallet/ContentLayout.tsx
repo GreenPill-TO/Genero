@@ -42,7 +42,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, [bypassAuthInLocalDev, isAuthenticated, isLoading, isPublic, router]);
 
   if (isLoading) {
-    return <div className={bodyClass}>...loading </div>;
+    return (
+      <div
+        data-testid="wallet-layout-loading"
+        className={cn(bodyClass, "items-center justify-center")}
+      >
+        <div className="text-sm text-muted-foreground">...loading</div>
+      </div>
+    );
   }
 
   return (

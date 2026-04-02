@@ -1,3 +1,25 @@
+## v1.131
+### Timestamp
+- 2026-04-02 12:27 EDT
+
+### Objective
+- Centre the wallet landing page’s initial auth-loading placeholder instead of leaving it pinned to the top-left corner.
+
+### What Changed
+- Updated the shared wallet `ContentLayout` loading branch to render `...loading` inside a viewport-centred flex wrapper rather than returning the raw layout shell with unaligned text.
+- Added a focused `ContentLayout` regression test that checks the loading shell uses centred alignment and still renders the loading label.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/ContentLayout.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/ContentLayout.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.130
 ### Timestamp
 - 2026-04-02 12:18 EDT

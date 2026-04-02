@@ -53,6 +53,23 @@ describe("ContentLayout", () => {
     expect(screen.getByTestId("wallet-navbar")).toBeTruthy();
   });
 
+  it("centres the initial loading state in the viewport", () => {
+    useAuthMock.mockReturnValue({
+      isLoading: true,
+      isAuthenticated: false,
+    });
+
+    render(
+      <ContentLayout>
+        <div>loading</div>
+      </ContentLayout>
+    );
+
+    expect(screen.getByTestId("wallet-layout-loading").className).toContain("items-center");
+    expect(screen.getByTestId("wallet-layout-loading").className).toContain("justify-center");
+    expect(screen.getByText("...loading")).toBeTruthy();
+  });
+
   it("does not apply the authenticated scroll frame on public routes", () => {
     usePathnameMock.mockReturnValue("/");
 
