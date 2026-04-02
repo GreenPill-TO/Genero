@@ -31,6 +31,11 @@ describe("MerchantsPage", () => {
       )
     ).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Return home" })).toHaveLength(2);
+    expect(
+      screen.getByText(
+        /Turn your everyday sales into a smarter system that brings customers back, reduces fees, and connects you with other local businesses\./
+      ).className
+    ).toContain("text-left");
   });
 
   it("uses landing-page highlight styling for lead-in statements", () => {

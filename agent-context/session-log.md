@@ -1,3 +1,26 @@
+## v1.141
+### Timestamp
+- 2026-04-02 14:03 EDT
+
+### Objective
+- Left-align the two introductory sales-pitch sentences on the public merchants page.
+
+### What Changed
+- Removed the hero section’s blanket centring on `/merchants` and applied `text-left` specifically to the two introductory paragraphs while leaving the `For Merchants` heading centred.
+- Extended the merchants-page regression test to verify that the main sales-pitch sentence now carries the left-alignment class.
+- Updated the required technical and functional specifications to record the intended hero alignment split.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/merchants/page.tsx app/tcoin/wallet/merchants/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/merchants/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/merchants/page.tsx`
+- `app/tcoin/wallet/merchants/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.140
 ### Timestamp
 - 2026-04-02 13:59 EDT

@@ -39,13 +39,13 @@ export default function MerchantsPage() {
           </div>
         </section>
 
-        <section className="space-y-5 text-center">
+        <section className="space-y-5">
           <h1 className="font-extrabold text-center">For Merchants</h1>
-          <p className="text-lg leading-8">
+          <p className="text-lg leading-8 text-left">
             Turn your everyday sales into a smarter system that brings customers back, reduces
             fees, and connects you with other local businesses.
           </p>
-          <p className="leading-8">
+          <p className="leading-8 text-left">
             TCOIN isn’t just a payment method—it’s a way to grow your business, strengthen your
             community, and keep more value circulating locally.
           </p>
