@@ -1,3 +1,27 @@
+## v1.162
+### Timestamp
+- 2026-04-02 18:44 EDT
+
+### Objective
+- Simplify the simple-mode home actions by collapsing the two top-up buttons into one clearer `Buy more TCOIN` entry point.
+
+### What Changed
+- Replaced the separate `Top Up with Interac` and `Buy more TCOIN` buttons in `SimpleWalletHome` with one `Buy more TCOIN` button.
+- Added a small floating menu under that button with two explicit paths: `Top up with Interac` and `Top up with Credit Card`.
+- Kept the existing modal destinations intact, so the menu simply routes into the current Interac and credit-card top-up flows instead of introducing new payment logic.
+- Added focused component tests for the floating menu and both modal-opening branches.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.161
 ### Timestamp
 - 2026-04-02 18:51 EDT
