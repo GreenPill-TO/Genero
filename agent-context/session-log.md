@@ -1,3 +1,26 @@
+## v1.126
+### Timestamp
+- 2026-04-02 18:07 EDT
+
+### Objective
+- Move wallet `/welcome` onto the authenticated wallet shell so onboarding uses the signed-in visual language instead of the public landing-page styling.
+
+### What Changed
+- Reworked `/welcome` to use the shared authenticated wallet page and panel tokens for signed-out, first-run, resume, wizard, loading, and fallback states, keeping onboarding visually consistent with the dashboard shell.
+- Removed the stale dark-mode dependency from the welcome route after the shell move, since the page now relies on shared wallet UI tokens rather than a one-off public-card treatment.
+- Added a regression test that checks the authenticated welcome shell still wraps the loading state as well as the signed-in start state.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.125
 ### Timestamp
 - 2026-04-02 02:29 EDT

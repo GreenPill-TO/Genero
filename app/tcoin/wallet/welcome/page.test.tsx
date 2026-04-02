@@ -64,12 +64,6 @@ vi.mock("@shared/hooks/useUserSettingsMutations", () => ({
   }),
 }));
 
-vi.mock("@shared/hooks/useDarkMode", () => ({
-  default: () => ({
-    isDarkMode: false,
-  }),
-}));
-
 vi.mock("@shared/api/services/supabaseService", () => ({
   getActiveAppInstance: vi.fn(),
   normaliseDeviceInfo: vi.fn((value) => value),
@@ -165,6 +159,8 @@ describe("WelcomePage", () => {
   it("renders the start state for a first-time user", () => {
     render(<WelcomePage />);
 
+    expect(screen.getByTestId("welcome-page-shell").className).toContain("font-sans");
+    expect(screen.getByTestId("welcome-primary-panel")).toBeTruthy();
     expect(screen.getByText("Welcome to TCOIN")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Start setup/i })).toBeTruthy();
   });
@@ -185,6 +181,19 @@ describe("WelcomePage", () => {
 
     expect(screen.getByText("Welcome to TCOIN")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Authenticate/i })).toBeTruthy();
+  });
+
+  it("renders authenticated loading state inside the wallet shell", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: null,
+      isLoading: true,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    expect(screen.getByTestId("welcome-page-shell").className).toContain("font-sans");
+    expect(screen.getByText("Loading welcome flow…")).toBeTruthy();
   });
 
   it("renders the resume state for an incomplete signup", () => {

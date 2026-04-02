@@ -16,7 +16,6 @@ import {
 import { registerWalletCustody } from "@shared/lib/edge/userSettingsClient";
 import { useCompleteUserSignupMutation, useResetUserSignupMutation, useSaveUserSignupStepMutation, useStartUserSignupMutation } from "@shared/hooks/useUserSettingsMutations";
 import { useUserSettings } from "@shared/hooks/useUserSettings";
-import useDarkMode from "@shared/hooks/useDarkMode";
 import { useModal } from "@shared/contexts/ModalContext";
 import { TCOIN_WELCOME_VIDEO_URL } from "@shared/lib/supabase/assets";
 import { dialCodes } from "@shared/utils/countryDialCodes";
@@ -24,10 +23,15 @@ import { cn } from "@shared/utils/classnames";
 import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
-import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
 import { fileInputFieldClass, nativeFieldClass, reactSelectFieldShellClass } from "@shared/components/ui/formFieldStyles";
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 import { LuUser } from "react-icons/lu";
+import {
+  walletBadgeClass,
+  walletPageClass,
+  walletPanelClass,
+  walletPanelMutedClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 
 const WalletComponent = dynamic(() => import("cubid-wallet").then((mod) => mod.WalletComponent), { ssr: false });
 const CubidWidget = dynamic(() => import("cubid-sdk").then((mod) => mod.CubidWidget), { ssr: false });
@@ -90,7 +94,6 @@ export default function WelcomePage() {
   const router = useRouter();
   const { userData, authData, isAuthenticated } = useAuth();
   const { bootstrap, isLoading, refetch } = useUserSettings();
-  const { isDarkMode } = useDarkMode();
   const { openModal, closeModal } = useModal();
   const startSignup = useStartUserSignupMutation();
   const saveSignupStep = useSaveUserSignupStepMutation();
@@ -423,7 +426,10 @@ export default function WelcomePage() {
     }
   };
 
-  const mainClass = cn("flex-grow flex flex-col items-center justify-center p-4");
+  const mainClass = cn(
+    walletPageClass,
+    "min-h-screen justify-center font-sans lg:pl-40 xl:pl-44"
+  );
   const selectedCountry = watch("country");
   const selectedPrimaryBiaId = communitySettings.primaryBiaId;
 
@@ -435,31 +441,48 @@ export default function WelcomePage() {
   };
 
   if (isLoading && !bootstrap) {
-    return <div className={mainClass}>Loading welcome flow…</div>;
+    return (
+      <div className={mainClass} data-testid="welcome-page-shell">
+        <section className={`${walletPanelClass} mx-auto w-full max-w-3xl space-y-3`}>
+          <span className={walletBadgeClass}>Wallet setup</span>
+          <p className="text-sm text-muted-foreground">Loading welcome flow…</p>
+        </section>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className={mainClass}>
-        <Card className={`w-full max-w-2xl ${isDarkMode ? "text-white" : "text-black"}`}>
-          <CardHeader className="text-center">
-            <h1 className="text-3xl font-semibold">Welcome to TCOIN</h1>
-            <p className="text-sm text-muted-foreground">Sign in to start or resume your wallet setup.</p>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
+      <div className={mainClass} data-testid="welcome-page-shell">
+        <section className={`${walletPanelClass} mx-auto w-full max-w-3xl space-y-6`}>
+          <div className="space-y-3 text-center">
+            <span className={walletBadgeClass}>Wallet setup</span>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">Welcome to TCOIN</h1>
+              <p className="text-sm text-muted-foreground">Sign in to start or resume your wallet setup.</p>
+            </div>
+          </div>
+          <div className={`${walletPanelMutedClass} space-y-4 text-sm text-muted-foreground`}>
             <p>Your signup is saved step by step once you authenticate.</p>
             <p>You will be able to add your user details, choose a profile picture, choose community settings, set up your wallet, and continue to the dashboard.</p>
-          </CardContent>
-          <CardFooter className="justify-end">
+          </div>
+          <div className="flex justify-end">
             <Button onClick={openSignIn}>Authenticate</Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </section>
       </div>
     );
   }
 
   if (!bootstrap) {
-    return <div className={mainClass}>Unable to load your welcome flow.</div>;
+    return (
+      <div className={mainClass} data-testid="welcome-page-shell">
+        <section className={`${walletPanelClass} mx-auto w-full max-w-3xl space-y-3`}>
+          <span className={walletBadgeClass}>Wallet setup</span>
+          <p className="text-sm text-muted-foreground">Unable to load your welcome flow.</p>
+        </section>
+      </div>
+    );
   }
 
   const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -478,32 +501,38 @@ export default function WelcomePage() {
   };
 
   return (
-    <div className={mainClass}>
+    <div className={mainClass} data-testid="welcome-page-shell">
       {!showWizard && bootstrap.signup.state === "none" ? (
-        <Card className={`w-full max-w-2xl ${isDarkMode ? "text-white" : "text-black"}`}>
-          <CardHeader className="text-center">
-            <h1 className="text-3xl font-semibold">Welcome to TCOIN</h1>
-            <p className="text-sm text-muted-foreground">Set up your profile, community defaults, and wallet in one flow.</p>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
+        <section className={`${walletPanelClass} mx-auto w-full max-w-3xl space-y-6`} data-testid="welcome-primary-panel">
+          <div className="space-y-3 text-center">
+            <span className={walletBadgeClass}>Wallet setup</span>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">Welcome to TCOIN</h1>
+              <p className="text-sm text-muted-foreground">Set up your profile, community defaults, and wallet in one flow.</p>
+            </div>
+          </div>
+          <div className={`${walletPanelMutedClass} space-y-4 text-sm text-muted-foreground`}>
             <p>Your setup is saved step by step, so you can come back later if you need to.</p>
             <p>You will add your user details, choose a profile picture, choose your community settings, connect your wallet, and then head to the dashboard.</p>
-          </CardContent>
-          <CardFooter className="justify-end">
+          </div>
+          <div className="flex justify-end">
             <Button onClick={() => void handleStart()} disabled={startSignup.isPending}>
               {startSignup.isPending ? "Starting..." : "Start setup"}
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </section>
       ) : null}
 
       {!showWizard && bootstrap.signup.state === "draft" ? (
-        <Card className={`w-full max-w-2xl ${isDarkMode ? "text-white" : "text-black"}`}>
-          <CardHeader className="text-center">
-            <h1 className="text-3xl font-semibold">Resume your signup</h1>
-            <p className="text-sm text-muted-foreground">You have a saved draft at step {currentStep} of {totalSteps}.</p>
-          </CardHeader>
-          <CardFooter className="justify-end gap-2">
+        <section className={`${walletPanelClass} mx-auto w-full max-w-3xl space-y-6`} data-testid="welcome-primary-panel">
+          <div className="space-y-3 text-center">
+            <span className={walletBadgeClass}>Saved draft</span>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">Resume your signup</h1>
+              <p className="text-sm text-muted-foreground">You have a saved draft at step {currentStep} of {totalSteps}.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => void handleReset()} disabled={resetSignup.isPending}>
               {resetSignup.isPending ? "Resetting..." : "Reset"}
             </Button>
@@ -515,19 +544,22 @@ export default function WelcomePage() {
             >
               Resume
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </section>
       ) : null}
 
       {showWizard ? (
-        <Card className={`w-full max-w-3xl ${isDarkMode ? "text-white" : "text-black"}`}>
-          <CardHeader className="text-center">
-            <h1 className="text-3xl font-semibold">User Signup</h1>
-            <p className="text-sm text-muted-foreground">Step {wizardStep} of {totalSteps}</p>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        <section className={`${walletPanelClass} mx-auto w-full max-w-4xl space-y-6`} data-testid="welcome-primary-panel">
+          <div className="space-y-3 text-center">
+            <span className={walletBadgeClass}>User signup</span>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">User Signup</h1>
+              <p className="text-sm text-muted-foreground">Step {wizardStep} of {totalSteps}</p>
+            </div>
+          </div>
+          <div className="space-y-6">
             {wizardStep === 1 ? (
-              <div className="space-y-4 text-sm text-muted-foreground">
+              <div className={`${walletPanelMutedClass} space-y-4 text-sm text-muted-foreground`}>
                 <p>TCOIN works best when your profile, community preferences, and wallet are all configured together.</p>
                 <p>This signup is resumable. If you leave part-way through, you will be able to resume from your saved step next time.</p>
               </div>
@@ -629,7 +661,7 @@ export default function WelcomePage() {
                     </>
                   )}
                 </div>
-                <CardFooter className="justify-between px-0">
+                <div className="flex justify-between px-0">
                   <Button type="button" variant="outline" onClick={() => setWizardStep(1)}>
                     Back
                   </Button>
@@ -647,7 +679,7 @@ export default function WelcomePage() {
                   >
                     {isSubmitting || saveSignupStep.isPending ? "Saving..." : "Continue"}
                   </Button>
-                </CardFooter>
+                </div>
               </form>
             ) : null}
 
@@ -678,14 +710,14 @@ export default function WelcomePage() {
                     <p className="text-xs text-muted-foreground">Square images work best.</p>
                   </div>
                 </div>
-                <CardFooter className="justify-between px-0">
+                <div className="flex justify-between px-0">
                   <Button type="button" variant="outline" onClick={() => setWizardStep(2)}>
                     Back
                   </Button>
                   <Button type="button" onClick={() => void saveProfilePictureStep()} disabled={saveSignupStep.isPending || isUploadingProfilePicture}>
                     {saveSignupStep.isPending || isUploadingProfilePicture ? "Saving..." : "Continue"}
                   </Button>
-                </CardFooter>
+                </div>
               </div>
             ) : null}
 
@@ -759,7 +791,7 @@ export default function WelcomePage() {
                       ))}
                   </div>
                 </div>
-                <CardFooter className="justify-between px-0">
+                <div className="flex justify-between px-0">
                   <Button type="button" variant="outline" onClick={() => setWizardStep(3)}>
                     Back
                   </Button>
@@ -770,7 +802,7 @@ export default function WelcomePage() {
                   >
                     {saveSignupStep.isPending ? "Saving..." : "Continue"}
                   </Button>
-                </CardFooter>
+                </div>
               </div>
             ) : null}
 
@@ -835,7 +867,7 @@ export default function WelcomePage() {
                     }}
                   />
                 )}
-                <CardFooter className="justify-between px-0">
+                <div className="flex justify-between px-0">
                   <Button type="button" variant="outline" onClick={() => setWizardStep(4)}>
                     Back
                   </Button>
@@ -849,7 +881,7 @@ export default function WelcomePage() {
                       {saveSignupStep.isPending ? "Saving..." : "Continue"}
                     </Button>
                   </div>
-                </CardFooter>
+                </div>
               </div>
             ) : null}
 
@@ -866,28 +898,28 @@ export default function WelcomePage() {
                     Set `NEXT_PUBLIC_TCOIN_WELCOME_VIDEO_URL` to display the onboarding funding video.
                   </p>
                 )}
-                <CardFooter className="justify-between px-0">
+                <div className="flex justify-between px-0">
                   <Button type="button" variant="outline" onClick={() => setWizardStep(5)}>
                     Back
                   </Button>
                   <Button type="button" onClick={() => void finishSignup()} disabled={completeSignup.isPending}>
                     {completeSignup.isPending ? "Finishing..." : "Continue to Dashboard"}
                   </Button>
-                </CardFooter>
+                </div>
               </div>
             ) : null}
-          </CardContent>
+          </div>
           {wizardStep === 1 ? (
-            <CardFooter className="justify-end gap-2">
+            <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowWizard(false)}>
                 Cancel
               </Button>
               <Button onClick={() => void saveWelcomeStep()} disabled={saveSignupStep.isPending}>
                 {saveSignupStep.isPending ? "Saving..." : "Continue"}
               </Button>
-            </CardFooter>
+            </div>
           ) : null}
-        </Card>
+        </section>
       ) : null}
     </div>
   );
