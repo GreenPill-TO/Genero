@@ -13,21 +13,24 @@ vi.mock("@tcoin/wallet/components/footer", () => ({
 }));
 
 describe("MerchantsPage", () => {
-  it("renders the merchant sales pitch and setup guidance", () => {
+  it("renders the merchant sales pitch with grouped section headings and return-home links", () => {
     render(<MerchantsPage />);
 
     expect(screen.getByRole("heading", { name: "For Merchants" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Benefits for Merchants" })).toBeTruthy();
     expect(
       screen.getByText(
         /Turn your everyday sales into a smarter system that brings customers back, reduces fees, and connects you with other local businesses\./
       )
     ).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Simple to start" })).toBeTruthy();
+    expect(screen.getByText(/Sell more, upfront\./)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Simple to Start" })).toBeTruthy();
     expect(
       screen.getByText(
         /The first step is to log in, sign up as an individual\. Then go to the Merchant Signup Page and let us know about where you are and what you sell\./
       )
     ).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Return home" })).toHaveLength(2);
   });
 
   it("exports SEO metadata", () => {

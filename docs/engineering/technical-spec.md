@@ -95,6 +95,7 @@
     runtime helpers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
     queries.
   - The wallet public-route allowlist now includes `/merchants`, and the unauthenticated footer plus sitemap both expose that new merchant-discovery page alongside the existing public landing resources.
+  - The `/merchants` public page now uses a landing-page-style content rhythm with increased hero top spacing, a top-left return-home control, and grouped multi-paragraph sections, with focused tests guarding the new heading structure and dual return-home links.
   - The public contact route keeps its long-form invitation copy intact while constraining the WhatsApp anchor itself to the minimal CTA text, with a focused page test guarding the shorter hyperlink span.
   - The shared `useDarkMode` hook now derives its initial `themeMode` / `isDarkMode` state from cached or system preference during first render instead of defaulting to light until effects run, which keeps the unauthenticated footer toggle label aligned with the currently resolved theme on initial paint.
   - Edge app-context resolution is now strict: when multiple `ref_app_instances` rows match an app/city pair, callers must provide `environment` explicitly instead of silently falling through to the first row.

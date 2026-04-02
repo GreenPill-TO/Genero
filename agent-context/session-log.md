@@ -1,3 +1,26 @@
+## v1.136
+### Timestamp
+- 2026-04-02 13:33 EDT
+
+### Objective
+- Improve the reading rhythm and header clearance of the public merchant sales page.
+
+### What Changed
+- Reworked `/merchants` from a stack of single-paragraph headings into broader sections with landing-page-style pacing, using `Benefits for Merchants`, `Grow Through the Network`, and `Simple to Start` as the primary headings.
+- Increased the page’s top padding so the `For Merchants` hero clears the fixed header, and added a top-left `Return home` control while keeping the existing footer-adjacent return link.
+- Updated the page test to guard the new grouped-heading structure and the presence of both return-home links, and recorded the change in the required specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/merchants/page.tsx app/tcoin/wallet/merchants/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/merchants/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/merchants/page.tsx`
+- `app/tcoin/wallet/merchants/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.135
 ### Timestamp
 - 2026-04-02 13:26 EDT

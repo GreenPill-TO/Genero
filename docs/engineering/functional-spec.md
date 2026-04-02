@@ -38,6 +38,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Resources and Contact pages share the landing page header and footer, adopt the wider layout and are publicly accessible without authentication.
 - On the public Contact page, the body copy now keeps the WhatsApp invitation in plain text while limiting the actual hyperlink to the shortest useful CTA text, so public links are easier to scan and less visually noisy.
 - A dedicated public `/merchants` page now uses that same unauthenticated landing-shell styling and presents the merchant sales pitch around vouchers, lower fees, repeat visits, local merchant trade, and merchant governance, with a matching footer link so merchants can discover it from any public page.
+- The public `/merchants` page now follows the main landing page’s reading rhythm more closely: the hero clears the fixed header, a top-left `Return home` action is available immediately, and the merchant pitch is grouped into broader multi-paragraph sections instead of a stack of single-paragraph headings.
 - Dashboard page (`/dashboard`) is publicly accessible without authentication.
 - Dashboard's public status is verified by a Vitest unit test covering the unauthenticated path list.
 - Once authenticated, wallet users move into a separate bank-inspired shell with calmer neutrals, a single teal action colour, compact chrome, and summary-first layouts; the public landing/resources/contact styling stays unchanged.
