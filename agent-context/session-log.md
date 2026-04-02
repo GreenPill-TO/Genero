@@ -1,3 +1,28 @@
+## v1.121
+### Timestamp
+- 2026-04-02 00:51 EDT
+
+### Objective
+- Harden root wallet route aliasing so direct loads and refreshes on `/merchant` resolve reliably instead of intermittently falling into a 404/dev refresh loop.
+
+### What Changed
+- Added explicit root rewrite entries in `next.config.js` for the main wallet and operator pages (`/dashboard`, `/merchant`, `/admin`, `/city-manager`, `/city-admin`, `/welcome`, `/resources`, `/contact`, `/ecosystem`) ahead of the generic non-API fallback rewrite.
+- Added a focused `next.config` regression test to assert that the key operator/dashboard aliases remain present and that the broad catch-all rewrite stays last.
+- Re-verified the merchant alias over HTTP after the rewrite update so `/merchant` and `/tcoin/wallet/merchant` both resolve through the same workspace entrypoint.
+
+### Verification
+- `pnpm exec vitest run next.config.test.ts`
+- `curl -I http://localhost:3000/merchant`
+- `curl -I http://localhost:3000/tcoin/wallet/merchant`
+- `curl -I http://localhost:3000/dashboard`
+
+### Files Edited
+- `next.config.js`
+- `next.config.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.120
 ### Timestamp
 - 2026-04-02 00:37 EDT

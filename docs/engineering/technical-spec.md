@@ -245,6 +245,7 @@
 - Theme background variables are now pure white for light mode and pure black for dark mode, and the landing, resources and contact main panels force black backgrounds when dark mode is active.
 - Public page wrappers now use `bg-background` so panels take their colour from the theme variable instead of hard-coded white.
 - Internal links use root-relative URLs and rewrites map them to the wallet app, eliminating `/tcoin/wallet` from page paths.
+- `next.config.js` now declares explicit root rewrites for the main wallet/operator entry points (`/dashboard`, `/merchant`, `/admin`, `/city-manager`, `/city-admin`, `/welcome`, `/resources`, `/contact`, `/ecosystem`) before the generic non-API fallback rewrite, so hard reloads on those routes do not depend on the broad catch-all matcher alone.
 - Sign-in modals replace the single passcode field with six auto-advancing inputs that accept pasted codes.
 - Wallet custody shares are normalised into `wallet_keys` (`user_id` + `namespace`) so multiple wallet addresses can reference one key via `wallet_key_id`; `wallet_list` no longer stores raw `app_share` directly.
 - `wallet_list` now carries the canonical EVM `public_key` for each wallet row, with a namespace-scoped uniqueness index so wallet-dependent app flows can rely on one stable recipient-wallet field.
