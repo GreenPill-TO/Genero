@@ -194,7 +194,7 @@ describe("ContactsTab", () => {
     modal.unmount();
   });
 
-  it("notifies when contacts are resolved and seeds initial contacts", async () => {
+  it("seeds initial contacts without echoing them back through onContactsResolved", async () => {
     const onContactsResolved = vi.fn();
     const seed = [
       {
@@ -218,12 +218,7 @@ describe("ContactsTab", () => {
     );
 
     expect(await screen.findByText("Zara")).toBeTruthy();
-
-    await waitFor(() =>
-      expect(onContactsResolved).toHaveBeenCalledWith([
-        expect.objectContaining({ full_name: "Zara" }),
-      ])
-    );
+    expect(onContactsResolved).not.toHaveBeenCalled();
   });
 
   it("shows a friendly invite workflow when no contacts exist", async () => {

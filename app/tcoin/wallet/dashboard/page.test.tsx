@@ -1,10 +1,11 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const useAuthMock = vi.hoisted(() => vi.fn());
 const pushMock = vi.hoisted(() => vi.fn());
+const contactsTabPropsMock = vi.hoisted(() => vi.fn());
 const searchParamsMock = vi.hoisted(
   () =>
     ({
@@ -35,7 +36,10 @@ vi.mock("@tcoin/wallet/components/dashboard", () => ({
   WalletHome: ({ onOpenTransactionHistory }: { onOpenTransactionHistory?: () => void }) => (
     <button onClick={() => onOpenTransactionHistory?.()}>open-history</button>
   ),
-  ContactsTab: () => <div>contacts</div>,
+  ContactsTab: (props: any) => {
+    contactsTabPropsMock(props);
+    return <div>contacts</div>;
+  },
   SendTab: () => <div>send</div>,
   ReceiveTab: () => <div>receive</div>,
   MoreTab: () => <div>more</div>,
@@ -63,6 +67,7 @@ describe("DashboardPage", () => {
       isLoadingUser: false,
     });
     pushMock.mockReset();
+    contactsTabPropsMock.mockReset();
     searchParamsMock.get = vi.fn(() => null);
   });
 
@@ -98,5 +103,36 @@ describe("DashboardPage", () => {
 
     expect(screen.getByTestId("dashboard-tab-content").className).toContain("max-w-[62.5rem]");
     expect(screen.getByText("receive")).toBeTruthy();
+  });
+
+  it("stabilizes the contacts resolver so repeated identical results do not loop", () => {
+    searchParamsMock.get = vi.fn((key: string) => (key === "tab" ? "contacts" : null));
+    render(<DashboardPage />);
+
+    const firstProps = contactsTabPropsMock.mock.calls.at(-1)?.[0];
+    const resolveContacts = firstProps.onContactsResolved as ((records: any[]) => void) | undefined;
+    expect(typeof resolveContacts).toBe("function");
+
+    const records = [
+      {
+        id: 11,
+        full_name: "Alice",
+        username: "alice",
+        profile_image_url: null,
+        wallet_address: "0x1111",
+        state: "accepted",
+        last_interaction: "2024-01-02T00:00:00.000Z",
+      },
+    ];
+
+    act(() => {
+      resolveContacts?.(records);
+    });
+    expect(contactsTabPropsMock).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      resolveContacts?.([{ ...records[0] }]);
+    });
+    expect(contactsTabPropsMock).toHaveBeenCalledTimes(2);
   });
 });

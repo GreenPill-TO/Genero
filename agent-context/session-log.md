@@ -1,3 +1,30 @@
+## v1.156
+### Timestamp
+- 2026-04-02 15:40 EDT
+
+### Objective
+- Stop `/dashboard?tab=contacts` from falling into a render loop and blocking the rest of the authenticated dashboard navigation.
+
+### What Changed
+- Removed the `ContactsTab` behaviour that echoed `initialContacts` back through `onContactsResolved`, which was causing the parent dashboard cache to bounce the same contact list back into the tab on every render.
+- Stabilized the parent dashboard contacts resolver with a memoized callback and an equality check so identical contact lists no longer trigger redundant cache writes or rerenders.
+- Added focused regressions covering seeded-contact hydration in `ContactsTab` and repeated identical contact-resolution events in the dashboard page.
+- Verified the fix in a headed Playwright browser session against the local app after authenticating into `/dashboard?tab=contacts`.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ContactsTab.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- Headed Playwright smoke pass on `http://localhost:3000/dashboard?tab=contacts`, including sidebar navigation away from Contacts after sign-in
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.155
 ### Timestamp
 - 2026-04-02 15:31 EDT

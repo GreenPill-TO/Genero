@@ -161,8 +161,7 @@ export function ContactsTab({
     if (!initialContacts) return;
     setContacts(initialContacts);
     setIsLoadingContacts(false);
-    onContactsResolved?.(initialContacts.map((record) => ({ ...record })));
-  }, [initialContacts, onContactsResolved]);
+  }, [initialContacts]);
 
   useEffect(() => {
     let isMounted = true;

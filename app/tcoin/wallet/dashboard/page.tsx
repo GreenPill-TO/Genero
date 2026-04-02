@@ -27,6 +27,32 @@ import { cn } from "@shared/utils/classnames";
 
 const VALID_TAB_KEYS = new Set(["home", "receive", "send", "contacts", "more", "history"]);
 const FOCUSED_TAB_KEYS = new Set(["receive", "send", "contacts", "history"]);
+
+const areContactRecordsEqual = (
+  current: ContactRecord[] | null,
+  next: ContactRecord[]
+) => {
+  if (!current) {
+    return next.length === 0;
+  }
+  if (current.length !== next.length) {
+    return false;
+  }
+
+  return current.every((contact, index) => {
+    const other = next[index];
+    return (
+      contact.id === other.id &&
+      contact.full_name === other.full_name &&
+      contact.username === other.username &&
+      contact.profile_image_url === other.profile_image_url &&
+      contact.wallet_address === other.wallet_address &&
+      contact.state === other.state &&
+      contact.last_interaction === other.last_interaction
+    );
+  });
+};
+
 const TAB_COPY: Record<string, { title: string; description: string }> = {
   home: {
     title: "Your wallet",
@@ -86,6 +112,10 @@ export default function Dashboard() {
     [router]
   );
 
+  const handleContactsResolved = useCallback((records: ContactRecord[]) => {
+    setCachedContacts((current) => (areContactRecordsEqual(current, records) ? current : records));
+  }, []);
+
   const content = useMemo(() => {
     if (isLoadingUser || error) return null;
     if (activeTab === "home") {
@@ -100,7 +130,7 @@ export default function Dashboard() {
       return (
         <ContactsTab
           initialContacts={cachedContacts ?? undefined}
-          onContactsResolved={(records) => setCachedContacts(records)}
+          onContactsResolved={handleContactsResolved}
           onSend={(contact) => {
             setSendRecipient({ ...contact });
             handleTabChange("send");
@@ -154,6 +184,7 @@ export default function Dashboard() {
     cachedContacts,
     receiveQrVisible,
     handleTabChange,
+    handleContactsResolved,
   ]);
 
   useEffect(() => {
