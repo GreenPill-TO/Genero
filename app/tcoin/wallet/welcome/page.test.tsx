@@ -402,4 +402,40 @@ describe("WelcomePage", () => {
     expect(inputClickSpy).toHaveBeenCalled();
     inputClickSpy.mockRestore();
   });
+
+  it("explains why the profile picture matters on step 3", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap("draft", {
+        currentStep: 3,
+        completedSteps: [1, 2],
+      }),
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+
+    expect(screen.getByText(/help senders and recipients identify and verify who you are/i)).toBeTruthy();
+    expect(screen.getByText(/choose a picture that looks like you/i)).toBeTruthy();
+  });
+
+  it("explains the charity-fee and BIA effects on step 4", () => {
+    useUserSettingsMock.mockReturnValue({
+      bootstrap: createBootstrap("draft", {
+        currentStep: 4,
+        completedSteps: [1, 2, 3],
+      }),
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<WelcomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+
+    expect(screen.getByText(/transaction fees you pay here, in place of normal credit card fees, will go to a charity of your choice/i)).toBeTruthy();
+    expect(screen.getByText(/we will filter and show you local merchants based on the bia you select here/i)).toBeTruthy();
+  });
 });

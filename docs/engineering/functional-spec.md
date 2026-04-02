@@ -117,8 +117,10 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Wallet onboarding step 2 now rotates its example placeholders every three seconds through a Toronto-focused set of names, keeps first name, last name, preferred name, and username synchronised to the same active example, and clears those placeholders as soon as the user starts typing real text into any of those fields.
 - On fresh onboarding sessions, the Country field now starts with Canada already selected as real form data rather than as a placeholder or rotating example.
 - On welcome step 3, the empty avatar preview is now clickable and opens the same picture chooser as the file input, so users can start the upload flow by clicking the profile circle itself.
+- Welcome step 3 now explains that the profile photo is used by senders and recipients to identify and verify the user, and encourages a recognisable image.
 - Wallet onboarding step 3 now opens a dedicated profile-picture editor modal immediately after image selection, using the same zoom and horizontal/vertical framing controls as Edit Profile before the cropped avatar is saved.
 - If the onboarding photo upload fails for storage/network reasons, step 3 now shows a picture-specific recovery message instead of surfacing low-level storage errors such as DNS/name-resolution failures.
+- Welcome step 4 now explains that the user’s transaction fees, paid instead of normal credit card fees, flow to the charity they choose, and that BIA selection is used to filter the local merchants shown in the wallet.
 - Resetting a draft wallet signup now returns the user to the pre-start welcome card and stays there, instead of auto-reopening wizard step 1 after a brief flash of step 0.
 - Theme selection is stored per app instance and follows the user across devices, while still using a local cached value for first paint before authenticated bootstrap completes.
 - Charity selection is backed by a shared Supabase catalogue so wallet onboarding and settings modals always offer seeded local charity options instead of failing closed when the app profile lacks prior charity data.

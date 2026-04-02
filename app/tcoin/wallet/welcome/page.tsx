@@ -871,6 +871,14 @@ export default function WelcomePage() {
             {wizardStep === 3 ? (
               <div className="space-y-4">
                 <div className="flex flex-col items-center gap-4 text-center">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      This photo will help senders and recipients identify and verify who you are in the wallet.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Please choose a picture that looks like you so people can recognise you with confidence.
+                    </p>
+                  </div>
                   {profilePictureSelection && signupAvatarPreviewFrame ? (
                     <div className="relative h-24 w-24 overflow-hidden rounded-full border border-white/10 bg-muted">
                       <div
@@ -957,6 +965,9 @@ export default function WelcomePage() {
             {wizardStep === 4 ? (
               <div className="space-y-4">
                 <div>
+                  <p className="mb-2 text-sm text-muted-foreground">
+                    Transaction fees you pay here, in place of normal credit card fees, will go to a charity of your choice.
+                  </p>
                   <label className="block text-sm font-medium mb-1">Default charity</label>
                   <select
                     value={communitySettings.charity}
@@ -978,6 +989,9 @@ export default function WelcomePage() {
                   </select>
                 </div>
                 <div>
+                  <p className="mb-2 text-sm text-muted-foreground">
+                    We will filter and show you local merchants based on the BIA you select here.
+                  </p>
                   <label className="block text-sm font-medium mb-1">Primary BIA</label>
                   <select
                     value={communitySettings.primaryBiaId}

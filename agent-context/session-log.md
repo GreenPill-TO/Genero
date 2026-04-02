@@ -1,3 +1,27 @@
+## v1.149
+### Timestamp
+- 2026-04-02 15:08 EDT
+
+### Objective
+- Add clearer “why this matters” guidance to welcome steps 3 and 4 so the onboarding flow explains the purpose of the photo, charity, and BIA selections.
+
+### What Changed
+- Added two short explanatory sentences above the step-3 picture controls clarifying that the profile photo helps senders and recipients identify and verify the user, and should therefore look like them.
+- Added a charity explainer above the step-4 default charity field, clarifying that the transaction fees users pay instead of ordinary credit card fees go to the charity they choose.
+- Added a BIA explainer above the primary BIA selector, clarifying that merchant discovery in the wallet is filtered based on that BIA choice.
+- Expanded the welcome-page tests with focused assertions for the new step-3 and step-4 guidance copy.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.148
 ### Timestamp
 - 2026-04-02 15:03 EDT
