@@ -1,3 +1,30 @@
+## v1.157
+### Timestamp
+- 2026-04-02 16:01 EDT
+
+### Objective
+- Eliminate the local wallet-custody backend noise caused by code assuming `public.wallet_list.created_at` exists, and formalize that column in the repo schema.
+
+### What Changed
+- Added `getLatestWalletListRow(...)` in the shared user-settings helpers so wallet-custody reads resolve the newest wallet row by descending `wallet_list.id` instead of relying on a `created_at` column that older environments never had.
+- Updated both wallet-custody call sites in `userSettings.ts` to use that helper, which removes the runtime dependency on `wallet_list.created_at` for local custody registration and recovery reads.
+- Added an idempotent `v1.09` migration that backfills and constrains `public.wallet_list.created_at`, including a supporting index for future schema-consistent ordering.
+- Added focused helper coverage proving the wallet-row resolver orders by `id` rather than `created_at`.
+
+### Verification
+- `pnpm exec eslint supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts`
+- `pnpm exec vitest run supabase/functions/_shared/userSettings.test.ts`
+- `git diff --check -- supabase/migrations/20260402160500_v1.09_wallet_list_created_at.sql`
+- Local `GET /functions/v1/user-settings/wallet/custody-material` probe using a signed local JWT now advances past the old `wallet_list.created_at` failure path and instead surfaces the next stale-schema issue (`user_encrypted_share.credential_id does not exist`), confirming the `wallet_list` root cause is removed.
+
+### Files Edited
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/migrations/20260402160500_v1.09_wallet_list_created_at.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.156
 ### Timestamp
 - 2026-04-02 15:40 EDT

@@ -274,6 +274,7 @@
 - The wallet and SpareChange auth forms now apply a dedicated `authModalEmailFieldClass` override to the pre-OTP email input, giving the public modal a higher-contrast light-mode field surface without changing the shared signed-in form-field tokens elsewhere in the app.
 - Wallet custody shares are normalised into `wallet_keys` (`user_id` + `namespace`) so multiple wallet addresses can reference one key via `wallet_key_id`; `wallet_list` no longer stores raw `app_share` directly.
 - `wallet_list` now carries the canonical EVM `public_key` for each wallet row, with a namespace-scoped uniqueness index so wallet-dependent app flows can rely on one stable recipient-wallet field.
+- `wallet_list` now also carries a canonical `created_at` timestamp via `v1.09`, but wallet-custody reads defensively resolve the latest row by descending identity `id` so partially migrated or legacy local environments do not fail on timestamp assumptions.
 - `user_encrypted_share` rows are linked to the same `wallet_keys` record through `wallet_key_id`, enabling deterministic key reconstruction for wallets that share custody material.
 - `user_encrypted_share` now stores decoded `credential_id`, scoped `app_instance_id`, optional `device_info`, and lifecycle audit timestamps (`last_used_at`, `revoked_at`) so passkey lookups are app-aware and traceable.
 - Legacy `user_encrypted_share` backfills infer `app_instance_id` from the user's latest `app_user_profiles` row before falling back to the default wallet/tcoin app instance.

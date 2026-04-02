@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildFallbackUserIdentifier,
   buildUserIdentifierVariant,
+  getLatestWalletListRow,
   isFallbackUserIdentifier,
   normaliseEmailAddress,
   normaliseManagedEmails,
@@ -75,5 +76,54 @@ describe("managed email helpers", () => {
         { email: "beta@example.com", isPrimary: false },
       ])
     ).toThrow(/exactly one primary/i);
+  });
+});
+
+describe("wallet list helpers", () => {
+  it("resolves the latest wallet row using the identity id column instead of a created_at timestamp", async () => {
+    const operations: Array<[string, unknown, unknown?]> = [];
+    const query = {
+      select(value: string) {
+        operations.push(["select", value]);
+        return query;
+      },
+      eq(column: string, value: unknown) {
+        operations.push(["eq", column, value]);
+        return query;
+      },
+      order(column: string, options: unknown) {
+        operations.push(["order", column, options]);
+        return query;
+      },
+      limit(value: number) {
+        operations.push(["limit", value]);
+        return query;
+      },
+      maybeSingle: async () => ({ data: { id: 99 }, error: null }),
+    };
+
+    const supabase = {
+      from(table: string) {
+        operations.push(["from", table]);
+        return query;
+      },
+    };
+
+    const result = await getLatestWalletListRow<{ id: number }>({
+      supabase,
+      userId: 42,
+      select: "id",
+      namespace: "EVM",
+    });
+
+    expect(result).toEqual({ data: { id: 99 }, error: null });
+    expect(operations).toEqual([
+      ["from", "wallet_list"],
+      ["select", "id"],
+      ["eq", "user_id", 42],
+      ["eq", "namespace", "EVM"],
+      ["order", "id", { ascending: false }],
+      ["limit", 1],
+    ]);
   });
 });

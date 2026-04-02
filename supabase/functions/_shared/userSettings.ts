@@ -375,6 +375,24 @@ async function resolveWalletReady(options: {
   return Boolean(walletRow?.id && shareRow?.id);
 }
 
+export async function getLatestWalletListRow<T>(options: {
+  supabase: any;
+  userId: number;
+  select: string;
+  namespace?: string;
+}): Promise<{ data: T | null; error: any }> {
+  const namespace = options.namespace ?? "EVM";
+
+  return options.supabase
+    .from("wallet_list")
+    .select(options.select)
+    .eq("user_id", options.userId)
+    .eq("namespace", namespace)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+}
+
 async function resolveBiaSelection(options: {
   supabase: any;
   userId: number;
@@ -1761,14 +1779,14 @@ export async function registerWalletCustody(options: {
   };
   delete walletWritePayload.app_share;
 
-  const { data: existingWallet, error: existingWalletError } = await options.supabase
-    .from("wallet_list")
-    .select("id")
-    .eq("user_id", options.userId)
-    .eq("namespace", namespace)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: existingWallet, error: existingWalletError } = await getLatestWalletListRow<{
+    id: number | string | null;
+  }>({
+    supabase: options.supabase,
+    userId: options.userId,
+    namespace,
+    select: "id",
+  });
 
   if (existingWalletError) {
     throw new Error(`Failed to resolve wallet list row: ${existingWalletError.message}`);
@@ -1852,14 +1870,16 @@ export async function getWalletCustodyMaterial(options: {
   appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
 }) {
   const [{ data: walletRow, error: walletError }, { data: shareRows, error: shareError }] = await Promise.all([
-    options.supabase
-      .from("wallet_list")
-      .select("id,public_key,wallet_key_id")
-      .eq("user_id", options.userId)
-      .eq("namespace", "EVM")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+    getLatestWalletListRow<{
+      id: number | string | null;
+      public_key: string | null;
+      wallet_key_id: number | string | null;
+    }>({
+      supabase: options.supabase,
+      userId: options.userId,
+      namespace: "EVM",
+      select: "id,public_key,wallet_key_id",
+    }),
     options.supabase
       .from("user_encrypted_share")
       .select("id,user_share_encrypted,credential_id,app_instance_id,last_used_at,created_at,revoked_at")
