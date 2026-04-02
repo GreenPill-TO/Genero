@@ -1,3 +1,24 @@
+## v1.132
+### Timestamp
+- 2026-04-02 12:33 EDT
+
+### Objective
+- Refresh several wallet landing-page copy blocks to better describe the RFID-note project, merchant usage, fee framing, and TCOIN governance.
+
+### What Changed
+- Rewrote the physical tBills paragraph to describe the embedded-RFID notes as work in progress and to invite people to help with that part of the project.
+- Expanded the QR recipient examples to include merchants, updated the fee comparison to say TCOIN aims to lower that fee while turning it into a city donation, and replaced the short closing sentence with the longer CAD-vs-TCOIN backing and stewardship explanation.
+- Updated the required functional and technical specs to reflect the revised public-facing landing-page narrative.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/page.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.131
 ### Timestamp
 - 2026-04-02 12:27 EDT
