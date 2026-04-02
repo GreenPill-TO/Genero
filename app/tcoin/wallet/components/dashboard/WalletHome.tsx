@@ -1,25 +1,17 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { useModal } from "@shared/contexts/ModalContext";
-import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
 import { getRecentPaymentRequestParticipants } from "@shared/lib/edge/paymentRequestsClient";
 import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
-import {
-  connectWalletContact,
-  getWalletRecents,
-  lookupWalletUserByIdentifier,
-} from "@shared/lib/edge/walletOperationsClient";
+import { getWalletRecents } from "@shared/lib/edge/walletOperationsClient";
 import { BuyTcoinModal, TopUpModal } from "@tcoin/wallet/components/modals";
 import { ContributionsCard } from "./ContributionsCard";
-import { SendCard } from "./SendCard";
 import { AccountCard } from "./AccountCard";
-import { Hypodata } from "./types";
 import {
   walletActionButtonClass,
   walletInteractiveSurfaceClass,
@@ -47,8 +39,6 @@ export function WalletHome({
   const router = useRouter();
   const activeProfile = userData?.cubidData?.activeProfile;
 
-  const [tcoinAmount, setTcoinAmount] = useState("");
-  const [cadAmount, setCadAmount] = useState("");
   const [selectedCharity, setSelectedCharity] = useState("");
   const [recentInteractions, setRecentInteractions] = useState<RecentInteraction[]>([]);
 
@@ -62,7 +52,6 @@ export function WalletHome({
     }
   }, [activeProfile]);
 
-  const { exchangeRate } = useControlVariables();
   const [charityData] = useState({
     personalContribution: 50,
     allUsersToCharity: 600,
@@ -70,159 +59,9 @@ export function WalletHome({
   });
 
   const user_id = userData?.cubidData.id;
-
-  const sanitizeNumeric = useCallback((value: string) => value.replace(/[^\d.]/g, ""), []);
-  const safeExchangeRate =
-    typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
-      ? exchangeRate
-      : 0;
-
-  const convertTcoinToCad = useCallback(
-    (value: string) => {
-      const num = parseFloat(value);
-      if (isNaN(num) || safeExchangeRate === 0) return "";
-      return (num * safeExchangeRate).toString();
-    },
-    [safeExchangeRate]
-  );
-
-  const convertCadToTcoin = useCallback(
-    (value: string) => {
-      const num = parseFloat(value);
-      if (isNaN(num) || safeExchangeRate === 0) return "";
-      return (num / safeExchangeRate).toString();
-    },
-    [safeExchangeRate]
-  );
-
-  const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = sanitizeNumeric(e.target.value);
-    setTcoinAmount(rawValue);
-    if (rawValue === "") {
-      setCadAmount("");
-      return;
-    }
-    const cadRaw = convertTcoinToCad(rawValue);
-    setCadAmount(cadRaw);
-  };
-
-  const handleCadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = sanitizeNumeric(e.target.value);
-    setCadAmount(rawValue);
-    if (rawValue === "") {
-      setTcoinAmount("");
-      return;
-    }
-    const tcoinRaw = convertCadToTcoin(rawValue);
-    setTcoinAmount(tcoinRaw);
-  };
-
-  const handleTcoinBlur = () => {
-    if (tcoinAmount.trim() === "") {
-      setCadAmount("");
-      return;
-    }
-    const numericValue = parseFloat(tcoinAmount);
-    if (isNaN(numericValue)) {
-      setTcoinAmount("");
-      setCadAmount("");
-      return;
-    }
-    const normalizedTcoin = numericValue.toFixed(2);
-    const cadNumeric = safeExchangeRate === 0 ? 0 : numericValue * safeExchangeRate;
-    setTcoinAmount(normalizedTcoin);
-    setCadAmount(cadNumeric.toFixed(2));
-  };
-
-  const handleCadBlur = () => {
-    if (cadAmount.trim() === "") {
-      setTcoinAmount("");
-      return;
-    }
-    const numericValue = parseFloat(cadAmount);
-    if (isNaN(numericValue)) {
-      setCadAmount("");
-      setTcoinAmount("");
-      return;
-    }
-    const normalizedCad = numericValue.toFixed(2);
-    const tcoinNumeric = safeExchangeRate === 0 ? 0 : numericValue / safeExchangeRate;
-    setCadAmount(normalizedCad);
-    setTcoinAmount(tcoinNumeric.toFixed(2));
-  };
-
-  function extractAndDecodeBase64(url: string) {
-    try {
-      const urlObj = new URL(url);
-      const base64Data = urlObj.searchParams.get("pay");
-      if (!base64Data) throw new Error("No Base64 data found in URL.");
-      const decodedData = decodeURIComponent(escape(atob(base64Data)));
-      return JSON.parse(decodedData);
-    } catch (error) {
-      console.error("Error decoding Base64:", error);
-      return null;
-    }
-  }
-
-  const handleScan = useCallback(
-    async (data: any) => {
-      const rest = extractAndDecodeBase64(data);
-      if (!rest?.nano_id) return;
-      try {
-        const lookup = await lookupWalletUserByIdentifier(
-          { userIdentifier: rest.nano_id },
-          { citySlug: "tcoin" }
-        );
-        if (!lookup.user) {
-          throw new Error("No user matched the scanned QR code.");
-        }
-
-        await connectWalletContact(
-          { connectedUserId: lookup.user.id, state: "new" },
-          { citySlug: "tcoin" }
-        );
-
-        setToSendData({
-          id: lookup.user.id,
-          full_name: lookup.user.fullName,
-          username: lookup.user.username,
-          profile_image_url: lookup.user.profileImageUrl,
-          wallet_address: lookup.user.walletAddress,
-          state: lookup.user.state,
-        });
-        if (rest?.qrTcoinAmount) {
-          const sanitized = sanitizeNumeric(String(rest.qrTcoinAmount));
-          if (sanitized) {
-            const numeric = Number.parseFloat(sanitized);
-            if (Number.isFinite(numeric)) {
-              setTcoinAmount(numeric.toFixed(2));
-              const cadNumeric = safeExchangeRate === 0 ? 0 : numeric * safeExchangeRate;
-              setCadAmount(cadNumeric.toFixed(2));
-            }
-          }
-        }
-        toast.success("Scanned User Successfully");
-      } catch (err) {
-        console.error("handleScan error", err);
-      }
-    },
-    [safeExchangeRate, sanitizeNumeric]
-  );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    if (url.searchParams.has("pay")) {
-      handleScan(url.toString());
-    }
-  }, [handleScan]);
-
-  const [toSendData, setToSendData] = useState<Hypodata | null>(null);
-  const [explorerLink, setExplorerLink] = useState<string | null>(null);
-
-  const { senderWallet, sendMoney } = useSendMoney({
+  const { senderWallet } = useSendMoney({
     senderId: user_id ?? 0,
-    receiverId: toSendData?.id ?? null,
+    receiverId: null,
   });
 
   const { balance: rawBalance } = useTokenBalance(senderWallet);
@@ -340,12 +179,6 @@ export function WalletHome({
     };
   }, [user_id]);
 
-  const handleUseMax = () => {
-    const cadNumeric = safeExchangeRate === 0 ? 0 : userBalance * safeExchangeRate;
-    setTcoinAmount(userBalance.toFixed(2));
-    setCadAmount(cadNumeric.toFixed(2));
-  };
-
   const openBuyTcoinModal = () => {
     openModal({
       content: <BuyTcoinModal closeModal={closeModal} />,
@@ -393,30 +226,6 @@ export function WalletHome({
       </div>
 
       <div
-        data-testid="wallet-home-send-grid"
-        className="grid gap-4 sm:gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
-      >
-        <div className="min-[1850px]:col-span-2">
-          <SendCard
-            toSendData={toSendData}
-            setToSendData={setToSendData}
-            tcoinAmount={tcoinAmount}
-            cadAmount={cadAmount}
-            handleTcoinChange={handleTcoinChange}
-            handleCadChange={handleCadChange}
-            handleTcoinBlur={handleTcoinBlur}
-            handleCadBlur={handleCadBlur}
-            sendMoney={sendMoney}
-            explorerLink={explorerLink}
-            setExplorerLink={setExplorerLink}
-            userBalance={userBalance}
-            onUseMax={handleUseMax}
-          />
-        </div>
-        <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
-      </div>
-
-      <div
         data-testid="wallet-home-support-grid"
         className="grid gap-4 sm:gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] min-[1850px]:grid-cols-[minmax(0,1.08fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
       >
@@ -430,6 +239,7 @@ export function WalletHome({
           />
         </div>
         <div className="space-y-4">
+          <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
           <NeedAccountSettingsPanel onOpenMore={() => router.push("/dashboard?tab=more")} />
         </div>
       </div>

@@ -1,3 +1,28 @@
+## v1.153
+### Timestamp
+- 2026-04-02 16:22 EDT
+
+### Objective
+- Remove the duplicate `Make a payment / Send To` panel from the authenticated wallet home tab so `/dashboard` stays focused on overview content and the dedicated Send tab owns payment composition.
+
+### What Changed
+- Removed the send-card section from `WalletHome`, including the home-only amount, recipient, QR deep-link, and send-action state that existed only to power that panel.
+- Reflowed the home layout so the Recents panel now sits alongside the contributions/settings row, reducing vertical height while keeping the balance summary, everyday actions, recent people, charity context, and More handoff intact.
+- Updated the wallet-home tests to assert that the send grid no longer renders and to keep the ultra-wide layout coverage aligned with the new two-row home structure.
+- Updated the technical and functional specs so they describe home as an overview surface and the Send tab as the canonical money-composition workspace.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `curl -I http://localhost:3000/dashboard`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.152
 ### Timestamp
 - 2026-04-02 15:31 EDT

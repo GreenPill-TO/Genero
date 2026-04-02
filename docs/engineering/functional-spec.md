@@ -47,6 +47,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Dashboard's public status is verified by a Vitest unit test covering the unauthenticated path list.
 - Once authenticated, wallet users move into a separate bank-inspired shell with calmer neutrals, a single teal action colour, compact chrome, and summary-first layouts; the public landing/resources/contact styling stays unchanged.
 - Authenticated wallet home now prioritises the balance summary, quick money actions, recent people, and charity context before secondary settings, so novice users can orient themselves without crypto-specific terminology.
+- The authenticated home tab no longer embeds the `Make a payment / Send To` composer; home now orients the user and hands actual payment entry off to the dedicated Send tab.
 - Authenticated send and receive tabs now use the full shared dashboard workspace width on large screens instead of narrower nested content columns, so money-movement tasks align with the rest of the signed-in shell.
 - The authenticated send tab no longer applies the old large-screen `25vw` side padding, so the payment workspace and action controls sit on the same width rhythm as the rest of the dashboard instead of collapsing into a narrow centre column.
 - The authenticated header now only auto-hides on phone-sized screens; tablet and desktop layouts keep the top navigation visible during scroll and footer tab changes.
