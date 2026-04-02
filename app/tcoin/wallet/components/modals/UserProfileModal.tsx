@@ -8,6 +8,7 @@ import { useUserSettings } from "@shared/hooks/useUserSettings";
 import { useUpdateUserProfileMutation } from "@shared/hooks/useUserSettingsMutations";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
+import { fileInputFieldClass, reactSelectFieldShellClass } from "@shared/components/ui/formFieldStyles";
 import { Input } from "@shared/components/ui/Input";
 import { Label } from "@shared/components/ui/Label";
 import { Slider } from "@shared/components/ui/slider";
@@ -197,11 +198,47 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
     () => ({
       control: (base) => ({
         ...base,
-        borderColor: errors.country ? "#ef4444" : base.borderColor,
+        backgroundColor: "transparent",
+        borderColor: errors.country ? "#ef4444" : "transparent",
+        borderRadius: "0.75rem",
+        minHeight: "2.5rem",
+        boxShadow: "none",
+      }),
+      valueContainer: (base) => ({
+        ...base,
+        padding: "0 0.75rem",
+      }),
+      input: (base) => ({
+        ...base,
+        color: "inherit",
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: "hsl(var(--muted-foreground))",
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: "inherit",
       }),
       menu: (base) => ({
         ...base,
+        backgroundColor: "hsl(var(--popover))",
+        border: "1px solid hsl(var(--border))",
+        borderRadius: "1rem",
+        overflow: "hidden",
+        boxShadow:
+          "0 20px 45px -24px rgba(15, 23, 42, 0.45), 0 12px 20px -18px rgba(15, 23, 42, 0.24)",
         zIndex: 30,
+      }),
+      menuList: (base) => ({
+        ...base,
+        padding: "0.35rem",
+      }),
+      option: (base, state) => ({
+        ...base,
+        borderRadius: "0.85rem",
+        backgroundColor: state.isFocused ? "hsl(var(--accent))" : "transparent",
+        color: state.isFocused ? "hsl(var(--accent-foreground))" : "inherit",
       }),
     }),
     [errors.country]
@@ -334,7 +371,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
               type="file"
               accept="image/*"
               onChange={handleAvatarChange}
-              className="block w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm"
+              className={fileInputFieldClass}
             />
             <p className="text-xs text-muted-foreground">
               Upload any image, then position it inside the circle the way it should appear across the wallet.
@@ -495,6 +532,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
                   options={countryOptions}
                   styles={selectStyles}
                   placeholder="Type a country or country number"
+                  className={`text-sm ${reactSelectFieldShellClass}`}
                   classNamePrefix="country-select"
                   value={field.value}
                   openMenuOnFocus={false}

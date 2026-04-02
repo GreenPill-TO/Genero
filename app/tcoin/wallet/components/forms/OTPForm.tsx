@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { Button } from "@shared/components/ui/Button";
+import { otpDigitFieldClass } from "@shared/components/ui/formFieldStyles";
 import { Input } from "@shared/components/ui/Input";
 import { Loading } from "@shared/components/ui/Loading";
 import { Select } from "@shared/components/ui/Select";
@@ -172,7 +173,7 @@ function OTPForm({
                   type="text"
                   inputMode="numeric"
                   maxLength={1}
-                  className="w-10 h-10 text-center border border-gray-500 rounded-md bg-white"
+                  className={otpDigitFieldClass}
                   value={digit}
                   onChange={(e) => handleDigitChange(e.target.value, idx)}
                   onKeyDown={(e) => handleKeyDown(e, idx)}

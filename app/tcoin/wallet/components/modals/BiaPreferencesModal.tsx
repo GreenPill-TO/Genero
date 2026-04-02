@@ -1,5 +1,6 @@
 import React from "react";
 import { Button } from "@shared/components/ui/Button";
+import { nativeFieldClass } from "@shared/components/ui/formFieldStyles";
 import { useUpdateUserPreferencesMutation } from "@shared/hooks/useUserSettingsMutations";
 import { useUserSettings } from "@shared/hooks/useUserSettings";
 import {
@@ -73,7 +74,7 @@ export function BiaPreferencesModal({ closeModal }: BiaPreferencesModalProps) {
               id="bia-primary"
               value={primaryBiaId}
               onChange={(event) => setPrimaryBiaId(event.target.value)}
-              className="mt-3 w-full rounded-2xl border border-input bg-background px-3 py-2.5 text-sm"
+              className={`mt-3 rounded-2xl ${nativeFieldClass}`}
             >
               {biaOptions.map((bia) => (
                 <option key={bia.id} value={bia.id}>

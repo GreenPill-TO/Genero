@@ -1,3 +1,38 @@
+## v1.111
+### Timestamp
+- 2026-04-01 22:56 EDT
+
+### Objective
+- Standardize app-facing input backgrounds so editable fields read clearly as controls instead of blending into their surrounding panels.
+
+### What Changed
+- Added shared field-surface tokens in `shared/components/ui/formFieldStyles.ts` and applied them to the base text input, textarea, Radix select trigger, command-search input, file input, and OTP digit styles.
+- Updated wallet onboarding, the Edit Profile modal, BIA Preferences, and the remaining raw wallet/sparechange profile inputs to use the same surfaced treatment, and aligned the country `react-select` instances with that visual system.
+- Added a regression test for the shared field-surface tokens and cleaned up the touched SpareChange profile modal so the pass linted without new warnings.
+
+### Verification
+- `pnpm exec eslint shared/components/ui/Input.tsx shared/components/ui/TextArea.tsx shared/components/ui/Select.tsx shared/components/ui/command.tsx shared/components/ui/ImageUpload.tsx shared/components/ui/formFieldStyles.ts shared/components/ui/formFieldStyles.test.ts app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/sparechange/components/forms/OTPForm.tsx app/tcoin/sparechange/components/modals/UserProfileModal.tsx`
+- `pnpm exec vitest run shared/components/ui/formFieldStyles.test.ts app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `shared/components/ui/formFieldStyles.ts`
+- `shared/components/ui/formFieldStyles.test.ts`
+- `shared/components/ui/Input.tsx`
+- `shared/components/ui/TextArea.tsx`
+- `shared/components/ui/Select.tsx`
+- `shared/components/ui/command.tsx`
+- `shared/components/ui/ImageUpload.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/modals/UserProfileModal.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.110
 ### Timestamp
 - 2026-04-01 22:47 EDT

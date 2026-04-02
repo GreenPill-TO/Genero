@@ -4,7 +4,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import Select from "react-select";
+import Select, { type StylesConfig } from "react-select";
 import countryList from "react-select-country-list";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -25,6 +25,7 @@ import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
+import { fileInputFieldClass, nativeFieldClass, reactSelectFieldShellClass } from "@shared/components/ui/formFieldStyles";
 import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
 import { LuUser } from "react-icons/lu";
 
@@ -134,6 +135,55 @@ export default function WelcomePage() {
       country: null,
     },
   });
+
+  const countrySelectStyles = useMemo<StylesConfig<CountryOption, false>>(
+    () => ({
+      control: (base) => ({
+        ...base,
+        backgroundColor: "transparent",
+        borderColor: "transparent",
+        borderRadius: "0.75rem",
+        minHeight: "2.5rem",
+        boxShadow: "none",
+      }),
+      valueContainer: (base) => ({
+        ...base,
+        padding: "0 0.75rem",
+      }),
+      input: (base) => ({
+        ...base,
+        color: "inherit",
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: "hsl(var(--muted-foreground))",
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: "inherit",
+      }),
+      menu: (base) => ({
+        ...base,
+        backgroundColor: "hsl(var(--popover))",
+        border: "1px solid hsl(var(--border))",
+        borderRadius: "1rem",
+        overflow: "hidden",
+        boxShadow:
+          "0 20px 45px -24px rgba(15, 23, 42, 0.45), 0 12px 20px -18px rgba(15, 23, 42, 0.24)",
+      }),
+      menuList: (base) => ({
+        ...base,
+        padding: "0.35rem",
+      }),
+      option: (base, state) => ({
+        ...base,
+        borderRadius: "0.85rem",
+        backgroundColor: state.isFocused ? "hsl(var(--accent))" : "transparent",
+        color: state.isFocused ? "hsl(var(--accent-foreground))" : "inherit",
+      }),
+    }),
+    []
+  );
 
   useEffect(() => {
     if (bootstrap?.signup.state === "completed") {
@@ -492,7 +542,7 @@ export default function WelcomePage() {
                     </label>
                     <input
                       id="firstName"
-                      className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                      className={nativeFieldClass}
                       {...register("firstName", { required: "First name is required" })}
                     />
                     {errors.firstName ? <p className="mt-1 text-xs text-red-500">{errors.firstName.message}</p> : null}
@@ -503,7 +553,7 @@ export default function WelcomePage() {
                     </label>
                     <input
                       id="lastName"
-                      className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                      className={nativeFieldClass}
                       {...register("lastName", { required: "Last name is required" })}
                     />
                     {errors.lastName ? <p className="mt-1 text-xs text-red-500">{errors.lastName.message}</p> : null}
@@ -515,7 +565,7 @@ export default function WelcomePage() {
                   </label>
                   <input
                     id="nickname"
-                    className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                    className={nativeFieldClass}
                     {...register("nickname")}
                   />
                 </div>
@@ -525,7 +575,7 @@ export default function WelcomePage() {
                   </label>
                   <input
                     id="username"
-                    className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                    className={nativeFieldClass}
                     {...register("username", {
                       required: "Username is required",
                       maxLength: {
@@ -553,7 +603,8 @@ export default function WelcomePage() {
                         {...field}
                         options={countryOptions}
                         placeholder="Select a country"
-                        className="text-black"
+                        styles={countrySelectStyles}
+                        className={reactSelectFieldShellClass}
                         value={field.value}
                         onChange={(option) => field.onChange(option)}
                       />
@@ -622,7 +673,7 @@ export default function WelcomePage() {
                       type="file"
                       accept="image/*"
                       onChange={handleProfilePictureChange}
-                      className="block w-full text-sm"
+                      className={fileInputFieldClass}
                     />
                     <p className="text-xs text-muted-foreground">Square images work best.</p>
                   </div>
@@ -651,7 +702,7 @@ export default function WelcomePage() {
                         selectedCause: event.target.value,
                       }))
                     }
-                    className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                    className={nativeFieldClass}
                   >
                     <option value="">Select a charity</option>
                     {bootstrap.options.charities.map((charity) => (
@@ -672,7 +723,7 @@ export default function WelcomePage() {
                         secondaryBiaIds: prev.secondaryBiaIds.filter((biaId) => biaId !== event.target.value),
                       }))
                     }
-                    className="w-full rounded border border-gray-300 bg-white p-2 text-black"
+                    className={nativeFieldClass}
                   >
                     <option value="">Select a BIA</option>
                     {bootstrap.options.bias.map((bia) => (
