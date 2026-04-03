@@ -27,7 +27,7 @@ export function ReceiveTab({
   contacts,
   showQrCode = true,
 }: ReceiveTabProps) {
-  const { authData, userData, isLoadingUser } = useAuth();
+  const { authData, userData, isLoadingUser, error: authError } = useAuth();
   const { exchangeRate } = useControlVariables();
 
   const user_id = userData?.cubidData.id;
@@ -43,6 +43,28 @@ export function ReceiveTab({
   );
   const [openRequests, setOpenRequests] = useState<InvoicePayRequest[]>([]);
 
+  const resolveQrLinkErrorMessage = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message.trim() : "";
+
+    if (!message) {
+      return "Unable to generate a pay link right now.";
+    }
+
+    if (message === "Unauthorized") {
+      return "We couldn't match this sign-in to a local wallet profile yet. Refresh the page, or sign out and sign back in.";
+    }
+
+    if (message.includes("route /create is not available")) {
+      return "Your local Supabase payment-links function is not available yet. Restart the local Supabase stack and try again.";
+    }
+
+    if (message.includes("payment_request_links")) {
+      return "Your local Supabase database is missing the payment-links schema. Apply the latest local migrations and try again.";
+    }
+
+    return message.replace(/^Failed to create payment request link:\s*/i, "");
+  }, []);
+
   const parsePositiveAmount = useCallback((value: string) => {
     const cleaned = value.replace(/[^\d.]/g, "");
     const parsed = Number.parseFloat(cleaned);
@@ -53,11 +75,18 @@ export function ReceiveTab({
   }, []);
 
   const requestedAmount = parsePositiveAmount(qrTcoinAmount);
-  const shouldGenerateQrLink = Boolean(authData?.user) && showQrCode && !requestContact;
+  const missingWalletProfile =
+    Boolean(authData?.user) && !isLoadingUser && !user_id;
+  const shouldGenerateQrLink =
+    Boolean(authData?.user) &&
+    Boolean(user_id) &&
+    !isLoadingUser &&
+    showQrCode &&
+    !requestContact;
 
   const mintQrLink = useCallback(
     async (mode: PaymentRequestLinkMode) => {
-      if (!authData?.user) {
+      if (!authData?.user || !user_id) {
         setQrCodeData("");
         setQrLinkExpiresAt(null);
         return;
@@ -77,12 +106,12 @@ export function ReceiveTab({
         console.error("Failed to create payment request link:", error);
         setQrCodeData("");
         setQrLinkExpiresAt(null);
-        setQrLinkError("Unable to generate a pay link right now.");
+        setQrLinkError(resolveQrLinkErrorMessage(error));
       } finally {
         setIsGeneratingQrLink(false);
       }
     },
-    [authData?.user, requestedAmount]
+    [authData?.user, requestedAmount, resolveQrLinkErrorMessage, user_id]
   );
 
   useEffect(() => {
@@ -100,7 +129,7 @@ export function ReceiveTab({
 
     const intervalId = window.setInterval(() => {
       void mintQrLink("rotating_multi_use");
-    }, 45_000);
+    }, 3_000);
 
     return () => window.clearInterval(intervalId);
   }, [mintQrLink, qrLinkMode, shouldGenerateQrLink]);
@@ -243,6 +272,15 @@ export function ReceiveTab({
     void fetchOpenRequests();
   };
 
+  const qrUnavailableReason =
+    isLoadingUser && !authData?.user
+      ? "QR code is still loading your wallet session."
+      : missingWalletProfile
+        ? "We couldn't find a wallet profile for this signed-in account yet. Finish onboarding, or sign out and sign back in."
+        : authError instanceof Error && !user_id
+          ? authError.message
+          : qrLinkError;
+
   return (
     <div className="mx-auto w-full">
       <ReceiveCard
@@ -262,11 +300,7 @@ export function ReceiveTab({
         qrBgColor="#fff"
         qrFgColor="#000"
         qrWrapperClassName="bg-white p-1"
-        qrUnavailableReason={
-          isLoadingUser && !authData?.user
-            ? "QR code is still loading your wallet session."
-            : qrLinkError
-        }
+        qrUnavailableReason={qrUnavailableReason}
         requestContact={requestContact}
         onClearRequestContact={() => handleRequestContactChange(null)}
         contacts={contacts}

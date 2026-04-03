@@ -1,3 +1,169 @@
+## v1.171
+### Timestamp
+- 2026-04-02 20:41 EDT
+
+### Objective
+- Add a visible local timestamp to saved shareable requests in the Receive tab so same-day requests are easier to distinguish.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` so `Payment requests I have sent` now formats saved shareable requests as `Saved YYYY-MM-DD at h.mm am/pm` instead of showing only the date.
+- Added a focused regression in `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx` to pin the new saved-date-plus-time display.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.170
+### Timestamp
+- 2026-04-02 20:36 EDT
+
+### Objective
+- Update the shareable-request email wording so emailed QR links read like TCOIN invoices/requests rather than generic QR links.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/modals/ShareQrModal.tsx` so email sharing now uses the subject `My TCOIN Request` and the body `Please check out this TCOIN invoice / request link: ...`.
+- Added a focused mailto regression in `app/tcoin/wallet/components/modals/ShareQrModal.test.tsx` to keep that email copy pinned.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/ShareQrModal.tsx app/tcoin/wallet/components/modals/ShareQrModal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/ShareQrModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/ShareQrModal.tsx`
+- `app/tcoin/wallet/components/modals/ShareQrModal.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.169
+### Timestamp
+- 2026-04-02 20:31 EDT
+
+### Objective
+- Tighten the large-screen Receive-tab layout further by moving the TCOIN/CAD amount inputs into the same desktop-side control column as the request buttons, making the non-QR workflow more likely to stay beside the QR code without vertical scrolling.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` so the amount-entry panel now lives in the same right-hand control column as `Request from Contact` / `Create a shareable request` on large screens, leaving the left column focused on the QR card itself.
+- Added a focused control-column regression in `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx` to keep the amount fields tied to that explicit controls container.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.168
+### Timestamp
+- 2026-04-02 20:28 EDT
+
+### Objective
+- Rework the authenticated Receive-tab layout on large screens so the QR/input area and request-management area sit beside each other instead of forcing a tall stacked layout.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` so the main Receive content now switches to a two-column grid on large screens, with the QR and amount inputs on the left and request-selection / request-history panels on the right.
+- Kept the existing stacked behaviour on smaller breakpoints while adjusting the action-button row to stay flexible inside the new right-hand desktop column.
+- Added a focused layout regression in `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx` so the large-screen grid contract stays explicit.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.167
+### Timestamp
+- 2026-04-02 20:24 EDT
+
+### Objective
+- Tighten the short-lived Receive QR helper copy so it explains audience/reuse more directly.
+
+### What Changed
+- Updated the rotating Receive QR helper copy in `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` from `This link refreshes automatically while this screen stays open.` to `This QR code can be shown to multiple people.`
+- Extended the existing Receive-card QR copy regression so the simplified rotating-mode wording remains covered.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.166
+### Timestamp
+- 2026-04-02 20:10 EDT
+
+### Objective
+- Refine the Receive-tab QR behaviour so short-lived codes rotate much more frequently while still keeping a 60-second validity window, and simplify the QR expiry / one-time-use copy.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx` so rotating short-lived pay links now re-mint every 3 seconds while the Receive QR remains visible, instead of waiting 45 seconds between regenerations.
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` so rotating QR cards now say `Expires within 60 seconds` rather than showing a clock time, and long-lived one-time QR cards now show `Expires in [x] days`.
+- Replaced the long-lived QR helper copy from `This link stops rotating, but it will work only once.` to `This QR code will work only once.`
+- Added focused tests for the 3-second rotation cadence and the new expiry / one-time copy.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.165
+### Timestamp
+- 2026-04-02 20:06 EDT
+
+### Objective
+- Smoke test the local wallet Receive tab against local Supabase, diagnose why it still showed the generic `Unable to generate a pay link right now.` message, and tighten the UI so it waits for a resolved wallet profile before trying to mint a pay link.
+
+### What Changed
+- Confirmed the local Receive-tab outage was not a QR rendering problem: the live failure path was an authenticated pay-link mint attempt happening before the wallet’s own `public.users`/Cubid profile had finished resolving for the current session.
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx` so QR pay-link minting now waits for both a Supabase auth session and a resolved wallet user id instead of firing as soon as auth exists.
+- Replaced the old blanket receive-tab error copy with targeted messages for the main local failure cases, including missing wallet profile resolution, missing local `payment-links` edge routing, missing local `payment_request_links` schema, and generic edge-function messages.
+- Verified the local Supabase stack now serves `payment-links` publicly for `/resolve/...`, and applied the missing local migrations so `public.payment_request_links` exists before the Receive tab tries to use it.
+- Added focused Receive-tab tests covering the new “wait for wallet profile” behaviour and the explicit unauthorized-message mapping.
+
+### Verification
+- Browser/CLI smoke checks against local services:
+  - `curl -i -X POST http://127.0.0.1:54321/functions/v1/payment-links/create ...`
+  - `curl -i http://127.0.0.1:54321/functions/v1/payment-links/resolve/test-token`
+  - `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\dt public.payment_request_links"`
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.164
 ### Timestamp
 - 2026-04-02 19:41 EDT

@@ -88,6 +88,7 @@ import { ReceiveTab } from "./ReceiveTab";
 
 describe("ReceiveTab", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     receiveCardProps = undefined;
     getOutgoingPaymentRequestsMock.mockClear();
     createPaymentRequestMock.mockClear();
@@ -107,6 +108,7 @@ describe("ReceiveTab", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     receiveCardProps = undefined;
   });
 
@@ -204,6 +206,28 @@ describe("ReceiveTab", () => {
     expect(receiveCardProps.qrUnavailableReason).toBeNull();
   });
 
+  it("refreshes rotating pay links every three seconds while the QR stays visible", async () => {
+    render(<ReceiveTab />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(createPaymentRequestLinkMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(3_000);
+      await Promise.resolve();
+    });
+
+    expect(createPaymentRequestLinkMock).toHaveBeenCalledTimes(2);
+    expect(createPaymentRequestLinkMock).toHaveBeenLastCalledWith({
+      amountRequested: null,
+      mode: "rotating_multi_use",
+      appContext: { citySlug: "tcoin" },
+    });
+  });
+
   it("surfaces an unavailable message when there is no wallet session yet", async () => {
     useAuthMock.mockReturnValue({
       isLoadingUser: false,
@@ -243,6 +267,41 @@ describe("ReceiveTab", () => {
     expect(receiveCardProps.qrCodeData).toBe("");
     expect(receiveCardProps.qrUnavailableReason).toBe(
       "QR code is still loading your wallet session."
+    );
+  });
+
+  it("waits for the wallet profile before attempting to mint a pay link", async () => {
+    useAuthMock.mockReturnValue({
+      isLoadingUser: false,
+      userData: null,
+      authData: { user: { id: "auth-user-1" } },
+      error: null,
+    });
+
+    render(<ReceiveTab />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(createPaymentRequestLinkMock).not.toHaveBeenCalled();
+    expect(receiveCardProps.qrUnavailableReason).toBe(
+      "We couldn't find a wallet profile for this signed-in account yet. Finish onboarding, or sign out and sign back in."
+    );
+  });
+
+  it("shows a specific message when pay-link minting is unauthorized", async () => {
+    createPaymentRequestLinkMock.mockRejectedValueOnce(new Error("Unauthorized"));
+
+    render(<ReceiveTab />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(receiveCardProps.qrCodeData).toBe("");
+    expect(receiveCardProps.qrUnavailableReason).toBe(
+      "We couldn't match this sign-in to a local wallet profile yet. Refresh the page, or sign out and sign back in."
     );
   });
 });
