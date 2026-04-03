@@ -252,6 +252,14 @@ describe("MoreTab", () => {
     expect(onOpenHistory).toHaveBeenCalledTimes(1);
   });
 
+  it("opens Stats for Nerds from the More workspace actions", () => {
+    render(<MoreTab />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Stats for Nerds/i }));
+
+    expect(pushMock).toHaveBeenCalledWith("/stats");
+  });
+
   it("lets action-row descriptions span the full text area", () => {
     render(<MoreTab />);
 

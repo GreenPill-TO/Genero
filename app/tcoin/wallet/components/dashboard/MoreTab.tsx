@@ -295,6 +295,10 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     router.push("/city-admin");
   };
 
+  const handleOpenStats = () => {
+    router.push("/stats");
+  };
+
   const copyWalletAddress = async () => {
     if (!senderWallet) {
       toast.error("Your wallet address is not ready yet.");
@@ -415,6 +419,13 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
   ];
 
   const workspaceActions = [
+    {
+      title: "Stats for Nerds",
+      description: "Open the shared analytics page for wallet, market, BIA, and indexer telemetry.",
+      icon: LuClipboardList,
+      onClick: handleOpenStats,
+      meta: "Read-only stats",
+    },
     {
       title: merchantActionLabel,
       description: "Start, continue, or manage your merchant workspace from the same wallet account.",

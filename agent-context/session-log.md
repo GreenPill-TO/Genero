@@ -1,3 +1,34 @@
+## v1.173
+### Timestamp
+- 2026-04-03 09:35 EDT
+
+### Objective
+- Add a read-only `Stats for Nerds` workspace to the wallet so authenticated users can inspect shared TCOIN product, market, BIA, and ops telemetry from one place.
+
+### What Changed
+- Added `app/tcoin/wallet/stats/page.tsx`, which renders overview tiles, time-series charts, BIA and asset breakdowns, and indexer / reserve-route diagnostics inside the shared signed-in wallet shell.
+- Added `app/api/tcoin/stats/summary/route.ts` plus shared types/helpers under `shared/lib/walletStats/`, using service-role reads to combine existing wallet, payment-request, exchange-rate, BIA, indexer, and TorontoCoin ops sources into one read-only response.
+- Added a `Stats for Nerds` action row to `app/tcoin/wallet/components/dashboard/MoreTab.tsx` so advanced-mode users can open the page directly from More without introducing a new bottom-nav or sidebar tab.
+- Added focused tests for the More navigation action, the authenticated API route, the pure wallet-stats aggregation helper, and the new stats page rendering / empty states.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/stats/page.tsx app/tcoin/wallet/stats/page.test.tsx app/api/tcoin/stats/summary/route.ts app/api/tcoin/stats/summary/route.test.ts shared/lib/walletStats/server.ts shared/lib/walletStats/server.test.ts shared/lib/walletStats/types.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/stats/page.test.tsx app/api/tcoin/stats/summary/route.test.ts shared/lib/walletStats/server.test.ts`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/stats/page.tsx`
+- `app/tcoin/wallet/stats/page.test.tsx`
+- `app/api/tcoin/stats/summary/route.ts`
+- `app/api/tcoin/stats/summary/route.test.ts`
+- `shared/lib/walletStats/types.ts`
+- `shared/lib/walletStats/server.ts`
+- `shared/lib/walletStats/server.test.ts`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.172
 ### Timestamp
 - 2026-04-02 20:50 EDT
