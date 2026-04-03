@@ -57,6 +57,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - On those large Receive layouts, the TCOIN/CAD amount fields now sit with the request-action controls in the right-hand workflow column, making the side-by-side arrangement more stable and leaving the left column centred on the QR card.
 - When a user emails a shareable request, the email now presents it explicitly as a TCOIN invoice/request rather than as a generic QR-code share.
 - In `Payment requests I have sent`, saved shareable requests now show both the saved date and a local timestamp, so users can distinguish multiple requests created on the same day.
+- Supabase now owns a nightly cleanup policy for wallet pay links: expired rotating QR links are retained for 1 day, while expired or consumed single-use links are retained for 30 days before database cleanup removes them.
 - The authenticated header now only auto-hides on phone-sized screens; tablet and desktop layouts keep the top navigation visible during scroll and footer tab changes.
 - On non-phone authenticated layouts, the left sidebar now uses a wider rail and larger labels/icons to feel proportionate beside the main workspace, while phone-sized layouts scale headings, panels, and action chrome down to avoid an oversized feel.
 - On phone-sized authenticated layouts, static dashboard cards now flatten into edge-to-edge sections with simple horizontal dividers instead of stacked framed boxes, so the small-screen wallet uses less chrome and more of the viewport for content.

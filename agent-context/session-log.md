@@ -1,3 +1,26 @@
+## v1.172
+### Timestamp
+- 2026-04-02 20:50 EDT
+
+### Objective
+- Add a Supabase-side cleanup function and nightly cron schedule for expired wallet pay links so rotating QR churn does not grow `payment_request_links` indefinitely.
+
+### What Changed
+- Added `supabase/migrations/20260402205500_v1.12_payment_request_links_cleanup_cron.sql`, which creates `public.cleanup_payment_request_links()` and configures the named `pg_cron` job `wallet-payment-request-links-cleanup` for `06:15 UTC` when `pg_cron` is available.
+- Set the retention policy in SQL: expired `rotating_multi_use` links are deleted after 1 day, and expired or consumed `single_use` links are deleted after 30 days.
+- Made the migration safe for environments without `pg_cron` by keeping the cleanup function in place and skipping job creation with a notice rather than failing the migration.
+
+### Verification
+- `supabase db push --local --include-all`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f /tmp/payment_request_links_cleanup_check.sql`
+- `git diff --check -- supabase/migrations/20260402205500_v1.12_payment_request_links_cleanup_cron.sql`
+
+### Files Edited
+- `supabase/migrations/20260402205500_v1.12_payment_request_links_cleanup_cron.sql`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.171
 ### Timestamp
 - 2026-04-02 20:41 EDT
