@@ -8,6 +8,8 @@ import {
   normaliseExperienceMode,
   normaliseEmailAddress,
   normaliseManagedEmails,
+  normaliseManagedPhones,
+  normalisePhoneNumber,
   normalisePendingPaymentIntent,
   normalisePersistedCubidId,
   normaliseUserIdentifierCandidate,
@@ -78,6 +80,50 @@ describe("managed email helpers", () => {
       normaliseManagedEmails([
         { email: "alpha@example.com", isPrimary: false },
         { email: "beta@example.com", isPrimary: false },
+      ])
+    ).toThrow(/exactly one primary/i);
+  });
+});
+
+describe("managed phone helpers", () => {
+  it("normalises phone numbers by trimming and removing whitespace", () => {
+    expect(normalisePhoneNumber(" +1 647 555 1212 ")).toBe("+16475551212");
+    expect(normalisePhoneNumber("")).toBeNull();
+  });
+
+  it("auto-selects the only phone as primary", () => {
+    expect(normaliseManagedPhones([{ phone: " +1 647 555 1212 ", isPrimary: false }])).toEqual([
+      {
+        phone: "+16475551212",
+        isPrimary: true,
+      },
+    ]);
+  });
+
+  it("dedupes duplicate phones and keeps exactly one explicit primary in multi-phone mode", () => {
+    expect(
+      normaliseManagedPhones([
+        { phone: "+1 647 555 1212", isPrimary: false },
+        { phone: "+16475551212", isPrimary: false },
+        { phone: "+1 416 555 0000", isPrimary: true },
+      ])
+    ).toEqual([
+      {
+        phone: "+16475551212",
+        isPrimary: false,
+      },
+      {
+        phone: "+14165550000",
+        isPrimary: true,
+      },
+    ]);
+  });
+
+  it("rejects multi-phone payloads without exactly one primary phone", () => {
+    expect(() =>
+      normaliseManagedPhones([
+        { phone: "+16475551212", isPrimary: false },
+        { phone: "+14165550000", isPrimary: false },
       ])
     ).toThrow(/exactly one primary/i);
   });

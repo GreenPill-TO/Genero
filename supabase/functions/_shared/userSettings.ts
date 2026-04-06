@@ -10,9 +10,21 @@ type ManagedEmailInput = {
   isPrimary: boolean;
 };
 
+type ManagedPhoneInput = {
+  phone: string;
+  isPrimary: boolean;
+};
+
 type UserEmailRow = {
   id: number | null;
   email: string;
+  isPrimary: boolean;
+  createdAt: string | null;
+};
+
+type UserPhoneRow = {
+  id: number | null;
+  phone: string;
   isPrimary: boolean;
   createdAt: string | null;
 };
@@ -73,6 +85,15 @@ export function normaliseEmailAddress(value: unknown): string | null {
   return normalised;
 }
 
+export function normalisePhoneNumber(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalised = value.replace(/\s+/g, "").trim();
+  return normalised.length > 0 ? normalised : null;
+}
+
 export function normaliseManagedEmails(value: unknown): ManagedEmailInput[] {
   if (!Array.isArray(value)) {
     throw new Error("Emails must be provided as a list.");
@@ -113,6 +134,49 @@ export function normaliseManagedEmails(value: unknown): ManagedEmailInput[] {
   return emails.map((entry) => ({
     email: entry.email,
     isPrimary: entry.email === primaryEmail,
+  }));
+}
+
+export function normaliseManagedPhones(value: unknown): ManagedPhoneInput[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Phones must be provided as a list.");
+  }
+
+  const deduped = new Map<string, ManagedPhoneInput>();
+
+  for (const entry of value) {
+    if (!isRecord(entry)) {
+      throw new Error("Each phone entry must be an object.");
+    }
+
+    const phone = normalisePhoneNumber(entry.phone);
+    if (!phone) {
+      throw new Error("Each phone number must be a non-empty phone string.");
+    }
+
+    const next = deduped.get(phone) ?? { phone, isPrimary: false };
+    next.isPrimary = next.isPrimary || entry.isPrimary === true;
+    deduped.set(phone, next);
+  }
+
+  const phones = Array.from(deduped.values());
+  if (phones.length === 0) {
+    throw new Error("At least one phone number is required.");
+  }
+
+  if (phones.length === 1) {
+    return [{ ...phones[0], isPrimary: true }];
+  }
+
+  const primaryPhones = phones.filter((entry) => entry.isPrimary);
+  if (primaryPhones.length !== 1) {
+    throw new Error("Select exactly one primary phone number.");
+  }
+
+  const primaryPhone = primaryPhones[0]?.phone;
+  return phones.map((entry) => ({
+    phone: entry.phone,
+    isPrimary: entry.phone === primaryPhone,
   }));
 }
 
@@ -612,6 +676,63 @@ async function loadActiveUserEmails(options: {
     : [];
 }
 
+async function loadActiveUserPhones(options: {
+  supabase: any;
+  userId: number;
+  fallbackPhone?: string | null;
+}): Promise<UserPhoneRow[]> {
+  const { data, error } = await options.supabase
+    .from("user_phone_addresses")
+    .select("id,phone,is_primary,created_at")
+    .eq("user_id", options.userId)
+    .is("deleted_at", null)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (isMissingTableError(error.message)) {
+      const fallbackPhone = normalisePhoneNumber(options.fallbackPhone);
+      return fallbackPhone
+        ? [
+            {
+              id: null,
+              phone: fallbackPhone,
+              isPrimary: true,
+              createdAt: null,
+            },
+          ]
+        : [];
+    }
+
+    throw new Error(`Failed to load user phones: ${error.message}`);
+  }
+
+  const phones = (data ?? [])
+    .map((row: any) => ({
+      id: toNullableInteger(row.id),
+      phone: normalisePhoneNumber(row.phone),
+      isPrimary: row.is_primary === true,
+      createdAt: toNullableString(row.created_at),
+    }))
+    .filter((row: UserPhoneRow) => Boolean(row.phone)) as UserPhoneRow[];
+
+  if (phones.length > 0) {
+    return phones;
+  }
+
+  const fallbackPhone = normalisePhoneNumber(options.fallbackPhone);
+  return fallbackPhone
+    ? [
+        {
+          id: null,
+          phone: fallbackPhone,
+          isPrimary: true,
+          createdAt: null,
+        },
+      ]
+    : [];
+}
+
 async function syncUserEmailAddresses(options: {
   supabase: any;
   userId: number;
@@ -778,6 +899,172 @@ async function syncUserEmailAddresses(options: {
   }
 }
 
+async function syncUserPhoneAddresses(options: {
+  supabase: any;
+  userId: number;
+  phones: ManagedPhoneInput[];
+  ignoredUserIds?: number[];
+}) {
+  const normalisedPhones = normaliseManagedPhones(options.phones);
+  const primaryPhone = normalisedPhones.find((entry) => entry.isPrimary)?.phone ?? normalisedPhones[0]?.phone ?? null;
+
+  const { data: existingRows, error: existingError } = await options.supabase
+    .from("user_phone_addresses")
+    .select("id,phone,is_primary")
+    .eq("user_id", options.userId)
+    .is("deleted_at", null);
+
+  if (existingError) {
+    if (isMissingTableError(existingError.message)) {
+      if (normalisedPhones.length > 1) {
+        throw new Error("Multiple phone numbers are not configured in this environment.");
+      }
+
+      const { error: fallbackUpdateError } = await options.supabase
+        .from("users")
+        .update({
+          phone: primaryPhone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", options.userId);
+
+      if (fallbackUpdateError) {
+        throw new Error(`Failed to update primary phone: ${fallbackUpdateError.message}`);
+      }
+
+      return;
+    }
+
+    throw new Error(`Failed to load user phone state: ${existingError.message}`);
+  }
+
+  const { data: conflictingRows, error: conflictingError } = await options.supabase
+    .from("user_phone_addresses")
+    .select("id,phone,user_id")
+    .in(
+      "phone",
+      normalisedPhones.map((entry) => entry.phone)
+    )
+    .is("deleted_at", null)
+    .neq("user_id", options.userId);
+
+  if (conflictingError) {
+    throw new Error(`Failed to validate phone availability: ${conflictingError.message}`);
+  }
+
+  const ignoredUserIds = new Set(options.ignoredUserIds ?? []);
+  const meaningfulConflicts = (conflictingRows ?? []).filter((row) => {
+    const userId = toNullableInteger(row.user_id);
+    return userId == null || !ignoredUserIds.has(userId);
+  });
+
+  if (meaningfulConflicts.length > 0) {
+    throw new Error("One of those phone numbers is already connected to another active account.");
+  }
+
+  const existingByPhone = new Map<string, { id: number; phone: string; isPrimary: boolean }>();
+  for (const row of existingRows ?? []) {
+    const phone = normalisePhoneNumber(row.phone);
+    const id = toNullableInteger(row.id);
+    if (!phone || id == null) {
+      continue;
+    }
+    existingByPhone.set(phone, {
+      id,
+      phone,
+      isPrimary: row.is_primary === true,
+    });
+  }
+
+  const nowIso = new Date().toISOString();
+  const requestedPhones = new Set(normalisedPhones.map((entry) => entry.phone));
+  const removedRowIds = Array.from(existingByPhone.values())
+    .filter((row) => !requestedPhones.has(row.phone))
+    .map((row) => row.id);
+
+  if (removedRowIds.length > 0) {
+    const { error: deleteError } = await options.supabase
+      .from("user_phone_addresses")
+      .update({
+        is_primary: false,
+        deleted_at: nowIso,
+        updated_at: nowIso,
+      })
+      .in("id", removedRowIds);
+
+    if (deleteError) {
+      throw new Error(`Failed to retire removed phones: ${deleteError.message}`);
+    }
+  }
+
+  for (const entry of normalisedPhones) {
+    const existingRow = existingByPhone.get(entry.phone);
+    if (existingRow) {
+      if (existingRow.isPrimary === entry.isPrimary) {
+        continue;
+      }
+
+      const { error: updateError } = await options.supabase
+        .from("user_phone_addresses")
+        .update({
+          is_primary: entry.isPrimary,
+          updated_at: nowIso,
+        })
+        .eq("id", existingRow.id);
+
+      if (updateError) {
+        throw new Error(`Failed to update phone status: ${updateError.message}`);
+      }
+
+      continue;
+    }
+
+    const { error: insertError } = await options.supabase.from("user_phone_addresses").insert({
+      user_id: options.userId,
+      phone: entry.phone,
+      is_primary: entry.isPrimary,
+      created_at: nowIso,
+      updated_at: nowIso,
+    });
+
+    if (insertError) {
+      if (insertError.message?.includes("user_phone_addresses_active_phone_key")) {
+        const { data: racedRow, error: racedRowError } = await options.supabase
+          .from("user_phone_addresses")
+          .select("user_id")
+          .eq("phone", entry.phone)
+          .is("deleted_at", null)
+          .order("id", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (racedRowError) {
+          throw new Error(`Failed to reconcile duplicate phone race: ${racedRowError.message}`);
+        }
+
+        const racedUserId = toNullableInteger(racedRow?.user_id);
+        if (racedUserId === options.userId || ignoredUserIds.has(racedUserId ?? -1)) {
+          continue;
+        }
+      }
+
+      throw new Error(`Failed to save phone number: ${insertError.message}`);
+    }
+  }
+
+  const { error: userUpdateError } = await options.supabase
+    .from("users")
+    .update({
+      phone: primaryPhone,
+      updated_at: nowIso,
+    })
+    .eq("id", options.userId);
+
+  if (userUpdateError) {
+    throw new Error(`Failed to update primary phone: ${userUpdateError.message}`);
+  }
+}
+
 async function ensureUserEmailsPresent(options: {
   supabase: any;
   userId: number;
@@ -824,6 +1111,52 @@ async function ensureUserEmailsPresent(options: {
   });
 }
 
+async function ensureUserPhonesPresent(options: {
+  supabase: any;
+  userId: number;
+  phones: string[];
+  ignoredUserIds?: number[];
+}) {
+  const existingPhones = await loadActiveUserPhones({
+    supabase: options.supabase,
+    userId: options.userId,
+  });
+
+  const requested = Array.from(
+    new Set(options.phones.map((value) => normalisePhoneNumber(value)).filter((value): value is string => Boolean(value)))
+  );
+
+  if (requested.length === 0) {
+    return;
+  }
+
+  const existingByPhone = new Map(existingPhones.map((entry) => [entry.phone, entry]));
+  const merged = existingPhones.map((entry) => ({
+    phone: entry.phone,
+    isPrimary: entry.isPrimary,
+  }));
+
+  for (const phone of requested) {
+    if (!existingByPhone.has(phone)) {
+      merged.push({
+        phone,
+        isPrimary: merged.length === 0,
+      });
+    }
+  }
+
+  if (!merged.some((entry) => entry.isPrimary) && merged.length > 0) {
+    merged[0]!.isPrimary = true;
+  }
+
+  await syncUserPhoneAddresses({
+    supabase: options.supabase,
+    userId: options.userId,
+    phones: merged,
+    ignoredUserIds: options.ignoredUserIds,
+  });
+}
+
 async function findUserIdByEmail(options: {
   supabase: any;
   email: string;
@@ -863,6 +1196,50 @@ async function findUserIdByEmail(options: {
 
   if (fallbackError) {
     throw new Error(`Failed to resolve user by email: ${fallbackError.message}`);
+  }
+
+  return toNullableInteger(fallbackData?.id);
+}
+
+async function findUserIdByPhone(options: {
+  supabase: any;
+  phone: string;
+}): Promise<number | null> {
+  const normalisedPhone = normalisePhoneNumber(options.phone);
+  if (!normalisedPhone) {
+    return null;
+  }
+
+  const { data, error } = await options.supabase
+    .from("user_phone_addresses")
+    .select("user_id")
+    .eq("phone", normalisedPhone)
+    .is("deleted_at", null)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (!isMissingTableError(error.message)) {
+      throw new Error(`Failed to resolve user by phone history: ${error.message}`);
+    }
+  } else {
+    const userId = toNullableInteger(data?.user_id);
+    if (userId != null) {
+      return userId;
+    }
+  }
+
+  const { data: fallbackData, error: fallbackError } = await options.supabase
+    .from("users")
+    .select("id")
+    .eq("phone", normalisedPhone)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackError) {
+    throw new Error(`Failed to resolve user by phone: ${fallbackError.message}`);
   }
 
   return toNullableInteger(fallbackData?.id);
@@ -1911,10 +2288,12 @@ export async function ensureAuthenticatedUserRecord(options: {
   const contact = toNullableString(options.fullContact);
   const authMethod = toNullableString(options.authMethod)?.toLowerCase();
   const authEmail = normaliseEmailAddress(options.authUser.email);
+  const authPhone = normalisePhoneNumber(options.authUser.phone);
   const contactEmail = authMethod === "phone" ? null : normaliseEmailAddress(contact);
+  const contactPhone = authMethod === "phone" ? normalisePhoneNumber(contact) : null;
   const authenticatedCubidId = normalisePersistedCubidId(options.cubidId, options.authUser.id);
 
-  const [authUserRowResult, authEmailUserId, phoneContactResult, contactEmailUserId] = await Promise.all([
+  const [authUserRowResult, authEmailUserId, authPhoneUserId, contactPhoneUserId, contactEmailUserId] = await Promise.all([
     options.supabase
       .from("users")
       .select("id")
@@ -1923,34 +2302,41 @@ export async function ensureAuthenticatedUserRecord(options: {
       .limit(1)
       .maybeSingle(),
     authEmail ? findUserIdByEmail({ supabase: options.supabase, email: authEmail }) : Promise.resolve(null),
-    authMethod === "phone" && contact
-      ? options.supabase
-          .from("users")
-          .select("id")
-          .eq("phone", contact)
-          .order("id", { ascending: true })
-          .limit(1)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+    authPhone ? findUserIdByPhone({ supabase: options.supabase, phone: authPhone }) : Promise.resolve(null),
+    contactPhone ? findUserIdByPhone({ supabase: options.supabase, phone: contactPhone }) : Promise.resolve(null),
     contactEmail ? findUserIdByEmail({ supabase: options.supabase, email: contactEmail }) : Promise.resolve(null),
   ]);
 
   if (authUserRowResult.error) {
     throw new Error(`Failed to resolve user row: ${authUserRowResult.error.message}`);
   }
-  if (phoneContactResult.error) {
-    throw new Error(`Failed to resolve user row: ${phoneContactResult.error.message}`);
-  }
 
   const existingCandidates = [
     toNullableInteger(authUserRowResult.data?.id),
     authEmailUserId,
-    toNullableInteger(phoneContactResult.data?.id),
+    authPhoneUserId,
+    contactPhoneUserId,
     contactEmailUserId,
   ].filter((value): value is number => value != null);
 
   let userId = existingCandidates[0] ?? null;
   let created = false;
+
+  const readCanonicalAuthUserId = async () => {
+    const { data: canonicalAuthUserRow, error: canonicalAuthUserError } = await options.supabase
+      .from("users")
+      .select("id")
+      .eq("auth_user_id", options.authUser.id)
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (canonicalAuthUserError) {
+      throw new Error(`Failed to resolve canonical authenticated user row: ${canonicalAuthUserError.message}`);
+    }
+
+    return toNullableInteger(canonicalAuthUserRow?.id);
+  };
 
   if (userId == null) {
     const payload: Record<string, unknown> = {
@@ -1963,10 +2349,14 @@ export async function ensureAuthenticatedUserRecord(options: {
       payload.cubid_id = authenticatedCubidId;
     }
 
-    if (authMethod === "phone" && contact) {
-      payload.phone = contact;
-    } else if (contact) {
-      payload.email = contactEmail ?? contact;
+    if (contactPhone) {
+      payload.phone = contactPhone;
+    } else if (authPhone) {
+      payload.phone = authPhone;
+    }
+
+    if (contactEmail) {
+      payload.email = contactEmail;
     } else if (authEmail) {
       payload.email = authEmail;
     }
@@ -1978,11 +2368,15 @@ export async function ensureAuthenticatedUserRecord(options: {
       .single();
 
     if (insertError) {
-      throw new Error(`Failed to create user row: ${insertError.message}`);
+      if (insertError.message?.includes("users_auth_user_id_key")) {
+        userId = await readCanonicalAuthUserId();
+      } else {
+        throw new Error(`Failed to create user row: ${insertError.message}`);
+      }
+    } else {
+      userId = toNullableInteger(inserted?.id);
+      created = true;
     }
-
-    userId = toNullableInteger(inserted?.id);
-    created = true;
   } else {
     const { data: existingUserRow, error: existingUserError } = await options.supabase
       .from("users")
@@ -1995,14 +2389,21 @@ export async function ensureAuthenticatedUserRecord(options: {
       throw new Error(`Failed to load authenticated user row: ${existingUserError.message}`);
     }
 
+    const existingAuthUserId = toNullableString(existingUserRow?.auth_user_id);
+    if (existingAuthUserId && existingAuthUserId !== options.authUser.id) {
+      throw new Error("That email address or phone number is already connected to another active account.");
+    }
+
     const patch: Record<string, unknown> = {
       auth_user_id: options.authUser.id,
     };
     if (authEmail) {
       patch.email = authEmail;
     }
-    if (authMethod === "phone" && contact) {
-      patch.phone = contact;
+    if (contactPhone) {
+      patch.phone = contactPhone;
+    } else if (authPhone) {
+      patch.phone = authPhone;
     }
     const existingCubidId = normalisePersistedCubidId(
       existingUserRow?.cubid_id,
@@ -2019,7 +2420,11 @@ export async function ensureAuthenticatedUserRecord(options: {
 
     const { error: updateError } = await options.supabase.from("users").update(patch).eq("id", userId);
     if (updateError) {
-      throw new Error(`Failed to update authenticated user row: ${updateError.message}`);
+      if (updateError.message?.includes("users_auth_user_id_key")) {
+        userId = await readCanonicalAuthUserId();
+      } else {
+        throw new Error(`Failed to update authenticated user row: ${updateError.message}`);
+      }
     }
   }
 
@@ -2027,19 +2432,7 @@ export async function ensureAuthenticatedUserRecord(options: {
     throw new Error("Unable to resolve authenticated user id.");
   }
 
-  const { data: canonicalUserRow, error: canonicalUserError } = await options.supabase
-    .from("users")
-    .select("id")
-    .eq("auth_user_id", options.authUser.id)
-    .order("id", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (canonicalUserError) {
-    throw new Error(`Failed to resolve canonical authenticated user row: ${canonicalUserError.message}`);
-  }
-
-  userId = toNullableInteger(canonicalUserRow?.id) ?? userId;
+  userId = (await readCanonicalAuthUserId()) ?? userId;
 
   const { data: siblingRows, error: siblingError } = await options.supabase
     .from("users")
@@ -2055,12 +2448,22 @@ export async function ensureAuthenticatedUserRecord(options: {
     .filter((value): value is number => value != null && value !== userId);
 
   const managedEmails = [contactEmail, authEmail].filter((value): value is string => Boolean(value));
+  const managedPhones = [contactPhone, authPhone].filter((value): value is string => Boolean(value));
 
   if (managedEmails.length > 0) {
     await ensureUserEmailsPresent({
       supabase: options.supabase,
       userId,
       emails: managedEmails,
+      ignoredUserIds: ignoredDuplicateUserIds,
+    });
+  }
+
+  if (managedPhones.length > 0) {
+    await ensureUserPhonesPresent({
+      supabase: options.supabase,
+      userId,
+      phones: managedPhones,
       ignoredUserIds: ignoredDuplicateUserIds,
     });
   }

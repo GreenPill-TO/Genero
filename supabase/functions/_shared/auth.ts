@@ -61,6 +61,15 @@ function normaliseEmail(value: unknown): string | null {
   return normalised.length > 0 ? normalised : null;
 }
 
+function normalisePhone(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalised = value.replace(/\s+/g, "").trim();
+  return normalised.length > 0 ? normalised : null;
+}
+
 function isMissingTableError(message: string | undefined): boolean {
   if (!message) {
     return false;
@@ -96,6 +105,7 @@ export async function resolveAuthenticatedUser(req: Request) {
 
   let userRow = authUserRow;
   const authEmail = normaliseEmail(authUser.email);
+  const authPhone = normalisePhone(authUser.phone);
 
   if (!userRow && authEmail) {
     const { data: emailHistoryRow, error: emailHistoryError } = await serviceRole
@@ -149,6 +159,60 @@ export async function resolveAuthenticatedUser(req: Request) {
     }
 
     userRow = emailUserRow;
+  }
+
+  if (!userRow && authPhone) {
+    const { data: phoneHistoryRow, error: phoneHistoryError } = await serviceRole
+      .from("user_phone_addresses")
+      .select("user_id")
+      .eq("phone", authPhone)
+      .is("deleted_at", null)
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (phoneHistoryError && !isMissingTableError(phoneHistoryError.message)) {
+      throw new Error(`Failed to resolve user row by phone history: ${phoneHistoryError.message}`);
+    }
+
+    const phoneHistoryUserId =
+      typeof phoneHistoryRow?.user_id === "number"
+        ? phoneHistoryRow.user_id
+        : typeof phoneHistoryRow?.user_id === "string"
+          ? Number.parseInt(phoneHistoryRow.user_id, 10)
+          : null;
+
+    if (phoneHistoryUserId != null && Number.isFinite(phoneHistoryUserId)) {
+      const { data: phoneHistoryUserRow, error: phoneHistoryUserRowError } = await serviceRole
+        .from("users")
+        .select("id,email,auth_user_id,cubid_id")
+        .eq("id", phoneHistoryUserId)
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (phoneHistoryUserRowError) {
+        throw new Error(`Failed to resolve user row from phone history: ${phoneHistoryUserRowError.message}`);
+      }
+
+      userRow = phoneHistoryUserRow;
+    }
+  }
+
+  if (!userRow && authPhone) {
+    const { data: phoneUserRow, error: phoneRowError } = await serviceRole
+      .from("users")
+      .select("id,email,auth_user_id,cubid_id")
+      .eq("phone", authPhone)
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (phoneRowError) {
+      throw new Error(`Failed to resolve user row by phone: ${phoneRowError.message}`);
+    }
+
+    userRow = phoneUserRow;
   }
 
   if (!userRow) {

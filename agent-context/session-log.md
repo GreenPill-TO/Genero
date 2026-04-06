@@ -1,3 +1,34 @@
+## v1.177
+### Timestamp
+- 2026-04-06 00:10 EDT
+
+### Objective
+- Enforce unique `users.auth_user_id` ownership so OTP/auth cannot create duplicate user rows, while preserving the multi-contact account model that lets one account own several emails and later several phones without supporting cross-account merges.
+
+### What Changed
+- Added `20260406022000_v1.14_auth_identity_uniqueness.sql`, which backs up and nulls non-canonical duplicate `auth_user_id` rows before creating a partial unique index on `public.users(auth_user_id)` for non-null values.
+- Added canonical `public.user_phone_addresses` history, mirroring the existing email-history design with one active phone globally, one active primary phone per user, soft deletes, and a trigger that keeps `public.users.phone` synced to the current primary phone.
+- Updated shared user-settings auth provisioning to resolve phone ownership through the new phone-history table, preserve authenticated emails/phones on the canonical user, reconcile unique-index races, and reject attempts to bind an email or phone that already belongs to another active account.
+- Updated the shared authenticated-user resolver to consult phone history as well as email history, and added unit coverage for the new phone normalization helpers.
+
+### Verification
+- `pnpm exec eslint supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts supabase/functions/_shared/auth.ts`
+- `pnpm exec vitest run supabase/functions/_shared/userSettings.test.ts`
+- `supabase db push --local --include-all`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select auth_user_id, array_agg(id order by id), count(*) from public.users where auth_user_id is not null group by auth_user_id having count(*) > 1;"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c \"select indexname from pg_indexes where schemaname='public' and tablename='users' and indexname='users_auth_user_id_key';\"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c \"select indexname from pg_indexes where schemaname='public' and tablename='user_phone_addresses';\"`
+- Local OTP smoke on `http://localhost:3000/welcome` with a fresh email, checking that auth now reuses the canonical user row instead of minting another active row for the same `auth_user_id`
+
+### Files Edited
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/migrations/20260406022000_v1.14_auth_identity_uniqueness.sql`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.176
 ### Timestamp
 - 2026-04-05 21:46 EDT
