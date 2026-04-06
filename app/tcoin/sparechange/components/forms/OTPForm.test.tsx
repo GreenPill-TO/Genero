@@ -63,4 +63,56 @@ describe("OTPForm", () => {
     } as any);
     expect(setPasscode).toHaveBeenLastCalledWith("123456");
   });
+
+  it("clears entered digits when the resend reset key changes", () => {
+    const setPasscode = vi.fn();
+    const { container, rerender } = render(
+      <OTPForm
+        authMethod="email"
+        countryCode="+1"
+        contact="test@example.com"
+        passcode=""
+        otpResetKey={0}
+        setCountryCode={() => {}}
+        setContact={() => {}}
+        setPasscode={setPasscode}
+        onSubmit={vi.fn()}
+        onResend={vi.fn()}
+        canResend={true}
+        isOtpSent={true}
+        errorMessage={null}
+        handleAuthMethodChange={() => {}}
+      />
+    );
+
+    const inputs = Array.from(container.querySelectorAll('input[inputmode="numeric"]')) as HTMLInputElement[];
+    fireEvent.change(inputs[0], { target: { value: "1" } });
+    fireEvent.change(inputs[1], { target: { value: "2" } });
+    expect(inputs[0].value).toBe("1");
+    expect(inputs[1].value).toBe("2");
+
+    rerender(
+      <OTPForm
+        authMethod="email"
+        countryCode="+1"
+        contact="test@example.com"
+        passcode=""
+        otpResetKey={1}
+        setCountryCode={() => {}}
+        setContact={() => {}}
+        setPasscode={setPasscode}
+        onSubmit={vi.fn()}
+        onResend={vi.fn()}
+        canResend={true}
+        isOtpSent={true}
+        errorMessage={null}
+        handleAuthMethodChange={() => {}}
+      />
+    );
+
+    const resetInputs = Array.from(container.querySelectorAll('input[inputmode="numeric"]')) as HTMLInputElement[];
+    resetInputs.forEach((input) => {
+      expect(input.value).toBe("");
+    });
+  });
 });

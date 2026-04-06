@@ -259,3 +259,4 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Small businesses
 - Local charities & service workers
 - Visitors looking for an ethical spending alternative
+- Resending a wallet or sparechange OTP must clear the previously entered six-digit code before the next attempt so repeat sign-in cannot auto-submit a mixed old/new code.

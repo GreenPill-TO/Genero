@@ -1,3 +1,31 @@
+## v1.178
+### Timestamp
+- 2026-04-06 00:39 EDT
+
+### Objective
+- Fix the repeat wallet OTP flow so resend and retry attempts do not leave stale six-digit codes in place or trigger `403 /auth/v1/verify` failures from mixed old/new OTP submissions.
+
+### What Changed
+- Added an `otpResetKey` contract to both wallet and sparechange OTP forms so the six-digit inputs clear and re-focus whenever a resend succeeds or a verify attempt fails.
+- Updated both sign-in modals to reset passcode state on resend and verify errors, and to send the normalized `fullContact` to Supabase for both send and verify operations instead of the raw contact fragment.
+- Added regression coverage proving the OTP inputs clear when the reset key changes, which protects the resend path that previously left old digits in place.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/wallet/components/modals/SignInModal.tsx app/tcoin/sparechange/components/forms/OTPForm.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/modals/SignInModal.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/wallet/components/modals/SignInModal.test.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- Local headed Playwright smoke on `http://localhost:3000/welcome` with a fresh OTP user, then sign-out, second sign-in for the same email, resend, successful verify, and a final DB check confirming exactly one `public.users` row for that email
+
+### Files Edited
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `app/tcoin/sparechange/components/modals/SignInModal.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.177
 ### Timestamp
 - 2026-04-06 00:10 EDT

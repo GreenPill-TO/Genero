@@ -48,6 +48,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const [contact, setContact] = useState("");
   const [passcode, setPasscode] = useState("");
   const [isPasscodeSent, setIsPasscodeSent] = useState(false);
+  const [otpResetKey, setOtpResetKey] = useState(0);
   const router = useRouter();
 
   const fullContact = useMemo(() => {
@@ -58,6 +59,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
     onSuccessCallback: () => {
       toast.success("Passcode sent successfully!");
       setIsPasscodeSent(true);
+      setOtpResetKey((current) => current + 1);
     },
     onErrorCallback: (err) => {
       toast.error(err.message);
@@ -71,6 +73,8 @@ function SignInModal({ closeModal }: SignInModalProps) {
       closeModal();
     },
     onErrorCallback: (err) => {
+      setPasscode("");
+      setOtpResetKey((current) => current + 1);
       toast.error(err.message);
     },
   });
@@ -78,17 +82,17 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const handleSendPasscode = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      sendCodeMut.mutate({ contact, method: authMethod });
+      sendCodeMut.mutate({ contact: fullContact, method: authMethod });
     },
-    [authMethod, contact, sendCodeMut]
+    [authMethod, fullContact, sendCodeMut]
   );
 
   const handleVerifyPasscode = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      verifyCodeMut.mutate({ contact, method: authMethod, passcode });
+      verifyCodeMut.mutate({ contact: fullContact, method: authMethod, passcode });
     },
-    [authMethod, contact, passcode, verifyCodeMut]
+    [authMethod, fullContact, passcode, verifyCodeMut]
   );
 
   const handlePostAuthentication = async (fullContact: string) => {
@@ -115,7 +119,9 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const handleAuthMethodChange = (method: "phone" | "email") => {
     setAuthMethod(method);
     setContact("");
+    setPasscode("");
     setIsPasscodeSent(false);
+    setOtpResetKey(0);
   };
 
   return (
@@ -128,6 +134,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
             countryCode={countryCode}
             contact={contact}
             passcode={passcode}
+            otpResetKey={otpResetKey}
             setCountryCode={setCountryCode}
             setContact={setContact}
             setPasscode={setPasscode}
@@ -137,7 +144,8 @@ function SignInModal({ closeModal }: SignInModalProps) {
             handleAuthMethodChange={handleAuthMethodChange}
             canResend={true}
             onResend={() => {
-              sendCodeMut.mutate({ contact, method: "email" });
+              setPasscode("");
+              sendCodeMut.mutate({ contact: fullContact, method: authMethod });
             }}
             isLoading={sendCodeMut.isPending || verifyCodeMut.isPending}
           />

@@ -12,6 +12,7 @@ type OTPFormProps = {
   countryCode: string;
   contact: string;
   passcode: string;
+  otpResetKey?: number;
   setCountryCode: (value: string) => void;
   setContact: (value: string) => void;
   setPasscode: (value: string) => void;
@@ -29,6 +30,7 @@ function OTPForm({
   countryCode,
   contact,
   passcode,
+  otpResetKey = 0,
   setCountryCode,
   setContact,
   setPasscode,
@@ -50,13 +52,13 @@ function OTPForm({
   const hasAutoSubmittedRef = useRef(false);
 
   useEffect(() => {
-    if (isOtpSent) {
-      setDigits(Array(6).fill(""));
-      setPasscode("");
-      inputsRef.current[0]?.focus();
-      hasAutoSubmittedRef.current = false;
-    }
-  }, [isOtpSent, setPasscode]);
+    if (!isOtpSent) return;
+
+    setDigits(Array(6).fill(""));
+    setPasscode("");
+    inputsRef.current[0]?.focus();
+    hasAutoSubmittedRef.current = false;
+  }, [isOtpSent, otpResetKey, setPasscode]);
 
   useEffect(() => {
     if (!isOtpSent) {
