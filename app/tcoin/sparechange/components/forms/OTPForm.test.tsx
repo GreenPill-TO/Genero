@@ -25,6 +25,7 @@ describe("OTPForm", () => {
     );
 
     const emailInput = screen.getByPlaceholderText("Enter your email");
+    expect(emailInput.hasAttribute("pattern")).toBe(false);
     expect(emailInput.className).toContain("bg-white");
     expect(emailInput.className).toContain("border-slate-300");
   });

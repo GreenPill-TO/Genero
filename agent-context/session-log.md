@@ -1,3 +1,28 @@
+## v1.175
+### Timestamp
+- 2026-04-05 21:31 EDT
+
+### Objective
+- Remove the browser regex warning from the wallet auth form by fixing the email input validation contract used in the OTP modal.
+
+### What Changed
+- Removed the custom email `pattern` attribute from both wallet and sparechange OTP forms, relying on the existing native `type="email"` validation instead.
+- Added focused assertions in both OTP-form test files to keep the email field free of the old browser-rejected regex pattern.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/forms/OTPForm.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- Headed Playwright smoke on `http://localhost:3000/welcome`, opening the auth modal and confirming the console no longer reports the email-pattern regex error
+
+### Files Edited
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.174
 ### Timestamp
 - 2026-04-05 21:18 EDT

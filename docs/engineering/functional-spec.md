@@ -15,6 +15,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Sign-in flow presents six single-digit inputs that auto-focus, advance and accept pasted codes.
 - The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
 - In the public auth modal, the pre-OTP email field now uses a brighter light-mode input surface with stronger border and placeholder contrast so the “Enter your email” control remains clearly distinguishable from the modal background.
+- The auth email field no longer carries a custom regex pattern, so `/welcome` and other auth-entry surfaces avoid the browser console warning that newer Chrome versions emitted for the old explicit pattern while still keeping native email validation.
 - Local Supabase OTP testing now has a dedicated startup helper, `pnpm supabase:start:local`, which keeps the Colima-backed GoTrue container quiet during OTP email sends and gateway-auth checks by patching the missing local mailer-host allow-list after startup.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.

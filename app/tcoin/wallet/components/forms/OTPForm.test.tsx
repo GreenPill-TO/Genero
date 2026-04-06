@@ -31,6 +31,7 @@ describe("OTPForm", () => {
     expect(emailInput.getAttribute("name")).toBe("email");
     expect(emailInput.getAttribute("autocomplete")).toBe("email");
     expect(emailInput.getAttribute("inputmode")).toBe("email");
+    expect(emailInput.hasAttribute("pattern")).toBe(false);
     expect(emailInput.className).toContain("bg-white");
     expect(emailInput.className).toContain("border-slate-300");
     expect(emailInput.className).toContain("placeholder:text-slate-500");

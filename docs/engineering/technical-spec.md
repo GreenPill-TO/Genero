@@ -142,6 +142,7 @@
 - Wallet onboarding now uses a seven-step `general-user-v2` flow: process intro, user details, profile photo, community settings, experience mode, wallet/device setup, and final welcome. Legacy draft metadata is normalized forward at bootstrap/save time so older in-progress signups land on the new experience-mode step without a database backfill.
 - Authenticated user provisioning is now fully owned by `user-settings/auth/ensure-user`; the sign-in modals wait for a settled Supabase session before calling it, and the old fallback that tried to create a brand-new Cubid user on any transient post-OTP miss has been removed from the wallet-facing flow.
 - The legacy Cubid compatibility payload now carries `auth_user_id`, `created_at`, and `updated_at` from the shared bootstrap contract. The frontend uses that to distinguish real Cubid identities from locally provisioned auth-backed users and skips external Cubid refreshes when `cubid_id === auth_user_id`.
+- The wallet and sparechange OTP forms now rely on native `type="email"` validation only; the previous explicit regex `pattern` attribute was removed because Chrome’s newer pattern parser rejected it and emitted a console error without adding meaningful validation beyond the native email input semantics already in use.
 
 ## Extensibility
 
