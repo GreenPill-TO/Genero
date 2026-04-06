@@ -38,6 +38,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     "flex flex-col justify-between",
     "bg-background",
     "text-foreground text-sm",
+    isPublic && "wallet-public-shell",
     !isPublic && "wallet-auth-frame"
   );
 

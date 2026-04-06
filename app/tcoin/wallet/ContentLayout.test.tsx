@@ -80,6 +80,7 @@ describe("ContentLayout", () => {
     );
 
     expect(screen.getByTestId("wallet-layout-root").className).not.toContain("wallet-auth-frame");
+    expect(screen.getByTestId("wallet-layout-root").className).toContain("wallet-public-shell");
     expect(screen.getByTestId("wallet-layout-scroll-region").className).toBe("");
     expect(screen.queryByTestId("wallet-navbar")).toBeNull();
   });
@@ -94,6 +95,7 @@ describe("ContentLayout", () => {
     );
 
     expect(screen.getByTestId("wallet-layout-root").className).not.toContain("wallet-auth-frame");
+    expect(screen.getByTestId("wallet-layout-root").className).toContain("wallet-public-shell");
     expect(screen.queryByTestId("wallet-navbar")).toBeNull();
   });
 });

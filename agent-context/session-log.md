@@ -1,3 +1,27 @@
+## v1.187
+### Timestamp
+- 2026-04-06 13:56 EDT
+
+### Objective
+- Fold the already-documented wallet public-shell and auth-field styling fixes into the active auth PR branch so the review bundle includes the matching UI polish instead of leaving those useful changes behind locally.
+
+### What Changed
+- Added the `wallet-public-shell` class to public wallet routes and kept the matching tests/styles that scope unauthenticated link and brand colours to the teal palette in both light and dark mode.
+- Kept the shared auth-only form-field updates that switch the sign-in email field and OTP digit boxes to a light dark-mode surface with dark text for stronger contrast inside the auth modal.
+- Validated the focused wallet layout and auth-field styling tests before packaging the changes onto the same feature branch and PR.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/ContentLayout.test.tsx shared/components/ui/formFieldStyles.ts shared/components/ui/formFieldStyles.test.ts`
+- `pnpm exec vitest run app/tcoin/wallet/ContentLayout.test.tsx shared/components/ui/formFieldStyles.test.ts`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `shared/components/ui/formFieldStyles.ts`
+- `shared/components/ui/formFieldStyles.test.ts`
+
 ## v1.186
 ### Timestamp
 - 2026-04-06 13:45 EDT
