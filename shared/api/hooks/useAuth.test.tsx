@@ -154,13 +154,23 @@ const baseCubidData = {
 
 describe("useAuth", () => {
   let queryClient: QueryClient;
+  let secondaryQueryClient: QueryClient;
 
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
+  const secondaryWrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={secondaryQueryClient}>{children}</QueryClientProvider>
+  );
+
   beforeEach(() => {
     queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    secondaryQueryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
       },
@@ -191,6 +201,7 @@ describe("useAuth", () => {
 
   afterEach(() => {
     queryClient.clear();
+    secondaryQueryClient.clear();
     resetUseAuthSubscriptionForTests();
     setSessionSnapshot(null);
   });
@@ -271,6 +282,34 @@ describe("useAuth", () => {
 
     second.unmount();
     expect(unsubscribeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("fans auth state changes out to every active query client without duplicating indexer touches", async () => {
+    const first = renderHook(() => useAuth(), { wrapper });
+    const second = renderHook(() => useAuth(), { wrapper: secondaryWrapper });
+
+    await waitFor(() => {
+      expect(onAuthStateChangeMock).toHaveBeenCalledTimes(1);
+      expect(typeof authStateChangeHandlerRef.current).toBe("function");
+    });
+
+    act(() => {
+      authStateChangeHandlerRef.current?.("SIGNED_IN", createTestSession());
+    });
+
+    await waitFor(() => {
+      expect(first.result.current.isAuthenticated).toBe(true);
+      expect(second.result.current.isAuthenticated).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(mockFetchUserByContact).toHaveBeenCalledTimes(2);
+    });
+
+    expect(mockTriggerIndexerTouch).toHaveBeenCalledTimes(1);
+
+    first.unmount();
+    second.unmount();
   });
 
   it("surfaces ensure-user failures instead of collapsing them into an invalid cubid warning", async () => {

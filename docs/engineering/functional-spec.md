@@ -20,6 +20,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Auth-backed wallet and sparechange users may now legitimately have no persisted Cubid identity yet. In that state the apps should keep onboarding and preferences usable without silently writing the Supabase auth UUID into `users.cubid_id`.
 - A single Supabase auth user may only bind to one wallet `users` row. If a duplicate local race tries to create another row for the same `auth_user_id`, the app should reconcile back to the canonical account instead of creating a second active user record.
 - Local Supabase OTP testing now has a dedicated startup helper, `pnpm supabase:start:local`, which keeps the Colima-backed GoTrue container quiet during OTP email sends and gateway-auth checks by patching the missing local mailer-host allow-list after startup.
+- After OTP sign-in, wallet auth state must stay consistent across the outer wallet shell and the inner runtime providers, so the authenticated provider stack mounts from the same resolved session instead of leaving one layer on stale unauthenticated state.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.
 - Closing line states "build up - not extract from - our communities" with space-dash-space style.

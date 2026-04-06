@@ -1,3 +1,29 @@
+## v1.188
+### Timestamp
+- 2026-04-06 17:19 EDT
+
+### Objective
+- Address the inline PR review feedback on the wallet auth-bootstrap work by fixing the shared auth listener for nested React Query providers and making the Supabase session snapshot browser-only.
+
+### What Changed
+- Reworked `useAuth()` so the single shared Supabase `onAuthStateChange(...)` listener now reference-counts every active `QueryClient` and fans auth cache updates out to each one, instead of only updating the last-mounted client.
+- Kept the best-effort `/api/indexer/touch` trigger tied to the auth event itself, so one sign-in still emits only one indexer touch even when multiple query clients are active.
+- Restricted the shared Supabase session snapshot helper to browser-only caching, preventing SSR or other server-side execution from persisting a process-global auth token across requests.
+- Added regression coverage for multi-client auth propagation and the server-side no-cache guard, and updated the engineering specs to reflect both constraints.
+
+### Verification
+- `pnpm exec eslint shared/api/hooks/useAuth.ts shared/api/hooks/useAuth.test.tsx shared/lib/supabase/session.ts shared/lib/supabase/session.test.ts`
+- `pnpm exec vitest run shared/api/hooks/useAuth.test.tsx shared/lib/supabase/session.test.ts shared/lib/edge/core.test.ts`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `shared/api/hooks/useAuth.ts`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/lib/supabase/session.ts`
+- `shared/lib/supabase/session.test.ts`
+
 ## v1.187
 ### Timestamp
 - 2026-04-06 13:56 EDT

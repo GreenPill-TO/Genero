@@ -11,40 +11,61 @@ import { fetchCubidDataFromSupabase, fetchUserByContact, getSession, signOut, up
 const sharedAuthSubscription = {
   refCount: 0,
   unsubscribe: null as null | (() => void),
-  queryClient: null as QueryClient | null,
+  queryClients: new Map<QueryClient, number>(),
 };
 
 export function resetUseAuthSubscriptionForTests() {
   sharedAuthSubscription.unsubscribe?.();
   sharedAuthSubscription.refCount = 0;
   sharedAuthSubscription.unsubscribe = null;
-  sharedAuthSubscription.queryClient = null;
+  sharedAuthSubscription.queryClients.clear();
 }
 
-function handleAuthStateChange(queryClient: QueryClient, event: string, session: Session | null) {
-  setSessionSnapshot(session ?? null);
+function syncAuthStateForClient(queryClient: QueryClient, session: Session | null) {
   queryClient.setQueryData(["auth-data"], session ?? null);
 
   if (session) {
     queryClient.invalidateQueries({ queryKey: ["user-data"] });
-
-    if (event === "SIGNED_IN") {
-      void triggerIndexerTouch().catch(() => {
-        // Indexer trigger is best-effort and should not affect auth flow.
-      });
-    }
   } else {
     queryClient.removeQueries({ queryKey: ["user-data"] });
   }
 }
 
-function releaseSharedAuthSubscription() {
+function broadcastAuthState(event: string, session: Session | null) {
+  setSessionSnapshot(session ?? null);
+
+  for (const queryClient of sharedAuthSubscription.queryClients.keys()) {
+    syncAuthStateForClient(queryClient, session);
+  }
+
+  if (session && event === "SIGNED_IN") {
+    void triggerIndexerTouch().catch(() => {
+      // Indexer trigger is best-effort and should not affect auth flow.
+    });
+  }
+}
+
+function trackQueryClient(queryClient: QueryClient) {
+  sharedAuthSubscription.queryClients.set(
+    queryClient,
+    (sharedAuthSubscription.queryClients.get(queryClient) ?? 0) + 1
+  );
+}
+
+function releaseSharedAuthSubscription(queryClient: QueryClient) {
   sharedAuthSubscription.refCount = Math.max(0, sharedAuthSubscription.refCount - 1);
+  const nextClientRefCount = (sharedAuthSubscription.queryClients.get(queryClient) ?? 0) - 1;
+
+  if (nextClientRefCount > 0) {
+    sharedAuthSubscription.queryClients.set(queryClient, nextClientRefCount);
+  } else {
+    sharedAuthSubscription.queryClients.delete(queryClient);
+  }
 
   if (sharedAuthSubscription.refCount === 0) {
     sharedAuthSubscription.unsubscribe?.();
     sharedAuthSubscription.unsubscribe = null;
-    sharedAuthSubscription.queryClient = null;
+    sharedAuthSubscription.queryClients.clear();
   }
 }
 
@@ -62,18 +83,14 @@ export const useAuth = () => {
 
   useEffect(() => {
     sharedAuthSubscription.refCount += 1;
-    sharedAuthSubscription.queryClient = queryClient;
+    trackQueryClient(queryClient);
 
     if (!sharedAuthSubscription.unsubscribe) {
       const supabase = createClient();
       const {
         data: { subscription },
       } = supabase.auth.onAuthStateChange((event, session) => {
-        if (!sharedAuthSubscription.queryClient) {
-          return;
-        }
-
-        handleAuthStateChange(sharedAuthSubscription.queryClient, event, session);
+        broadcastAuthState(event, session);
       });
 
       sharedAuthSubscription.unsubscribe = () => {
@@ -82,7 +99,7 @@ export const useAuth = () => {
     }
 
     return () => {
-      releaseSharedAuthSubscription();
+      releaseSharedAuthSubscription(queryClient);
     };
   }, [queryClient]);
 
