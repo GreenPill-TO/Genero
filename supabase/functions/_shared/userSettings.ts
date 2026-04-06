@@ -42,15 +42,22 @@ function toNullableString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-export function resolveAuthenticatedCubidId(
+export function normalisePersistedCubidId(
   requestedCubidId: unknown,
-  authUserId: unknown
-): string {
-  const resolved = toNullableString(requestedCubidId) ?? toNullableString(authUserId);
-  if (!resolved) {
-    throw new Error("Unable to resolve an authenticated Cubid identifier.");
+  authUserId?: unknown
+): string | null {
+  const resolvedCubidId = toNullableString(requestedCubidId);
+  const resolvedAuthUserId = toNullableString(authUserId);
+
+  if (!resolvedCubidId) {
+    return null;
   }
-  return resolved;
+
+  if (resolvedAuthUserId && resolvedCubidId === resolvedAuthUserId) {
+    return null;
+  }
+
+  return resolvedCubidId;
 }
 
 export function normaliseEmailAddress(value: unknown): string | null {
@@ -377,18 +384,32 @@ function normaliseSignupForExperienceMode(options: {
   };
 }
 
-async function ensureAppProfile(options: {
+function isDuplicateAppProfileError(message: string | undefined): boolean {
+  if (!message) {
+    return false;
+  }
+
+  return (
+    message.includes('duplicate key value violates unique constraint "app_user_profiles_pkey"') ||
+    message.includes("duplicate key value violates unique constraint")
+  );
+}
+
+export async function ensureAppProfile(options: {
   supabase: any;
   userId: number;
   appInstanceId: number;
 }) {
-  const { data: existing, error: existingError } = await options.supabase
-    .from("app_user_profiles")
-    .select("user_id,app_instance_id,charity_preferences,onboarding_state,metadata")
-    .eq("user_id", options.userId)
-    .eq("app_instance_id", options.appInstanceId)
-    .limit(1)
-    .maybeSingle();
+  const loadExistingProfile = async () =>
+    options.supabase
+      .from("app_user_profiles")
+      .select("user_id,app_instance_id,charity_preferences,onboarding_state,metadata")
+      .eq("user_id", options.userId)
+      .eq("app_instance_id", options.appInstanceId)
+      .limit(1)
+      .maybeSingle();
+
+  const { data: existing, error: existingError } = await loadExistingProfile();
 
   if (existingError) {
     throw new Error(`Failed to load app profile: ${existingError.message}`);
@@ -412,6 +433,17 @@ async function ensureAppProfile(options: {
     .single();
 
   if (insertError) {
+    if (isDuplicateAppProfileError(insertError.message)) {
+      const { data: concurrentExisting, error: concurrentExistingError } = await loadExistingProfile();
+      if (concurrentExistingError) {
+        throw new Error(`Failed to load app profile after duplicate insert: ${concurrentExistingError.message}`);
+      }
+
+      if (concurrentExisting) {
+        return concurrentExisting;
+      }
+    }
+
     throw new Error(`Failed to create app profile: ${insertError.message}`);
   }
 
@@ -1130,7 +1162,7 @@ export async function getUserSettingsBootstrap(options: {
   return {
     user: {
       id: Number(userRow.id),
-      cubidId: typeof userRow.cubid_id === "string" ? userRow.cubid_id : "",
+      cubidId: normalisePersistedCubidId(userRow.cubid_id, userRow.auth_user_id),
       authUserId: toNullableString(userRow.auth_user_id),
       userIdentifier: toNullableString(userRow.user_identifier),
       createdAt: toNullableString(userRow.created_at),
@@ -1880,7 +1912,7 @@ export async function ensureAuthenticatedUserRecord(options: {
   const authMethod = toNullableString(options.authMethod)?.toLowerCase();
   const authEmail = normaliseEmailAddress(options.authUser.email);
   const contactEmail = authMethod === "phone" ? null : normaliseEmailAddress(contact);
-  const authenticatedCubidId = resolveAuthenticatedCubidId(options.cubidId, options.authUser.id);
+  const authenticatedCubidId = normalisePersistedCubidId(options.cubidId, options.authUser.id);
 
   const [authUserRowResult, authEmailUserId, phoneContactResult, contactEmailUserId] = await Promise.all([
     options.supabase
@@ -1922,11 +1954,14 @@ export async function ensureAuthenticatedUserRecord(options: {
 
   if (userId == null) {
     const payload: Record<string, unknown> = {
-      cubid_id: authenticatedCubidId,
       has_completed_intro: false,
       is_new_user: true,
       auth_user_id: options.authUser.id,
     };
+
+    if (authenticatedCubidId) {
+      payload.cubid_id = authenticatedCubidId;
+    }
 
     if (authMethod === "phone" && contact) {
       payload.phone = contact;
@@ -1951,7 +1986,7 @@ export async function ensureAuthenticatedUserRecord(options: {
   } else {
     const { data: existingUserRow, error: existingUserError } = await options.supabase
       .from("users")
-      .select("id,cubid_id")
+      .select("id,cubid_id,auth_user_id")
       .eq("id", userId)
       .limit(1)
       .maybeSingle();
@@ -1969,7 +2004,16 @@ export async function ensureAuthenticatedUserRecord(options: {
     if (authMethod === "phone" && contact) {
       patch.phone = contact;
     }
-    if (!toNullableString(existingUserRow?.cubid_id)) {
+    const existingCubidId = normalisePersistedCubidId(
+      existingUserRow?.cubid_id,
+      existingUserRow?.auth_user_id ?? options.authUser.id
+    );
+
+    if (existingCubidId !== toNullableString(existingUserRow?.cubid_id)) {
+      patch.cubid_id = existingCubidId;
+    }
+
+    if (!existingCubidId && authenticatedCubidId) {
       patch.cubid_id = authenticatedCubidId;
     }
 

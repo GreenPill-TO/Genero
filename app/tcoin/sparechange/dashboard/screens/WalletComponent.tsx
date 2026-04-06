@@ -85,14 +85,14 @@ const charityContributionData = [
 // ---------------- Interface ----------------
 export interface Hypodata {
   id: number;
-  cubid_id: string;
+  cubid_id: string | null;
   username: string;
   email: string;
   phone: string;
   persona: string;
   created_at: string;
   has_completed_intro: boolean;
-  auth_user_id: string;
+  auth_user_id: string | null;
   is_new_user: boolean | null;
   cubid_score: number | null;
   cubid_identity: unknown;

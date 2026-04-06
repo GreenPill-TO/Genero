@@ -16,6 +16,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
 - In the public auth modal, the pre-OTP email field now uses a brighter light-mode input surface with stronger border and placeholder contrast so the “Enter your email” control remains clearly distinguishable from the modal background.
 - The auth email field no longer carries a custom regex pattern, so `/welcome` and other auth-entry surfaces avoid the browser console warning that newer Chrome versions emitted for the old explicit pattern while still keeping native email validation.
+- Auth-backed wallet and sparechange users may now legitimately have no persisted Cubid identity yet. In that state the apps should keep onboarding and preferences usable without silently writing the Supabase auth UUID into `users.cubid_id`.
 - Local Supabase OTP testing now has a dedicated startup helper, `pnpm supabase:start:local`, which keeps the Colima-backed GoTrue container quiet during OTP email sends and gateway-auth checks by patching the missing local mailer-host allow-list after startup.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.
@@ -94,6 +95,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Scan-related actions now hide on devices that do not report an available camera, and QR-scanner modals fall back to a clear unavailable message if they are still reached indirectly.
 - Modals and workspaces launched from More now follow the same calm signed-in settings language, with grouped sections, clearer hierarchy, and more bank-like task framing for profile, theme, BIA, voucher-routing, charity, cash-out, preview, merchant, city-manager, and admin flows.
 - The cash-out modal now treats Cubid phone-stamp lookup as optional in local and degraded environments: if the lookup fails, the modal stays usable and asks the user to type their phone number manually instead of crashing.
+- Legacy locally provisioned users whose `cubid_id` only mirrored their Supabase `auth_user_id` are now treated as having no real Cubid identity; a cleanup migration nulls those placeholders while preserving a reversible backup table.
 - On small screens, where the footer omits the dedicated History tab, the More screen now includes a History button so transaction review remains reachable in the mobile navigation model.
 - When `/dashboard` is opened without an authenticated session in local preview mode, the page now shows a quiet wallet-preview state instead of attempting protected wallet reads, so the route remains explorable without noisy unauthorised errors.
 - In local Supabase development, wallet edge-function routes should now degrade to normal product responses (for example `401`, `404`, or explicit setup states) instead of failing with edge-runtime boot errors when the signed-in shell or Contacts invite flow touches them.

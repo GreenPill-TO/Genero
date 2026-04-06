@@ -123,6 +123,7 @@ export const fetchUserByContact = async (authMethod: "phone" | "email" | string,
         ? {
             id: result.user.id,
             cubid_id: result.user.cubid_id,
+            auth_user_id: result.user.auth_user_id,
             has_completed_intro: result.user.has_completed_intro,
             is_admin: result.user.is_admin,
           }
@@ -198,7 +199,7 @@ export const createNewUser = async (authMethod: "phone" | "email", fullContact: 
   }
 };
 
-export const fetchCubidDataFromSupabase = async (cubidId: string): Promise<TCubidData> => {
+export const fetchCubidDataFromSupabase = async (): Promise<TCubidData> => {
   const response = await getLegacyCubidData();
   return response as unknown as TCubidData;
 };
@@ -216,7 +217,7 @@ export interface CubidUpdatePayload {
   profile?: CubidProfileUpdate;
 }
 
-export const updateCubidDataInSupabase = async (cubidId: string, payload: CubidUpdatePayload) => {
+export const updateCubidDataInSupabase = async (payload: CubidUpdatePayload) => {
   try {
     if (payload.profile) {
       if (

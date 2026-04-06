@@ -14,6 +14,8 @@
 - **Documentation tooling**: Internal engineering notes may include Mermaid diagrams generated through the shared local `mermaid-chart` Codex skill, which keeps Mermaid source editable and uses local HTML previews plus browser screenshots for visual checks and image exports
 - **Authentication**: Twilio SMS OTP via API routes
 - **Storage**: Supabase (Postgres + Auth)
+  - `public.users.cubid_id` remains nullable. Auth-backed wallet/sparechange users must no longer persist a fallback Cubid id that merely mirrors `auth_user_id`; the shared user-settings bootstrap normalizes those legacy mirror values back to `null`.
+  - Local cleanup migration `20260405214500_v1.13_nullify_app_derived_cubid_ids.sql` backs up and nulls stored `users.cubid_id` values where `cubid_id = auth_user_id`, treating those rows as app-derived placeholders rather than real Cubid identities.
   - Browser storage (e.g. `localStorage`) is accessed inside `useEffect` hooks with window guards to avoid Node build-time warnings
   - `agent-context/sql-schema-v0.sql` snapshots the current public schema (tables, enums, RPC signatures) pulled via the Supabase OpenAPI using the anon key; function bodies remain server-side
   - `public.app_user_profiles` enforces row-level security so authenticated users can only read and mutate profile rows tied to their own `auth_user_id`.
@@ -107,6 +109,8 @@
   - Shared authenticated UI primitives in `components/dashboard/authenticated-ui.tsx` now cover action rows, choice cards, muted metric tiles, and section labels so More, its modal bodies, and More-linked workspaces can reuse one restrained signed-in visual language instead of route-specific ad hoc chrome.
   - Those shared authenticated primitives now have a mobile-first flattening rule: on phone widths `walletPanelClass`, `walletPanelMutedClass`, and `walletMetricTileClass` drop outer card chrome in favour of transparent section containers with horizontal dividers, while `sm` and up restore the fuller framed-card treatment.
   - `OffRampModal` treats Cubid phone-stamp prefill as a best-effort enhancement only. Cubid SDK lookup failures must be caught, logged, and downgraded to manual phone entry so local/dev modal opens cannot crash the wallet shell.
+  - Frontend auth/user types must treat `cubid_id` as nullable, and the shared auth refresh path must skip Cubid API refreshes unless a distinct real Cubid id exists; an authenticated Supabase user id is not a valid persisted Cubid identity.
+  - `ensureAppProfile(...)` must be race-tolerant: if concurrent auth/bootstrap work creates the same `(user_id, app_instance_id)` row twice, the helper should re-read the existing `app_user_profiles` row instead of surfacing a duplicate-primary-key failure to the client.
   - Retained same-origin Next routes for voucher runtime, pool buys, merchant slug availability, store risk, and the Transak webhook now proxy to Supabase edge functions instead of executing their own Supabase table/RPC logic.
   - `scripts/check-no-direct-supabase-db.mjs` is now part of `pnpm lint` and enforces the no-direct-DB boundary across guarded app-facing paths.
   - The edge-boundary guard must not assume local-only tooling on CI runners: it may use `rg` when available, but it must still pass by falling back to native Node.js file traversal when `rg` is missing.

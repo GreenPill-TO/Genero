@@ -59,25 +59,26 @@ export const useAuth = () => {
           throw ensuredUserError;
         }
 
-        if (!user?.cubid_id) {
-          console.error("Authenticated user record is missing cubid_id");
+        if (!user) {
           return null;
         }
 
-        const cubidData = await fetchCubidDataFromSupabase(user?.cubid_id);
+        const cubidData = await fetchCubidDataFromSupabase();
 
         const now = new Date();
         const lastUpdated = cubidData.updated_at ? new Date(cubidData.updated_at) : new Date(0);
         const timeDifference = (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60);
         const shouldRefreshCubidData =
+          typeof cubidData.cubid_id === "string" &&
+          cubidData.cubid_id.length > 0 &&
           typeof cubidData.auth_user_id === "string" &&
           cubidData.auth_user_id.length > 0 &&
           cubidData.auth_user_id !== cubidData.cubid_id;
 
         if (timeDifference > 24 && shouldRefreshCubidData && !cubidDataFetched.current) {
           try {
-            const apiData = await fetchCubidData(user?.cubid_id);
-            await updateCubidDataInSupabase(user?.cubid_id, {
+            const apiData = await fetchCubidData(cubidData.cubid_id);
+            await updateCubidDataInSupabase({
               user: {
                 cubid_score: apiData.score,
                 cubid_identity: apiData.identity,
@@ -95,7 +96,7 @@ export const useAuth = () => {
         return { user, cubidData };
       } catch (error) {
         // Log the error explicitly to the console
-        console.error("Error in fetching user or cubid_id:", error);
+        console.error("Error in fetching authenticated user identity data:", error);
         throw error; // React Query will handle it
       }
     },

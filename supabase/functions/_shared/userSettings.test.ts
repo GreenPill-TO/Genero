@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   buildFallbackUserIdentifier,
   buildUserIdentifierVariant,
+  ensureAppProfile,
   getLatestWalletListRow,
   isFallbackUserIdentifier,
   normaliseExperienceMode,
   normaliseEmailAddress,
   normaliseManagedEmails,
   normalisePendingPaymentIntent,
-  resolveAuthenticatedCubidId,
+  normalisePersistedCubidId,
   normaliseUserIdentifierCandidate,
 } from "./userSettings";
 
@@ -94,15 +95,17 @@ describe("experience mode helpers", () => {
   });
 });
 
-describe("authenticated Cubid id helper", () => {
+describe("persisted Cubid id helper", () => {
   it("prefers an explicitly provided Cubid id", () => {
-    expect(resolveAuthenticatedCubidId("cubid-seed-1", "auth-user-id")).toBe("cubid-seed-1");
+    expect(normalisePersistedCubidId("cubid-seed-1", "auth-user-id")).toBe("cubid-seed-1");
   });
 
-  it("falls back to the authenticated Supabase user id when no Cubid id is supplied", () => {
-    expect(resolveAuthenticatedCubidId(null, "1a2f5397-bd59-4b76-8928-26c13b2a0dfa")).toBe(
-      "1a2f5397-bd59-4b76-8928-26c13b2a0dfa"
-    );
+  it("treats a missing Cubid id as null", () => {
+    expect(normalisePersistedCubidId(null, "1a2f5397-bd59-4b76-8928-26c13b2a0dfa")).toBeNull();
+  });
+
+  it("strips app-derived Cubid ids that only mirror auth_user_id", () => {
+    expect(normalisePersistedCubidId("1a2f5397-bd59-4b76-8928-26c13b2a0dfa", "1a2f5397-bd59-4b76-8928-26c13b2a0dfa")).toBeNull();
   });
 });
 
@@ -121,6 +124,7 @@ describe("legacy Cubid payload mapping freshness", () => {
         data: {
           id: 77,
           cubid_id: "auth-user-77",
+          auth_user_id: "auth-user-77",
           user_identifier: "user-77",
           email: "person@example.com",
           phone: null,
@@ -165,8 +169,86 @@ describe("legacy Cubid payload mapping freshness", () => {
       },
     });
 
+    expect(result.cubid_id).toBeNull();
     expect(result.created_at).toBe("2026-04-05T20:00:00.000Z");
     expect(result.updated_at).toBe("2026-04-05T20:05:00.000Z");
+  });
+});
+
+describe("app profile helpers", () => {
+  it("re-reads the app profile when a concurrent insert hits the composite primary key", async () => {
+    let selectCount = 0;
+    const selectQuery = {
+      eq() {
+        return selectQuery;
+      },
+      limit() {
+        return selectQuery;
+      },
+      maybeSingle: async () => {
+        selectCount += 1;
+        if (selectCount === 1) {
+          return { data: null, error: null };
+        }
+
+        return {
+          data: {
+            user_id: 42,
+            app_instance_id: 11,
+            charity_preferences: null,
+            onboarding_state: null,
+            metadata: {},
+          },
+          error: null,
+        };
+      },
+      select() {
+        return selectQuery;
+      },
+    };
+
+    const insertQuery = {
+      select() {
+        return insertQuery;
+      },
+      single: async () => ({
+        data: null,
+        error: {
+          message: 'duplicate key value violates unique constraint "app_user_profiles_pkey"',
+        },
+      }),
+    };
+
+    const supabase = {
+      from(table: string) {
+        if (table !== "app_user_profiles") {
+          throw new Error(`Unexpected table: ${table}`);
+        }
+
+        return {
+          insert() {
+            return insertQuery;
+          },
+          select() {
+            return selectQuery;
+          },
+        };
+      },
+    };
+
+    await expect(
+      ensureAppProfile({
+        supabase,
+        userId: 42,
+        appInstanceId: 11,
+      })
+    ).resolves.toEqual({
+      user_id: 42,
+      app_instance_id: 11,
+      charity_preferences: null,
+      onboarding_state: null,
+      metadata: {},
+    });
   });
 });
 

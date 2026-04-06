@@ -43,6 +43,7 @@ import {
   walletSectionLabelClass,
 } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import type { UserSettingsExperienceMode } from "@shared/lib/userSettings/types";
+import { resolveCubidRuntimeUserId } from "@shared/types/cubid";
 
 const WalletComponent = dynamic(() => import("cubid-wallet").then((mod) => mod.WalletComponent), { ssr: false });
 const CubidWidget = dynamic(() => import("cubid-sdk").then((mod) => mod.CubidWidget), { ssr: false });
@@ -217,6 +218,7 @@ export default function WelcomePage() {
   const currentStep = bootstrap?.signup.currentStep ?? wizardStep;
   const walletReady = bootstrap?.signup.walletReady === true || walletReadyLocal;
   const pendingPaymentIntent = bootstrap?.signup.pendingPaymentIntent ?? null;
+  const cubidRuntimeUserId = resolveCubidRuntimeUserId(userData?.cubidData ?? userData?.user);
   const activePlaceholderName = SIGNUP_PLACEHOLDER_NAMES[placeholderIndex] ?? SIGNUP_PLACEHOLDER_NAMES[0];
   const rotatingNamePlaceholder = useMemo(() => splitFullName(activePlaceholderName), [activePlaceholderName]);
   const nicknamePlaceholder = rotatingNamePlaceholder.firstName || activePlaceholderName;
@@ -887,7 +889,7 @@ export default function WelcomePage() {
                         <>
                           <CubidWidget
                             stampToRender="phone"
-                            uuid={userData?.user?.cubid_id}
+                            uuid={cubidRuntimeUserId}
                             page_id="37"
                             api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                             onStampChange={() => setPhoneVerified(true)}
@@ -1237,7 +1239,7 @@ export default function WelcomePage() {
                 {!walletReady ? (
                   <WalletComponent
                     type="evm"
-                    user_id={userData?.user?.cubid_id}
+                    user_id={cubidRuntimeUserId}
                     dapp_id="59"
                     api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                     onEVMWallet={async (walletArray: any) => {

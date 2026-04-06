@@ -175,7 +175,7 @@ describe("useAuth", () => {
 
     mockGetSession.mockResolvedValue(null);
     mockFetchUserByContact.mockResolvedValue({
-      user: { cubid_id: "cubid-id", has_completed_intro: true },
+      user: { cubid_id: "cubid-id", auth_user_id: null, has_completed_intro: true },
       error: null,
     });
     mockFetchCubidDataFromSupabase.mockResolvedValue(baseCubidData);
@@ -243,12 +243,12 @@ describe("useAuth", () => {
     const session = createTestSession();
     mockGetSession.mockResolvedValue(session);
     mockFetchUserByContact.mockResolvedValue({
-      user: { cubid_id: session.user.id, has_completed_intro: false },
+      user: { cubid_id: null, auth_user_id: session.user.id, has_completed_intro: false },
       error: null,
     });
     mockFetchCubidDataFromSupabase.mockResolvedValue({
       ...baseCubidData,
-      cubid_id: session.user.id,
+      cubid_id: null,
       auth_user_id: session.user.id,
       updated_at: null,
       created_at: nowIso,

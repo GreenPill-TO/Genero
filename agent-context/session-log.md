@@ -1,3 +1,38 @@
+## v1.176
+### Timestamp
+- 2026-04-05 21:46 EDT
+
+### Objective
+- Let auth-backed users keep a nullable `cubid_id` and cleanse the old app-derived `cubid_id` values that were copied from `auth_user_id`.
+
+### What Changed
+- Updated shared user-settings bootstrapping and authenticated-user provisioning so `users.cubid_id` is normalized to `null` whenever it only mirrors the authenticated Supabase user id, instead of persisting that fallback into new or existing rows.
+- Tightened the shared frontend auth/user types around nullable `cubid_id`, including the last strict sparechange wallet screen type and clearer auth-hook logging for identity fetch failures.
+- Added the local cleanup migration `20260405214500_v1.13_nullify_app_derived_cubid_ids.sql`, which backs up and nulls any stored `users.cubid_id` values that equal `auth_user_id` before leaving future reads to treat those users as Cubid-less until a real Cubid identity exists.
+- Hardened `ensureAppProfile(...)` against duplicate insert races by re-reading the existing composite-key row when concurrent auth/bootstrap work creates the same `app_user_profiles` record at the same time.
+
+### Verification
+- `pnpm exec eslint app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx shared/api/hooks/useAuth.ts shared/api/hooks/useAuth.test.tsx shared/api/services/supabaseService.ts shared/lib/userSettings/types.ts shared/types/cubid.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts`
+- `pnpm exec vitest run shared/api/hooks/useAuth.test.tsx supabase/functions/_shared/userSettings.test.ts`
+- `supabase db push --local --include-all`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select id, email, auth_user_id, cubid_id from public.users where auth_user_id is not null and cubid_id = auth_user_id limit 10;"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select id, email, auth_user_id, cubid_id from public.users where email = 'stats-smoke-8@example.com';"`
+- Headed local wallet sign-in smoke on `http://localhost:3000/welcome` using fresh OTP user `stats-smoke-8@example.com`, confirming onboarding still loads after the cleanup with `cubid_id = null` and without the earlier duplicate `app_user_profiles_pkey` error
+
+### Files Edited
+- `app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+- `shared/api/hooks/useAuth.ts`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/api/services/supabaseService.ts`
+- `shared/lib/userSettings/types.ts`
+- `shared/types/cubid.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/migrations/20260405214500_v1.13_nullify_app_derived_cubid_ids.sql`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.175
 ### Timestamp
 - 2026-04-05 21:31 EDT

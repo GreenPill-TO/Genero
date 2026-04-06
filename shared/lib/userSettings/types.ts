@@ -42,7 +42,7 @@ export type UserSettingsEmail = {
 
 export type UserSettingsUser = {
   id: number;
-  cubidId: string;
+  cubidId: string | null;
   authUserId: string | null;
   userIdentifier: string | null;
   createdAt: string | null;

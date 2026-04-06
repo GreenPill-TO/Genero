@@ -5,6 +5,7 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import InputField from "@shared/components/ui/InputField";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
+import { resolveCubidRuntimeUserId } from "@shared/types/cubid";
 import { useForm, Controller } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import PhoneInput from "react-phone-input-2";
@@ -48,6 +49,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   const [errorMessage, setErrorMessage] = useState("");
 
   const { userData } = useAuth();
+  const cubidRuntimeUserId = resolveCubidRuntimeUserId(userData?.cubidData ?? userData?.user);
   const { burnMoney, senderWallet } = useSendMoney({ senderId: userData?.cubidData?.id });
   const { exchangeRate, fallbackMessage } = useControlVariables();
 
@@ -70,7 +72,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   useEffect(() => {
     let isActive = true;
     const loadSDK = async () => {
-      const cubidUserId = userData?.user?.cubid_id;
+      const cubidUserId = cubidRuntimeUserId;
       if (!cubidUserId) {
         if (isActive) {
           setPhoneCubidSDK("");
@@ -109,7 +111,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
     return () => {
       isActive = false;
     };
-  }, [setValue, userData?.user?.cubid_id]);
+  }, [cubidRuntimeUserId, setValue]);
 
   const sendOTP = async () => {
     const phone = phoneCubidSDK || watch("phone_number");
