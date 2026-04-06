@@ -8,8 +8,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
 import { toast } from "react-toastify";
 
-import { createCubidUser } from "@shared/api/services/cubidService";
-import { createNewUser, fetchUserByContact } from "@shared/api/services/supabaseService";
+import { fetchUserByContact, waitForAuthenticatedSession } from "@shared/api/services/supabaseService";
 
 const constants = {
   SIGN_UP_IMAGES: [
@@ -101,13 +100,18 @@ function SignInModal({ closeModal, postAuthRedirect }: SignInModalProps) {
   );
 
   const handlePostAuthentication = async (fullContact: string): Promise<string | null> => {
+    const session = await waitForAuthenticatedSession();
+    if (!session?.access_token) {
+      toast.error("We couldn't finish signing you in. Please try again.");
+      return null;
+    }
+
     const { user, error } = await fetchUserByContact(authMethod, fullContact);
 
     if (error || !user) {
-      const uuid = await createCubidUser(fullContact, authMethod);
-      const { error: insertError } = await createNewUser(authMethod, fullContact, uuid);
-      if (insertError) return null;
-      return "/welcome";
+      console.error("Failed to finish authenticated user provisioning:", error);
+      toast.error("We couldn't finish signing you in. Please try again.");
+      return null;
     }
 
     return user.has_completed_intro ? "/dashboard" : "/welcome";

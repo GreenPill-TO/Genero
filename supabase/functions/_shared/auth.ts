@@ -86,6 +86,7 @@ export async function resolveAuthenticatedUser(req: Request) {
     .from("users")
     .select("id,email,auth_user_id,cubid_id")
     .eq("auth_user_id", authUser.id)
+    .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -102,6 +103,7 @@ export async function resolveAuthenticatedUser(req: Request) {
       .select("user_id")
       .eq("email", authEmail)
       .is("deleted_at", null)
+      .order("id", { ascending: true })
       .limit(1)
       .maybeSingle();
 
@@ -121,6 +123,7 @@ export async function resolveAuthenticatedUser(req: Request) {
         .from("users")
         .select("id,email,auth_user_id,cubid_id")
         .eq("id", historyUserId)
+        .order("id", { ascending: true })
         .limit(1)
         .maybeSingle();
 
@@ -137,6 +140,7 @@ export async function resolveAuthenticatedUser(req: Request) {
       .from("users")
       .select("id,email,auth_user_id,cubid_id")
       .eq("email", authEmail)
+      .order("id", { ascending: true })
       .limit(1)
       .maybeSingle();
 

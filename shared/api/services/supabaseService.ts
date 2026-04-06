@@ -271,6 +271,29 @@ export const getSession = async (): Promise<Session | null> => {
   }
 };
 
+export const waitForAuthenticatedSession = async ({
+  timeoutMs = 4000,
+  intervalMs = 100,
+}: {
+  timeoutMs?: number;
+  intervalMs?: number;
+} = {}): Promise<Session | null> => {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() <= deadline) {
+    const session = await getSession();
+    if (session?.access_token) {
+      return session;
+    }
+
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, intervalMs);
+    });
+  }
+
+  return null;
+};
+
 export const signOut = async () => {
   try {
     const supabase = createClient();

@@ -8,6 +8,7 @@ import {
   normaliseEmailAddress,
   normaliseManagedEmails,
   normalisePendingPaymentIntent,
+  resolveAuthenticatedCubidId,
   normaliseUserIdentifierCandidate,
 } from "./userSettings";
 
@@ -90,6 +91,82 @@ describe("experience mode helpers", () => {
 
   it("keeps advanced when it is explicitly selected", () => {
     expect(normaliseExperienceMode("advanced")).toBe("advanced");
+  });
+});
+
+describe("authenticated Cubid id helper", () => {
+  it("prefers an explicitly provided Cubid id", () => {
+    expect(resolveAuthenticatedCubidId("cubid-seed-1", "auth-user-id")).toBe("cubid-seed-1");
+  });
+
+  it("falls back to the authenticated Supabase user id when no Cubid id is supplied", () => {
+    expect(resolveAuthenticatedCubidId(null, "1a2f5397-bd59-4b76-8928-26c13b2a0dfa")).toBe(
+      "1a2f5397-bd59-4b76-8928-26c13b2a0dfa"
+    );
+  });
+});
+
+describe("legacy Cubid payload mapping freshness", () => {
+  it("preserves created and updated timestamps from bootstrap user data", async () => {
+    const { getLegacyCubidData } = await import("./userSettings");
+
+    const query = {
+      eq() {
+        return query;
+      },
+      limit() {
+        return query;
+      },
+      maybeSingle: async () => ({
+        data: {
+          id: 77,
+          cubid_id: "auth-user-77",
+          user_identifier: "user-77",
+          email: "person@example.com",
+          phone: null,
+          full_name: "Person Example",
+          nickname: null,
+          username: null,
+          country: "CA",
+          address: null,
+          profile_image_url: null,
+          has_completed_intro: false,
+          is_new_user: true,
+          created_at: "2026-04-05T20:00:00.000Z",
+          updated_at: "2026-04-05T20:05:00.000Z",
+        },
+        error: null,
+      }),
+      order() {
+        return query;
+      },
+      select() {
+        return query;
+      },
+      is() {
+        return query;
+      },
+    };
+
+    const supabase = {
+      from() {
+        return query;
+      },
+    };
+
+    const result = await getLegacyCubidData({
+      supabase,
+      userId: 77,
+      appContext: {
+        appSlug: "wallet-tcoin-development",
+        citySlug: "tcoin",
+        environment: "development",
+        appInstanceId: 1,
+      },
+    });
+
+    expect(result.created_at).toBe("2026-04-05T20:00:00.000Z");
+    expect(result.updated_at).toBe("2026-04-05T20:05:00.000Z");
   });
 });
 

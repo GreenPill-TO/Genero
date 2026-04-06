@@ -42,6 +42,17 @@ function toNullableString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+export function resolveAuthenticatedCubidId(
+  requestedCubidId: unknown,
+  authUserId: unknown
+): string {
+  const resolved = toNullableString(requestedCubidId) ?? toNullableString(authUserId);
+  if (!resolved) {
+    throw new Error("Unable to resolve an authenticated Cubid identifier.");
+  }
+  return resolved;
+}
+
 export function normaliseEmailAddress(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -573,6 +584,7 @@ async function syncUserEmailAddresses(options: {
   supabase: any;
   userId: number;
   emails: ManagedEmailInput[];
+  ignoredUserIds?: number[];
 }) {
   const normalisedEmails = normaliseManagedEmails(options.emails);
   const primaryEmail = normalisedEmails.find((entry) => entry.isPrimary)?.email ?? normalisedEmails[0]?.email ?? null;
@@ -621,7 +633,13 @@ async function syncUserEmailAddresses(options: {
     throw new Error(`Failed to validate email availability: ${conflictingError.message}`);
   }
 
-  if ((conflictingRows ?? []).length > 0) {
+  const ignoredUserIds = new Set(options.ignoredUserIds ?? []);
+  const meaningfulConflicts = (conflictingRows ?? []).filter((row) => {
+    const userId = toNullableInteger(row.user_id);
+    return userId == null || !ignoredUserIds.has(userId);
+  });
+
+  if (meaningfulConflicts.length > 0) {
     throw new Error("One of those email addresses is already connected to another active account.");
   }
 
@@ -691,6 +709,26 @@ async function syncUserEmailAddresses(options: {
     });
 
     if (insertError) {
+      if (insertError.message?.includes("user_email_addresses_active_email_key")) {
+        const { data: racedRow, error: racedRowError } = await options.supabase
+          .from("user_email_addresses")
+          .select("user_id")
+          .eq("email", entry.email)
+          .is("deleted_at", null)
+          .order("id", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (racedRowError) {
+          throw new Error(`Failed to reconcile duplicate email race: ${racedRowError.message}`);
+        }
+
+        const racedUserId = toNullableInteger(racedRow?.user_id);
+        if (racedUserId === options.userId || ignoredUserIds.has(racedUserId ?? -1)) {
+          continue;
+        }
+      }
+
       throw new Error(`Failed to save email address: ${insertError.message}`);
     }
   }
@@ -712,6 +750,7 @@ async function ensureUserEmailsPresent(options: {
   supabase: any;
   userId: number;
   emails: string[];
+  ignoredUserIds?: number[];
 }) {
   const existingEmails = await loadActiveUserEmails({
     supabase: options.supabase,
@@ -749,6 +788,7 @@ async function ensureUserEmailsPresent(options: {
     supabase: options.supabase,
     userId: options.userId,
     emails: merged,
+    ignoredUserIds: options.ignoredUserIds,
   });
 }
 
@@ -766,6 +806,7 @@ async function findUserIdByEmail(options: {
     .select("user_id")
     .eq("email", normalisedEmail)
     .is("deleted_at", null)
+    .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -784,6 +825,7 @@ async function findUserIdByEmail(options: {
     .from("users")
     .select("id")
     .eq("email", normalisedEmail)
+    .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -1014,7 +1056,7 @@ export async function getUserSettingsBootstrap(options: {
       options.supabase
         .from("users")
         .select(
-          "id,cubid_id,user_identifier,email,phone,full_name,nickname,username,country,address,profile_image_url,has_completed_intro,is_new_user"
+          "id,cubid_id,auth_user_id,user_identifier,email,phone,full_name,nickname,username,country,address,profile_image_url,has_completed_intro,is_new_user,created_at,updated_at"
         )
         .eq("id", options.userId)
         .limit(1)
@@ -1089,7 +1131,10 @@ export async function getUserSettingsBootstrap(options: {
     user: {
       id: Number(userRow.id),
       cubidId: typeof userRow.cubid_id === "string" ? userRow.cubid_id : "",
+      authUserId: toNullableString(userRow.auth_user_id),
       userIdentifier: toNullableString(userRow.user_identifier),
+      createdAt: toNullableString(userRow.created_at),
+      updatedAt: toNullableString(userRow.updated_at),
       email: primaryEmail,
       emails,
       phone: toNullableString(userRow.phone),
@@ -1762,12 +1807,12 @@ function mapBootstrapToCubidData(bootstrap: Awaited<ReturnType<typeof getUserSet
     has_completed_intro: bootstrap.user.hasCompletedIntro,
     is_new_user: bootstrap.user.isNewUser,
     is_admin: null,
-    auth_user_id: null,
+    auth_user_id: bootstrap.user.authUserId,
     cubid_score: null,
     cubid_identity: null,
     cubid_score_details: null,
-    updated_at: null,
-    created_at: null,
+    updated_at: bootstrap.user.updatedAt,
+    created_at: bootstrap.user.createdAt,
     user_identifier: bootstrap.user.userIdentifier,
     given_names: bootstrap.user.firstName || null,
     family_name: bootstrap.user.lastName || null,
@@ -1835,12 +1880,25 @@ export async function ensureAuthenticatedUserRecord(options: {
   const authMethod = toNullableString(options.authMethod)?.toLowerCase();
   const authEmail = normaliseEmailAddress(options.authUser.email);
   const contactEmail = authMethod === "phone" ? null : normaliseEmailAddress(contact);
+  const authenticatedCubidId = resolveAuthenticatedCubidId(options.cubidId, options.authUser.id);
 
   const [authUserRowResult, authEmailUserId, phoneContactResult, contactEmailUserId] = await Promise.all([
-    options.supabase.from("users").select("id").eq("auth_user_id", options.authUser.id).limit(1).maybeSingle(),
+    options.supabase
+      .from("users")
+      .select("id")
+      .eq("auth_user_id", options.authUser.id)
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
     authEmail ? findUserIdByEmail({ supabase: options.supabase, email: authEmail }) : Promise.resolve(null),
     authMethod === "phone" && contact
-      ? options.supabase.from("users").select("id").eq("phone", contact).limit(1).maybeSingle()
+      ? options.supabase
+          .from("users")
+          .select("id")
+          .eq("phone", contact)
+          .order("id", { ascending: true })
+          .limit(1)
+          .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     contactEmail ? findUserIdByEmail({ supabase: options.supabase, email: contactEmail }) : Promise.resolve(null),
   ]);
@@ -1863,13 +1921,8 @@ export async function ensureAuthenticatedUserRecord(options: {
   let created = false;
 
   if (userId == null) {
-    const cubidId = toNullableString(options.cubidId);
-    if (!cubidId) {
-      throw new Error("cubidId is required when creating a new authenticated user.");
-    }
-
     const payload: Record<string, unknown> = {
-      cubid_id: cubidId,
+      cubid_id: authenticatedCubidId,
       has_completed_intro: false,
       is_new_user: true,
       auth_user_id: options.authUser.id,
@@ -1893,9 +1946,20 @@ export async function ensureAuthenticatedUserRecord(options: {
       throw new Error(`Failed to create user row: ${insertError.message}`);
     }
 
-    userId = toInteger(inserted?.id);
+    userId = toNullableInteger(inserted?.id);
     created = true;
   } else {
+    const { data: existingUserRow, error: existingUserError } = await options.supabase
+      .from("users")
+      .select("id,cubid_id")
+      .eq("id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingUserError) {
+      throw new Error(`Failed to load authenticated user row: ${existingUserError.message}`);
+    }
+
     const patch: Record<string, unknown> = {
       auth_user_id: options.authUser.id,
     };
@@ -1904,6 +1968,9 @@ export async function ensureAuthenticatedUserRecord(options: {
     }
     if (authMethod === "phone" && contact) {
       patch.phone = contact;
+    }
+    if (!toNullableString(existingUserRow?.cubid_id)) {
+      patch.cubid_id = authenticatedCubidId;
     }
 
     const { error: updateError } = await options.supabase.from("users").update(patch).eq("id", userId);
@@ -1916,6 +1983,33 @@ export async function ensureAuthenticatedUserRecord(options: {
     throw new Error("Unable to resolve authenticated user id.");
   }
 
+  const { data: canonicalUserRow, error: canonicalUserError } = await options.supabase
+    .from("users")
+    .select("id")
+    .eq("auth_user_id", options.authUser.id)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (canonicalUserError) {
+    throw new Error(`Failed to resolve canonical authenticated user row: ${canonicalUserError.message}`);
+  }
+
+  userId = toNullableInteger(canonicalUserRow?.id) ?? userId;
+
+  const { data: siblingRows, error: siblingError } = await options.supabase
+    .from("users")
+    .select("id")
+    .eq("auth_user_id", options.authUser.id);
+
+  if (siblingError) {
+    throw new Error(`Failed to resolve duplicate authenticated user rows: ${siblingError.message}`);
+  }
+
+  const ignoredDuplicateUserIds = (siblingRows ?? [])
+    .map((row: { id?: unknown }) => toNullableInteger(row.id))
+    .filter((value): value is number => value != null && value !== userId);
+
   const managedEmails = [contactEmail, authEmail].filter((value): value is string => Boolean(value));
 
   if (managedEmails.length > 0) {
@@ -1923,6 +2017,7 @@ export async function ensureAuthenticatedUserRecord(options: {
       supabase: options.supabase,
       userId,
       emails: managedEmails,
+      ignoredUserIds: ignoredDuplicateUserIds,
     });
   }
 

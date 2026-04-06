@@ -1,3 +1,37 @@
+## v1.174
+### Timestamp
+- 2026-04-05 21:18 EDT
+
+### Objective
+- Diagnose and fix the local wallet OTP sign-in failures that were still surfacing `user-settings/auth/ensure-user` errors and noisy Cubid API failures after authentication.
+
+### What Changed
+- Fixed `supabase/functions/_shared/userSettings.ts` so the shared bootstrap query now actually selects and returns `users.auth_user_id`, `created_at`, and `updated_at`, which keeps the legacy Cubid compatibility payload from looking permanently stale.
+- Updated `shared/api/hooks/useAuth.ts` to surface real ensure-user failures, skip external Cubid refreshes when the stored `cubid_id` is just the authenticated Supabase user id, and treat Cubid refresh failures as non-fatal so auth/bootstrap remains usable.
+- Added `waitForAuthenticatedSession()` in `shared/api/services/supabaseService.ts` and changed the wallet/sparechange sign-in modals to wait for a settled auth session before resolving the post-OTP user row, removing the old fallback that tried to create a brand-new Cubid user whenever provisioning looked transiently unavailable.
+- Added regression coverage for the wallet sign-in modal and `useAuth`, including the auth-session wait path and the “auth id is not a real Cubid identity” refresh skip case.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/SignInModal.tsx app/tcoin/wallet/components/modals/SignInModal.test.tsx app/tcoin/sparechange/components/modals/SignInModal.tsx shared/api/hooks/useAuth.ts shared/api/hooks/useAuth.test.tsx shared/api/services/supabaseService.ts shared/lib/userSettings/types.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts supabase/functions/_shared/auth.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/SignInModal.test.tsx shared/api/hooks/useAuth.test.tsx supabase/functions/_shared/userSettings.test.ts`
+- Headed Playwright OTP smoke on `http://localhost:3000/welcome` using `stats-smoke-6@example.com`, which now lands on `/welcome` without the previous `ensure-user` 400 or Cubid `get_identity` 500 noise
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select id, email, auth_user_id, cubid_id, has_completed_intro from public.users where email = 'stats-smoke-6@example.com';"`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/SignInModal.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `app/tcoin/sparechange/components/modals/SignInModal.tsx`
+- `shared/api/hooks/useAuth.ts`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/api/services/supabaseService.ts`
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.173
 ### Timestamp
 - 2026-04-03 09:35 EDT

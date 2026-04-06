@@ -43,7 +43,10 @@ export type UserSettingsEmail = {
 export type UserSettingsUser = {
   id: number;
   cubidId: string;
+  authUserId: string | null;
   userIdentifier: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
   email: string | null;
   emails: UserSettingsEmail[];
   phone: string | null;

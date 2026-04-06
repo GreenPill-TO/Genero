@@ -30,6 +30,8 @@ vi.mock("@shared/lib/supabase/client", () => ({
 const mockGetSession = vi.hoisted(() => vi.fn());
 const mockFetchUserByContact = vi.hoisted(() => vi.fn());
 const mockFetchCubidDataFromSupabase = vi.hoisted(() => vi.fn());
+const mockUpdateCubidDataInSupabase = vi.hoisted(() => vi.fn());
+const mockFetchCubidData = vi.hoisted(() => vi.fn());
 const mockTriggerIndexerTouch = vi.hoisted(() => vi.fn().mockResolvedValue({ skipped: true }));
 
 vi.mock("@shared/lib/indexer/trigger", () => ({
@@ -43,12 +45,12 @@ vi.mock("../services/supabaseService", () => ({
   fetchCubidDataFromSupabase: mockFetchCubidDataFromSupabase,
   getSession: mockGetSession,
   signOut: vi.fn(),
-  updateCubidDataInSupabase: vi.fn(),
+  updateCubidDataInSupabase: mockUpdateCubidDataInSupabase,
 }));
 
 vi.mock("../services/cubidService", () => ({
   __esModule: true,
-  fetchCubidData: vi.fn(),
+  fetchCubidData: mockFetchCubidData,
 }));
 
 import { useAuth } from "./useAuth";
@@ -166,6 +168,8 @@ describe("useAuth", () => {
     mockGetSession.mockReset();
     mockFetchUserByContact.mockReset();
     mockFetchCubidDataFromSupabase.mockReset();
+    mockUpdateCubidDataInSupabase.mockReset();
+    mockFetchCubidData.mockReset();
     mockTriggerIndexerTouch.mockReset();
     mockTriggerIndexerTouch.mockResolvedValue({ skipped: true });
 
@@ -218,5 +222,46 @@ describe("useAuth", () => {
     unmount();
 
     expect(unsubscribeMock).toHaveBeenCalled();
+  });
+
+  it("surfaces ensure-user failures instead of collapsing them into an invalid cubid warning", async () => {
+    const expectedError = new Error("Failed to create user row");
+    mockGetSession.mockResolvedValue(createTestSession());
+    mockFetchUserByContact.mockResolvedValue({
+      user: null,
+      error: expectedError,
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(expectedError);
+    });
+  });
+
+  it("skips external Cubid refresh when the stored Cubid id is just the auth user id", async () => {
+    const session = createTestSession();
+    mockGetSession.mockResolvedValue(session);
+    mockFetchUserByContact.mockResolvedValue({
+      user: { cubid_id: session.user.id, has_completed_intro: false },
+      error: null,
+    });
+    mockFetchCubidDataFromSupabase.mockResolvedValue({
+      ...baseCubidData,
+      cubid_id: session.user.id,
+      auth_user_id: session.user.id,
+      updated_at: null,
+      created_at: nowIso,
+    });
+
+    renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(mockFetchUserByContact).toHaveBeenCalled();
+      expect(mockFetchCubidDataFromSupabase).toHaveBeenCalled();
+    });
+
+    expect(mockFetchCubidData).not.toHaveBeenCalled();
+    expect(mockUpdateCubidDataInSupabase).not.toHaveBeenCalled();
   });
 });

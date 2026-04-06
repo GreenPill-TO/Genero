@@ -50,9 +50,17 @@ export const useAuth = () => {
     queryKey: ["user-data"],
     queryFn: async () => {
       try {
-        const { user } = await fetchUserByContact(authQuery?.data?.user?.app_metadata?.provider || "email", authQuery?.data?.user?.email || "");
+        const { user, error: ensuredUserError } = await fetchUserByContact(
+          authQuery?.data?.user?.app_metadata?.provider || "email",
+          authQuery?.data?.user?.email || ""
+        );
+
+        if (ensuredUserError) {
+          throw ensuredUserError;
+        }
+
         if (!user?.cubid_id) {
-          console.error("Invalid cubid_id");
+          console.error("Authenticated user record is missing cubid_id");
           return null;
         }
 
@@ -61,22 +69,28 @@ export const useAuth = () => {
         const now = new Date();
         const lastUpdated = cubidData.updated_at ? new Date(cubidData.updated_at) : new Date(0);
         const timeDifference = (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60);
+        const shouldRefreshCubidData =
+          typeof cubidData.auth_user_id === "string" &&
+          cubidData.auth_user_id.length > 0 &&
+          cubidData.auth_user_id !== cubidData.cubid_id;
 
-        if (timeDifference > 24 && !cubidDataFetched.current) {
-          // Fetch new Cubid data and update Supabase if it has been more than 24 hours
-          const apiData = await fetchCubidData(user?.cubid_id);
-          // Update Supabase with new Cubid data
-          await updateCubidDataInSupabase(user?.cubid_id, {
-            user: {
-              cubid_score: apiData.score,
-              cubid_identity: apiData.identity,
-              cubid_score_details: apiData.scoreDetails,
-              updated_at: new Date().toISOString(),
-            },
-          });
+        if (timeDifference > 24 && shouldRefreshCubidData && !cubidDataFetched.current) {
+          try {
+            const apiData = await fetchCubidData(user?.cubid_id);
+            await updateCubidDataInSupabase(user?.cubid_id, {
+              user: {
+                cubid_score: apiData.score,
+                cubid_identity: apiData.identity,
+                cubid_score_details: apiData.scoreDetails,
+                updated_at: new Date().toISOString(),
+              },
+            });
 
-          cubidDataFetched.current = true;
-          queryClient.invalidateQueries({ queryKey: ["user-data"] }); // Invalidate to fetch fresh data
+            cubidDataFetched.current = true;
+            queryClient.invalidateQueries({ queryKey: ["user-data"] });
+          } catch (cubidRefreshError) {
+            console.warn("Cubid refresh failed; continuing with stored user data.", cubidRefreshError);
+          }
         }
         return { user, cubidData };
       } catch (error) {

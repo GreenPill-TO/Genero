@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
-import { createCubidUser } from "@shared/api/services/cubidService";
-import { createNewUser, fetchUserByContact } from "@shared/api/services/supabaseService";
+import { fetchUserByContact, waitForAuthenticatedSession } from "@shared/api/services/supabaseService";
 
 const constants = {
   SIGN_UP_IMAGES: [
@@ -81,7 +80,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
       e.preventDefault();
       sendCodeMut.mutate({ contact, method: authMethod });
     },
-    [fullContact, authMethod, contact]
+    [authMethod, contact, sendCodeMut]
   );
 
   const handleVerifyPasscode = useCallback(
@@ -89,21 +88,21 @@ function SignInModal({ closeModal }: SignInModalProps) {
       e.preventDefault();
       verifyCodeMut.mutate({ contact, method: authMethod, passcode });
     },
-    [authMethod, contact, passcode]
+    [authMethod, contact, passcode, verifyCodeMut]
   );
 
   const handlePostAuthentication = async (fullContact: string) => {
+    const session = await waitForAuthenticatedSession();
+    if (!session?.access_token) {
+      toast.error("We couldn't finish signing you in. Please try again.");
+      return;
+    }
+
     const { user, error } = await fetchUserByContact(authMethod, fullContact);
 
     if (error || !user) {
-      const uuid = await createCubidUser(fullContact, authMethod);
-      const { error: insertError } = await createNewUser(authMethod, fullContact, uuid);
-      if (insertError) return;
-
-      setTimeout(() => {
-        closeModal();
-        router.push("/welcome");
-      }, 2000);
+      console.error("Failed to finish authenticated user provisioning:", error);
+      toast.error("We couldn't finish signing you in. Please try again.");
     } else {
       setTimeout(() => {
         closeModal();
