@@ -950,12 +950,17 @@ export async function recordWalletTransfer(
     transfer_user_id: number;
   }
 ) {
+  const requestedTransferUserId = toInteger(options.transfer_user_id);
+  if (requestedTransferUserId == null || requestedTransferUserId !== options.userId) {
+    throw new Error("transfer_user_id must match the authenticated user.");
+  }
+
   const { data, error } = await options.supabase.rpc("simple_transfer", {
     recipient_wallet: options.recipient_wallet,
     sender_wallet: options.sender_wallet,
     token_price: options.token_price ?? 3.3,
     transfer_amount: options.transfer_amount,
-    transfer_user_id: options.transfer_user_id,
+    transfer_user_id: options.userId,
   });
 
   if (error) {

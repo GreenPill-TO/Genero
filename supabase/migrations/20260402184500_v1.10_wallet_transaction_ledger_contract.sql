@@ -150,12 +150,10 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.simple_transfer(text, text, numeric, numeric, bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.simple_transfer(text, text, numeric, numeric, bigint) TO service_role;
 
 -- DOWN
 -- REVOKE EXECUTE ON FUNCTION public.simple_transfer(text, text, numeric, numeric, bigint) FROM service_role;
--- REVOKE EXECUTE ON FUNCTION public.simple_transfer(text, text, numeric, numeric, bigint) FROM authenticated;
 -- DROP FUNCTION IF EXISTS public.simple_transfer(text, text, numeric, numeric, bigint);
 -- REVOKE SELECT ON public.act_transaction_entries FROM authenticated;
 -- DROP VIEW IF EXISTS public.act_transaction_entries;

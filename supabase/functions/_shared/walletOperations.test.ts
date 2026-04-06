@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { __testOnly__, getWalletTransactionHistory } from "./walletOperations";
+import { __testOnly__, getWalletTransactionHistory, recordWalletTransfer } from "./walletOperations";
 
 describe("walletOperations transaction ledger handling", () => {
   it("detects the missing local legacy transaction ledger error", () => {
@@ -87,5 +87,56 @@ describe("walletOperations transaction ledger handling", () => {
         appContext: { citySlug: "tcoin", appInstanceId: 1 },
       })
     ).resolves.toEqual({ transactions: [] });
+  });
+
+  it("rejects transfer bookkeeping when the requested user id does not match the authenticated user", async () => {
+    await expect(
+      recordWalletTransfer({
+        supabase: {
+          rpc: async () => {
+            throw new Error("rpc should not be called");
+          },
+        },
+        userId: 42,
+        appContext: { citySlug: "tcoin", appInstanceId: 1 },
+        recipient_wallet: "wallet-b",
+        sender_wallet: "wallet-a",
+        transfer_amount: 10,
+        transfer_user_id: 7,
+      })
+    ).rejects.toThrow("transfer_user_id must match the authenticated user.");
+  });
+
+  it("records transfers against the authenticated user id", async () => {
+    const rpcCalls: Array<{ fn: string; args: Record<string, unknown> }> = [];
+
+    await expect(
+      recordWalletTransfer({
+        supabase: {
+          rpc: async (fn: string, args: Record<string, unknown>) => {
+            rpcCalls.push({ fn, args });
+            return { data: { id: 99 }, error: null };
+          },
+        },
+        userId: 42,
+        appContext: { citySlug: "tcoin", appInstanceId: 1 },
+        recipient_wallet: "wallet-b",
+        sender_wallet: "wallet-a",
+        transfer_amount: 10,
+        transfer_user_id: 42,
+      })
+    ).resolves.toEqual({ record: { id: 99 } });
+
+    expect(rpcCalls).toEqual([
+      {
+        fn: "simple_transfer",
+        args: expect.objectContaining({
+          transfer_user_id: 42,
+          transfer_amount: 10,
+          sender_wallet: "wallet-a",
+          recipient_wallet: "wallet-b",
+        }),
+      },
+    ]);
   });
 });

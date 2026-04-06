@@ -34,6 +34,54 @@ WHERE email IS NOT NULL
     OR is_primary IS NULL
   );
 
+WITH ranked_existing_emails AS (
+  SELECT
+    ue.id,
+    row_number() OVER (
+      PARTITION BY lower(ue.email)
+      ORDER BY
+        ue.is_primary DESC,
+        COALESCE(ue.updated_at, ue.created_at, now()) DESC,
+        COALESCE(ue.created_at, now()) ASC,
+        ue.id ASC
+    ) AS email_rank
+  FROM public.user_email_addresses ue
+  WHERE ue.deleted_at IS NULL
+    AND ue.email IS NOT NULL
+    AND btrim(ue.email) <> ''
+)
+UPDATE public.user_email_addresses ue
+SET
+  deleted_at = COALESCE(ue.deleted_at, now()),
+  is_primary = false,
+  updated_at = now()
+FROM ranked_existing_emails ranked
+WHERE ue.id = ranked.id
+  AND ranked.email_rank > 1;
+
+WITH ranked_existing_primaries AS (
+  SELECT
+    ue.id,
+    row_number() OVER (
+      PARTITION BY ue.user_id
+      ORDER BY
+        ue.is_primary DESC,
+        COALESCE(ue.updated_at, ue.created_at, now()) DESC,
+        COALESCE(ue.created_at, now()) ASC,
+        ue.id ASC
+    ) AS primary_rank
+  FROM public.user_email_addresses ue
+  WHERE ue.deleted_at IS NULL
+)
+UPDATE public.user_email_addresses ue
+SET
+  is_primary = CASE WHEN ranked.primary_rank = 1 THEN ue.is_primary ELSE false END,
+  updated_at = now()
+FROM ranked_existing_primaries ranked
+WHERE ue.id = ranked.id
+  AND ue.is_primary = true
+  AND ranked.primary_rank > 1;
+
 CREATE UNIQUE INDEX IF NOT EXISTS user_email_addresses_active_email_key
   ON public.user_email_addresses ((lower(email)))
   WHERE deleted_at IS NULL;
@@ -46,23 +94,83 @@ CREATE INDEX IF NOT EXISTS user_email_addresses_active_user_id_idx
   ON public.user_email_addresses (user_id, created_at)
   WHERE deleted_at IS NULL;
 
+WITH normalized_users AS (
+  SELECT
+    u.id AS user_id,
+    lower(btrim(u.email)) AS normalized_email,
+    u.auth_user_id,
+    COALESCE(u.created_at, now()) AS created_at,
+    COALESCE(u.updated_at, COALESCE(u.created_at, now())) AS updated_at
+  FROM public.users u
+  WHERE u.email IS NOT NULL
+    AND btrim(u.email) <> ''
+), ranked_users AS (
+  SELECT
+    normalized_users.*,
+    row_number() OVER (
+      PARTITION BY normalized_users.normalized_email
+      ORDER BY
+        CASE WHEN normalized_users.auth_user_id IS NOT NULL THEN 0 ELSE 1 END,
+        normalized_users.updated_at DESC,
+        normalized_users.created_at ASC,
+        normalized_users.user_id ASC
+    ) AS email_rank
+  FROM normalized_users
+)
 INSERT INTO public.user_email_addresses (user_id, email, is_primary, created_at, updated_at)
 SELECT
-  u.id,
-  lower(btrim(u.email)),
-  true,
-  COALESCE(u.created_at, now()),
-  COALESCE(u.updated_at, COALESCE(u.created_at, now()))
-FROM public.users u
-WHERE u.email IS NOT NULL
-  AND btrim(u.email) <> ''
+  ranked.user_id,
+  ranked.normalized_email,
+  NOT EXISTS (
+    SELECT 1
+    FROM public.user_email_addresses ue_existing_user
+    WHERE ue_existing_user.user_id = ranked.user_id
+      AND ue_existing_user.deleted_at IS NULL
+  ),
+  ranked.created_at,
+  ranked.updated_at
+FROM ranked_users ranked
+WHERE ranked.email_rank = 1
   AND NOT EXISTS (
     SELECT 1
     FROM public.user_email_addresses ue
-    WHERE ue.user_id = u.id
-      AND lower(ue.email) = lower(btrim(u.email))
+    WHERE lower(ue.email) = ranked.normalized_email
+      AND ue.deleted_at IS NULL
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.user_email_addresses ue
+    WHERE ue.user_id = ranked.user_id
+      AND lower(ue.email) = ranked.normalized_email
       AND ue.deleted_at IS NULL
   );
+
+WITH users_missing_primary AS (
+  SELECT ue.user_id
+  FROM public.user_email_addresses ue
+  WHERE ue.deleted_at IS NULL
+  GROUP BY ue.user_id
+  HAVING bool_or(ue.is_primary) = false
+), ranked_active_emails AS (
+  SELECT
+    ue.id,
+    ue.user_id,
+    row_number() OVER (
+      PARTITION BY ue.user_id
+      ORDER BY ue.created_at ASC, ue.id ASC
+    ) AS primary_rank
+  FROM public.user_email_addresses ue
+  JOIN users_missing_primary missing
+    ON missing.user_id = ue.user_id
+  WHERE ue.deleted_at IS NULL
+)
+UPDATE public.user_email_addresses ue
+SET
+  is_primary = true,
+  updated_at = now()
+FROM ranked_active_emails ranked
+WHERE ue.id = ranked.id
+  AND ranked.primary_rank = 1;
 
 CREATE OR REPLACE FUNCTION public.sync_users_primary_email_from_history()
 RETURNS trigger

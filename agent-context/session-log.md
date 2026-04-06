@@ -1,3 +1,30 @@
+## v1.181
+### Timestamp
+- 2026-04-06 12:04 EDT
+
+### Objective
+- Address the remaining migration review comments by closing the transfer-bookkeeping spoofing hole and making the email-history backfill tolerant of legacy duplicate emails.
+
+### What Changed
+- Removed direct `authenticated` execute access from the legacy `simple_transfer(...)` migration contract so only trusted service-role callers can invoke the `SECURITY DEFINER` function.
+- Hardened `recordWalletTransfer(...)` in the wallet-operations shared edge helper so the requested `transfer_user_id` must match the authenticated wallet user id, and the RPC call now always records the authenticated user id rather than trusting caller input.
+- Updated the email-history migration to de-duplicate active history rows before unique indexes are created, rank duplicate legacy `users.email` values deterministically during backfill, and promote a fallback primary email when a user would otherwise end up with none.
+- Added focused wallet-operations tests covering the new transfer-user validation and authenticated-user RPC forwarding behaviour.
+
+### Verification
+- `pnpm exec eslint supabase/functions/_shared/walletOperations.ts supabase/functions/_shared/walletOperations.test.ts`
+- `pnpm exec vitest run supabase/functions/_shared/walletOperations.test.ts`
+- `git diff --check -- supabase/migrations/20260402024500_v1.08_user_email_history.sql supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+
+### Files Edited
+- `supabase/migrations/20260402024500_v1.08_user_email_history.sql`
+- `supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+- `supabase/functions/_shared/walletOperations.ts`
+- `supabase/functions/_shared/walletOperations.test.ts`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.180
 ### Timestamp
 - 2026-04-06 11:35 EDT
