@@ -21,6 +21,8 @@ describe("invokeEdgeFunction", () => {
   });
 
   it("omits Authorization when there is no session token", async () => {
+    const { setSessionSnapshot } = await import("@shared/lib/supabase/session");
+    setSessionSnapshot(null);
     getSessionMock.mockResolvedValue({ data: { session: null } });
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {
@@ -48,6 +50,8 @@ describe("invokeEdgeFunction", () => {
   });
 
   it("includes Authorization when a session token exists", async () => {
+    const { setSessionSnapshot } = await import("@shared/lib/supabase/session");
+    setSessionSnapshot(null);
     getSessionMock.mockResolvedValue({ data: { session: { access_token: "jwt-token" } } });
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {
@@ -72,7 +76,36 @@ describe("invokeEdgeFunction", () => {
     );
   });
 
+  it("reuses the cached access token when the browser session read has not settled yet", async () => {
+    const { setSessionSnapshot } = await import("@shared/lib/supabase/session");
+    setSessionSnapshot({ access_token: "cached-token" } as never);
+    getSessionMock.mockResolvedValue({ data: { session: null } });
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+
+    const { invokeEdgeFunction } = await import("./core");
+
+    await invokeEdgeFunction("user-settings", "/bootstrap", {
+      appContext: { citySlug: "tcoin" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer cached-token",
+        }),
+      })
+    );
+  });
+
   it("expands bare 404 not-found responses into a route-specific message", async () => {
+    const { setSessionSnapshot } = await import("@shared/lib/supabase/session");
+    setSessionSnapshot(null);
     getSessionMock.mockResolvedValue({ data: { session: { access_token: "jwt-token" } } });
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ error: "Not found." }), {

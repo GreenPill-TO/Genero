@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import React, { useCallback, useMemo, useState } from "react";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
 import { toast } from "react-toastify";
+import type { Session } from "@supabase/supabase-js";
 
 import { fetchUserByContact, waitForAuthenticatedSession } from "@shared/api/services/supabaseService";
 
@@ -73,9 +74,10 @@ function SignInModal({ closeModal, postAuthRedirect }: SignInModalProps) {
   });
 
   const verifyCodeMut = useVerifyPasscodeMutation({
-    onSuccessCallback: async () => {
+    onSuccessCallback: async (verifiedSession?: Session | null) => {
       toast.success("Passcode verified successfully!");
-      const destination = postAuthRedirect ?? (await handlePostAuthentication(fullContact));
+      const destination =
+        postAuthRedirect ?? (await handlePostAuthentication(fullContact, verifiedSession ?? null));
       if (!destination) return;
       closeModal();
       router.push(destination);
@@ -103,8 +105,12 @@ function SignInModal({ closeModal, postAuthRedirect }: SignInModalProps) {
     [authMethod, fullContact, passcode, verifyCodeMut]
   );
 
-  const handlePostAuthentication = async (fullContact: string): Promise<string | null> => {
-    const session = await waitForAuthenticatedSession();
+  const handlePostAuthentication = async (
+    fullContact: string,
+    verifiedSession?: Session | null
+  ): Promise<string | null> => {
+    const session =
+      verifiedSession?.access_token ? verifiedSession : await waitForAuthenticatedSession({ timeoutMs: 10000 });
     if (!session?.access_token) {
       toast.error("We couldn't finish signing you in. Please try again.");
       return null;

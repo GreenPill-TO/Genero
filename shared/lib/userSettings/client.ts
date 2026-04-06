@@ -1,4 +1,5 @@
 import { createClient } from "@shared/lib/supabase/client";
+import { resolveAccessToken } from "@shared/lib/supabase/session";
 import { resolveUserSettingsAppContext } from "./context";
 import type {
   SavePendingPaymentIntentInput,
@@ -24,6 +25,10 @@ function resolveInvokeHeaders(context: UserSettingsAppContext): Record<string, s
   };
 }
 
+function withAuthorization(headers: Record<string, string>, accessToken: string | null): Record<string, string> {
+  return accessToken ? { ...headers, Authorization: `Bearer ${accessToken}` } : headers;
+}
+
 async function invokeUserSettings<T>(
   path: string,
   options?: UserSettingsInvokeOptions
@@ -31,22 +36,19 @@ async function invokeUserSettings<T>(
   const method = options?.method ?? "GET";
   const context = resolveUserSettingsAppContext(options?.appContext);
   const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const accessToken = await resolveAccessToken(supabase);
 
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/user-settings${path.startsWith("/") ? path : `/${path}`}`,
     {
       method,
-      headers: {
+      headers: withAuthorization({
         ...resolveInvokeHeaders(context),
         apikey:
           process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
           "",
-        Authorization: `Bearer ${session?.access_token ?? ""}`,
-      },
+      }, accessToken),
       body:
         method === "GET"
           ? undefined

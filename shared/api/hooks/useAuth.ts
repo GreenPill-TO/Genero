@@ -1,11 +1,52 @@
 import { createClient } from "@shared/lib/supabase/client";
 import { Session } from "@supabase/supabase-js";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { triggerIndexerTouch } from "@shared/lib/indexer/trigger";
+import { setSessionSnapshot } from "@shared/lib/supabase/session";
 import { fetchCubidData } from "../services/cubidService";
 import { fetchCubidDataFromSupabase, fetchUserByContact, getSession, signOut, updateCubidDataInSupabase } from "../services/supabaseService";
+
+const sharedAuthSubscription = {
+  refCount: 0,
+  unsubscribe: null as null | (() => void),
+  queryClient: null as QueryClient | null,
+};
+
+export function resetUseAuthSubscriptionForTests() {
+  sharedAuthSubscription.unsubscribe?.();
+  sharedAuthSubscription.refCount = 0;
+  sharedAuthSubscription.unsubscribe = null;
+  sharedAuthSubscription.queryClient = null;
+}
+
+function handleAuthStateChange(queryClient: QueryClient, event: string, session: Session | null) {
+  setSessionSnapshot(session ?? null);
+  queryClient.setQueryData(["auth-data"], session ?? null);
+
+  if (session) {
+    queryClient.invalidateQueries({ queryKey: ["user-data"] });
+
+    if (event === "SIGNED_IN") {
+      void triggerIndexerTouch().catch(() => {
+        // Indexer trigger is best-effort and should not affect auth flow.
+      });
+    }
+  } else {
+    queryClient.removeQueries({ queryKey: ["user-data"] });
+  }
+}
+
+function releaseSharedAuthSubscription() {
+  sharedAuthSubscription.refCount = Math.max(0, sharedAuthSubscription.refCount - 1);
+
+  if (sharedAuthSubscription.refCount === 0) {
+    sharedAuthSubscription.unsubscribe?.();
+    sharedAuthSubscription.unsubscribe = null;
+    sharedAuthSubscription.queryClient = null;
+  }
+}
 
 // Custom hook for authentication, fetching user, and handling Cubid data
 export const useAuth = () => {
@@ -20,30 +61,38 @@ export const useAuth = () => {
   const cubidDataFetched = useRef(false); // To avoid repeated fetching
 
   useEffect(() => {
-    const supabase = createClient();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      queryClient.setQueryData(["auth-data"], session ?? null);
+    sharedAuthSubscription.refCount += 1;
+    sharedAuthSubscription.queryClient = queryClient;
 
-      if (session) {
-        queryClient.invalidateQueries({ queryKey: ["user-data"] });
-
-        if (event === "SIGNED_IN") {
-          void triggerIndexerTouch().catch(() => {
-            // Indexer trigger is best-effort and should not affect auth flow.
-          });
+    if (!sharedAuthSubscription.unsubscribe) {
+      const supabase = createClient();
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!sharedAuthSubscription.queryClient) {
+          return;
         }
-      } else {
-        cubidDataFetched.current = false;
-        queryClient.removeQueries({ queryKey: ["user-data"] });
-      }
-    });
+
+        handleAuthStateChange(sharedAuthSubscription.queryClient, event, session);
+      });
+
+      sharedAuthSubscription.unsubscribe = () => {
+        subscription.unsubscribe();
+      };
+    }
 
     return () => {
-      subscription.unsubscribe();
+      releaseSharedAuthSubscription();
     };
   }, [queryClient]);
+
+  const accessToken = authQuery.data?.access_token?.trim() ?? null;
+
+  useEffect(() => {
+    if (!accessToken) {
+      cubidDataFetched.current = false;
+    }
+  }, [accessToken]);
 
   // Fetch user and Cubid data from Supabase and handle 24-hour update logic
   const userQuery = useQuery({
@@ -105,7 +154,7 @@ export const useAuth = () => {
         throw error; // React Query will handle it
       }
     },
-    enabled: !!authQuery.data, // Only fetch if authenticated
+    enabled: Boolean(accessToken), // Only fetch if authenticated
   });
 
   const signOutMutation = useMutation({
@@ -122,7 +171,7 @@ export const useAuth = () => {
   return {
     authData: authQuery.data,
     userData: userQuery.data,
-    isAuthenticated: !!authQuery?.data,
+    isAuthenticated: Boolean(accessToken),
     error: userQuery.error || authQuery.error,
     isLoading: authQuery.isLoading || userQuery.isLoading,
     isLoadingUser: userQuery.isLoading,

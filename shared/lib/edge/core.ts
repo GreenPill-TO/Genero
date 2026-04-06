@@ -1,4 +1,5 @@
 import { createClient } from "@shared/lib/supabase/client";
+import { resolveAccessToken } from "@shared/lib/supabase/session";
 import { resolveAppScope } from "./appScope";
 import type { AppScopeInput, ResolvedAppScope } from "./types";
 
@@ -53,15 +54,13 @@ export async function invokeEdgeFunction<T>(
   const supabase = createClient();
   const context = resolveAppScope(options?.appContext);
   const method = options?.method ?? "GET";
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const accessToken = await resolveAccessToken(supabase);
 
   const response = await fetch(
     `${resolveSupabaseUrl()}/functions/v1/${functionName}${normalizePath(path)}`,
     {
       method,
-      headers: resolveHeaders(context, session?.access_token),
+      headers: resolveHeaders(context, accessToken ?? undefined),
       body:
         method === "GET"
           ? undefined
