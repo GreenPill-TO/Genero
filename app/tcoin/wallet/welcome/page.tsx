@@ -25,6 +25,7 @@ import {
   createCroppedProfilePictureFile,
   getProfilePictureCropFrame,
   prepareProfilePicture,
+  revokePreparedProfilePicturePreview,
   type PreparedProfilePicture,
   type ProfilePictureCropState,
 } from "@shared/lib/profilePictureCrop";
@@ -385,9 +386,7 @@ export default function WelcomePage() {
       if (profilePicturePreview?.startsWith("blob:")) {
         URL.revokeObjectURL(profilePicturePreview);
       }
-      if (profilePictureSelection?.previewUrl?.startsWith("blob:")) {
-        URL.revokeObjectURL(profilePictureSelection.previewUrl);
-      }
+      revokePreparedProfilePicturePreview(profilePictureSelection);
     };
   }, [profilePicturePreview, profilePictureSelection]);
 
@@ -445,9 +444,7 @@ export default function WelcomePage() {
   const handleReset = async () => {
     try {
       const next = await resetSignup.mutateAsync();
-      if (profilePictureSelection?.previewUrl?.startsWith("blob:")) {
-        URL.revokeObjectURL(profilePictureSelection.previewUrl);
-      }
+      revokePreparedProfilePicturePreview(profilePictureSelection);
       setProfilePictureSelection(null);
       setProfilePictureCrop(DEFAULT_CROP_STATE);
       setProfilePicturePreview(null);
@@ -683,8 +680,8 @@ export default function WelcomePage() {
           selection={selection}
           initialCrop={options?.initialCrop ?? DEFAULT_CROP_STATE}
           closeModal={() => {
-            if (options?.revokeOnCancel && selection.previewUrl.startsWith("blob:")) {
-              URL.revokeObjectURL(selection.previewUrl);
+            if (options?.revokeOnCancel) {
+              revokePreparedProfilePicturePreview(selection);
             }
             closeModal();
           }}
@@ -694,7 +691,7 @@ export default function WelcomePage() {
               profilePictureSelection.previewUrl !== selection.previewUrl &&
               profilePictureSelection.previewUrl.startsWith("blob:")
             ) {
-              URL.revokeObjectURL(profilePictureSelection.previewUrl);
+              revokePreparedProfilePicturePreview(profilePictureSelection);
             }
             if (
               profilePicturePreview &&
@@ -732,9 +729,7 @@ export default function WelcomePage() {
       return;
     }
     const source = typeof bootstrap.user.profileImageUrl === "string" ? bootstrap.user.profileImageUrl.trim() : "";
-    if (profilePictureSelection?.previewUrl?.startsWith("blob:")) {
-      URL.revokeObjectURL(profilePictureSelection.previewUrl);
-    }
+    revokePreparedProfilePicturePreview(profilePictureSelection);
     setProfilePictureSelection(null);
     setProfilePictureCrop(DEFAULT_CROP_STATE);
     setProfilePicturePreview(source || null);

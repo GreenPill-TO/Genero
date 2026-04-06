@@ -1,3 +1,38 @@
+## v1.180
+### Timestamp
+- 2026-04-06 11:35 EDT
+
+### Objective
+- Address the unresolved inline PR review comments with targeted hardening fixes and clarify the intentional auth contract for the new stats endpoint.
+
+### What Changed
+- Switched `supabase:start:local` to launch its zsh-only helper script with `zsh`, matching the script shebang and avoiding shell mismatch failures.
+- Hardened shared helpers by stripping `variant` from the custom `Input` wrapper, replacing `window.setTimeout` with runtime-safe `setTimeout`, and making legacy wallet pay-link decoding UTF-8 safe without deprecated `escape(...)`.
+- Added `revokePreparedProfilePicturePreview(...)`, wired it into the wallet welcome/profile image flows, and added focused tests for both the preview revoke helper and the pay-link decoder.
+- Kept `/api/tcoin/stats/summary` available to any authenticated wallet user, and made that read-only aggregate contract explicit in the route and route test.
+
+### Verification
+- `pnpm exec eslint shared/components/ui/Input.tsx shared/api/services/supabaseService.ts shared/lib/walletPayLinks.ts shared/lib/walletPayLinks.test.ts shared/lib/profilePictureCrop.ts shared/lib/profilePictureCrop.test.ts app/api/tcoin/stats/summary/route.ts app/api/tcoin/stats/summary/route.test.ts app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `pnpm exec vitest run shared/lib/walletPayLinks.test.ts shared/lib/profilePictureCrop.test.ts app/api/tcoin/stats/summary/route.test.ts`
+
+### Files Edited
+- `package.json`
+- `shared/components/ui/Input.tsx`
+- `shared/api/services/supabaseService.ts`
+- `shared/lib/walletPayLinks.ts`
+- `shared/lib/walletPayLinks.test.ts`
+- `shared/lib/profilePictureCrop.ts`
+- `shared/lib/profilePictureCrop.test.ts`
+- `app/api/tcoin/stats/summary/route.ts`
+- `app/api/tcoin/stats/summary/route.test.ts`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.179
 ### Timestamp
 - 2026-04-06 11:07 EDT

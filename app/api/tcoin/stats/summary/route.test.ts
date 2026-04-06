@@ -26,7 +26,7 @@ describe("GET /api/tcoin/stats/summary", () => {
     h.mockGetWalletStatsSummary.mockReset();
   });
 
-  it("returns the aggregated stats summary for authenticated users", async () => {
+  it("returns the aggregated stats summary for any authenticated user", async () => {
     h.mockGetUser.mockResolvedValue({
       data: { user: { id: "auth-user-1" } },
       error: null,

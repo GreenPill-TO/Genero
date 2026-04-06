@@ -22,6 +22,7 @@ import {
   getProfilePictureCropFrame,
   prepareProfilePicture,
   prepareProfilePictureFromUrl,
+  revokePreparedProfilePicturePreview,
   type PreparedProfilePicture,
   type ProfilePictureCropState,
 } from "@shared/lib/profilePictureCrop";
@@ -232,9 +233,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       if (avatarPreview && avatarPreview.startsWith("blob:")) {
         URL.revokeObjectURL(avatarPreview);
       }
-      if (avatarSelection?.previewUrl?.startsWith("blob:")) {
-        URL.revokeObjectURL(avatarSelection.previewUrl);
-      }
+      revokePreparedProfilePicturePreview(avatarSelection);
     };
   }, [avatarPreview, avatarSelection]);
 
@@ -244,9 +243,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       setIsPreparingAvatar(true);
       try {
         const preparedImage = await prepareProfilePicture(file);
-        if (avatarSelection?.previewUrl?.startsWith("blob:")) {
-          URL.revokeObjectURL(avatarSelection.previewUrl);
-        }
+        revokePreparedProfilePicturePreview(avatarSelection);
         if (avatarPreview && avatarPreview.startsWith("blob:")) {
           URL.revokeObjectURL(avatarPreview);
         }
@@ -262,9 +259,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
       return;
     }
 
-    if (avatarSelection?.previewUrl?.startsWith("blob:")) {
-      URL.revokeObjectURL(avatarSelection.previewUrl);
-    }
+    revokePreparedProfilePicturePreview(avatarSelection);
     setAvatarSelection(null);
     setAvatarCrop(DEFAULT_CROP_STATE);
     setAvatarPreview(existingProfileImageUrl);
@@ -281,9 +276,7 @@ const UserProfileModal = ({ closeModal }: UserProfileModalProps) => {
         existingProfileImageUrl,
         profile?.username?.trim() || "profile-picture"
       );
-      if (avatarSelection?.previewUrl?.startsWith("blob:")) {
-        URL.revokeObjectURL(avatarSelection.previewUrl);
-      }
+      revokePreparedProfilePicturePreview(avatarSelection);
       if (avatarPreview && avatarPreview.startsWith("blob:")) {
         URL.revokeObjectURL(avatarPreview);
       }

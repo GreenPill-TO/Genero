@@ -1,4 +1,17 @@
+// Pay-link QR/share flows intentionally use the www host by default; that is the
+// accepted wallet-link contract for this feature even though some marketing pages
+// still publish bare-domain canonicals elsewhere in the app.
 const DEFAULT_WALLET_PUBLIC_BASE_URL = "https://www.tcoin.me";
+
+function decodeBase64Utf8(value: string): string {
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(value, "base64").toString("utf8");
+  }
+
+  const binary = atob(value);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
 
 export function resolveWalletPublicBaseUrl(): string {
   return (
@@ -37,7 +50,7 @@ export function decodeLegacyWalletPayPayload(value: string): Record<string, unkn
       throw new Error("No Base64 data found in URL.");
     }
 
-    const decodedData = decodeURIComponent(escape(atob(base64Data)));
+    const decodedData = decodeBase64Utf8(base64Data);
     return JSON.parse(decodedData) as Record<string, unknown>;
   } catch {
     return null;

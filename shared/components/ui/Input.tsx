@@ -6,10 +6,11 @@ import { inputFieldClass } from "./formFieldStyles"
 type InputProps = React.ComponentProps<"input"> & {
   elSize?: string
   label?: string
+  variant?: string
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, elSize: _elSize, label: _label, ...props }, ref) => {
+  ({ className, type, elSize: _elSize, label: _label, variant: _variant, ...props }, ref) => {
     return (
       <input
         type={type}

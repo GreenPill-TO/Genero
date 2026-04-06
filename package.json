@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "supabase:start:local": "bash scripts/start-local-supabase.sh",
+    "supabase:start:local": "zsh scripts/start-local-supabase.sh",
     "lint": "pnpm lint:next && pnpm lint:edge-boundary",
     "lint:next": "next lint",
     "lint:edge-boundary": "node scripts/check-no-direct-supabase-db.mjs",

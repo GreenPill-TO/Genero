@@ -16,6 +16,7 @@ const completeMutateAsync = vi.fn();
 const useUserSettingsMock = vi.hoisted(() => vi.fn());
 const useAuthMock = vi.hoisted(() => vi.fn());
 const prepareProfilePictureMock = vi.hoisted(() => vi.fn());
+const revokePreparedProfilePicturePreviewMock = vi.hoisted(() => vi.fn());
 const uploadProfilePictureMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/dynamic", () => ({
@@ -74,6 +75,7 @@ vi.mock("@shared/api/services/supabaseService", () => ({
 
 vi.mock("@shared/lib/profilePictureCrop", () => ({
   prepareProfilePicture: (...args: any[]) => prepareProfilePictureMock(...args),
+  revokePreparedProfilePicturePreview: (...args: any[]) => revokePreparedProfilePicturePreviewMock(...args),
   createCroppedProfilePictureFile: vi.fn(),
   getProfilePictureCropFrame: vi.fn(() => ({
     scaledWidth: 96,

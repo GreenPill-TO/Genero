@@ -52,6 +52,12 @@ export async function prepareProfilePicture(file: File): Promise<PreparedProfile
   }
 }
 
+export function revokePreparedProfilePicturePreview(selection: PreparedProfilePicture | null | undefined) {
+  if (selection?.previewUrl?.startsWith("blob:")) {
+    URL.revokeObjectURL(selection.previewUrl);
+  }
+}
+
 export async function prepareProfilePictureFromUrl(url: string, fallbackName = "avatar"): Promise<PreparedProfilePicture> {
   const response = await fetch(url);
   if (!response.ok) {

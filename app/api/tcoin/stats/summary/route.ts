@@ -14,6 +14,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // This endpoint is intentionally available to any authenticated wallet user.
+    // The stats page is a read-only product surface, and this payload is limited to
+    // aggregate counts, trends, and coarse health flags rather than secrets or per-user data.
     const summary = await getWalletStatsSummary();
     return NextResponse.json(summary);
   } catch (error) {

@@ -288,7 +288,7 @@ export const waitForAuthenticatedSession = async ({
     }
 
     await new Promise((resolve) => {
-      window.setTimeout(resolve, intervalMs);
+      setTimeout(resolve, intervalMs);
     });
   }
 

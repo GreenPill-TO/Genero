@@ -11,6 +11,7 @@ const toastError = vi.fn();
 const uploadProfilePictureMock = vi.fn();
 const prepareProfilePictureMock = vi.fn();
 const prepareProfilePictureFromUrlMock = vi.fn();
+const revokePreparedProfilePicturePreviewMock = vi.fn();
 const createCroppedProfilePictureFileMock = vi.fn();
 const getProfilePictureCropFrameMock = vi.fn();
 const bootstrapUser = {
@@ -60,6 +61,7 @@ vi.mock("@shared/lib/supabase/profilePictures", () => ({
 vi.mock("@shared/lib/profilePictureCrop", () => ({
   prepareProfilePicture: (...args: any[]) => prepareProfilePictureMock(...args),
   prepareProfilePictureFromUrl: (...args: any[]) => prepareProfilePictureFromUrlMock(...args),
+  revokePreparedProfilePicturePreview: (...args: any[]) => revokePreparedProfilePicturePreviewMock(...args),
   createCroppedProfilePictureFile: (...args: any[]) => createCroppedProfilePictureFileMock(...args),
   describeProfilePictureOrientation: (width: number, height: number) => {
     if (width > height) return "landscape";
