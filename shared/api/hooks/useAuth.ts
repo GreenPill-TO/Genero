@@ -34,9 +34,9 @@ function syncAuthStateForClient(queryClient: QueryClient, session: Session | nul
 function broadcastAuthState(event: string, session: Session | null) {
   setSessionSnapshot(session ?? null);
 
-  for (const queryClient of sharedAuthSubscription.queryClients.keys()) {
+  sharedAuthSubscription.queryClients.forEach((_, queryClient) => {
     syncAuthStateForClient(queryClient, session);
-  }
+  });
 
   if (session && event === "SIGNED_IN") {
     void triggerIndexerTouch().catch(() => {

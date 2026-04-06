@@ -1,3 +1,22 @@
+## v1.189
+### Timestamp
+- 2026-04-06 16:30 EDT
+
+### Objective
+- Clear the renewed GitHub Actions failure on PR #62 by making the shared auth-listener fan-out compatible with the repository's CI TypeScript target.
+
+### What Changed
+- Replaced the `for...of` iteration over `Map.keys()` inside `useAuth()` with `Map.forEach(...)`, preserving the multi-`QueryClient` auth fan-out while avoiding the downlevel-iteration requirement that CI rejected.
+- Kept the auth behaviour unchanged: every active React Query client still receives the session update, and the best-effort indexer touch still runs once per `SIGNED_IN` event.
+
+### Verification
+- `pnpm exec tsc --noEmit -p tsconfig.ci.json`
+- `pnpm exec vitest run shared/api/hooks/useAuth.test.tsx shared/lib/supabase/session.test.ts shared/lib/edge/core.test.ts`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `shared/api/hooks/useAuth.ts`
+
 ## v1.188
 ### Timestamp
 - 2026-04-06 17:19 EDT
