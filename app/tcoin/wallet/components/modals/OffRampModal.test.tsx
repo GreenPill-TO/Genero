@@ -17,6 +17,7 @@ vi.mock("@shared/api/hooks/useAuth", () => ({
     userData: {
       cubidData: {
         id: 123,
+        cubid_id: "cubid-123",
       },
       user: {
         cubid_id: "cubid-123",
@@ -77,9 +78,7 @@ describe("OffRampModal", () => {
     render(<OffRampModal closeModal={vi.fn()} userBalance={50} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/We couldn't load your verified phone automatically/i)
-      ).toBeTruthy();
+      expect(screen.getByText(/load your verified phone automatically/i)).toBeTruthy();
     });
 
     expect(screen.getByLabelText(/Phone number/i)).toBeTruthy();
