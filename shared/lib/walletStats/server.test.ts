@@ -2,8 +2,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@shared/lib/contracts/torontocoinOps", () => ({
-  TORONTOCOIN_RUNTIME: { chainId: 42220 },
   getTorontoCoinOpsStatus: vi.fn(),
+}));
+
+vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
+  TORONTOCOIN_RUNTIME: { chainId: 42220 },
 }));
 
 vi.mock("@services/indexer/src", () => ({

@@ -77,7 +77,12 @@ export const useAuth = () => {
 
         if (timeDifference > 24 && shouldRefreshCubidData && !cubidDataFetched.current) {
           try {
-            const apiData = await fetchCubidData(cubidData.cubid_id);
+            const cubidId = cubidData.cubid_id;
+            if (!cubidId) {
+              return { user, cubidData };
+            }
+
+            const apiData = await fetchCubidData(cubidId);
             await updateCubidDataInSupabase({
               user: {
                 cubid_score: apiData.score,
