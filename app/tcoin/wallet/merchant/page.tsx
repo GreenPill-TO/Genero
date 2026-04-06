@@ -27,9 +27,16 @@ import {
 } from "@shared/lib/edge/merchantApplicationsClient";
 import { createClient } from "@shared/lib/supabase/client";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
+import {
+  WalletPageIntro,
+  walletPageClass,
+  walletPanelMutedClass,
+  walletRailPageClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { LiveMerchantDashboard } from "./LiveMerchantDashboard";
+import { cn } from "@shared/utils/classnames";
 
 const CITY_SLUG = "tcoin";
 const MERCHANT_ASSET_BUCKET = "merchant_assets";
@@ -137,7 +144,7 @@ export default function MerchantDashboardPage() {
   const isLive = appState === "live";
 
   const storeId = status?.storeId ?? null;
-  const mainClass = "font-sans pb-24 p-4 sm:p-8 lg:pb-8 lg:pl-28 bg-background text-foreground min-h-screen";
+  const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans min-h-screen text-foreground");
 
   const handleTabChange = (next: string) => {
     if (next === "home") {
@@ -562,12 +569,23 @@ export default function MerchantDashboardPage() {
   return (
     <div className={mainClass}>
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold">Merchant Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Apply to become a live merchant store in your city.</p>
-          </div>
-          <Badge variant="outline">Status: {lifecycleLabel[appState] ?? appState}</Badge>
+        <WalletPageIntro
+          eyebrow="Merchant workspace"
+          title="Merchant Dashboard"
+          description="Start, resume, or review your merchant application with the same signed-in wallet shell used everywhere else."
+          actions={(
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">Status: {lifecycleLabel[appState] ?? appState}</Badge>
+              <Button variant="outline" className="rounded-full" onClick={() => router.push("/dashboard?tab=more")}>
+                Back to More
+              </Button>
+            </div>
+          )}
+        />
+        <div className={walletPanelMutedClass}>
+          <p className="text-sm text-muted-foreground">
+            Use this workspace to complete onboarding, update merchant details, or continue into the live merchant dashboard after approval.
+          </p>
         </div>
  
 

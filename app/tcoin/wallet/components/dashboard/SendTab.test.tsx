@@ -10,6 +10,13 @@ const useSendMoneyMock = vi.hoisted(() =>
     getLastTransferRecord: vi.fn(),
   })
 );
+const useCameraAvailabilityMock = vi.hoisted(() =>
+  vi.fn().mockReturnValue({
+    hasCamera: true,
+    hasMultipleCameras: true,
+    isCheckingCamera: false,
+  })
+);
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -32,6 +39,15 @@ const useTokenBalanceMock = vi.hoisted(() =>
 vi.mock("@shared/hooks/useTokenBalance", () => ({
   useTokenBalance: useTokenBalanceMock,
 }));
+
+vi.mock("@shared/hooks/useCameraAvailability", () => ({
+  useCameraAvailability: useCameraAvailabilityMock,
+}));
+
+const resolvePaymentRequestLinkMock = vi.hoisted(() => vi.fn());
+const consumePaymentRequestLinkMock = vi.hoisted(() => vi.fn());
+const lookupWalletUserByIdentifierMock = vi.hoisted(() => vi.fn());
+const clearPendingPaymentIntentMutateAsyncMock = vi.hoisted(() => vi.fn());
 
 const invoiceRequests = [
   {
@@ -87,6 +103,21 @@ vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
   dismissPaymentRequest: dismissPaymentRequestMock,
   markPaymentRequestPaid: markPaymentRequestPaidMock,
   getIncomingPaymentRequests: getIncomingPaymentRequestsMock,
+}));
+
+vi.mock("@shared/lib/edge/paymentRequestLinksClient", () => ({
+  resolvePaymentRequestLink: resolvePaymentRequestLinkMock,
+  consumePaymentRequestLink: consumePaymentRequestLinkMock,
+}));
+
+vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
+  lookupWalletUserByIdentifier: lookupWalletUserByIdentifierMock,
+}));
+
+vi.mock("@shared/hooks/useUserSettingsMutations", () => ({
+  useClearPendingPaymentIntentMutation: () => ({
+    mutateAsync: clearPendingPaymentIntentMutateAsyncMock,
+  }),
 }));
 
 vi.mock("@shared/lib/supabase/client", () => ({
@@ -168,7 +199,17 @@ afterEach(() => {
   dismissPaymentRequestMock.mockClear();
   markPaymentRequestPaidMock.mockClear();
   getIncomingPaymentRequestsMock.mockClear();
+  resolvePaymentRequestLinkMock.mockReset();
+  consumePaymentRequestLinkMock.mockReset();
+  lookupWalletUserByIdentifierMock.mockReset();
+  clearPendingPaymentIntentMutateAsyncMock.mockReset();
   useTokenBalanceMock.mockClear();
+  useCameraAvailabilityMock.mockReset();
+  useCameraAvailabilityMock.mockReturnValue({
+    hasCamera: true,
+    hasMultipleCameras: true,
+    isCheckingCamera: false,
+  });
 });
 
 describe("SendTab", () => {
@@ -182,6 +223,7 @@ describe("SendTab", () => {
 
   it("renders send mode actions and shows inline QR scanner panel", () => {
     render(<SendTab recipient={null} />);
+    expect(screen.getByTestId("send-tab-layout").className).not.toContain("lg:px-[25vw]");
     expect(screen.getByText("Manual")).toBeTruthy();
     expect(screen.getByText("Scan QR Code")).toBeTruthy();
     expect(screen.getByText("Pay Link")).toBeTruthy();
@@ -189,6 +231,19 @@ describe("SendTab", () => {
     fireEvent.click(screen.getByText("Scan QR Code"));
     expect(screen.getByText("Scan QR")).toBeTruthy();
     expect(screen.getByText("qr-modal")).toBeTruthy();
+  });
+
+  it("hides scan actions when the device reports no camera", () => {
+    useCameraAvailabilityMock.mockReturnValue({
+      hasCamera: false,
+      hasMultipleCameras: false,
+      isCheckingCamera: false,
+    });
+
+    render(<SendTab recipient={null} />);
+
+    expect(screen.queryByText("Scan QR Code")).toBeNull();
+    expect(screen.queryByText("Scan QR")).toBeNull();
   });
 
   it("passes numeric userBalance to SendCard", () => {
@@ -369,5 +424,122 @@ describe("SendTab", () => {
       transactionId: 88,
       appContext: { citySlug: "tcoin" },
     });
+  });
+
+  it("resolves public payment-link tokens into send details", async () => {
+    resolvePaymentRequestLinkMock.mockResolvedValue({
+      link: {
+        token: "opaque-token",
+        state: "ready",
+        amountRequested: 13.1,
+        recipient: {
+          id: 55,
+          fullName: "Taylor Example",
+          username: "tay",
+          profileImageUrl: null,
+          walletAddress: "0xwallet",
+        },
+      },
+    });
+
+    render(<SendTab recipient={null} paymentLinkToken="opaque-token" />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(resolvePaymentRequestLinkMock).toHaveBeenCalledWith("opaque-token");
+    expect(sendCardProps.toSendData).toEqual(
+      expect.objectContaining({
+        id: 55,
+        full_name: "Taylor Example",
+        wallet_address: "0xwallet",
+      })
+    );
+    expect(sendCardProps.tcoinAmount).toBe("13.10");
+    expect(sendCardProps.cadAmount).toBe("13.10");
+  });
+
+  it("supports pasted public pay links in the pay-link panel", async () => {
+    resolvePaymentRequestLinkMock.mockResolvedValue({
+      link: {
+        token: "opaque-token",
+        state: "ready",
+        amountRequested: 5,
+        recipient: {
+          id: 77,
+          fullName: "Pay Link User",
+          username: "plink",
+          profileImageUrl: null,
+          walletAddress: "0xplink",
+        },
+      },
+    });
+
+    render(<SendTab recipient={null} />);
+
+    fireEvent.click(screen.getByText("Pay Link"));
+    fireEvent.change(screen.getByPlaceholderText("Paste pay link"), {
+      target: { value: "https://www.tcoin.me/pay/opaque-token" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Load Link/i }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(resolvePaymentRequestLinkMock).toHaveBeenCalledWith("opaque-token");
+    expect(screen.getByTestId("sendcard")).toBeTruthy();
+    expect(sendCardProps.toSendData).toEqual(
+      expect.objectContaining({
+        id: 77,
+        full_name: "Pay Link User",
+      })
+    );
+  });
+
+  it("consumes payment links and clears resumed signup intents after payment", async () => {
+    consumePaymentRequestLinkMock.mockResolvedValue({ link: { state: "consumed" } });
+    clearPendingPaymentIntentMutateAsyncMock.mockResolvedValue({});
+
+    render(
+      <SendTab
+        recipient={null}
+        resumePendingPayment
+        pendingPaymentIntent={{
+          recipientUserId: 66,
+          recipientName: "Resume User",
+          recipientUsername: "resume",
+          recipientProfileImageUrl: null,
+          recipientWalletAddress: "0xresume",
+          recipientUserIdentifier: "resume-user",
+          amountRequested: 7,
+          sourceToken: "resume-token",
+          sourceMode: "single_use",
+          createdAt: "2026-04-02T12:00:00.000Z",
+        }}
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const paymentComplete = sendCardProps.onPaymentComplete as (details: any) => Promise<void>;
+    await act(async () => {
+      await paymentComplete({
+        transactionId: 123,
+        transactionHash: "0xhash",
+      });
+    });
+
+    expect(consumePaymentRequestLinkMock).toHaveBeenCalledWith({
+      token: "resume-token",
+      transactionId: 123,
+      appContext: { citySlug: "tcoin" },
+    });
+    expect(clearPendingPaymentIntentMutateAsyncMock).toHaveBeenCalled();
   });
 });

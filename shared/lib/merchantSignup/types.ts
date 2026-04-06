@@ -78,7 +78,13 @@ export type CityManagerStoreApplicationRecord = {
   applicant: {
     userId: number | null;
     fullName: string | null;
+    username: string | null;
     email: string | null;
+    phone: string | null;
+    country: string | null;
+    address: string | null;
+    profileImageUrl: string | null;
+    createdAt: string | null;
   } | null;
   profile: {
     displayName: string | null;

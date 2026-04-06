@@ -2,7 +2,9 @@ import { invokeEdgeFunction } from "./core";
 import type { AppScopeInput } from "./types";
 import type {
   WalletContactDetailResponse,
+  WalletContactImportsResponse,
   WalletContactsResponse,
+  WalletInviteBatchResponse,
   WalletLookupUserResponse,
   WalletNotificationResponse,
   WalletRecentsResponse,
@@ -47,6 +49,60 @@ export async function getWalletContactDetail(
     method: "GET",
     appContext,
   });
+}
+
+export async function getWalletContactImports(
+  appContext?: AppScopeInput | null
+): Promise<WalletContactImportsResponse> {
+  return invokeEdgeFunction<WalletContactImportsResponse>("wallet-operations", "/contacts/imports", {
+    method: "GET",
+    appContext,
+  });
+}
+
+export async function saveWalletContactImports(
+  payload: {
+    granted: boolean;
+    source?: string;
+    contacts?: Array<{
+      displayName?: string | null;
+      email?: string | null;
+    }>;
+  },
+  appContext?: AppScopeInput | null
+): Promise<WalletContactImportsResponse> {
+  return invokeEdgeFunction<WalletContactImportsResponse>(
+    "wallet-operations",
+    "/contacts/imports",
+    {
+      method: "POST",
+      body: payload as unknown as Record<string, unknown>,
+      appContext,
+    }
+  );
+}
+
+export async function queueWalletContactInviteBatch(
+  payload: {
+    subject: string;
+    message: string;
+    recipients: Array<{
+      email: string;
+      displayName?: string | null;
+      source?: string;
+    }>;
+  },
+  appContext?: AppScopeInput | null
+): Promise<WalletInviteBatchResponse> {
+  return invokeEdgeFunction<WalletInviteBatchResponse>(
+    "wallet-operations",
+    "/contacts/invite-batches",
+    {
+      method: "POST",
+      body: payload as unknown as Record<string, unknown>,
+      appContext,
+    }
+  );
 }
 
 export async function getWalletRecents(appContext?: AppScopeInput | null): Promise<WalletRecentsResponse> {

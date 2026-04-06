@@ -35,6 +35,12 @@ describe("Footer", () => {
     expect(link.getAttribute("href")).toBe("/ecosystem");
   });
 
+  it("includes merchants link", () => {
+    const { getByText } = render(<Footer />);
+    const link = getByText("Merchants");
+    expect(link.getAttribute("href")).toBe("/merchants");
+  });
+
   it("opens github link in a new tab", () => {
     render(<Footer />);
     const link = screen.getByText("GitHub");
@@ -59,6 +65,17 @@ describe("Footer", () => {
     mockUseDarkMode.mockReturnValue({ isDarkMode: true, setThemeOverride: mockSetThemeOverride });
     render(<Footer />);
     expect(screen.getByText("Light Mode")).toBeTruthy();
+  });
+
+  it("offers dark mode when the resolved system-following state is currently light", () => {
+    mockUseDarkMode.mockReturnValue({
+      isDarkMode: false,
+      isFollowingSystem: true,
+      themeMode: "system",
+      setThemeOverride: mockSetThemeOverride,
+    });
+    render(<Footer />);
+    expect(screen.getByText("Dark Mode")).toBeTruthy();
   });
 
   it("renders the requested 2026 copyright label", () => {

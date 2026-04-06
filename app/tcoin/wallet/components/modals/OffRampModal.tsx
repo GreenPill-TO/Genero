@@ -5,12 +5,18 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 import InputField from "@shared/components/ui/InputField";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
+import { resolveCubidRuntimeUserId } from "@shared/types/cubid";
 import { useForm, Controller } from "react-hook-form";
 import { v4 as uuidv4 } from "uuid";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { createLegacyOfframpRequest, createRedemptionRequest } from "@shared/lib/edge/redemptionsClient";
+import {
+  walletBadgeClass,
+  walletPanelMutedClass,
+  walletSectionLabelClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 
 interface OffRampProps {
   closeModal: () => void;
@@ -36,15 +42,16 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   });
 
   const [phoneCubidSDK, setPhoneCubidSDK] = useState("");
-  const [cubidSdk, setCubidSDK] = useState(null);
+  const [isPhoneLookupUnavailable, setIsPhoneLookupUnavailable] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const { userData } = useAuth();
+  const cubidRuntimeUserId = resolveCubidRuntimeUserId(userData?.cubidData ?? userData?.user);
   const { burnMoney, senderWallet } = useSendMoney({ senderId: userData?.cubidData?.id });
-  const { exchangeRate, state: exchangeRateState } = useControlVariables();
+  const { exchangeRate, fallbackMessage } = useControlVariables();
 
   const donationAmount = watch("preferredDonationAmount");
   const estimatedCAD = donationAmount * exchangeRate;
@@ -63,22 +70,48 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   }, [closeModal]);
 
   useEffect(() => {
+    let isActive = true;
     const loadSDK = async () => {
-      const { CubidSDK } = await import("cubid-sdk");
-      const cubid_sdk = new CubidSDK(57, "14475a54-5bbe-4f3f-81c7-ff4403ad0830");
-      const cubid_stamps = await cubid_sdk.fetchStamps({ user_id: userData?.user?.cubid_id });
-
-      const phoneStamp = cubid_stamps.all_stamps.find((item) => item.stamptype_string === "phone")?.uniquevalue;
-
-      if (phoneStamp) {
-        setPhoneCubidSDK(phoneStamp);
-        setValue("phone_number", phoneStamp);
+      const cubidUserId = cubidRuntimeUserId;
+      if (!cubidUserId) {
+        if (isActive) {
+          setPhoneCubidSDK("");
+          setIsPhoneLookupUnavailable(false);
+        }
+        return;
       }
 
-      setCubidSDK(cubid_sdk);
+      try {
+        const { CubidSDK } = await import("cubid-sdk");
+        const cubid_sdk = new CubidSDK(57, "14475a54-5bbe-4f3f-81c7-ff4403ad0830");
+        const cubid_stamps = await cubid_sdk.fetchStamps({ user_id: cubidUserId });
+        const phoneStamp = cubid_stamps.all_stamps.find((item) => item.stamptype_string === "phone")?.uniquevalue;
+
+        if (!isActive) {
+          return;
+        }
+
+        if (phoneStamp) {
+          setPhoneCubidSDK(phoneStamp);
+          setValue("phone_number", phoneStamp);
+        } else {
+          setPhoneCubidSDK("");
+        }
+        setIsPhoneLookupUnavailable(false);
+      } catch (error) {
+        console.error("Unable to prefill the phone number from Cubid.", error);
+        if (!isActive) {
+          return;
+        }
+        setPhoneCubidSDK("");
+        setIsPhoneLookupUnavailable(true);
+      }
     };
-    loadSDK();
-  }, []);
+    void loadSDK();
+    return () => {
+      isActive = false;
+    };
+  }, [cubidRuntimeUserId, setValue]);
 
   const sendOTP = async () => {
     const phone = phoneCubidSDK || watch("phone_number");
@@ -217,8 +250,27 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="mt-2 p-0">
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <span className={walletBadgeClass}>Cash out</span>
+          <p className="text-sm text-muted-foreground">
+            Redeem TCOIN for CAD and send it to your bank account once the phone verification step is complete.
+          </p>
+        </div>
+
+        <div className={`${walletPanelMutedClass} grid gap-3 sm:grid-cols-2`}>
+          <div>
+            <p className={walletSectionLabelClass}>Available balance</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{userBalance.toFixed(2)} TCOIN</p>
+          </div>
+          <div>
+            <p className={walletSectionLabelClass}>Estimated CAD</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">${estimatedCAD.toFixed(2)}</p>
+          </div>
+        </div>
+
         <div className="space-y-4">
+          <div className={walletPanelMutedClass}>
           <Controller
             name="preferredDonationAmount"
             control={control}
@@ -226,18 +278,25 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
               <InputField {...field} label="TCOIN amount to redeem (TCOIN)" type="number" fullWidth />
             )}
           />
-          <p>Estimated CAD: ${estimatedCAD.toFixed(2)}</p>
-          {exchangeRateState !== "ready" && (
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              CAD values are using a fallback estimate until the live city rate is indexed.
-            </p>
-          )}
+          <p className="mt-3 text-sm text-muted-foreground">Estimated CAD: ${estimatedCAD.toFixed(2)}</p>
+          {fallbackMessage ? (
+            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{fallbackMessage}</p>
+          ) : null}
           {donationAmount > userBalance && (
-            <p className="text-sm text-red-500">
+            <p className="mt-2 text-sm text-red-500">
               Warning: The entered TCOIN amount exceeds your available balance of {userBalance}.
             </p>
           )}
+          </div>
 
+          <div className={walletPanelMutedClass}>
+            <p className={walletSectionLabelClass}>Phone verification</p>
+            {isPhoneLookupUnavailable ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                We couldn&apos;t load your verified phone automatically, so enter it manually below.
+              </p>
+            ) : null}
+            <div className="mt-3">
           <Controller
             name="phone_number"
             control={control}
@@ -251,10 +310,11 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
               />
             )}
           />
+            </div>
 
           {!otpSent && (
-            <Button disabled={loading} onClick={sendOTP}>
-              Send OTP
+            <Button type="button" className="mt-4 rounded-full" disabled={loading} onClick={sendOTP}>
+              Send verification code
             </Button>
           )}
 
@@ -267,12 +327,16 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
                   <InputField label="OTP" placeholder="Enter OTP" {...field} fullWidth />
                 )}
               />
-              <Button disabled={loading} onClick={verifyOTP}>
-                Verify OTP
+              <Button type="button" className="rounded-full" disabled={loading} onClick={verifyOTP}>
+                Confirm code
               </Button>
             </>
           )}
+          </div>
 
+          <div className={walletPanelMutedClass}>
+            <p className={walletSectionLabelClass}>Bank transfer details</p>
+            <div className="mt-3">
           <Controller
             name="interac_email"
             control={control}
@@ -280,11 +344,14 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
               <InputField label="Interac Email" placeholder="Interac Email" {...field} fullWidth />
             )}
           />
+            </div>
+          </div>
 
           {errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
 
           <Button
             disabled={loading || !otpVerified || donationAmount > userBalance}
+            className="rounded-full"
             type="submit"
           >
             Convert and Transfer

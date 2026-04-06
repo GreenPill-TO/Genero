@@ -47,16 +47,13 @@ const CharitySelectModal = ({
   const handleSelect = async () => {
     setSelectedCharity(charity);
 
-    const cubidId = userData?.user?.cubid_id;
-    if (cubidId) {
-      try {
-        await updateUserPreferences({
-          charity,
-          selectedCause: charity,
-        });
-      } catch (error) {
-        console.error("Error updating user's charity:", error);
-      }
+    try {
+      await updateUserPreferences({
+        charity,
+        selectedCause: charity,
+      });
+    } catch (error) {
+      console.error("Error updating user's charity:", error);
     }
 
     closeModal();

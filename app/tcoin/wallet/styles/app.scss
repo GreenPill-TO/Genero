@@ -105,4 +105,112 @@
   svg {
     color: hsl(var(--primary));
   }
+
+  .wallet-auth-shell {
+    --background: 210 38% 97%;
+    --foreground: 215 35% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 35% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 35% 15%;
+    --primary: 183 80% 26%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 30% 93%;
+    --secondary-foreground: 215 30% 20%;
+    --muted: 210 22% 92%;
+    --muted-foreground: 215 14% 40%;
+    --accent: 184 42% 88%;
+    --accent-foreground: 183 80% 18%;
+    --border: 214 28% 85%;
+    --input: 214 28% 85%;
+    --ring: 183 80% 26%;
+    --link-color: 183 80% 24%;
+    --wallet-logo-color: 183 80% 24%;
+    background:
+      radial-gradient(circle at top left, rgba(18, 123, 128, 0.1), transparent 28%),
+      radial-gradient(circle at top right, rgba(15, 23, 42, 0.08), transparent 30%),
+      linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(236, 242, 245, 1));
+  }
+
+  .wallet-auth-shell.dark,
+  .dark .wallet-auth-shell {
+    --background: 213 32% 8%;
+    --foreground: 210 40% 96%;
+    --card: 215 28% 11%;
+    --card-foreground: 210 40% 96%;
+    --popover: 215 28% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 183 75% 58%;
+    --primary-foreground: 215 45% 10%;
+    --secondary: 215 22% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 215 22% 15%;
+    --muted-foreground: 214 20% 70%;
+    --accent: 183 36% 24%;
+    --accent-foreground: 180 40% 92%;
+    --border: 217 19% 22%;
+    --input: 217 19% 22%;
+    --ring: 183 75% 58%;
+    --link-color: 183 78% 68%;
+    --wallet-logo-color: 183 78% 68%;
+    background:
+      radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 24%),
+      radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 28%),
+      linear-gradient(180deg, rgba(8, 13, 18, 1), rgba(11, 18, 26, 1));
+  }
+
+  .wallet-auth-shell .wallet-auth-input {
+    border-color: rgba(148, 163, 184, 0.34);
+    background: rgba(255, 255, 255, 0.74);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+
+  .dark .wallet-auth-shell .wallet-auth-input {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: none;
+  }
+
+  @media (max-width: 1023px) {
+    .wallet-auth-frame {
+      height: 100dvh;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
+    .wallet-auth-frame .wallet-auth-scroll-region {
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(8, 145, 178, 0.28) transparent;
+    }
+
+    .wallet-auth-frame .wallet-auth-scroll-region::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .wallet-auth-frame .wallet-auth-scroll-region::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .wallet-auth-frame .wallet-auth-scroll-region::-webkit-scrollbar-thumb {
+      border: 3px solid transparent;
+      border-radius: 999px;
+      background: rgba(8, 145, 178, 0.22);
+      background-clip: padding-box;
+    }
+
+    .dark .wallet-auth-frame .wallet-auth-scroll-region {
+      scrollbar-color: rgba(94, 234, 212, 0.28) transparent;
+    }
+
+    .dark .wallet-auth-frame .wallet-auth-scroll-region::-webkit-scrollbar-thumb {
+      background: rgba(94, 234, 212, 0.22);
+      background-clip: padding-box;
+    }
+  }
 }

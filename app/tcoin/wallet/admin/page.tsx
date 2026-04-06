@@ -33,6 +33,13 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Button } from "@shared/components/ui/Button";
 import { Badge } from "@shared/components/ui/badge";
+import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
+import {
+  WalletPageIntro,
+  walletPageClass,
+  walletPanelMutedClass,
+  walletRailPageClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import {
   Select,
   SelectContent,
@@ -45,6 +52,7 @@ import { Textarea } from "@shared/components/ui/TextArea";
 import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui/alert";
 import { toast } from "react-toastify";
 import { updateLegacyOfframpAdminRequest } from "@shared/lib/edge/redemptionsClient";
+import { cn } from "@shared/utils/classnames";
 
 type OnRampRequest = {
   id: number;
@@ -450,6 +458,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const controlPlaneAccess = useControlPlaneAccess("tcoin", !isLoading);
   const isMountedRef = useRef(true);
+  const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans min-h-screen text-foreground");
 
   const [onRampRequests, setOnRampRequests] = useState<OnRampRequest[]>([]);
   const [offRampRequests, setOffRampRequests] = useState<OffRampRequest[]>([]);
@@ -568,6 +577,17 @@ export default function AdminDashboardPage() {
 
   const canAccessAdminDashboard = controlPlaneAccess.data?.canAccessAdminDashboard === true;
   const accessError = controlPlaneAccess.error instanceof Error ? controlPlaneAccess.error.message : null;
+
+  const handleTabChange = useCallback(
+    (next: string) => {
+      if (next === "home") {
+        router.push("/dashboard");
+        return;
+      }
+      router.push(`/dashboard?tab=${encodeURIComponent(next)}`);
+    },
+    [router]
+  );
 
   useEffect(() => {
     if (isLoading || controlPlaneAccess.isLoading) {
@@ -1260,12 +1280,17 @@ export default function AdminDashboardPage() {
   };
 
   if (isLoading || controlPlaneAccess.isLoading) {
-    return <div className="p-6 text-sm">Checking admin permissions…</div>;
+    return (
+      <div className={mainClass}>
+        <div className="text-sm">Checking admin permissions…</div>
+        <DashboardFooter active="more" onChange={handleTabChange} />
+      </div>
+    );
   }
 
   if (accessError && accessError !== "Unauthorized") {
     return (
-      <div className="p-6">
+      <div className={mainClass}>
         <Card>
           <CardHeader>
             <CardTitle>Could not verify access</CardTitle>
@@ -1274,13 +1299,14 @@ export default function AdminDashboardPage() {
             <p className="text-sm text-muted-foreground">{accessError}</p>
           </CardContent>
         </Card>
+        <DashboardFooter active="more" onChange={handleTabChange} />
       </div>
     );
   }
 
   if (!canAccessAdminDashboard) {
     return (
-      <div className="p-6">
+      <div className={mainClass}>
         <Card>
           <CardHeader>
             <CardTitle>Restricted area</CardTitle>
@@ -1291,6 +1317,7 @@ export default function AdminDashboardPage() {
             </p>
           </CardContent>
         </Card>
+        <DashboardFooter active="more" onChange={handleTabChange} />
       </div>
     );
   }
@@ -1300,28 +1327,34 @@ export default function AdminDashboardPage() {
     normaliseString(userData?.cubidData?.nickname);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Admin dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Review on-ramp and off-ramp activity, leave notes for the operations team and update request statuses.
-          </p>
-          {adminName && (
-            <p className="mt-1 text-xs text-muted-foreground">Signed in as {adminName}</p>
+    <div className={mainClass}>
+      <div className="space-y-6">
+        <WalletPageIntro
+          eyebrow="Administrator workspace"
+          title="Admin dashboard"
+          description="Review on-ramp and off-ramp activity, update request statuses, and keep the wallet’s control-plane operations healthy."
+          actions={(
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" className="rounded-full" onClick={() => router.push("/dashboard?tab=more")}>
+                Back to More
+              </Button>
+              <Button onClick={() => void loadRequests()} disabled={isFetching} variant="outline" className="rounded-full">
+                {isFetching ? "Refreshing…" : "Refresh data"}
+              </Button>
+            </div>
           )}
-        </div>
-        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+        />
+        <div className={`${walletPanelMutedClass} flex flex-wrap items-center justify-between gap-3`}>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            {adminName ? <p>Signed in as <span className="font-semibold text-foreground">{adminName}</span></p> : null}
+            <p>Operational views and control-plane signals for the TorontoCoin wallet stack.</p>
+          </div>
           {lastSyncedAt && (
             <span className="text-xs text-muted-foreground">
               Synced {lastSyncedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
-          <Button onClick={() => void loadRequests()} disabled={isFetching} variant="outline">
-            {isFetching ? "Refreshing…" : "Refresh data"}
-          </Button>
         </div>
-      </div>
 
       {loadError && (
         <Alert variant="destructive">
@@ -1382,7 +1415,7 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
 
-      <Card>
+        <Card>
         <CardHeader>
           <CardTitle>TorontoCoin Ops Status</CardTitle>
         </CardHeader>
@@ -1507,9 +1540,9 @@ export default function AdminDashboardPage() {
             </>
           )}
         </CardContent>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader>
           <CardTitle>Buy cplTCOIN Checkout Sessions</CardTitle>
         </CardHeader>
@@ -2555,7 +2588,9 @@ export default function AdminDashboardPage() {
             ))
           )}
         </CardContent>
-      </Card>
+        </Card>
+      </div>
+      <DashboardFooter active="more" onChange={handleTabChange} />
     </div>
   );
 }

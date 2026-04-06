@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import Link from "next/link";
 import { LandingHeader } from "@tcoin/wallet/components/landing-header";
 import { Footer } from "@tcoin/wallet/components/footer";
@@ -11,31 +12,41 @@ export default function ResourcesPage() {
         <h1 className="font-extrabold text-center my-5">Resources</h1>
         <p>
           <strong>DoraHack BUDIL:</strong>{" "}
+          Find out more about the details of the project by checking out{" "}
           <Link href="https://dorahacks.io/buidl/14336" target="_blank">
-            Find out more about the details of the project by checking out this hackathon submission.
+            this hackathon submission
           </Link>
+          .
         </p>
         <p>
           <strong>Whitepaper:</strong>{" "}
+          The background to this project can be found in{" "}
           <Link href="https://docs.google.com/document/d/1eHSfW12Cw7HGznSpMBFJf7TGMOx6uFSatYO2t-ezYtU/edit?tab=t.6am3ekffscmi#heading=h.9j36dhj3y2db" target="_blank">
-            The background to this project can be found in this Whitepaper, authored by N Lindqvist. Note: We keep adding to the whitepaper appendices during the hackathon.
+            this Whitepaper
           </Link>
+          , authored by N Lindqvist. Note: We keep adding to the whitepaper appendices during the hackathon.
         </p>
         <p>
           <strong>Presentation:</strong>{" "}
+          We presented the project to a Toronto audience on Aug 15. Check out{" "}
           <Link href="https://drive.google.com/file/d/103zZDnQPfKmaLjxnSBB0B-K7vsCYoazw/view" target="_blank">
-            We presented the project to a Toronto audience on Aug 15. Check out the presentation here.
+            the presentation here
           </Link>
+          .
         </p>
         <p>
           <strong>Source Code:</strong>{" "}
+          The source code for this project is of course fully open and auditable{" "}
           <Link href="https://github.com/GreenPill-TO/TorontoCoin" target="_blank">
-            The source code for this project is of course fully open and auditable.
+            on GitHub
           </Link>
+          .
         </p>
         <p>
           <strong>Ecosystem:</strong>{" "}
-          <Link href="/ecosystem">Explore the projects in our wider network.</Link>
+          Explore{" "}
+          <Link href="/ecosystem">the projects in our wider network</Link>
+          .
         </p>
         <p>
           <Link href="/">Return home</Link>

@@ -43,6 +43,41 @@ export type WalletLookupUserResponse = {
   user: WalletOperationUser | null;
 };
 
+export type WalletImportedContact = {
+  id: number;
+  displayName: string | null;
+  email: string;
+  source: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type WalletContactImportPreference = {
+  granted: boolean;
+  source: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type WalletContactImportsResponse = {
+  preference: WalletContactImportPreference | null;
+  importedContacts: WalletImportedContact[];
+};
+
+export type WalletInviteBatch = {
+  id: number;
+  source: string;
+  status: string;
+  subject: string;
+  message: string;
+  recipientCount: number;
+  createdAt: string | null;
+};
+
+export type WalletInviteBatchResponse = {
+  batch: WalletInviteBatch | null;
+};
+
 export type WalletTransferRecordResponse = {
   record: unknown;
 };

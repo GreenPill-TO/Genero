@@ -6,6 +6,10 @@ import {
   createPaymentRequest,
   getOutgoingPaymentRequests,
 } from "@shared/lib/edge/paymentRequestsClient";
+import {
+  createPaymentRequestLink,
+} from "@shared/lib/edge/paymentRequestLinksClient";
+import type { PaymentRequestLinkMode } from "@shared/lib/edge/paymentRequestLinks";
 import { ReceiveCard } from "./ReceiveCard";
 import { Hypodata, InvoicePayRequest } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
@@ -23,27 +27,112 @@ export function ReceiveTab({
   contacts,
   showQrCode = true,
 }: ReceiveTabProps) {
-  const { userData } = useAuth();
+  const { authData, userData, isLoadingUser, error: authError } = useAuth();
   const { exchangeRate } = useControlVariables();
 
   const user_id = userData?.cubidData.id;
-  const nano_id = userData?.cubidData.user_identifier;
   const [qrCodeData, setQrCodeData] = useState("");
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");
   const [qrCadAmount, setQrCadAmount] = useState("");
+  const [qrLinkMode, setQrLinkMode] = useState<PaymentRequestLinkMode>("rotating_multi_use");
+  const [qrLinkExpiresAt, setQrLinkExpiresAt] = useState<string | null>(null);
+  const [isGeneratingQrLink, setIsGeneratingQrLink] = useState(false);
+  const [qrLinkError, setQrLinkError] = useState<string | null>(null);
   const [requestContact, setRequestContact] = useState<Hypodata | null>(
     contact ?? null
   );
   const [openRequests, setOpenRequests] = useState<InvoicePayRequest[]>([]);
 
+  const resolveQrLinkErrorMessage = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message.trim() : "";
+
+    if (!message) {
+      return "Unable to generate a pay link right now.";
+    }
+
+    if (message === "Unauthorized") {
+      return "We couldn't match this sign-in to a local wallet profile yet. Refresh the page, or sign out and sign back in.";
+    }
+
+    if (message.includes("route /create is not available")) {
+      return "Your local Supabase payment-links function is not available yet. Restart the local Supabase stack and try again.";
+    }
+
+    if (message.includes("payment_request_links")) {
+      return "Your local Supabase database is missing the payment-links schema. Apply the latest local migrations and try again.";
+    }
+
+    return message.replace(/^Failed to create payment request link:\s*/i, "");
+  }, []);
+
+  const parsePositiveAmount = useCallback((value: string) => {
+    const cleaned = value.replace(/[^\d.]/g, "");
+    const parsed = Number.parseFloat(cleaned);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+    return parsed;
+  }, []);
+
+  const requestedAmount = parsePositiveAmount(qrTcoinAmount);
+  const missingWalletProfile =
+    Boolean(authData?.user) && !isLoadingUser && !user_id;
+  const shouldGenerateQrLink =
+    Boolean(authData?.user) &&
+    Boolean(user_id) &&
+    !isLoadingUser &&
+    showQrCode &&
+    !requestContact;
+
+  const mintQrLink = useCallback(
+    async (mode: PaymentRequestLinkMode) => {
+      if (!authData?.user || !user_id) {
+        setQrCodeData("");
+        setQrLinkExpiresAt(null);
+        return;
+      }
+
+      setIsGeneratingQrLink(true);
+      try {
+        const { link } = await createPaymentRequestLink({
+          amountRequested: requestedAmount,
+          mode,
+          appContext: { citySlug: "tcoin" },
+        });
+        setQrCodeData(link.url ?? "");
+        setQrLinkExpiresAt(link.expiresAt);
+        setQrLinkError(null);
+      } catch (error) {
+        console.error("Failed to create payment request link:", error);
+        setQrCodeData("");
+        setQrLinkExpiresAt(null);
+        setQrLinkError(resolveQrLinkErrorMessage(error));
+      } finally {
+        setIsGeneratingQrLink(false);
+      }
+    },
+    [authData?.user, requestedAmount, resolveQrLinkErrorMessage, user_id]
+  );
+
   useEffect(() => {
-    if (!user_id) return;
-    setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
-    const interval = setInterval(() => {
-      setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [user_id, nano_id]);
+    if (!shouldGenerateQrLink) {
+      setQrCodeData("");
+      setQrLinkExpiresAt(null);
+      return;
+    }
+
+    void mintQrLink(qrLinkMode);
+
+    if (qrLinkMode !== "rotating_multi_use") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void mintQrLink("rotating_multi_use");
+    }, 3_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [mintQrLink, qrLinkMode, shouldGenerateQrLink]);
 
   const handleQrTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^\d.]/g, "");
@@ -183,12 +272,25 @@ export function ReceiveTab({
     void fetchOpenRequests();
   };
 
+  const qrUnavailableReason =
+    isLoadingUser && !authData?.user
+      ? "QR code is still loading your wallet session."
+      : missingWalletProfile
+        ? "We couldn't find a wallet profile for this signed-in account yet. Finish onboarding, or sign out and sign back in."
+        : authError instanceof Error && !user_id
+          ? authError.message
+          : qrLinkError;
+
   return (
-    <div className="lg:px-[25vw]">
+    <div className="mx-auto w-full">
       <ReceiveCard
         qrCodeData={qrCodeData}
         qrTcoinAmount={qrTcoinAmount}
         qrCadAmount={qrCadAmount}
+        qrLinkMode={qrLinkMode}
+        qrLinkExpiresAt={qrLinkExpiresAt}
+        isGeneratingQrCode={isGeneratingQrLink}
+        onSwitchQrLinkMode={setQrLinkMode}
         handleQrTcoinChange={handleQrTcoinChange}
         handleQrCadChange={handleQrCadChange}
         senderWallet=""
@@ -198,6 +300,7 @@ export function ReceiveTab({
         qrBgColor="#fff"
         qrFgColor="#000"
         qrWrapperClassName="bg-white p-1"
+        qrUnavailableReason={qrUnavailableReason}
         requestContact={requestContact}
         onClearRequestContact={() => handleRequestContactChange(null)}
         contacts={contacts}

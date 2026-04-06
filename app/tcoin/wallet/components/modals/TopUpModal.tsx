@@ -44,14 +44,22 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
       toast.error("Please enter a valid amount.");
       return;
     }
-    await createLegacyInteracReference(
-      {
-        amount,
-        refCode,
-      },
-      { citySlug: "tcoin" }
-    );
-    setStep("confirmation");
+    try {
+      await createLegacyInteracReference(
+        {
+          amount,
+          refCode,
+        },
+        { citySlug: "tcoin" }
+      );
+      setStep("confirmation");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Top up is not available right now. Please try again in a moment.";
+      toast.error(message);
+    }
   };
 
   const handleBack = () => {
@@ -129,7 +137,7 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
     }
   };
 
-  const { exchangeRate, state: exchangeRateState } = useControlVariables();
+  const { exchangeRate, fallbackMessage } = useControlVariables();
   const parsedAmount = Number.parseFloat(amount);
   const amountInCad = calculateFiatAmount(parsedAmount, exchangeRate);
 
@@ -152,11 +160,9 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
             </div>
           </div>
           {Boolean(amount) && <div className="mb-2">{amountInCad} CAD</div>}
-          {exchangeRateState !== "ready" && (
-            <p className="mb-4 text-xs text-amber-700 dark:text-amber-300">
-              Live exchange rate is unavailable. CAD values are using a fallback estimate.
-            </p>
-          )}
+          {fallbackMessage ? (
+            <p className="mb-4 text-xs text-amber-700 dark:text-amber-300">{fallbackMessage}</p>
+          ) : null}
         </div>
       )}
 
@@ -169,11 +175,7 @@ export function TopUpModal({ closeModal, tokenLabel = "Tcoin" }: { closeModal: a
           <p>
             <strong>Amount in CAD:</strong> {amountInCad}
           </p>
-          {exchangeRateState !== "ready" && (
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              CAD values are using a fallback estimate until the live city rate is indexed.
-            </p>
-          )}
+          {fallbackMessage ? <p className="text-xs text-amber-700 dark:text-amber-300">{fallbackMessage}</p> : null}
           <p>
             <strong>Reference Code:</strong> {refCode}
           </p>

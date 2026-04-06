@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { Avatar } from "@shared/components/ui/Avatar";
+import { fileInputFieldClass } from "@shared/components/ui/formFieldStyles";
 import React, { useState } from "react";
 
 interface ImageUploadProps {
@@ -28,7 +29,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, name, onImageUpload })
       <label htmlFor={name} className="block text-sm font-medium text-gray-700">
         {label}
       </label>
-      <input type="file" id={name} name={name} accept="image/*" onChange={handleImageChange} className="mt-1 block w-full text-sm text-gray-900" />
+      <input
+        type="file"
+        id={name}
+        name={name}
+        accept="image/*"
+        onChange={handleImageChange}
+        className={`mt-1 ${fileInputFieldClass}`}
+      />
     </div>
   );
 };

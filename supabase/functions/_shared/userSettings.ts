@@ -1,6 +1,46 @@
 type JsonRecord = Record<string, unknown>;
 
 const USERNAME_PATTERN = /^[a-z0-9._-]{3,32}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const AUTO_USER_IDENTIFIER_PREFIX = "user-";
+const SIGNUP_FLOW_VERSION = "general-user-v2";
+
+type ManagedEmailInput = {
+  email: string;
+  isPrimary: boolean;
+};
+
+type ManagedPhoneInput = {
+  phone: string;
+  isPrimary: boolean;
+};
+
+type UserEmailRow = {
+  id: number | null;
+  email: string;
+  isPrimary: boolean;
+  createdAt: string | null;
+};
+
+type UserPhoneRow = {
+  id: number | null;
+  phone: string;
+  isPrimary: boolean;
+  createdAt: string | null;
+};
+
+type PendingPaymentIntent = {
+  recipientUserId: number;
+  recipientName: string | null;
+  recipientUsername: string | null;
+  recipientProfileImageUrl: string | null;
+  recipientWalletAddress: string | null;
+  recipientUserIdentifier: string | null;
+  amountRequested: number | null;
+  sourceToken: string | null;
+  sourceMode: "rotating_multi_use" | "single_use" | null;
+  createdAt: string | null;
+};
 
 function isRecord(value: unknown): value is JsonRecord {
   return value != null && typeof value === "object" && !Array.isArray(value);
@@ -12,6 +52,237 @@ function toNullableString(value: unknown): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+export function normalisePersistedCubidId(
+  requestedCubidId: unknown,
+  authUserId?: unknown
+): string | null {
+  const resolvedCubidId = toNullableString(requestedCubidId);
+  const resolvedAuthUserId = toNullableString(authUserId);
+
+  if (!resolvedCubidId) {
+    return null;
+  }
+
+  if (resolvedAuthUserId && resolvedCubidId === resolvedAuthUserId) {
+    return null;
+  }
+
+  return resolvedCubidId;
+}
+
+export function normaliseEmailAddress(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalised = value.trim().toLowerCase();
+  if (!normalised || !EMAIL_PATTERN.test(normalised)) {
+    return null;
+  }
+
+  return normalised;
+}
+
+export function normalisePhoneNumber(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalised = value.replace(/\s+/g, "").trim();
+  return normalised.length > 0 ? normalised : null;
+}
+
+export function normaliseManagedEmails(value: unknown): ManagedEmailInput[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Emails must be provided as a list.");
+  }
+
+  const deduped = new Map<string, ManagedEmailInput>();
+
+  for (const entry of value) {
+    if (!isRecord(entry)) {
+      throw new Error("Each email entry must be an object.");
+    }
+
+    const email = normaliseEmailAddress(entry.email);
+    if (!email) {
+      throw new Error("Each email must be a valid email address.");
+    }
+
+    const next = deduped.get(email) ?? { email, isPrimary: false };
+    next.isPrimary = next.isPrimary || entry.isPrimary === true;
+    deduped.set(email, next);
+  }
+
+  const emails = Array.from(deduped.values());
+  if (emails.length === 0) {
+    throw new Error("At least one email address is required.");
+  }
+
+  if (emails.length === 1) {
+    return [{ ...emails[0], isPrimary: true }];
+  }
+
+  const primaryEmails = emails.filter((entry) => entry.isPrimary);
+  if (primaryEmails.length !== 1) {
+    throw new Error("Select exactly one primary email address.");
+  }
+
+  const primaryEmail = primaryEmails[0]?.email;
+  return emails.map((entry) => ({
+    email: entry.email,
+    isPrimary: entry.email === primaryEmail,
+  }));
+}
+
+export function normaliseManagedPhones(value: unknown): ManagedPhoneInput[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Phones must be provided as a list.");
+  }
+
+  const deduped = new Map<string, ManagedPhoneInput>();
+
+  for (const entry of value) {
+    if (!isRecord(entry)) {
+      throw new Error("Each phone entry must be an object.");
+    }
+
+    const phone = normalisePhoneNumber(entry.phone);
+    if (!phone) {
+      throw new Error("Each phone number must be a non-empty phone string.");
+    }
+
+    const next = deduped.get(phone) ?? { phone, isPrimary: false };
+    next.isPrimary = next.isPrimary || entry.isPrimary === true;
+    deduped.set(phone, next);
+  }
+
+  const phones = Array.from(deduped.values());
+  if (phones.length === 0) {
+    throw new Error("At least one phone number is required.");
+  }
+
+  if (phones.length === 1) {
+    return [{ ...phones[0], isPrimary: true }];
+  }
+
+  const primaryPhones = phones.filter((entry) => entry.isPrimary);
+  if (primaryPhones.length !== 1) {
+    throw new Error("Select exactly one primary phone number.");
+  }
+
+  const primaryPhone = primaryPhones[0]?.phone;
+  return phones.map((entry) => ({
+    phone: entry.phone,
+    isPrimary: entry.phone === primaryPhone,
+  }));
+}
+
+export function normaliseUserIdentifierCandidate(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalised = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/[-._]{2,}/g, "-")
+    .replace(/^[-._]+|[-._]+$/g, "");
+
+  if (normalised.length < 3) {
+    return null;
+  }
+
+  return normalised.slice(0, 32);
+}
+
+export function buildFallbackUserIdentifier(userId: number): string {
+  return `${AUTO_USER_IDENTIFIER_PREFIX}${userId}`;
+}
+
+export function isFallbackUserIdentifier(value: unknown, userId: number): boolean {
+  return toNullableString(value)?.toLowerCase() === buildFallbackUserIdentifier(userId);
+}
+
+export function buildUserIdentifierVariant(base: string, suffix: number): string {
+  if (suffix <= 0) {
+    return base;
+  }
+
+  const suffixText = `-${suffix}`;
+  const trimmedBase = base.slice(0, Math.max(3, 32 - suffixText.length)).replace(/[-._]+$/g, "");
+  return `${trimmedBase}${suffixText}`;
+}
+
+async function ensureUserIdentifier(options: {
+  supabase: any;
+  userId: number;
+  preferredCandidate?: unknown;
+  replaceFallback?: boolean;
+}) {
+  const { data: userRow, error: userError } = await options.supabase
+    .from("users")
+    .select("id,username,user_identifier")
+    .eq("id", options.userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (userError) {
+    throw new Error(`Failed to load user identifier state: ${userError.message}`);
+  }
+
+  const currentIdentifier = toNullableString(userRow?.user_identifier);
+  const shouldReplaceFallback = options.replaceFallback === true && isFallbackUserIdentifier(currentIdentifier, options.userId);
+
+  if (currentIdentifier && !shouldReplaceFallback) {
+    return currentIdentifier;
+  }
+
+  const baseIdentifier =
+    normaliseUserIdentifierCandidate(options.preferredCandidate) ??
+    normaliseUserIdentifierCandidate(userRow?.username) ??
+    buildFallbackUserIdentifier(options.userId);
+
+  let suffix = 0;
+  let nextIdentifier = buildUserIdentifierVariant(baseIdentifier, suffix);
+
+  while (true) {
+    const { data: existingUser, error: existingError } = await options.supabase
+      .from("users")
+      .select("id")
+      .eq("user_identifier", nextIdentifier)
+      .neq("id", options.userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingError) {
+      throw new Error(`Failed to validate user identifier: ${existingError.message}`);
+    }
+
+    if (!existingUser?.id) {
+      break;
+    }
+
+    suffix += 1;
+    nextIdentifier = buildUserIdentifierVariant(baseIdentifier, suffix);
+  }
+
+  const { error: updateError } = await options.supabase
+    .from("users")
+    .update({
+      user_identifier: nextIdentifier,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", options.userId);
+
+  if (updateError) {
+    throw new Error(`Failed to persist user identifier: ${updateError.message}`);
+  }
+
+  return nextIdentifier;
 }
 
 function toNullableNumber(value: unknown): number | null {
@@ -57,6 +328,17 @@ function normaliseTheme(value: unknown): "system" | "light" | "dark" {
   return "system";
 }
 
+export function normaliseExperienceMode(value: unknown): "simple" | "advanced" {
+  return value === "advanced" ? "advanced" : "simple";
+}
+
+function resolveStoredExperienceMode(value: unknown): "simple" | "advanced" | null {
+  if (value === "simple" || value === "advanced") {
+    return value;
+  }
+  return null;
+}
+
 function ensureObject(value: unknown): JsonRecord {
   return isRecord(value) ? { ...value } : {};
 }
@@ -70,7 +352,7 @@ function dedupeStepList(value: unknown): number[] {
     new Set(
       value
         .map((entry) => Number(entry))
-        .filter((entry) => Number.isInteger(entry) && entry >= 1 && entry <= 6)
+        .filter((entry) => Number.isInteger(entry) && entry >= 1 && entry <= 7)
     )
   ).sort((a, b) => a - b);
 }
@@ -92,6 +374,33 @@ function isMissingTableError(message: string | undefined): boolean {
   );
 }
 
+export function normalisePendingPaymentIntent(value: unknown): PendingPaymentIntent | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const recipientUserId = toNullableInteger(value.recipientUserId);
+  if (recipientUserId == null) {
+    return null;
+  }
+
+  return {
+    recipientUserId,
+    recipientName: toNullableString(value.recipientName),
+    recipientUsername: toNullableString(value.recipientUsername),
+    recipientProfileImageUrl: toNullableString(value.recipientProfileImageUrl),
+    recipientWalletAddress: toNullableString(value.recipientWalletAddress),
+    recipientUserIdentifier: toNullableString(value.recipientUserIdentifier),
+    amountRequested: toNullableNumber(value.amountRequested),
+    sourceToken: toNullableString(value.sourceToken),
+    sourceMode:
+      value.sourceMode === "single_use" || value.sourceMode === "rotating_multi_use"
+        ? value.sourceMode
+        : null,
+    createdAt: toNullableString(value.createdAt),
+  };
+}
+
 function resolveSignupMetadata(value: unknown) {
   const metadata = ensureObject(value);
 
@@ -100,28 +409,71 @@ function resolveSignupMetadata(value: unknown) {
     status: metadata.status === "completed" ? "completed" : metadata.status === "draft" ? "draft" : null,
     currentStep: (() => {
       const parsed = Number(metadata.currentStep);
-      return Number.isInteger(parsed) && parsed >= 1 && parsed <= 6 ? parsed : null;
+      return Number.isInteger(parsed) && parsed >= 1 && parsed <= 7 ? parsed : null;
     })(),
     completedSteps: dedupeStepList(metadata.completedSteps),
     startedAt: toNullableString(metadata.startedAt),
     lastSavedAt: toNullableString(metadata.lastSavedAt),
     completedAt: toNullableString(metadata.completedAt),
     phoneVerified: metadata.phoneVerified === true,
+    pendingPaymentIntent: normalisePendingPaymentIntent(metadata.pendingPaymentIntent),
   };
 }
 
-async function ensureAppProfile(options: {
+function normaliseSignupForExperienceMode(options: {
+  signup: ReturnType<typeof resolveSignupMetadata>;
+  hasExplicitExperienceMode: boolean;
+}) {
+  const { signup, hasExplicitExperienceMode } = options;
+  if (signup.status !== "draft" || hasExplicitExperienceMode || signup.flow === SIGNUP_FLOW_VERSION) {
+    return signup;
+  }
+
+  return {
+    ...signup,
+    currentStep: signup.currentStep != null && signup.currentStep >= 5 ? 5 : signup.currentStep,
+    completedSteps: Array.from(
+      new Set(
+        signup.completedSteps.map((step) => {
+          if (step === 5) {
+            return 6;
+          }
+          if (step === 6) {
+            return 7;
+          }
+          return step;
+        })
+      )
+    ).sort((a, b) => a - b),
+  };
+}
+
+function isDuplicateAppProfileError(message: string | undefined): boolean {
+  if (!message) {
+    return false;
+  }
+
+  return (
+    message.includes('duplicate key value violates unique constraint "app_user_profiles_pkey"') ||
+    message.includes("duplicate key value violates unique constraint")
+  );
+}
+
+export async function ensureAppProfile(options: {
   supabase: any;
   userId: number;
   appInstanceId: number;
 }) {
-  const { data: existing, error: existingError } = await options.supabase
-    .from("app_user_profiles")
-    .select("user_id,app_instance_id,charity_preferences,onboarding_state,metadata")
-    .eq("user_id", options.userId)
-    .eq("app_instance_id", options.appInstanceId)
-    .limit(1)
-    .maybeSingle();
+  const loadExistingProfile = async () =>
+    options.supabase
+      .from("app_user_profiles")
+      .select("user_id,app_instance_id,charity_preferences,onboarding_state,metadata")
+      .eq("user_id", options.userId)
+      .eq("app_instance_id", options.appInstanceId)
+      .limit(1)
+      .maybeSingle();
+
+  const { data: existing, error: existingError } = await loadExistingProfile();
 
   if (existingError) {
     throw new Error(`Failed to load app profile: ${existingError.message}`);
@@ -145,6 +497,17 @@ async function ensureAppProfile(options: {
     .single();
 
   if (insertError) {
+    if (isDuplicateAppProfileError(insertError.message)) {
+      const { data: concurrentExisting, error: concurrentExistingError } = await loadExistingProfile();
+      if (concurrentExistingError) {
+        throw new Error(`Failed to load app profile after duplicate insert: ${concurrentExistingError.message}`);
+      }
+
+      if (concurrentExisting) {
+        return concurrentExisting;
+      }
+    }
+
     throw new Error(`Failed to create app profile: ${insertError.message}`);
   }
 
@@ -200,6 +563,24 @@ async function resolveWalletReady(options: {
   return Boolean(walletRow?.id && shareRow?.id);
 }
 
+export async function getLatestWalletListRow<T>(options: {
+  supabase: any;
+  userId: number;
+  select: string;
+  namespace?: string;
+}): Promise<{ data: T | null; error: any }> {
+  const namespace = options.namespace ?? "EVM";
+
+  return options.supabase
+    .from("wallet_list")
+    .select(options.select)
+    .eq("user_id", options.userId)
+    .eq("namespace", namespace)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+}
+
 async function resolveBiaSelection(options: {
   supabase: any;
   userId: number;
@@ -238,17 +619,656 @@ async function resolveBiaSelection(options: {
   };
 }
 
+async function loadActiveUserEmails(options: {
+  supabase: any;
+  userId: number;
+  fallbackEmail?: string | null;
+}): Promise<UserEmailRow[]> {
+  const { data, error } = await options.supabase
+    .from("user_email_addresses")
+    .select("id,email,is_primary,created_at")
+    .eq("user_id", options.userId)
+    .is("deleted_at", null)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (isMissingTableError(error.message)) {
+      const fallbackEmail = normaliseEmailAddress(options.fallbackEmail);
+      return fallbackEmail
+        ? [
+            {
+              id: null,
+              email: fallbackEmail,
+              isPrimary: true,
+              createdAt: null,
+            },
+          ]
+        : [];
+    }
+
+    throw new Error(`Failed to load user emails: ${error.message}`);
+  }
+
+  const emails = (data ?? [])
+    .map((row: any) => ({
+      id: toNullableInteger(row.id),
+      email: normaliseEmailAddress(row.email),
+      isPrimary: row.is_primary === true,
+      createdAt: toNullableString(row.created_at),
+    }))
+    .filter((row: UserEmailRow) => Boolean(row.email)) as UserEmailRow[];
+
+  if (emails.length > 0) {
+    return emails;
+  }
+
+  const fallbackEmail = normaliseEmailAddress(options.fallbackEmail);
+  return fallbackEmail
+    ? [
+        {
+          id: null,
+          email: fallbackEmail,
+          isPrimary: true,
+          createdAt: null,
+        },
+      ]
+    : [];
+}
+
+async function loadActiveUserPhones(options: {
+  supabase: any;
+  userId: number;
+  fallbackPhone?: string | null;
+}): Promise<UserPhoneRow[]> {
+  const { data, error } = await options.supabase
+    .from("user_phone_addresses")
+    .select("id,phone,is_primary,created_at")
+    .eq("user_id", options.userId)
+    .is("deleted_at", null)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (isMissingTableError(error.message)) {
+      const fallbackPhone = normalisePhoneNumber(options.fallbackPhone);
+      return fallbackPhone
+        ? [
+            {
+              id: null,
+              phone: fallbackPhone,
+              isPrimary: true,
+              createdAt: null,
+            },
+          ]
+        : [];
+    }
+
+    throw new Error(`Failed to load user phones: ${error.message}`);
+  }
+
+  const phones = (data ?? [])
+    .map((row: any) => ({
+      id: toNullableInteger(row.id),
+      phone: normalisePhoneNumber(row.phone),
+      isPrimary: row.is_primary === true,
+      createdAt: toNullableString(row.created_at),
+    }))
+    .filter((row: UserPhoneRow) => Boolean(row.phone)) as UserPhoneRow[];
+
+  if (phones.length > 0) {
+    return phones;
+  }
+
+  const fallbackPhone = normalisePhoneNumber(options.fallbackPhone);
+  return fallbackPhone
+    ? [
+        {
+          id: null,
+          phone: fallbackPhone,
+          isPrimary: true,
+          createdAt: null,
+        },
+      ]
+    : [];
+}
+
+async function syncUserEmailAddresses(options: {
+  supabase: any;
+  userId: number;
+  emails: ManagedEmailInput[];
+  ignoredUserIds?: number[];
+}) {
+  const normalisedEmails = normaliseManagedEmails(options.emails);
+  const primaryEmail = normalisedEmails.find((entry) => entry.isPrimary)?.email ?? normalisedEmails[0]?.email ?? null;
+
+  const { data: existingRows, error: existingError } = await options.supabase
+    .from("user_email_addresses")
+    .select("id,email,is_primary")
+    .eq("user_id", options.userId)
+    .is("deleted_at", null);
+
+  if (existingError) {
+    if (isMissingTableError(existingError.message)) {
+      if (normalisedEmails.length > 1) {
+        throw new Error("Multiple email addresses are not configured in this environment.");
+      }
+
+      const { error: fallbackUpdateError } = await options.supabase
+        .from("users")
+        .update({
+          email: primaryEmail,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", options.userId);
+
+      if (fallbackUpdateError) {
+        throw new Error(`Failed to update primary email: ${fallbackUpdateError.message}`);
+      }
+
+      return;
+    }
+
+    throw new Error(`Failed to load user email state: ${existingError.message}`);
+  }
+
+  const { data: conflictingRows, error: conflictingError } = await options.supabase
+    .from("user_email_addresses")
+    .select("id,email,user_id")
+    .in(
+      "email",
+      normalisedEmails.map((entry) => entry.email)
+    )
+    .is("deleted_at", null)
+    .neq("user_id", options.userId);
+
+  if (conflictingError) {
+    throw new Error(`Failed to validate email availability: ${conflictingError.message}`);
+  }
+
+  const ignoredUserIds = new Set(options.ignoredUserIds ?? []);
+  const meaningfulConflicts = (conflictingRows ?? []).filter((row) => {
+    const userId = toNullableInteger(row.user_id);
+    return userId == null || !ignoredUserIds.has(userId);
+  });
+
+  if (meaningfulConflicts.length > 0) {
+    throw new Error("One of those email addresses is already connected to another active account.");
+  }
+
+  const existingByEmail = new Map<string, { id: number; email: string; isPrimary: boolean }>();
+  for (const row of existingRows ?? []) {
+    const email = normaliseEmailAddress(row.email);
+    const id = toNullableInteger(row.id);
+    if (!email || id == null) {
+      continue;
+    }
+    existingByEmail.set(email, {
+      id,
+      email,
+      isPrimary: row.is_primary === true,
+    });
+  }
+
+  const nowIso = new Date().toISOString();
+  const requestedEmails = new Set(normalisedEmails.map((entry) => entry.email));
+  const removedRowIds = Array.from(existingByEmail.values())
+    .filter((row) => !requestedEmails.has(row.email))
+    .map((row) => row.id);
+
+  if (removedRowIds.length > 0) {
+    const { error: deleteError } = await options.supabase
+      .from("user_email_addresses")
+      .update({
+        is_primary: false,
+        deleted_at: nowIso,
+        updated_at: nowIso,
+      })
+      .in("id", removedRowIds);
+
+    if (deleteError) {
+      throw new Error(`Failed to retire removed emails: ${deleteError.message}`);
+    }
+  }
+
+  for (const entry of normalisedEmails) {
+    const existingRow = existingByEmail.get(entry.email);
+    if (existingRow) {
+      if (existingRow.isPrimary === entry.isPrimary) {
+        continue;
+      }
+
+      const { error: updateError } = await options.supabase
+        .from("user_email_addresses")
+        .update({
+          is_primary: entry.isPrimary,
+          updated_at: nowIso,
+        })
+        .eq("id", existingRow.id);
+
+      if (updateError) {
+        throw new Error(`Failed to update email status: ${updateError.message}`);
+      }
+
+      continue;
+    }
+
+    const { error: insertError } = await options.supabase.from("user_email_addresses").insert({
+      user_id: options.userId,
+      email: entry.email,
+      is_primary: entry.isPrimary,
+      created_at: nowIso,
+      updated_at: nowIso,
+    });
+
+    if (insertError) {
+      if (insertError.message?.includes("user_email_addresses_active_email_key")) {
+        const { data: racedRow, error: racedRowError } = await options.supabase
+          .from("user_email_addresses")
+          .select("user_id")
+          .eq("email", entry.email)
+          .is("deleted_at", null)
+          .order("id", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (racedRowError) {
+          throw new Error(`Failed to reconcile duplicate email race: ${racedRowError.message}`);
+        }
+
+        const racedUserId = toNullableInteger(racedRow?.user_id);
+        if (racedUserId === options.userId || ignoredUserIds.has(racedUserId ?? -1)) {
+          continue;
+        }
+      }
+
+      throw new Error(`Failed to save email address: ${insertError.message}`);
+    }
+  }
+
+  const { error: userUpdateError } = await options.supabase
+    .from("users")
+    .update({
+      email: primaryEmail,
+      updated_at: nowIso,
+    })
+    .eq("id", options.userId);
+
+  if (userUpdateError) {
+    throw new Error(`Failed to update primary email: ${userUpdateError.message}`);
+  }
+}
+
+async function syncUserPhoneAddresses(options: {
+  supabase: any;
+  userId: number;
+  phones: ManagedPhoneInput[];
+  ignoredUserIds?: number[];
+}) {
+  const normalisedPhones = normaliseManagedPhones(options.phones);
+  const primaryPhone = normalisedPhones.find((entry) => entry.isPrimary)?.phone ?? normalisedPhones[0]?.phone ?? null;
+
+  const { data: existingRows, error: existingError } = await options.supabase
+    .from("user_phone_addresses")
+    .select("id,phone,is_primary")
+    .eq("user_id", options.userId)
+    .is("deleted_at", null);
+
+  if (existingError) {
+    if (isMissingTableError(existingError.message)) {
+      if (normalisedPhones.length > 1) {
+        throw new Error("Multiple phone numbers are not configured in this environment.");
+      }
+
+      const { error: fallbackUpdateError } = await options.supabase
+        .from("users")
+        .update({
+          phone: primaryPhone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", options.userId);
+
+      if (fallbackUpdateError) {
+        throw new Error(`Failed to update primary phone: ${fallbackUpdateError.message}`);
+      }
+
+      return;
+    }
+
+    throw new Error(`Failed to load user phone state: ${existingError.message}`);
+  }
+
+  const { data: conflictingRows, error: conflictingError } = await options.supabase
+    .from("user_phone_addresses")
+    .select("id,phone,user_id")
+    .in(
+      "phone",
+      normalisedPhones.map((entry) => entry.phone)
+    )
+    .is("deleted_at", null)
+    .neq("user_id", options.userId);
+
+  if (conflictingError) {
+    throw new Error(`Failed to validate phone availability: ${conflictingError.message}`);
+  }
+
+  const ignoredUserIds = new Set(options.ignoredUserIds ?? []);
+  const meaningfulConflicts = (conflictingRows ?? []).filter((row) => {
+    const userId = toNullableInteger(row.user_id);
+    return userId == null || !ignoredUserIds.has(userId);
+  });
+
+  if (meaningfulConflicts.length > 0) {
+    throw new Error("One of those phone numbers is already connected to another active account.");
+  }
+
+  const existingByPhone = new Map<string, { id: number; phone: string; isPrimary: boolean }>();
+  for (const row of existingRows ?? []) {
+    const phone = normalisePhoneNumber(row.phone);
+    const id = toNullableInteger(row.id);
+    if (!phone || id == null) {
+      continue;
+    }
+    existingByPhone.set(phone, {
+      id,
+      phone,
+      isPrimary: row.is_primary === true,
+    });
+  }
+
+  const nowIso = new Date().toISOString();
+  const requestedPhones = new Set(normalisedPhones.map((entry) => entry.phone));
+  const removedRowIds = Array.from(existingByPhone.values())
+    .filter((row) => !requestedPhones.has(row.phone))
+    .map((row) => row.id);
+
+  if (removedRowIds.length > 0) {
+    const { error: deleteError } = await options.supabase
+      .from("user_phone_addresses")
+      .update({
+        is_primary: false,
+        deleted_at: nowIso,
+        updated_at: nowIso,
+      })
+      .in("id", removedRowIds);
+
+    if (deleteError) {
+      throw new Error(`Failed to retire removed phones: ${deleteError.message}`);
+    }
+  }
+
+  for (const entry of normalisedPhones) {
+    const existingRow = existingByPhone.get(entry.phone);
+    if (existingRow) {
+      if (existingRow.isPrimary === entry.isPrimary) {
+        continue;
+      }
+
+      const { error: updateError } = await options.supabase
+        .from("user_phone_addresses")
+        .update({
+          is_primary: entry.isPrimary,
+          updated_at: nowIso,
+        })
+        .eq("id", existingRow.id);
+
+      if (updateError) {
+        throw new Error(`Failed to update phone status: ${updateError.message}`);
+      }
+
+      continue;
+    }
+
+    const { error: insertError } = await options.supabase.from("user_phone_addresses").insert({
+      user_id: options.userId,
+      phone: entry.phone,
+      is_primary: entry.isPrimary,
+      created_at: nowIso,
+      updated_at: nowIso,
+    });
+
+    if (insertError) {
+      if (insertError.message?.includes("user_phone_addresses_active_phone_key")) {
+        const { data: racedRow, error: racedRowError } = await options.supabase
+          .from("user_phone_addresses")
+          .select("user_id")
+          .eq("phone", entry.phone)
+          .is("deleted_at", null)
+          .order("id", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (racedRowError) {
+          throw new Error(`Failed to reconcile duplicate phone race: ${racedRowError.message}`);
+        }
+
+        const racedUserId = toNullableInteger(racedRow?.user_id);
+        if (racedUserId === options.userId || ignoredUserIds.has(racedUserId ?? -1)) {
+          continue;
+        }
+      }
+
+      throw new Error(`Failed to save phone number: ${insertError.message}`);
+    }
+  }
+
+  const { error: userUpdateError } = await options.supabase
+    .from("users")
+    .update({
+      phone: primaryPhone,
+      updated_at: nowIso,
+    })
+    .eq("id", options.userId);
+
+  if (userUpdateError) {
+    throw new Error(`Failed to update primary phone: ${userUpdateError.message}`);
+  }
+}
+
+async function ensureUserEmailsPresent(options: {
+  supabase: any;
+  userId: number;
+  emails: string[];
+  ignoredUserIds?: number[];
+}) {
+  const existingEmails = await loadActiveUserEmails({
+    supabase: options.supabase,
+    userId: options.userId,
+  });
+
+  const requested = Array.from(
+    new Set(options.emails.map((value) => normaliseEmailAddress(value)).filter((value): value is string => Boolean(value)))
+  );
+
+  if (requested.length === 0) {
+    return;
+  }
+
+  const existingByEmail = new Map(existingEmails.map((entry) => [entry.email, entry]));
+  const merged = existingEmails.map((entry) => ({
+    email: entry.email,
+    isPrimary: entry.isPrimary,
+  }));
+
+  for (const email of requested) {
+    if (!existingByEmail.has(email)) {
+      merged.push({
+        email,
+        isPrimary: merged.length === 0,
+      });
+    }
+  }
+
+  if (!merged.some((entry) => entry.isPrimary) && merged.length > 0) {
+    merged[0]!.isPrimary = true;
+  }
+
+  await syncUserEmailAddresses({
+    supabase: options.supabase,
+    userId: options.userId,
+    emails: merged,
+    ignoredUserIds: options.ignoredUserIds,
+  });
+}
+
+async function ensureUserPhonesPresent(options: {
+  supabase: any;
+  userId: number;
+  phones: string[];
+  ignoredUserIds?: number[];
+}) {
+  const existingPhones = await loadActiveUserPhones({
+    supabase: options.supabase,
+    userId: options.userId,
+  });
+
+  const requested = Array.from(
+    new Set(options.phones.map((value) => normalisePhoneNumber(value)).filter((value): value is string => Boolean(value)))
+  );
+
+  if (requested.length === 0) {
+    return;
+  }
+
+  const existingByPhone = new Map(existingPhones.map((entry) => [entry.phone, entry]));
+  const merged = existingPhones.map((entry) => ({
+    phone: entry.phone,
+    isPrimary: entry.isPrimary,
+  }));
+
+  for (const phone of requested) {
+    if (!existingByPhone.has(phone)) {
+      merged.push({
+        phone,
+        isPrimary: merged.length === 0,
+      });
+    }
+  }
+
+  if (!merged.some((entry) => entry.isPrimary) && merged.length > 0) {
+    merged[0]!.isPrimary = true;
+  }
+
+  await syncUserPhoneAddresses({
+    supabase: options.supabase,
+    userId: options.userId,
+    phones: merged,
+    ignoredUserIds: options.ignoredUserIds,
+  });
+}
+
+async function findUserIdByEmail(options: {
+  supabase: any;
+  email: string;
+}): Promise<number | null> {
+  const normalisedEmail = normaliseEmailAddress(options.email);
+  if (!normalisedEmail) {
+    return null;
+  }
+
+  const { data, error } = await options.supabase
+    .from("user_email_addresses")
+    .select("user_id")
+    .eq("email", normalisedEmail)
+    .is("deleted_at", null)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (!isMissingTableError(error.message)) {
+      throw new Error(`Failed to resolve user by email history: ${error.message}`);
+    }
+  } else {
+    const userId = toNullableInteger(data?.user_id);
+    if (userId != null) {
+      return userId;
+    }
+  }
+
+  const { data: fallbackData, error: fallbackError } = await options.supabase
+    .from("users")
+    .select("id")
+    .eq("email", normalisedEmail)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackError) {
+    throw new Error(`Failed to resolve user by email: ${fallbackError.message}`);
+  }
+
+  return toNullableInteger(fallbackData?.id);
+}
+
+async function findUserIdByPhone(options: {
+  supabase: any;
+  phone: string;
+}): Promise<number | null> {
+  const normalisedPhone = normalisePhoneNumber(options.phone);
+  if (!normalisedPhone) {
+    return null;
+  }
+
+  const { data, error } = await options.supabase
+    .from("user_phone_addresses")
+    .select("user_id")
+    .eq("phone", normalisedPhone)
+    .is("deleted_at", null)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (!isMissingTableError(error.message)) {
+      throw new Error(`Failed to resolve user by phone history: ${error.message}`);
+    }
+  } else {
+    const userId = toNullableInteger(data?.user_id);
+    if (userId != null) {
+      return userId;
+    }
+  }
+
+  const { data: fallbackData, error: fallbackError } = await options.supabase
+    .from("users")
+    .select("id")
+    .eq("phone", normalisedPhone)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackError) {
+    throw new Error(`Failed to resolve user by phone: ${fallbackError.message}`);
+  }
+
+  return toNullableInteger(fallbackData?.id);
+}
+
 function buildUpdatedMetadata(options: {
   currentMetadata: unknown;
   theme?: "system" | "light" | "dark";
+  experienceMode?: "simple" | "advanced" | null;
   signup?: JsonRecord | null;
 }) {
   const metadata = ensureObject(options.currentMetadata);
 
-  if (options.theme) {
+  if (options.theme || options.experienceMode !== undefined) {
     const appearance = ensureObject(metadata.appearance);
-    appearance.theme = options.theme;
-    metadata.appearance = appearance;
+    if (options.theme) {
+      appearance.theme = options.theme;
+    }
+    if (options.experienceMode === null) {
+      delete appearance.experienceMode;
+    } else if (options.experienceMode) {
+      appearance.experienceMode = options.experienceMode;
+    }
+
+    if (Object.keys(appearance).length === 0) {
+      delete metadata.appearance;
+    } else {
+      metadata.appearance = appearance;
+    }
   }
 
   if (options.signup === null) {
@@ -445,7 +1465,7 @@ export async function getUserSettingsBootstrap(options: {
       options.supabase
         .from("users")
         .select(
-          "id,cubid_id,email,phone,full_name,nickname,username,country,profile_image_url,has_completed_intro,is_new_user"
+          "id,cubid_id,auth_user_id,user_identifier,email,phone,full_name,nickname,username,country,address,profile_image_url,has_completed_intro,is_new_user,created_at,updated_at"
         )
         .eq("id", options.userId)
         .limit(1)
@@ -495,9 +1515,19 @@ export async function getUserSettingsBootstrap(options: {
 
   const metadata = ensureObject(appProfile.metadata);
   const appearance = ensureObject(metadata.appearance);
-  const signup = resolveSignupMetadata(metadata.signup);
+  const storedExperienceMode = resolveStoredExperienceMode(appearance.experienceMode);
+  const signup = normaliseSignupForExperienceMode({
+    signup: resolveSignupMetadata(metadata.signup),
+    hasExplicitExperienceMode: storedExperienceMode != null,
+  });
   const charityPreferences = ensureObject(appProfile.charity_preferences);
   const { firstName, lastName } = splitFullName(toNullableString(userRow.full_name));
+  const emails = await loadActiveUserEmails({
+    supabase: options.supabase,
+    userId: options.userId,
+    fallbackEmail: toNullableString(userRow.email),
+  });
+  const primaryEmail = emails.find((entry) => entry.isPrimary)?.email ?? emails[0]?.email ?? toNullableString(userRow.email);
 
   const phoneVerified = Boolean(userRow.phone) || signup.phoneVerified;
   const signupState = Boolean(userRow.has_completed_intro)
@@ -509,8 +1539,13 @@ export async function getUserSettingsBootstrap(options: {
   return {
     user: {
       id: Number(userRow.id),
-      cubidId: typeof userRow.cubid_id === "string" ? userRow.cubid_id : "",
-      email: toNullableString(userRow.email),
+      cubidId: normalisePersistedCubidId(userRow.cubid_id, userRow.auth_user_id),
+      authUserId: toNullableString(userRow.auth_user_id),
+      userIdentifier: toNullableString(userRow.user_identifier),
+      createdAt: toNullableString(userRow.created_at),
+      updatedAt: toNullableString(userRow.updated_at),
+      email: primaryEmail,
+      emails,
       phone: toNullableString(userRow.phone),
       fullName: toNullableString(userRow.full_name),
       firstName,
@@ -518,6 +1553,7 @@ export async function getUserSettingsBootstrap(options: {
       nickname: toNullableString(userRow.nickname),
       username: toNullableString(userRow.username),
       country: toNullableString(userRow.country),
+      address: toNullableString(userRow.address),
       profileImageUrl: toNullableString(userRow.profile_image_url),
       hasCompletedIntro: Boolean(userRow.has_completed_intro),
       isNewUser: typeof userRow.is_new_user === "boolean" ? userRow.is_new_user : null,
@@ -525,20 +1561,24 @@ export async function getUserSettingsBootstrap(options: {
     app: options.appContext,
     preferences: {
       theme: normaliseTheme(appearance.theme),
+      experienceMode: normaliseExperienceMode(storedExperienceMode),
+      hasExplicitExperienceMode: storedExperienceMode != null,
       charity: toNullableString(charityPreferences.charity),
       selectedCause: toNullableString(charityPreferences.selected_cause),
       primaryBiaId: biaSelection.primaryBiaId,
       secondaryBiaIds: biaSelection.secondaryBiaIds,
     },
     signup: {
+      flow: signup.flow,
       state: signupState,
-      currentStep: signupState === "none" ? null : ((signup.currentStep ?? (signupState === "completed" ? 6 : 1)) as 1 | 2 | 3 | 4 | 5 | 6),
+      currentStep: signupState === "none" ? null : ((signup.currentStep ?? (signupState === "completed" ? 7 : 1)) as 1 | 2 | 3 | 4 | 5 | 6 | 7),
       completedSteps:
         signupState === "completed"
-          ? [1, 2, 3, 4, 5, 6]
-          : (signup.completedSteps as Array<1 | 2 | 3 | 4 | 5 | 6>),
+          ? [1, 2, 3, 4, 5, 6, 7]
+          : (signup.completedSteps as Array<1 | 2 | 3 | 4 | 5 | 6 | 7>),
       walletReady,
       phoneVerified,
+      pendingPaymentIntent: signup.pendingPaymentIntent,
     },
     options: {
       charities: ((charitiesError && isMissingTableError(charitiesError.message) ? [] : charitiesResult.data) ?? []).map((row: any) => ({
@@ -570,7 +1610,9 @@ export async function updateUserProfile(options: {
   const firstName = toNullableString(options.payload.firstName);
   const lastName = toNullableString(options.payload.lastName);
   const nickname = "nickname" in options.payload ? toNullableString(options.payload.nickname) : undefined;
+  const emails = "emails" in options.payload ? normaliseManagedEmails(options.payload.emails) : undefined;
   const country = "country" in options.payload ? toNullableString(options.payload.country) : undefined;
+  const address = "address" in options.payload ? toNullableString(options.payload.address) : undefined;
   const profileImageUrl =
     "profileImageUrl" in options.payload ? toNullableString(options.payload.profileImageUrl) : undefined;
   const usernameInput = "username" in options.payload ? toNullableString(options.payload.username) : undefined;
@@ -593,11 +1635,22 @@ export async function updateUserProfile(options: {
   if ("country" in options.payload) {
     updates.country = country;
   }
+  if ("address" in options.payload) {
+    updates.address = address;
+  }
   if ("profileImageUrl" in options.payload) {
     updates.profile_image_url = profileImageUrl;
   }
   if ("username" in options.payload) {
     updates.username = username;
+  }
+
+  if (emails) {
+    await syncUserEmailAddresses({
+      supabase: options.supabase,
+      userId: options.userId,
+      emails,
+    });
   }
 
   if (Object.keys(updates).length > 0) {
@@ -606,6 +1659,13 @@ export async function updateUserProfile(options: {
       throw new Error(`Failed to update profile: ${updateError.message}`);
     }
   }
+
+  await ensureUserIdentifier({
+    supabase: options.supabase,
+    userId: options.userId,
+    preferredCandidate: username ?? undefined,
+    replaceFallback: true,
+  });
 
   return getUserSettingsBootstrap({
     supabase: options.supabase,
@@ -630,6 +1690,8 @@ export async function updateUserPreferences(options: {
   const nextMetadata = buildUpdatedMetadata({
     currentMetadata: appProfile.metadata,
     theme: "theme" in options.payload ? normaliseTheme(options.payload.theme) : undefined,
+    experienceMode:
+      "experienceMode" in options.payload ? normaliseExperienceMode(options.payload.experienceMode) : undefined,
   });
 
   let nextCharityPreferences = appProfile.charity_preferences;
@@ -720,7 +1782,7 @@ export async function startSignup(options: {
 
   const nowIso = new Date().toISOString();
   const nextSignup = {
-    flow: "general-user-v1",
+    flow: SIGNUP_FLOW_VERSION,
     status: "draft",
     currentStep: 1,
     completedSteps: [],
@@ -728,6 +1790,7 @@ export async function startSignup(options: {
     lastSavedAt: nowIso,
     completedAt: null,
     phoneVerified: false,
+    pendingPaymentIntent: signup.pendingPaymentIntent,
   };
 
   const { error: updateError } = await options.supabase
@@ -761,8 +1824,8 @@ export async function saveSignupStep(options: {
   payload: JsonRecord;
 }) {
   const step = Number(options.payload.step);
-  if (!Number.isInteger(step) || step < 1 || step > 5) {
-    throw new Error("Signup step must be between 1 and 5.");
+  if (!Number.isInteger(step) || step < 1 || step > 6) {
+    throw new Error("Signup step must be between 1 and 6.");
   }
 
   const rawPayload = isRecord(options.payload.payload) ? options.payload.payload : {};
@@ -771,18 +1834,25 @@ export async function saveSignupStep(options: {
     userId: options.userId,
     appInstanceId: options.appContext.appInstanceId,
   });
-  const existingSignup = resolveSignupMetadata(ensureObject(appProfile.metadata).signup);
+  const metadata = ensureObject(appProfile.metadata);
+  const appearance = ensureObject(metadata.appearance);
+  const storedExperienceMode = resolveStoredExperienceMode(appearance.experienceMode);
+  const existingSignup = normaliseSignupForExperienceMode({
+    signup: resolveSignupMetadata(metadata.signup),
+    hasExplicitExperienceMode: storedExperienceMode != null,
+  });
   const nowIso = new Date().toISOString();
 
   const nextSignup = {
-    flow: "general-user-v1",
+    flow: SIGNUP_FLOW_VERSION,
     status: "draft",
-    currentStep: Math.min(6, step + 1),
+    currentStep: Math.min(7, step + 1),
     completedSteps: Array.from(new Set([...(existingSignup.completedSteps ?? []), step])).sort((a, b) => a - b),
     startedAt: existingSignup.startedAt ?? nowIso,
     lastSavedAt: nowIso,
     completedAt: null,
     phoneVerified: existingSignup.phoneVerified,
+    pendingPaymentIntent: existingSignup.pendingPaymentIntent,
   };
 
   if (step === 1) {
@@ -848,6 +1918,22 @@ export async function saveSignupStep(options: {
   }
 
   if (step === 5) {
+    const experienceMode = resolveStoredExperienceMode(rawPayload.experienceMode);
+    if (!experienceMode) {
+      throw new Error("Choose either clean and simple mode or advanced mode.");
+    }
+
+    await updateUserPreferences({
+      supabase: options.supabase,
+      userId: options.userId,
+      appContext: options.appContext,
+      payload: {
+        experienceMode,
+      },
+    });
+  }
+
+  if (step === 6) {
     const skipWalletSetup = rawPayload.skipWalletSetup === true;
     const walletReady = await resolveWalletReady({
       supabase: options.supabase,
@@ -923,6 +2009,7 @@ export async function resetSignup(options: {
         charity_preferences: null,
         metadata: buildUpdatedMetadata({
           currentMetadata: appProfile.metadata,
+          experienceMode: null,
           signup: null,
         }),
         onboarding_state: buildUpdatedOnboardingState(appProfile.onboarding_state, null),
@@ -964,9 +2051,9 @@ export async function completeSignup(options: {
     appContext: options.appContext,
   });
 
-  const requiredSteps = [1, 2, 3, 4, 5];
+  const requiredSteps = [1, 2, 3, 4, 5, 6];
   const hasAllSteps = requiredSteps.every((step) =>
-    bootstrap.signup.completedSteps.includes(step as 1 | 2 | 3 | 4 | 5 | 6)
+    bootstrap.signup.completedSteps.includes(step as 1 | 2 | 3 | 4 | 5 | 6 | 7)
   );
   const walletRequirementSatisfied = bootstrap.signup.walletReady || allowsWalletSkip(options.appContext.environment);
 
@@ -996,17 +2083,18 @@ export async function completeSignup(options: {
         metadata: buildUpdatedMetadata({
           currentMetadata: appProfile.metadata,
           signup: {
-            flow: "general-user-v1",
+            flow: SIGNUP_FLOW_VERSION,
             status: "completed",
-            currentStep: 6,
-            completedSteps: [1, 2, 3, 4, 5, 6],
+            currentStep: 7,
+            completedSteps: [1, 2, 3, 4, 5, 6, 7],
             startedAt: existingSignup.startedAt ?? nowIso,
             lastSavedAt: nowIso,
             completedAt: nowIso,
             phoneVerified: bootstrap.signup.phoneVerified,
+            pendingPaymentIntent: existingSignup.pendingPaymentIntent,
           },
         }),
-        onboarding_state: buildUpdatedOnboardingState(appProfile.onboarding_state, 6),
+        onboarding_state: buildUpdatedOnboardingState(appProfile.onboarding_state, 7),
         updated_at: nowIso,
       })
       .eq("user_id", options.userId)
@@ -1028,6 +2116,92 @@ export async function completeSignup(options: {
   });
 }
 
+export async function savePendingPaymentIntent(options: {
+  supabase: any;
+  userId: number;
+  appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
+  payload: JsonRecord;
+}) {
+  const appProfile = await ensureAppProfile({
+    supabase: options.supabase,
+    userId: options.userId,
+    appInstanceId: options.appContext.appInstanceId,
+  });
+  const existingSignup = resolveSignupMetadata(ensureObject(appProfile.metadata).signup);
+  const pendingPaymentIntent = normalisePendingPaymentIntent(options.payload);
+
+  if (!pendingPaymentIntent) {
+    throw new Error("A valid pending payment intent is required.");
+  }
+
+  const nextSignup = {
+    ...existingSignup,
+    pendingPaymentIntent,
+  };
+
+  const { error } = await options.supabase
+    .from("app_user_profiles")
+    .update({
+      metadata: buildUpdatedMetadata({
+        currentMetadata: appProfile.metadata,
+        signup: nextSignup,
+      }),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", options.userId)
+    .eq("app_instance_id", options.appContext.appInstanceId);
+
+  if (error) {
+    throw new Error(`Failed to save pending payment intent: ${error.message}`);
+  }
+
+  return getUserSettingsBootstrap({
+    supabase: options.supabase,
+    userId: options.userId,
+    appContext: options.appContext,
+  });
+}
+
+export async function clearPendingPaymentIntent(options: {
+  supabase: any;
+  userId: number;
+  appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
+}) {
+  const appProfile = await ensureAppProfile({
+    supabase: options.supabase,
+    userId: options.userId,
+    appInstanceId: options.appContext.appInstanceId,
+  });
+  const existingSignup = resolveSignupMetadata(ensureObject(appProfile.metadata).signup);
+
+  const nextSignup = {
+    ...existingSignup,
+    pendingPaymentIntent: null,
+  };
+
+  const { error } = await options.supabase
+    .from("app_user_profiles")
+    .update({
+      metadata: buildUpdatedMetadata({
+        currentMetadata: appProfile.metadata,
+        signup: nextSignup,
+      }),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", options.userId)
+    .eq("app_instance_id", options.appContext.appInstanceId);
+
+  if (error) {
+    throw new Error(`Failed to clear pending payment intent: ${error.message}`);
+  }
+
+  return getUserSettingsBootstrap({
+    supabase: options.supabase,
+    userId: options.userId,
+    appContext: options.appContext,
+  });
+}
+
 function mapBootstrapToCubidData(bootstrap: Awaited<ReturnType<typeof getUserSettingsBootstrap>>): any {
   return {
     id: bootstrap.user.id,
@@ -1036,19 +2210,19 @@ function mapBootstrapToCubidData(bootstrap: Awaited<ReturnType<typeof getUserSet
     email: bootstrap.user.email,
     phone: bootstrap.user.phone,
     full_name: bootstrap.user.fullName,
-    address: null,
+    address: bootstrap.user.address,
     bio: null,
     profile_image_url: bootstrap.user.profileImageUrl,
     has_completed_intro: bootstrap.user.hasCompletedIntro,
     is_new_user: bootstrap.user.isNewUser,
     is_admin: null,
-    auth_user_id: null,
+    auth_user_id: bootstrap.user.authUserId,
     cubid_score: null,
     cubid_identity: null,
     cubid_score_details: null,
-    updated_at: null,
-    created_at: null,
-    user_identifier: null,
+    updated_at: bootstrap.user.updatedAt,
+    created_at: bootstrap.user.createdAt,
+    user_identifier: bootstrap.user.userIdentifier,
     given_names: bootstrap.user.firstName || null,
     family_name: bootstrap.user.lastName || null,
     nickname: bootstrap.user.nickname,
@@ -1113,50 +2287,78 @@ export async function ensureAuthenticatedUserRecord(options: {
 }) {
   const contact = toNullableString(options.fullContact);
   const authMethod = toNullableString(options.authMethod)?.toLowerCase();
+  const authEmail = normaliseEmailAddress(options.authUser.email);
+  const authPhone = normalisePhoneNumber(options.authUser.phone);
+  const contactEmail = authMethod === "phone" ? null : normaliseEmailAddress(contact);
+  const contactPhone = authMethod === "phone" ? normalisePhoneNumber(contact) : null;
+  const authenticatedCubidId = normalisePersistedCubidId(options.cubidId, options.authUser.id);
 
-  const lookupQueries = [
-    options.supabase.from("users").select("id").eq("auth_user_id", options.authUser.id).limit(1).maybeSingle(),
-    options.authUser.email
-      ? options.supabase.from("users").select("id").eq("email", options.authUser.email).limit(1).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-    authMethod === "phone" && contact
-      ? options.supabase.from("users").select("id").eq("phone", contact).limit(1).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-    authMethod !== "phone" && contact
-      ? options.supabase.from("users").select("id").eq("email", contact).limit(1).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-  ];
+  const [authUserRowResult, authEmailUserId, authPhoneUserId, contactPhoneUserId, contactEmailUserId] = await Promise.all([
+    options.supabase
+      .from("users")
+      .select("id")
+      .eq("auth_user_id", options.authUser.id)
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    authEmail ? findUserIdByEmail({ supabase: options.supabase, email: authEmail }) : Promise.resolve(null),
+    authPhone ? findUserIdByPhone({ supabase: options.supabase, phone: authPhone }) : Promise.resolve(null),
+    contactPhone ? findUserIdByPhone({ supabase: options.supabase, phone: contactPhone }) : Promise.resolve(null),
+    contactEmail ? findUserIdByEmail({ supabase: options.supabase, email: contactEmail }) : Promise.resolve(null),
+  ]);
 
-  const results = await Promise.all(lookupQueries);
-  for (const result of results) {
-    if (result.error) {
-      throw new Error(`Failed to resolve user row: ${result.error.message}`);
-    }
+  if (authUserRowResult.error) {
+    throw new Error(`Failed to resolve user row: ${authUserRowResult.error.message}`);
   }
 
-  const existing = results.map((result) => result.data).find((row) => row?.id);
-  let userId = toInteger(existing?.id);
+  const existingCandidates = [
+    toNullableInteger(authUserRowResult.data?.id),
+    authEmailUserId,
+    authPhoneUserId,
+    contactPhoneUserId,
+    contactEmailUserId,
+  ].filter((value): value is number => value != null);
+
+  let userId = existingCandidates[0] ?? null;
   let created = false;
 
-  if (userId == null) {
-    const cubidId = toNullableString(options.cubidId);
-    if (!cubidId) {
-      throw new Error("cubidId is required when creating a new authenticated user.");
+  const readCanonicalAuthUserId = async () => {
+    const { data: canonicalAuthUserRow, error: canonicalAuthUserError } = await options.supabase
+      .from("users")
+      .select("id")
+      .eq("auth_user_id", options.authUser.id)
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (canonicalAuthUserError) {
+      throw new Error(`Failed to resolve canonical authenticated user row: ${canonicalAuthUserError.message}`);
     }
 
+    return toNullableInteger(canonicalAuthUserRow?.id);
+  };
+
+  if (userId == null) {
     const payload: Record<string, unknown> = {
-      cubid_id: cubidId,
       has_completed_intro: false,
       is_new_user: true,
       auth_user_id: options.authUser.id,
     };
 
-    if (authMethod === "phone" && contact) {
-      payload.phone = contact;
-    } else if (contact) {
-      payload.email = contact;
-    } else if (options.authUser.email) {
-      payload.email = options.authUser.email;
+    if (authenticatedCubidId) {
+      payload.cubid_id = authenticatedCubidId;
+    }
+
+    if (contactPhone) {
+      payload.phone = contactPhone;
+    } else if (authPhone) {
+      payload.phone = authPhone;
+    }
+
+    if (contactEmail) {
+      payload.email = contactEmail;
+    } else if (authEmail) {
+      payload.email = authEmail;
     }
 
     const { data: inserted, error: insertError } = await options.supabase
@@ -1166,31 +2368,110 @@ export async function ensureAuthenticatedUserRecord(options: {
       .single();
 
     if (insertError) {
-      throw new Error(`Failed to create user row: ${insertError.message}`);
+      if (insertError.message?.includes("users_auth_user_id_key")) {
+        userId = await readCanonicalAuthUserId();
+      } else {
+        throw new Error(`Failed to create user row: ${insertError.message}`);
+      }
+    } else {
+      userId = toNullableInteger(inserted?.id);
+      created = true;
+    }
+  } else {
+    const { data: existingUserRow, error: existingUserError } = await options.supabase
+      .from("users")
+      .select("id,cubid_id,auth_user_id")
+      .eq("id", userId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingUserError) {
+      throw new Error(`Failed to load authenticated user row: ${existingUserError.message}`);
     }
 
-    userId = toInteger(inserted?.id);
-    created = true;
-  } else {
+    const existingAuthUserId = toNullableString(existingUserRow?.auth_user_id);
+    if (existingAuthUserId && existingAuthUserId !== options.authUser.id) {
+      throw new Error("That email address or phone number is already connected to another active account.");
+    }
+
     const patch: Record<string, unknown> = {
       auth_user_id: options.authUser.id,
     };
-    if (options.authUser.email) {
-      patch.email = options.authUser.email;
+    if (authEmail) {
+      patch.email = authEmail;
     }
-    if (authMethod === "phone" && contact) {
-      patch.phone = contact;
+    if (contactPhone) {
+      patch.phone = contactPhone;
+    } else if (authPhone) {
+      patch.phone = authPhone;
+    }
+    const existingCubidId = normalisePersistedCubidId(
+      existingUserRow?.cubid_id,
+      existingUserRow?.auth_user_id ?? options.authUser.id
+    );
+
+    if (existingCubidId !== toNullableString(existingUserRow?.cubid_id)) {
+      patch.cubid_id = existingCubidId;
+    }
+
+    if (!existingCubidId && authenticatedCubidId) {
+      patch.cubid_id = authenticatedCubidId;
     }
 
     const { error: updateError } = await options.supabase.from("users").update(patch).eq("id", userId);
     if (updateError) {
-      throw new Error(`Failed to update authenticated user row: ${updateError.message}`);
+      if (updateError.message?.includes("users_auth_user_id_key")) {
+        userId = await readCanonicalAuthUserId();
+      } else {
+        throw new Error(`Failed to update authenticated user row: ${updateError.message}`);
+      }
     }
   }
 
   if (userId == null) {
     throw new Error("Unable to resolve authenticated user id.");
   }
+
+  userId = (await readCanonicalAuthUserId()) ?? userId;
+
+  const { data: siblingRows, error: siblingError } = await options.supabase
+    .from("users")
+    .select("id")
+    .eq("auth_user_id", options.authUser.id);
+
+  if (siblingError) {
+    throw new Error(`Failed to resolve duplicate authenticated user rows: ${siblingError.message}`);
+  }
+
+  const ignoredDuplicateUserIds = (siblingRows ?? [])
+    .map((row: { id?: unknown }) => toNullableInteger(row.id))
+    .filter((value): value is number => value != null && value !== userId);
+
+  const managedEmails = [contactEmail, authEmail].filter((value): value is string => Boolean(value));
+  const managedPhones = [contactPhone, authPhone].filter((value): value is string => Boolean(value));
+
+  if (managedEmails.length > 0) {
+    await ensureUserEmailsPresent({
+      supabase: options.supabase,
+      userId,
+      emails: managedEmails,
+      ignoredUserIds: ignoredDuplicateUserIds,
+    });
+  }
+
+  if (managedPhones.length > 0) {
+    await ensureUserPhonesPresent({
+      supabase: options.supabase,
+      userId,
+      phones: managedPhones,
+      ignoredUserIds: ignoredDuplicateUserIds,
+    });
+  }
+
+  await ensureUserIdentifier({
+    supabase: options.supabase,
+    userId,
+  });
 
   const bootstrap = await getUserSettingsBootstrap({
     supabase: options.supabase,
@@ -1256,14 +2537,14 @@ export async function registerWalletCustody(options: {
   };
   delete walletWritePayload.app_share;
 
-  const { data: existingWallet, error: existingWalletError } = await options.supabase
-    .from("wallet_list")
-    .select("id")
-    .eq("user_id", options.userId)
-    .eq("namespace", namespace)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: existingWallet, error: existingWalletError } = await getLatestWalletListRow<{
+    id: number | string | null;
+  }>({
+    supabase: options.supabase,
+    userId: options.userId,
+    namespace,
+    select: "id",
+  });
 
   if (existingWalletError) {
     throw new Error(`Failed to resolve wallet list row: ${existingWalletError.message}`);
@@ -1323,6 +2604,11 @@ export async function registerWalletCustody(options: {
     throw new Error(`Failed to upsert encrypted user share: ${shareError.message}`);
   }
 
+  await ensureUserIdentifier({
+    supabase: options.supabase,
+    userId: options.userId,
+  });
+
   const bootstrap = await getUserSettingsBootstrap({
     supabase: options.supabase,
     userId: options.userId,
@@ -1342,14 +2628,16 @@ export async function getWalletCustodyMaterial(options: {
   appContext: { appSlug: string; citySlug: string; environment: string; appInstanceId: number };
 }) {
   const [{ data: walletRow, error: walletError }, { data: shareRows, error: shareError }] = await Promise.all([
-    options.supabase
-      .from("wallet_list")
-      .select("id,public_key,wallet_key_id")
-      .eq("user_id", options.userId)
-      .eq("namespace", "EVM")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+    getLatestWalletListRow<{
+      id: number | string | null;
+      public_key: string | null;
+      wallet_key_id: number | string | null;
+    }>({
+      supabase: options.supabase,
+      userId: options.userId,
+      namespace: "EVM",
+      select: "id,public_key,wallet_key_id",
+    }),
     options.supabase
       .from("user_encrypted_share")
       .select("id,user_share_encrypted,credential_id,app_instance_id,last_used_at,created_at,revoked_at")

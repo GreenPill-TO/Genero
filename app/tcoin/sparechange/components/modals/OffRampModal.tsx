@@ -11,6 +11,7 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { createLegacyOfframpRequest } from "@shared/lib/edge/redemptionsClient";
+import { resolveCubidRuntimeUserId } from "@shared/types/cubid";
 
 interface OffRampProps {
   closeModal: () => void;
@@ -42,8 +43,9 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
   const [errorMessage, setErrorMessage] = useState("");
 
   const { userData } = useAuth();
+  const cubidRuntimeUserId = resolveCubidRuntimeUserId(userData?.cubidData ?? userData?.user);
   const { burnMoney, senderWallet } = useSendMoney({ senderId: userData?.cubidData?.id });
-  const { exchangeRate, state: exchangeRateState } = useControlVariables();
+  const { exchangeRate, fallbackMessage } = useControlVariables();
 
   const donationAmount = watch("preferredDonationAmount");
   const estimatedCAD = donationAmount * exchangeRate;
@@ -63,9 +65,15 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
 
   useEffect(() => {
     const loadSDK = async () => {
+      if (!cubidRuntimeUserId) {
+        setPhoneCubidSDK("");
+        setCubidSDK(null);
+        return;
+      }
+
       const { CubidSDK } = await import("cubid-sdk");
       const cubid_sdk = new CubidSDK(57, "14475a54-5bbe-4f3f-81c7-ff4403ad0830");
-      const cubid_stamps = await cubid_sdk.fetchStamps({ user_id: userData?.user?.cubid_id });
+      const cubid_stamps = await cubid_sdk.fetchStamps({ user_id: cubidRuntimeUserId });
 
       const phoneStamp = cubid_stamps.all_stamps.find((item) => item.stamptype_string === "phone")?.uniquevalue;
 
@@ -77,7 +85,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
       setCubidSDK(cubid_sdk);
     };
     loadSDK();
-  }, []);
+  }, [cubidRuntimeUserId, setValue]);
 
   const sendOTP = async () => {
     const phone = phoneCubidSDK || watch("phone_number");
@@ -198,11 +206,7 @@ const OffRampModal = ({ closeModal, userBalance }: OffRampProps) => {
             )}
           />
           <p>Estimated CAD: ${estimatedCAD.toFixed(2)}</p>
-          {exchangeRateState !== "ready" && (
-            <p className="text-xs text-amber-700 dark:text-amber-300">
-              CAD values are using a fallback estimate until the live city rate is indexed.
-            </p>
-          )}
+          {fallbackMessage ? <p className="text-xs text-amber-700 dark:text-amber-300">{fallbackMessage}</p> : null}
           {donationAmount > userBalance && (
             <p className="text-sm text-red-500">
               Warning: The entered TCOIN amount exceeds your available balance of {userBalance}.

@@ -12,11 +12,28 @@ import {
 import type { UserSettingsTheme } from "@shared/lib/userSettings/types";
 import { LuMoon, LuSun } from "react-icons/lu";
 
+function resolveInitialThemeMode(): UserSettingsTheme {
+  return readCachedThemePreference() ?? migrateLegacyThemePreference() ?? "system";
+}
+
+function resolveInitialDarkMode(mode: UserSettingsTheme): boolean {
+  if (mode === "dark") {
+    return true;
+  }
+
+  if (mode === "light") {
+    return false;
+  }
+
+  return resolveSystemPrefersDark();
+}
+
 export default function useDarkMode() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isFollowingSystem, setIsFollowingSystem] = useState(true);
-  const [themeMode, setThemeMode] = useState<UserSettingsTheme>("system");
-  const themeModeRef = useRef<UserSettingsTheme>("system");
+  const initialThemeMode = resolveInitialThemeMode();
+  const [isDarkMode, setIsDarkMode] = useState(() => resolveInitialDarkMode(initialThemeMode));
+  const [isFollowingSystem, setIsFollowingSystem] = useState(initialThemeMode === "system");
+  const [themeMode, setThemeMode] = useState<UserSettingsTheme>(initialThemeMode);
+  const themeModeRef = useRef<UserSettingsTheme>(initialThemeMode);
 
   const applyMode = useCallback((mode: UserSettingsTheme) => {
     const resolvedDark = applyThemePreference(mode);
@@ -49,7 +66,7 @@ export default function useDarkMode() {
     if (typeof window === "undefined") return;
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const cachedTheme = readCachedThemePreference() ?? migrateLegacyThemePreference() ?? "system";
+    const cachedTheme = resolveInitialThemeMode();
     applyMode(cachedTheme);
 
     const listener = (e: MediaQueryListEvent) => {

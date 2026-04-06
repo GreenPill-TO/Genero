@@ -1,7 +1,9 @@
 // @ts-nocheck
 import { useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
+import { fileInputFieldClass, nativeFieldClass } from "@shared/components/ui/formFieldStyles";
 import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
 import { updateUserProfile } from "@shared/lib/userSettings/client";
 
@@ -72,14 +74,17 @@ const EditProfileContent = ({ onCancel }: EditProfileContentProps) => {
           type="text"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="border rounded text-black px-2 py-1 w-full"
+          className={nativeFieldClass}
         />
       </div>
       <div className="mb-4">
         <label className="block mb-1 font-medium">Profile Picture</label>
         <div className="flex items-center space-x-4">
-          <img className="w-16 h-16" src={profilePicture} alt="Profile" />
-          <input type="file" accept="image/*" onChange={handleProfilePictureChange} />
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={profilePicture} alt="Profile" />
+            <AvatarFallback>U</AvatarFallback>
+          </Avatar>
+          <input type="file" accept="image/*" onChange={handleProfilePictureChange} className={fileInputFieldClass} />
         </div>
       </div>
       <>
@@ -111,7 +116,10 @@ const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => 
       </>
       <div className="mb-4">
         <div className="flex items-center space-x-4 mb-4">
-          <img className="w-20 h-20" src={userData?.cubidData?.profile_image_url || "https://github.com/shadcn.png"} alt="@shadcn" />
+          <Avatar className="h-20 w-20">
+            <AvatarImage src={userData?.cubidData?.profile_image_url || "https://github.com/shadcn.png"} alt="@shadcn" />
+            <AvatarFallback>U</AvatarFallback>
+          </Avatar>
           <Button variant="link" className="p-0 h-auto" onClick={() => console.log("Change avatar")}>
             Change avatar
           </Button>

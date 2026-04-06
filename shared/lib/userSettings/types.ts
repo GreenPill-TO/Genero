@@ -1,6 +1,19 @@
 export type UserSettingsTheme = "system" | "light" | "dark";
+export type UserSettingsExperienceMode = "simple" | "advanced";
 export type UserSignupState = "none" | "draft" | "completed";
-export type UserSignupStep = 1 | 2 | 3 | 4 | 5 | 6;
+export type UserSignupStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type UserSettingsPendingPaymentIntent = {
+  recipientUserId: number;
+  recipientName: string | null;
+  recipientUsername: string | null;
+  recipientProfileImageUrl: string | null;
+  recipientWalletAddress: string | null;
+  recipientUserIdentifier: string | null;
+  amountRequested: number | null;
+  sourceToken: string | null;
+  sourceMode: "rotating_multi_use" | "single_use" | null;
+  createdAt: string | null;
+};
 
 export type UserSettingsAppContext = {
   appSlug: string;
@@ -20,10 +33,22 @@ export type UserSettingsBiaOption = {
   name: string;
 };
 
+export type UserSettingsEmail = {
+  id: number | null;
+  email: string;
+  isPrimary: boolean;
+  createdAt: string | null;
+};
+
 export type UserSettingsUser = {
   id: number;
-  cubidId: string;
+  cubidId: string | null;
+  authUserId: string | null;
+  userIdentifier: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
   email: string | null;
+  emails: UserSettingsEmail[];
   phone: string | null;
   fullName: string | null;
   firstName: string;
@@ -31,6 +56,7 @@ export type UserSettingsUser = {
   nickname: string | null;
   username: string | null;
   country: string | null;
+  address: string | null;
   profileImageUrl: string | null;
   hasCompletedIntro: boolean;
   isNewUser: boolean | null;
@@ -38,6 +64,8 @@ export type UserSettingsUser = {
 
 export type UserSettingsPreferences = {
   theme: UserSettingsTheme;
+  experienceMode: UserSettingsExperienceMode;
+  hasExplicitExperienceMode: boolean;
   charity: string | null;
   selectedCause: string | null;
   primaryBiaId: string | null;
@@ -50,11 +78,13 @@ export type UserSettingsOptions = {
 };
 
 export type UserSettingsSignup = {
+  flow: string;
   state: UserSignupState;
   currentStep: UserSignupStep | null;
   completedSteps: UserSignupStep[];
   walletReady: boolean;
   phoneVerified: boolean;
+  pendingPaymentIntent: UserSettingsPendingPaymentIntent | null;
 };
 
 export type UserSettingsBootstrap = {
@@ -72,12 +102,18 @@ export type UpdateUserProfileInput = {
   lastName?: string;
   nickname?: string | null;
   username?: string | null;
+  emails?: Array<{
+    email: string;
+    isPrimary?: boolean;
+  }>;
   country?: string | null;
+  address?: string | null;
   profileImageUrl?: string | null;
 };
 
 export type UpdateUserPreferencesInput = {
   theme?: UserSettingsTheme;
+  experienceMode?: UserSettingsExperienceMode;
   charity?: string | null;
   selectedCause?: string | null;
   primaryBiaId?: string | null;
@@ -88,3 +124,5 @@ export type SaveUserSignupStepInput = {
   step: UserSignupStep;
   payload?: Record<string, unknown>;
 };
+
+export type SavePendingPaymentIntentInput = UserSettingsPendingPaymentIntent;

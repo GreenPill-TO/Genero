@@ -8,8 +8,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
 import { toast } from "react-toastify";
 
-import { createCubidUser } from "@shared/api/services/cubidService";
-import { createNewUser, fetchUserByContact } from "@shared/api/services/supabaseService";
+import { fetchUserByContact, waitForAuthenticatedSession } from "@shared/api/services/supabaseService";
 
 const constants = {
   SIGN_UP_IMAGES: [
@@ -44,14 +43,16 @@ type SignInModalProps = {
   extraObject: {
     isSignIn: boolean;
   };
+  postAuthRedirect?: string | null;
 };
 
-function SignInModal({ closeModal }: SignInModalProps) {
+function SignInModal({ closeModal, postAuthRedirect }: SignInModalProps) {
   const [authMethod, setAuthMethod] = useState<"phone" | "email">("email");
   const [countryCode, setCountryCode] = useState("+1");
   const [contact, setContact] = useState("");
   const [passcode, setPasscode] = useState("");
   const [isPasscodeSent, setIsPasscodeSent] = useState(false);
+  const [otpResetKey, setOtpResetKey] = useState(0);
   const router = useRouter();
 
   useEscapeKey(closeModal);
@@ -64,6 +65,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
     onSuccessCallback: () => {
       toast.success("Passcode sent successfully!");
       setIsPasscodeSent(true);
+      setOtpResetKey((current) => current + 1);
     },
     onErrorCallback: (err) => {
       toast.error(err.message);
@@ -73,12 +75,14 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const verifyCodeMut = useVerifyPasscodeMutation({
     onSuccessCallback: async () => {
       toast.success("Passcode verified successfully!");
-      const destination = await handlePostAuthentication(fullContact);
+      const destination = postAuthRedirect ?? (await handlePostAuthentication(fullContact));
       if (!destination) return;
       closeModal();
       router.push(destination);
     },
     onErrorCallback: (err) => {
+      setPasscode("");
+      setOtpResetKey((current) => current + 1);
       toast.error(err.message);
     },
   });
@@ -86,27 +90,32 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const handleSendPasscode = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      sendCodeMut.mutate({ contact, method: authMethod });
+      sendCodeMut.mutate({ contact: fullContact, method: authMethod });
     },
-    [authMethod, contact, sendCodeMut]
+    [authMethod, fullContact, sendCodeMut]
   );
 
   const handleVerifyPasscode = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      verifyCodeMut.mutate({ contact, method: authMethod, passcode });
+      verifyCodeMut.mutate({ contact: fullContact, method: authMethod, passcode });
     },
-    [authMethod, contact, passcode, verifyCodeMut]
+    [authMethod, fullContact, passcode, verifyCodeMut]
   );
 
   const handlePostAuthentication = async (fullContact: string): Promise<string | null> => {
+    const session = await waitForAuthenticatedSession();
+    if (!session?.access_token) {
+      toast.error("We couldn't finish signing you in. Please try again.");
+      return null;
+    }
+
     const { user, error } = await fetchUserByContact(authMethod, fullContact);
 
     if (error || !user) {
-      const uuid = await createCubidUser(fullContact, authMethod);
-      const { error: insertError } = await createNewUser(authMethod, fullContact, uuid);
-      if (insertError) return null;
-      return "/welcome";
+      console.error("Failed to finish authenticated user provisioning:", error);
+      toast.error("We couldn't finish signing you in. Please try again.");
+      return null;
     }
 
     return user.has_completed_intro ? "/dashboard" : "/welcome";
@@ -115,7 +124,9 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const handleAuthMethodChange = (method: "phone" | "email") => {
     setAuthMethod(method);
     setContact("");
+    setPasscode("");
     setIsPasscodeSent(false);
+    setOtpResetKey(0);
   };
 
   return (
@@ -128,13 +139,15 @@ function SignInModal({ closeModal }: SignInModalProps) {
             countryCode={countryCode}
             contact={contact}
             passcode={passcode}
+            otpResetKey={otpResetKey}
             setCountryCode={setCountryCode}
             setContact={setContact}
             setPasscode={setPasscode}
             onSubmit={isPasscodeSent ? handleVerifyPasscode : handleSendPasscode}
             canResend={true}
             onResend={() => {
-              sendCodeMut.mutate({ contact, method: authMethod });
+              setPasscode("");
+              sendCodeMut.mutate({ contact: fullContact, method: authMethod });
             }}
             isOtpSent={isPasscodeSent}
             errorMessage={null}

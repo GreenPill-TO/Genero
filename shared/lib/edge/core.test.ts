@@ -71,4 +71,24 @@ describe("invokeEdgeFunction", () => {
       })
     );
   });
+
+  it("expands bare 404 not-found responses into a route-specific message", async () => {
+    getSessionMock.mockResolvedValue({ data: { session: { access_token: "jwt-token" } } });
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: "Not found." }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      })
+    );
+
+    const { invokeEdgeFunction } = await import("./core");
+
+    await expect(
+      invokeEdgeFunction("onramp", "/legacy/interac/reference", {
+        method: "POST",
+        body: { amount: 10, refCode: "TCOIN-REF-123456" },
+        appContext: { citySlug: "tcoin" },
+      })
+    ).rejects.toThrow("onramp route /legacy/interac/reference is not available in this environment.");
+  });
 });

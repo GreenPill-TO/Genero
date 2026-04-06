@@ -95,13 +95,13 @@ export default function HomePage() {
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Digital Wallets.</span> A user-friendly app for sending and receiving TCOINs - secure, transparent, and designed to feel familiar.
             </p>
             <p>
-              <span className="bg-gray-200 dark:bg-gray-700 px-1">Physical tBills.</span> Durable polymer notes with RFID chips. Use them just like cash, with added smart features like balance checks and expiry reminders.
+              <span className="bg-gray-200 dark:bg-gray-700 px-1">Physical tBills.</span> We are working on durable polymer notes with embedded RFID chips. Use them just like cash, with added smart features like balance checks and expiry reminders. Contact us if you want to help with this project.
             </p>
             <p>
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Charity by default.</span> Every time you spend TCOINs, 3% is minted for a local cause. Choose your charity once in the app - it happens automatically.
             </p>
             <p>
-              <span className="bg-gray-200 dark:bg-gray-700 px-1">QR Codes Everywhere.</span> Panhandlers, artists, waitstaff - anyone can receive TCOINs with a simple QR. And stores can post a fixed amount for instant payment.
+              <span className="bg-gray-200 dark:bg-gray-700 px-1">QR Codes Everywhere.</span> Panhandlers, artists, merchants, waitstaff - anyone can receive TCOINs with a simple QR. And stores can post a fixed amount for instant payment.
             </p>
           </div>
         </section>
@@ -114,7 +114,7 @@ export default function HomePage() {
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Stable and sensible.</span> By tying the coin’s value to TTC fares, it remains relevant and stable - even as the Canadian dollar fluctuates.
             </p>
             <p>
-              <span className="bg-gray-200 dark:bg-gray-700 px-1">Transparent and fair.</span> You already pay 3% in credit card fees. With TCOIN, that same 3% becomes a donation to your city.
+              <span className="bg-gray-200 dark:bg-gray-700 px-1">Transparent and fair.</span> You already pay 3% in credit card fees. With TCOIN that fee is lower, and it becomes a donation to your city instead.
             </p>
             <p>
               <span className="bg-gray-200 dark:bg-gray-700 px-1">Local by design.</span> Our goal is to keep money moving locally - supporting shops, schools, and social services.
@@ -145,7 +145,7 @@ export default function HomePage() {
           <p className="mb-2">
             Toronto Coin is a joint project by <Link href="https://www.tdao.to/">Toronto DAO</Link> and <Link href="https://greenpill.to/">GreenPill Toronto</Link>. Inspired by the Wörgl Experiment, Silvio Gesell, and the Chiemgauer model, we’re creating a real-world currency backed by open-source code, local values, and practical economics.
           </p>
-          <p>We believe money should work for people - not the other way around.</p>
+          <p>We believe money should work for people—not the other way around. Like CAD is backed by the Government of Canada and managed by the Bank of Canada, TCOIN is backed by commitments from participating merchants and governed by stewards who are appointed by the charities in the system.</p>
         </section>
 
         <section id="involved" className="px-6 max-w-screen-xl mx-auto [@media(max-width:767px)_and_(orientation:landscape)]:w-[70%] md:w-[70%] lg:w-3/5">

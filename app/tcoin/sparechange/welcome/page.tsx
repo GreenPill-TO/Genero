@@ -14,7 +14,7 @@ import {
 import { registerWalletCustody } from "@shared/lib/edge/userSettingsClient";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
-import { TCubidData } from "@shared/types/cubid";
+import { resolveCubidRuntimeUserId, TCubidData } from "@shared/types/cubid";
 import { cn } from "@shared/utils/classnames";
 import {
   AddFundsStep,
@@ -133,6 +133,7 @@ const WelcomeFlow: React.FC = () => {
   const router = useRouter();
   const { userData } = useAuth();
   const { isDarkMode } = useDarkMode();
+  const cubidRuntimeUserId = resolveCubidRuntimeUserId(userData?.cubidData ?? userData?.user);
 
   const initialState = deriveFormStateFromCubid(userData?.cubidData);
   const [userFormData, setUserFormData] = useState<WelcomeFormState>(
@@ -186,8 +187,7 @@ const WelcomeFlow: React.FC = () => {
   };
 
   const syncToSupabase = async (isCompleted?: boolean) => {
-    const cubidId = userData?.user?.cubid_id;
-    if (!cubidId) {
+    if (!userData?.user) {
       return;
     }
 
@@ -231,7 +231,7 @@ const WelcomeFlow: React.FC = () => {
       },
     };
 
-    const { error } = await updateCubidDataInSupabase(cubidId, {
+    const { error } = await updateCubidDataInSupabase({
       user: userUpdates,
       profile: profileUpdates,
     });
@@ -401,13 +401,13 @@ const WelcomeFlow: React.FC = () => {
             )}
             {userFormData.current_step === 6 && (
               <>
-                <CubidWidget stampToRender="phone" uuid={userData?.user?.cubid_id}
+                <CubidWidget stampToRender="phone" uuid={cubidRuntimeUserId}
                   page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                   onStampChange={() => {
                     nextStep()
                   }}
                 />
-                <CubidWidget stampToRender="email" uuid={userData?.user?.cubid_id}
+                <CubidWidget stampToRender="email" uuid={cubidRuntimeUserId}
                   page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                 />
               </>
@@ -430,7 +430,7 @@ const WelcomeFlow: React.FC = () => {
                     Give this device a friendly name to identify it later
                   </p>
                 </div>
-              <WalletComponent type="evm" user_id={userData?.user?.cubid_id} dapp_id="59"
+              <WalletComponent type="evm" user_id={cubidRuntimeUserId} dapp_id="59"
                 api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                 onEVMWallet={async (wallet: any) => {
                   const [walletDetails] = wallet;

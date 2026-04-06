@@ -59,6 +59,7 @@ const renderReceiveCard = (overrides: Partial<ReturnType<typeof createProps>> = 
 
 describe("ReceiveCard", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     openModalMock.mockReset();
     closeModalMock.mockReset();
     toastSuccessMock.mockReset();
@@ -66,6 +67,7 @@ describe("ReceiveCard", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
   });
 
@@ -121,7 +123,7 @@ describe("ReceiveCard", () => {
           id: 1,
           amountRequested: 5,
           requestFrom: null,
-          createdAt: "2024-01-01T00:00:00Z",
+          createdAt: "2024-01-01T17:15:00",
         } as any,
         {
           id: 2,
@@ -148,6 +150,7 @@ describe("ReceiveCard", () => {
     const targetedLabels = screen.getAllByText(/To Contacts/i, { selector: "p" });
     expect(targetedLabels.length).toBeGreaterThan(0);
     expect(screen.getByText(/Request sent to Alice Example/i)).toBeTruthy();
+    expect(screen.getByText("Saved 2024-01-01 at 5.15 pm")).toBeTruthy();
 
     const shareButtons = screen.getAllByRole("button", { name: /^Share$/i });
     expect(shareButtons.length).toBeGreaterThan(0);
@@ -329,6 +332,74 @@ describe("ReceiveCard", () => {
     expect(
       screen.getByText(/QR code hidden while preparing a direct contact request/i)
     ).toBeTruthy();
+  });
+
+  it("shows an unavailable message instead of permanent loading when QR identity is missing", () => {
+    renderReceiveCard({
+      qrCodeData: "",
+      qrUnavailableReason:
+        "QR code is unavailable until your wallet identity finishes loading.",
+    });
+
+    expect(screen.queryByText(/Loading QR Code/i)).toBeNull();
+    expect(
+      screen.getByText(/QR code is unavailable until your wallet identity finishes loading/i)
+    ).toBeTruthy();
+  });
+
+  it("keeps the QR stage square and uses dark text on the white card", () => {
+    renderReceiveCard();
+
+    const receiveLayout = screen.getByTestId("receive-layout");
+    expect(receiveLayout.className).toContain("lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]");
+
+    const qrStage = screen.getByTestId("receive-qr-stage");
+    expect(qrStage.className).toContain("aspect-square");
+    expect(qrStage.className).toContain("bg-white");
+
+    const receiveControls = screen.getByTestId("receive-controls");
+    expect(receiveControls.className).toContain("space-y-3");
+    expect(screen.getByPlaceholderText("Enter TCOIN amount")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Enter CAD amount")).toBeTruthy();
+
+    const caption = screen.getByText(/Receive any amount/i);
+    expect(caption.className).toContain("text-slate-950");
+  });
+
+  it("shows a rounded combined TCOIN and CAD caption above the QR code", () => {
+    renderReceiveCard({
+      qrTcoinAmount: "3.912345678 TCOIN",
+      qrCadAmount: "$13.10",
+    });
+
+    expect(screen.getByText("Receive 3.91 TCOIN ($13.10)")).toBeTruthy();
+    expect(screen.queryByText(/3\.912345678/)).toBeNull();
+  });
+
+  it("shows simplified expiry and one-time copy for QR link modes", () => {
+    vi.setSystemTime(new Date("2026-04-02T20:00:00.000Z"));
+
+    const { rerender } = render(
+      <ReceiveCard
+        {...(createProps() as any)}
+        qrLinkMode="rotating_multi_use"
+        qrLinkExpiresAt="2026-04-02T20:01:00.000Z"
+      />
+    );
+
+    expect(screen.getByText("Expires within 60 seconds")).toBeTruthy();
+    expect(screen.getByText("This QR code can be shown to multiple people.")).toBeTruthy();
+
+    rerender(
+      <ReceiveCard
+        {...(createProps() as any)}
+        qrLinkMode="single_use"
+        qrLinkExpiresAt="2026-04-05T20:00:00.000Z"
+      />
+    );
+
+    expect(screen.getByText("Expires in 3 days")).toBeTruthy();
+    expect(screen.getByText("This QR code will work only once.")).toBeTruthy();
   });
 
   it("creates a targeted request after confirmation", async () => {

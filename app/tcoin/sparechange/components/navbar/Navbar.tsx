@@ -3,6 +3,7 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
 import { useModal } from "@shared/contexts/ModalContext";
+import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
 import { cn } from "@shared/utils/classnames";
 import { QrScanModal } from "@tcoin/sparechange/components/modals";
 
@@ -17,6 +18,7 @@ import { ThemeToggleButton } from "./ThemeToggleButton";
 export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
   const { isAuthenticated } = useAuth();
+  const { hasCamera } = useCameraAvailability();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
   const { userData } = useAuth()
@@ -127,7 +129,7 @@ export default function Navbar({ title }: { title?: string }) {
           </div>
           <div className="flex items-center">
             <ThemeToggleButton />
-            {isAuthenticated && (
+            {isAuthenticated && hasCamera && (
               <Button
                 variant="ghost"
                 size="icon"

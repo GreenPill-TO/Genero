@@ -1,3 +1,2634 @@
+## v1.181
+### Timestamp
+- 2026-04-06 12:04 EDT
+
+### Objective
+- Address the remaining migration review comments by closing the transfer-bookkeeping spoofing hole and making the email-history backfill tolerant of legacy duplicate emails.
+
+### What Changed
+- Removed direct `authenticated` execute access from the legacy `simple_transfer(...)` migration contract so only trusted service-role callers can invoke the `SECURITY DEFINER` function.
+- Hardened `recordWalletTransfer(...)` in the wallet-operations shared edge helper so the requested `transfer_user_id` must match the authenticated wallet user id, and the RPC call now always records the authenticated user id rather than trusting caller input.
+- Updated the email-history migration to de-duplicate active history rows before unique indexes are created, rank duplicate legacy `users.email` values deterministically during backfill, and promote a fallback primary email when a user would otherwise end up with none.
+- Added focused wallet-operations tests covering the new transfer-user validation and authenticated-user RPC forwarding behaviour.
+
+### Verification
+- `pnpm exec eslint supabase/functions/_shared/walletOperations.ts supabase/functions/_shared/walletOperations.test.ts`
+- `pnpm exec vitest run supabase/functions/_shared/walletOperations.test.ts`
+- `git diff --check -- supabase/migrations/20260402024500_v1.08_user_email_history.sql supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+
+### Files Edited
+- `supabase/migrations/20260402024500_v1.08_user_email_history.sql`
+- `supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+- `supabase/functions/_shared/walletOperations.ts`
+- `supabase/functions/_shared/walletOperations.test.ts`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.180
+### Timestamp
+- 2026-04-06 11:35 EDT
+
+### Objective
+- Address the unresolved inline PR review comments with targeted hardening fixes and clarify the intentional auth contract for the new stats endpoint.
+
+### What Changed
+- Switched `supabase:start:local` to launch its zsh-only helper script with `zsh`, matching the script shebang and avoiding shell mismatch failures.
+- Hardened shared helpers by stripping `variant` from the custom `Input` wrapper, replacing `window.setTimeout` with runtime-safe `setTimeout`, and making legacy wallet pay-link decoding UTF-8 safe without deprecated `escape(...)`.
+- Added `revokePreparedProfilePicturePreview(...)`, wired it into the wallet welcome/profile image flows, and added focused tests for both the preview revoke helper and the pay-link decoder.
+- Kept `/api/tcoin/stats/summary` available to any authenticated wallet user, and made that read-only aggregate contract explicit in the route and route test.
+
+### Verification
+- `pnpm exec eslint shared/components/ui/Input.tsx shared/api/services/supabaseService.ts shared/lib/walletPayLinks.ts shared/lib/walletPayLinks.test.ts shared/lib/profilePictureCrop.ts shared/lib/profilePictureCrop.test.ts app/api/tcoin/stats/summary/route.ts app/api/tcoin/stats/summary/route.test.ts app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `pnpm exec vitest run shared/lib/walletPayLinks.test.ts shared/lib/profilePictureCrop.test.ts app/api/tcoin/stats/summary/route.test.ts`
+
+### Files Edited
+- `package.json`
+- `shared/components/ui/Input.tsx`
+- `shared/api/services/supabaseService.ts`
+- `shared/lib/walletPayLinks.ts`
+- `shared/lib/walletPayLinks.test.ts`
+- `shared/lib/profilePictureCrop.ts`
+- `shared/lib/profilePictureCrop.test.ts`
+- `app/api/tcoin/stats/summary/route.ts`
+- `app/api/tcoin/stats/summary/route.test.ts`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.179
+### Timestamp
+- 2026-04-06 11:07 EDT
+
+### Objective
+- Repair the latest PR CI failure by making the off-ramp manual-phone fallback test assert the stable intent of the message instead of brittle exact copy.
+
+### What Changed
+- Updated `OffRampModal.test.tsx` so the Cubid phone-stamp fallback assertion matches the durable `load your verified phone automatically` fragment rather than the full sentence.
+- Left the user-facing off-ramp copy unchanged; this is a CI hardening pass only.
+- Recorded the copy-flexible fallback contract in the technical and functional specs so the test intent is clearer for future edits.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.178
+### Timestamp
+- 2026-04-06 00:39 EDT
+
+### Objective
+- Fix the repeat wallet OTP flow so resend and retry attempts do not leave stale six-digit codes in place or trigger `403 /auth/v1/verify` failures from mixed old/new OTP submissions.
+
+### What Changed
+- Added an `otpResetKey` contract to both wallet and sparechange OTP forms so the six-digit inputs clear and re-focus whenever a resend succeeds or a verify attempt fails.
+- Updated both sign-in modals to reset passcode state on resend and verify errors, and to send the normalized `fullContact` to Supabase for both send and verify operations instead of the raw contact fragment.
+- Added regression coverage proving the OTP inputs clear when the reset key changes, which protects the resend path that previously left old digits in place.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/wallet/components/modals/SignInModal.tsx app/tcoin/sparechange/components/forms/OTPForm.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/modals/SignInModal.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/wallet/components/modals/SignInModal.test.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- Local headed Playwright smoke on `http://localhost:3000/welcome` with a fresh OTP user, then sign-out, second sign-in for the same email, resend, successful verify, and a final DB check confirming exactly one `public.users` row for that email
+
+### Files Edited
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `app/tcoin/sparechange/components/modals/SignInModal.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.177
+### Timestamp
+- 2026-04-06 00:10 EDT
+
+### Objective
+- Enforce unique `users.auth_user_id` ownership so OTP/auth cannot create duplicate user rows, while preserving the multi-contact account model that lets one account own several emails and later several phones without supporting cross-account merges.
+
+### What Changed
+- Added `20260406022000_v1.14_auth_identity_uniqueness.sql`, which backs up and nulls non-canonical duplicate `auth_user_id` rows before creating a partial unique index on `public.users(auth_user_id)` for non-null values.
+- Added canonical `public.user_phone_addresses` history, mirroring the existing email-history design with one active phone globally, one active primary phone per user, soft deletes, and a trigger that keeps `public.users.phone` synced to the current primary phone.
+- Updated shared user-settings auth provisioning to resolve phone ownership through the new phone-history table, preserve authenticated emails/phones on the canonical user, reconcile unique-index races, and reject attempts to bind an email or phone that already belongs to another active account.
+- Updated the shared authenticated-user resolver to consult phone history as well as email history, and added unit coverage for the new phone normalization helpers.
+
+### Verification
+- `pnpm exec eslint supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts supabase/functions/_shared/auth.ts`
+- `pnpm exec vitest run supabase/functions/_shared/userSettings.test.ts`
+- `supabase db push --local --include-all`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select auth_user_id, array_agg(id order by id), count(*) from public.users where auth_user_id is not null group by auth_user_id having count(*) > 1;"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c \"select indexname from pg_indexes where schemaname='public' and tablename='users' and indexname='users_auth_user_id_key';\"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c \"select indexname from pg_indexes where schemaname='public' and tablename='user_phone_addresses';\"`
+- Local OTP smoke on `http://localhost:3000/welcome` with a fresh email, checking that auth now reuses the canonical user row instead of minting another active row for the same `auth_user_id`
+
+### Files Edited
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/migrations/20260406022000_v1.14_auth_identity_uniqueness.sql`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.176
+### Timestamp
+- 2026-04-05 21:46 EDT
+
+### Objective
+- Let auth-backed users keep a nullable `cubid_id` and cleanse the old app-derived `cubid_id` values that were copied from `auth_user_id`.
+
+### What Changed
+- Updated shared user-settings bootstrapping and authenticated-user provisioning so `users.cubid_id` is normalized to `null` whenever it only mirrors the authenticated Supabase user id, instead of persisting that fallback into new or existing rows.
+- Tightened the shared frontend auth/user types around nullable `cubid_id`, including the last strict sparechange wallet screen type and clearer auth-hook logging for identity fetch failures.
+- Added the local cleanup migration `20260405214500_v1.13_nullify_app_derived_cubid_ids.sql`, which backs up and nulls any stored `users.cubid_id` values that equal `auth_user_id` before leaving future reads to treat those users as Cubid-less until a real Cubid identity exists.
+- Hardened `ensureAppProfile(...)` against duplicate insert races by re-reading the existing composite-key row when concurrent auth/bootstrap work creates the same `app_user_profiles` record at the same time.
+
+### Verification
+- `pnpm exec eslint app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx shared/api/hooks/useAuth.ts shared/api/hooks/useAuth.test.tsx shared/api/services/supabaseService.ts shared/lib/userSettings/types.ts shared/types/cubid.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts`
+- `pnpm exec vitest run shared/api/hooks/useAuth.test.tsx supabase/functions/_shared/userSettings.test.ts`
+- `supabase db push --local --include-all`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select id, email, auth_user_id, cubid_id from public.users where auth_user_id is not null and cubid_id = auth_user_id limit 10;"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select id, email, auth_user_id, cubid_id from public.users where email = 'stats-smoke-8@example.com';"`
+- Headed local wallet sign-in smoke on `http://localhost:3000/welcome` using fresh OTP user `stats-smoke-8@example.com`, confirming onboarding still loads after the cleanup with `cubid_id = null` and without the earlier duplicate `app_user_profiles_pkey` error
+
+### Files Edited
+- `app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+- `shared/api/hooks/useAuth.ts`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/api/services/supabaseService.ts`
+- `shared/lib/userSettings/types.ts`
+- `shared/types/cubid.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/migrations/20260405214500_v1.13_nullify_app_derived_cubid_ids.sql`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.175
+### Timestamp
+- 2026-04-05 21:31 EDT
+
+### Objective
+- Remove the browser regex warning from the wallet auth form by fixing the email input validation contract used in the OTP modal.
+
+### What Changed
+- Removed the custom email `pattern` attribute from both wallet and sparechange OTP forms, relying on the existing native `type="email"` validation instead.
+- Added focused assertions in both OTP-form test files to keep the email field free of the old browser-rejected regex pattern.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/forms/OTPForm.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- Headed Playwright smoke on `http://localhost:3000/welcome`, opening the auth modal and confirming the console no longer reports the email-pattern regex error
+
+### Files Edited
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.174
+### Timestamp
+- 2026-04-05 21:18 EDT
+
+### Objective
+- Diagnose and fix the local wallet OTP sign-in failures that were still surfacing `user-settings/auth/ensure-user` errors and noisy Cubid API failures after authentication.
+
+### What Changed
+- Fixed `supabase/functions/_shared/userSettings.ts` so the shared bootstrap query now actually selects and returns `users.auth_user_id`, `created_at`, and `updated_at`, which keeps the legacy Cubid compatibility payload from looking permanently stale.
+- Updated `shared/api/hooks/useAuth.ts` to surface real ensure-user failures, skip external Cubid refreshes when the stored `cubid_id` is just the authenticated Supabase user id, and treat Cubid refresh failures as non-fatal so auth/bootstrap remains usable.
+- Added `waitForAuthenticatedSession()` in `shared/api/services/supabaseService.ts` and changed the wallet/sparechange sign-in modals to wait for a settled auth session before resolving the post-OTP user row, removing the old fallback that tried to create a brand-new Cubid user whenever provisioning looked transiently unavailable.
+- Added regression coverage for the wallet sign-in modal and `useAuth`, including the auth-session wait path and the “auth id is not a real Cubid identity” refresh skip case.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/SignInModal.tsx app/tcoin/wallet/components/modals/SignInModal.test.tsx app/tcoin/sparechange/components/modals/SignInModal.tsx shared/api/hooks/useAuth.ts shared/api/hooks/useAuth.test.tsx shared/api/services/supabaseService.ts shared/lib/userSettings/types.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts supabase/functions/_shared/auth.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/SignInModal.test.tsx shared/api/hooks/useAuth.test.tsx supabase/functions/_shared/userSettings.test.ts`
+- Headed Playwright OTP smoke on `http://localhost:3000/welcome` using `stats-smoke-6@example.com`, which now lands on `/welcome` without the previous `ensure-user` 400 or Cubid `get_identity` 500 noise
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select id, email, auth_user_id, cubid_id, has_completed_intro from public.users where email = 'stats-smoke-6@example.com';"`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/SignInModal.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `app/tcoin/sparechange/components/modals/SignInModal.tsx`
+- `shared/api/hooks/useAuth.ts`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/api/services/supabaseService.ts`
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.173
+### Timestamp
+- 2026-04-03 09:35 EDT
+
+### Objective
+- Add a read-only `Stats for Nerds` workspace to the wallet so authenticated users can inspect shared TCOIN product, market, BIA, and ops telemetry from one place.
+
+### What Changed
+- Added `app/tcoin/wallet/stats/page.tsx`, which renders overview tiles, time-series charts, BIA and asset breakdowns, and indexer / reserve-route diagnostics inside the shared signed-in wallet shell.
+- Added `app/api/tcoin/stats/summary/route.ts` plus shared types/helpers under `shared/lib/walletStats/`, using service-role reads to combine existing wallet, payment-request, exchange-rate, BIA, indexer, and TorontoCoin ops sources into one read-only response.
+- Added a `Stats for Nerds` action row to `app/tcoin/wallet/components/dashboard/MoreTab.tsx` so advanced-mode users can open the page directly from More without introducing a new bottom-nav or sidebar tab.
+- Added focused tests for the More navigation action, the authenticated API route, the pure wallet-stats aggregation helper, and the new stats page rendering / empty states.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/stats/page.tsx app/tcoin/wallet/stats/page.test.tsx app/api/tcoin/stats/summary/route.ts app/api/tcoin/stats/summary/route.test.ts shared/lib/walletStats/server.ts shared/lib/walletStats/server.test.ts shared/lib/walletStats/types.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/stats/page.test.tsx app/api/tcoin/stats/summary/route.test.ts shared/lib/walletStats/server.test.ts`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/stats/page.tsx`
+- `app/tcoin/wallet/stats/page.test.tsx`
+- `app/api/tcoin/stats/summary/route.ts`
+- `app/api/tcoin/stats/summary/route.test.ts`
+- `shared/lib/walletStats/types.ts`
+- `shared/lib/walletStats/server.ts`
+- `shared/lib/walletStats/server.test.ts`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.172
+### Timestamp
+- 2026-04-02 20:50 EDT
+
+### Objective
+- Add a Supabase-side cleanup function and nightly cron schedule for expired wallet pay links so rotating QR churn does not grow `payment_request_links` indefinitely.
+
+### What Changed
+- Added `supabase/migrations/20260402205500_v1.12_payment_request_links_cleanup_cron.sql`, which creates `public.cleanup_payment_request_links()` and configures the named `pg_cron` job `wallet-payment-request-links-cleanup` for `06:15 UTC` when `pg_cron` is available.
+- Set the retention policy in SQL: expired `rotating_multi_use` links are deleted after 1 day, and expired or consumed `single_use` links are deleted after 30 days.
+- Made the migration safe for environments without `pg_cron` by keeping the cleanup function in place and skipping job creation with a notice rather than failing the migration.
+
+### Verification
+- `supabase db push --local --include-all`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f /tmp/payment_request_links_cleanup_check.sql`
+- `git diff --check -- supabase/migrations/20260402205500_v1.12_payment_request_links_cleanup_cron.sql`
+
+### Files Edited
+- `supabase/migrations/20260402205500_v1.12_payment_request_links_cleanup_cron.sql`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.171
+### Timestamp
+- 2026-04-02 20:41 EDT
+
+### Objective
+- Add a visible local timestamp to saved shareable requests in the Receive tab so same-day requests are easier to distinguish.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` so `Payment requests I have sent` now formats saved shareable requests as `Saved YYYY-MM-DD at h.mm am/pm` instead of showing only the date.
+- Added a focused regression in `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx` to pin the new saved-date-plus-time display.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.170
+### Timestamp
+- 2026-04-02 20:36 EDT
+
+### Objective
+- Update the shareable-request email wording so emailed QR links read like TCOIN invoices/requests rather than generic QR links.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/modals/ShareQrModal.tsx` so email sharing now uses the subject `My TCOIN Request` and the body `Please check out this TCOIN invoice / request link: ...`.
+- Added a focused mailto regression in `app/tcoin/wallet/components/modals/ShareQrModal.test.tsx` to keep that email copy pinned.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/ShareQrModal.tsx app/tcoin/wallet/components/modals/ShareQrModal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/ShareQrModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/ShareQrModal.tsx`
+- `app/tcoin/wallet/components/modals/ShareQrModal.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.169
+### Timestamp
+- 2026-04-02 20:31 EDT
+
+### Objective
+- Tighten the large-screen Receive-tab layout further by moving the TCOIN/CAD amount inputs into the same desktop-side control column as the request buttons, making the non-QR workflow more likely to stay beside the QR code without vertical scrolling.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` so the amount-entry panel now lives in the same right-hand control column as `Request from Contact` / `Create a shareable request` on large screens, leaving the left column focused on the QR card itself.
+- Added a focused control-column regression in `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx` to keep the amount fields tied to that explicit controls container.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.168
+### Timestamp
+- 2026-04-02 20:28 EDT
+
+### Objective
+- Rework the authenticated Receive-tab layout on large screens so the QR/input area and request-management area sit beside each other instead of forcing a tall stacked layout.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` so the main Receive content now switches to a two-column grid on large screens, with the QR and amount inputs on the left and request-selection / request-history panels on the right.
+- Kept the existing stacked behaviour on smaller breakpoints while adjusting the action-button row to stay flexible inside the new right-hand desktop column.
+- Added a focused layout regression in `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx` so the large-screen grid contract stays explicit.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.167
+### Timestamp
+- 2026-04-02 20:24 EDT
+
+### Objective
+- Tighten the short-lived Receive QR helper copy so it explains audience/reuse more directly.
+
+### What Changed
+- Updated the rotating Receive QR helper copy in `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` from `This link refreshes automatically while this screen stays open.` to `This QR code can be shown to multiple people.`
+- Extended the existing Receive-card QR copy regression so the simplified rotating-mode wording remains covered.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.166
+### Timestamp
+- 2026-04-02 20:10 EDT
+
+### Objective
+- Refine the Receive-tab QR behaviour so short-lived codes rotate much more frequently while still keeping a 60-second validity window, and simplify the QR expiry / one-time-use copy.
+
+### What Changed
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx` so rotating short-lived pay links now re-mint every 3 seconds while the Receive QR remains visible, instead of waiting 45 seconds between regenerations.
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx` so rotating QR cards now say `Expires within 60 seconds` rather than showing a clock time, and long-lived one-time QR cards now show `Expires in [x] days`.
+- Replaced the long-lived QR helper copy from `This link stops rotating, but it will work only once.` to `This QR code will work only once.`
+- Added focused tests for the 3-second rotation cadence and the new expiry / one-time copy.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.165
+### Timestamp
+- 2026-04-02 20:06 EDT
+
+### Objective
+- Smoke test the local wallet Receive tab against local Supabase, diagnose why it still showed the generic `Unable to generate a pay link right now.` message, and tighten the UI so it waits for a resolved wallet profile before trying to mint a pay link.
+
+### What Changed
+- Confirmed the local Receive-tab outage was not a QR rendering problem: the live failure path was an authenticated pay-link mint attempt happening before the wallet’s own `public.users`/Cubid profile had finished resolving for the current session.
+- Updated `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx` so QR pay-link minting now waits for both a Supabase auth session and a resolved wallet user id instead of firing as soon as auth exists.
+- Replaced the old blanket receive-tab error copy with targeted messages for the main local failure cases, including missing wallet profile resolution, missing local `payment-links` edge routing, missing local `payment_request_links` schema, and generic edge-function messages.
+- Verified the local Supabase stack now serves `payment-links` publicly for `/resolve/...`, and applied the missing local migrations so `public.payment_request_links` exists before the Receive tab tries to use it.
+- Added focused Receive-tab tests covering the new “wait for wallet profile” behaviour and the explicit unauthorized-message mapping.
+
+### Verification
+- Browser/CLI smoke checks against local services:
+  - `curl -i -X POST http://127.0.0.1:54321/functions/v1/payment-links/create ...`
+  - `curl -i http://127.0.0.1:54321/functions/v1/payment-links/resolve/test-token`
+  - `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\dt public.payment_request_links"`
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.164
+### Timestamp
+- 2026-04-02 19:41 EDT
+
+### Objective
+- Replace Receive-tab QR payloads with public `https://www.tcoin.me/pay/<token>` links that survive sign-in and onboarding, while keeping Send and QR scanning compatible with both the new pay-link contract and the legacy base64 links during the transition.
+
+### What Changed
+- Added `public.payment_request_links` through `supabase/migrations/20260402201500_v1.11_payment_request_links.sql`, including opaque token hashes, recipient/user linkage, optional requested amount, mode (`rotating_multi_use` or `single_use`), expiry, and single-use consumption audit fields.
+- Added the new `payment-links` edge function plus shared helpers/client types to create authenticated pay links, resolve them publicly, and consume single-use links only after successful payment completion.
+- Updated Receive so QR generation now mints public `https://www.tcoin.me/pay/<token>` links by default, rotates them every 45 seconds with a 60-second TTL, and supports an opt-in long-lived one-time QR mode with a 30-day expiry.
+- Added the new public wallet route `app/tcoin/wallet/pay/[token]/page.tsx`, made `/pay/...` public in the shared wallet shell, and used that page as the canonical continuation surface after sign-in.
+- Extended user-settings bootstrap/signup metadata with `pendingPaymentIntent`, plus save/clear endpoints and React Query mutations, so incomplete users can go through `/welcome` and still land back in prefilled Send afterwards.
+- Updated dashboard Send to accept `paymentLink` and `resumePayment` query parameters, resolve new pay-link tokens, keep legacy `?pay=<base64>` handling for pasted/scanned links, and consume single-use pay links after successful payment.
+- Updated welcome completion/redirect behaviour so onboarding with a pending payment intent now routes back to `/dashboard?tab=send&resumePayment=1` instead of dropping the user on a generic dashboard entry.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/SendTab.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx app/tcoin/wallet/components/modals/QrScanModal.tsx app/tcoin/wallet/components/modals/QrScanModal.test.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx 'app/tcoin/wallet/pay/[token]/page.tsx' 'app/tcoin/wallet/pay/[token]/page.test.tsx' app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/ContentLayout.test.tsx app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx shared/lib/userSettings/types.ts shared/lib/userSettings/client.ts shared/hooks/useUserSettingsMutations.ts shared/lib/edge/paymentRequestLinks.ts shared/lib/edge/paymentRequestLinksClient.ts shared/lib/walletPayLinks.ts supabase/functions/_shared/paymentRequestLinks.ts supabase/functions/payment-links/index.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts supabase/functions/user-settings/index.ts`
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx 'app/tcoin/wallet/pay/[token]/page.test.tsx' app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `.env.local.example`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `app/tcoin/wallet/components/modals/QrScanModal.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/wallet/pay/[token]/page.tsx`
+- `app/tcoin/wallet/pay/[token]/page.test.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `shared/hooks/useUserSettingsMutations.ts`
+- `shared/lib/edge/paymentRequestLinks.ts`
+- `shared/lib/edge/paymentRequestLinksClient.ts`
+- `shared/lib/userSettings/client.ts`
+- `shared/lib/userSettings/types.ts`
+- `shared/lib/walletPayLinks.ts`
+- `supabase/functions/_shared/paymentRequestLinks.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/payment-links/index.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/migrations/20260402201500_v1.11_payment_request_links.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.163
+### Timestamp
+- 2026-04-02 19:14 EDT
+
+### Objective
+- Clean up the Receive-tab QR caption so it stops surfacing long transient decimals while CAD/TCOIN amounts are being entered and shows the paired TCOIN/CAD summary in one clear line.
+
+### What Changed
+- Updated `ReceiveCard` to derive the QR caption from parsed numeric TCOIN and CAD amounts instead of reusing the raw in-progress input string.
+- Rounded the displayed TCOIN amount to two decimals and, when available, appended the corresponding CAD value in parentheses so the caption reads like `Receive 3.91 TCOIN ($13.10)`.
+- Added a focused regression test that guards the rounded combined caption and ensures the long raw decimal string no longer leaks into the QR stage.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.162
+### Timestamp
+- 2026-04-02 18:44 EDT
+
+### Objective
+- Simplify the simple-mode home actions by collapsing the two top-up buttons into one clearer `Buy more TCOIN` entry point.
+
+### What Changed
+- Replaced the separate `Top Up with Interac` and `Buy more TCOIN` buttons in `SimpleWalletHome` with one `Buy more TCOIN` button.
+- Added a small floating menu under that button with two explicit paths: `Top up with Interac` and `Top up with Credit Card`.
+- Kept the existing modal destinations intact, so the menu simply routes into the current Interac and credit-card top-up flows instead of introducing new payment logic.
+- Added focused component tests for the floating menu and both modal-opening branches.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.161
+### Timestamp
+- 2026-04-02 18:51 EDT
+
+### Objective
+- Formalize the missing local wallet transfer ledger contract so local History and transfer bookkeeping can work on a real schema/RPC instead of relying only on the new empty-history fallback.
+
+### What Changed
+- Added a new `v1.10` idempotent migration that extends `public.act_transactions` with the wallet-transfer fields the app already expects: `transaction_category`, `amount`, `currency`, `token_price`, `wallet_account_from`, and `wallet_account_to`.
+- Added a compatibility view, `public.act_transaction_entries`, backed by `act_transactions`, so existing local history/recents queries can continue reading the legacy ledger name without duplicating storage.
+- Added a `public.simple_transfer(...)` RPC that resolves the wallet app instance, inserts a transfer row into `act_transactions`, and returns the inserted accounting record for downstream notification and history flows.
+- Applied that migration to the local Supabase database and verified it end-to-end by creating a real transfer row between seeded wallet identities and reading it back through `act_transaction_entries`.
+
+### Verification
+- `git diff --check -- supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\\d+ public.act_transactions"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select user_id, public_key from public.v_wallet_identities_v1 order by user_id limit 5;"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select (t).id as id, (t).amount as amount from (select public.simple_transfer('0x2222222222222222222222222222222222222002','0x1111111111111111111111111111111111111001',3.35,12.5,1001) as t) s;"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "select id, amount, currency, wallet_account_from, wallet_account_to, transaction_category from public.act_transaction_entries order by created_at desc limit 3;"`
+
+### Files Edited
+- `supabase/migrations/20260402184500_v1.10_wallet_transaction_ledger_contract.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.160
+### Timestamp
+- 2026-04-02 18:37 EDT
+
+### Objective
+- Stop local `/dashboard?tab=history` from surfacing the missing `act_transaction_entries` schema error and align the History tab with the canonical wallet-operations response shape.
+
+### What Changed
+- Diagnosed the local root cause by inspecting the running local Postgres schema: `public.act_transactions` exists, but `public.act_transaction_entries` and the legacy `simple_transfer(...)` RPC do not, so the wallet history code was still depending on a legacy contract that the repo’s local migration chain never provisions.
+- Updated the shared wallet-operations history helpers to treat a missing local legacy transaction ledger as an empty-history condition instead of throwing a user-visible error, which keeps local History and recents usable while that legacy ledger remains absent.
+- Fixed `TransactionHistoryTab` to read the canonical `wallet-operations` response shape (`transactions` with camelCase fields) instead of the stale `entries` / snake_case payload it was still expecting.
+- Added focused regressions for both the missing-ledger backend fallback and the canonical history-tab response parsing path.
+
+### Verification
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\\dt public.act*"`
+- `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\\df+ public.simple_transfer"`
+- `pnpm exec eslint supabase/functions/_shared/walletOperations.ts supabase/functions/_shared/walletOperations.test.ts app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx app/tcoin/wallet/components/dashboard/TransactionHistoryTab.test.tsx`
+- `pnpm exec vitest run supabase/functions/_shared/walletOperations.test.ts app/tcoin/wallet/components/dashboard/TransactionHistoryTab.test.tsx`
+
+### Files Edited
+- `supabase/functions/_shared/walletOperations.ts`
+- `supabase/functions/_shared/walletOperations.test.ts`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.159
+### Timestamp
+- 2026-04-02 18:27 EDT
+
+### Objective
+- Make the authenticated header’s mode-setting entry read more naturally in simple mode by changing the label from `Experience mode` to `Switch mode`.
+
+### What Changed
+- Updated the authenticated header account-menu action so it derives its label from the active wallet experience mode.
+- In simple mode the menu item and opened modal now use `Switch mode`, while advanced mode keeps `Experience mode`.
+- Added a focused navbar regression covering the simple-mode label and modal title.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.158
+### Timestamp
+- 2026-04-02 17:34 EDT
+
+### Objective
+- Add a persisted wallet experience-mode choice to onboarding and use it to introduce a simpler signed-in wallet shell for users who do not need the full dashboard surface.
+
+### What Changed
+- Extended the shared user-settings contract with `preferences.experienceMode`, defaulting missing or invalid legacy metadata to `simple` at bootstrap time while still allowing `advanced` to round-trip through the existing app-profile metadata path.
+- Expanded the wallet onboarding flow from six steps to seven by inserting a dedicated experience-mode step after community settings; fresh v2 drafts now require an explicit choice, while legacy drafts with no stored mode are preselected to `simple` so old onboarding sessions can continue.
+- Added a new `SimpleWalletHome` and made `/dashboard` mode-aware: simple mode now hides the More tab, redirects `?tab=more` back to home, uses the narrower focused-content layout for home, and removes the empty-contacts invite onboarding in favour of a plain empty state.
+- Added an `Experience mode` entry to the authenticated header account menu, backed by a dedicated modal so users can switch between simple and advanced later without relying on the More tab being visible.
+- Added focused tests across the bootstrap helper, welcome flow, dashboard shell, contacts tab, and authenticated header so the new mode contract is exercised from persistence through UI behaviour.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/components/dashboard/ContactsTab.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/modals/ExperienceModeModal.tsx shared/lib/userSettings/types.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts app/tcoin/wallet/components/modals/index.ts`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx supabase/functions/_shared/userSettings.test.ts`
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/index.ts`
+- `app/tcoin/wallet/components/modals/ExperienceModeModal.tsx`
+- `app/tcoin/wallet/components/modals/index.ts`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.157
+### Timestamp
+- 2026-04-02 16:01 EDT
+
+### Objective
+- Eliminate the local wallet-custody backend noise caused by code assuming `public.wallet_list.created_at` exists, and formalize that column in the repo schema.
+
+### What Changed
+- Added `getLatestWalletListRow(...)` in the shared user-settings helpers so wallet-custody reads resolve the newest wallet row by descending `wallet_list.id` instead of relying on a `created_at` column that older environments never had.
+- Updated both wallet-custody call sites in `userSettings.ts` to use that helper, which removes the runtime dependency on `wallet_list.created_at` for local custody registration and recovery reads.
+- Added an idempotent `v1.09` migration that backfills and constrains `public.wallet_list.created_at`, including a supporting index for future schema-consistent ordering.
+- Added focused helper coverage proving the wallet-row resolver orders by `id` rather than `created_at`.
+
+### Verification
+- `pnpm exec eslint supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts`
+- `pnpm exec vitest run supabase/functions/_shared/userSettings.test.ts`
+- `git diff --check -- supabase/migrations/20260402160500_v1.09_wallet_list_created_at.sql`
+- Local `GET /functions/v1/user-settings/wallet/custody-material` probe using a signed local JWT now advances past the old `wallet_list.created_at` failure path and instead surfaces the next stale-schema issue (`user_encrypted_share.credential_id does not exist`), confirming the `wallet_list` root cause is removed.
+
+### Files Edited
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/migrations/20260402160500_v1.09_wallet_list_created_at.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.156
+### Timestamp
+- 2026-04-02 15:40 EDT
+
+### Objective
+- Stop `/dashboard?tab=contacts` from falling into a render loop and blocking the rest of the authenticated dashboard navigation.
+
+### What Changed
+- Removed the `ContactsTab` behaviour that echoed `initialContacts` back through `onContactsResolved`, which was causing the parent dashboard cache to bounce the same contact list back into the tab on every render.
+- Stabilized the parent dashboard contacts resolver with a memoized callback and an equality check so identical contact lists no longer trigger redundant cache writes or rerenders.
+- Added focused regressions covering seeded-contact hydration in `ContactsTab` and repeated identical contact-resolution events in the dashboard page.
+- Verified the fix in a headed Playwright browser session against the local app after authenticating into `/dashboard?tab=contacts`.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ContactsTab.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- Headed Playwright smoke pass on `http://localhost:3000/dashboard?tab=contacts`, including sidebar navigation away from Contacts after sign-in
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.155
+### Timestamp
+- 2026-04-02 15:31 EDT
+
+### Objective
+- Split the authenticated dashboard layout contract so broad overview tabs can fill the workspace while task-heavy tabs stay centred to a narrower working width on large screens.
+
+### What Changed
+- Updated `dashboard/page.tsx` so overview tabs (`home`, `more`) still use the full authenticated shell, while focused task tabs (`send`, `receive`, `contacts`, `history`) now cap only their inner content area at roughly `1000px`.
+- Kept the surrounding dashboard panel shell full width, so the new width cap applies to the working content and not the background frame.
+- Added a dashboard-page regression test that distinguishes uncapped home content from the narrower receive-tab content wrapper.
+- Updated the technical and functional specs to document the new overview-vs-task tab layout rule.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx`
+- `curl -I http://localhost:3000/dashboard?tab=receive`
+
+### Files Edited
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.154
+### Timestamp
+- 2026-04-02 15:25 EDT
+
+### Objective
+- Fix the receive QR card so its white stage always stays square and its caption/loading text remains readable in dark mode.
+
+### What Changed
+- Made the QR stage in `ReceiveCard` a dedicated square white surface instead of a loosely sized wrapper, keeping the QR card at a consistent 1:1 shape.
+- Switched the QR caption and fallback copy to explicit slate text inside that white stage so strings like `Receive any amount` no longer disappear in dark mode.
+- Added a focused regression test that checks the QR stage keeps its square white contract and that the caption uses the dark text treatment.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `curl -I http://localhost:3000/dashboard?tab=receive`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.153
+### Timestamp
+- 2026-04-02 16:22 EDT
+
+### Objective
+- Remove the duplicate `Make a payment / Send To` panel from the authenticated wallet home tab so `/dashboard` stays focused on overview content and the dedicated Send tab owns payment composition.
+
+### What Changed
+- Removed the send-card section from `WalletHome`, including the home-only amount, recipient, QR deep-link, and send-action state that existed only to power that panel.
+- Reflowed the home layout so the Recents panel now sits alongside the contributions/settings row, reducing vertical height while keeping the balance summary, everyday actions, recent people, charity context, and More handoff intact.
+- Updated the wallet-home tests to assert that the send grid no longer renders and to keep the ultra-wide layout coverage aligned with the new two-row home structure.
+- Updated the technical and functional specs so they describe home as an overview surface and the Send tab as the canonical money-composition workspace.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `curl -I http://localhost:3000/dashboard`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.152
+### Timestamp
+- 2026-04-02 15:31 EDT
+
+### Objective
+- Make welcome step 5 explain why the device name matters and replace the irrelevant wallet-ready notice with the actual device details we collect automatically.
+
+### What Changed
+- Added two short explanation paragraphs to step 5 clarifying that the custom device name helps identify and deactivate a device later if needed.
+- Replaced the old `Wallet already configured...` message with a small device-details panel that shows the auto-collected operating system, browser, and derived detected label used alongside the custom device name.
+- Added a focused regression ensuring the new step-5 explanation and auto-collected device fields render, while the old wallet-ready copy stays gone.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+- `curl -I http://localhost:3000/welcome`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.151
+### Timestamp
+- 2026-04-02 15:20 EDT
+
+### Objective
+- Seed `Universal Basic Income` as the default catch-all charity option and let welcome step 4 continue without a manual charity pick by falling back to that default.
+
+### What Changed
+- Added `Universal Basic Income` to the local `public.charities` seed rows in `supabase/seed.sql`.
+- Updated welcome step 4 so `Continue` no longer blocks on an unset charity, and pressing it with no explicit charity now auto-selects `Universal Basic Income` before saving.
+- Kept the primary BIA requirement unchanged while making the charity field feel optional in the UI.
+- Expanded the welcome-page test coverage to assert the new charity fallback behaviour.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+- `git diff --check -- supabase/seed.sql`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `supabase/seed.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.150
+### Timestamp
+- 2026-04-02 15:13 EDT
+
+### Objective
+- Add a general-purpose `Rest of Toronto` BIA option to the seeded local catalogue.
+
+### What Changed
+- Added a new active `REST-OF-TORONTO` row to `public.bia_registry` in `supabase/seed.sql`, labelled `Rest of Toronto`, so local/dev seed data includes a catch-all Toronto option alongside the more specific BIAs.
+
+### Verification
+- `git diff --check -- supabase/seed.sql`
+
+### Files Edited
+- `supabase/seed.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.149
+### Timestamp
+- 2026-04-02 15:08 EDT
+
+### Objective
+- Add clearer “why this matters” guidance to welcome steps 3 and 4 so the onboarding flow explains the purpose of the photo, charity, and BIA selections.
+
+### What Changed
+- Added two short explanatory sentences above the step-3 picture controls clarifying that the profile photo helps senders and recipients identify and verify the user, and should therefore look like them.
+- Added a charity explainer above the step-4 default charity field, clarifying that the transaction fees users pay instead of ordinary credit card fees go to the charity they choose.
+- Added a BIA explainer above the primary BIA selector, clarifying that merchant discovery in the wallet is filtered based on that BIA choice.
+- Expanded the welcome-page tests with focused assertions for the new step-3 and step-4 guidance copy.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.148
+### Timestamp
+- 2026-04-02 15:03 EDT
+
+### Objective
+- Make the empty avatar on welcome step 3 act as a direct upload entry point instead of forcing users to target only the file input.
+
+### What Changed
+- Wrapped the empty step-3 avatar preview in a button that opens the same hidden file-picker path as the `Choose a profile picture` input.
+- Kept the file-selection flow single-sourced by routing the avatar click through the existing file input rather than adding a second upload handler.
+- Added a focused regression proving the empty avatar button triggers the file chooser affordance.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.147
+### Timestamp
+- 2026-04-02 14:58 EDT
+
+### Objective
+- Default the welcome step-2 country selector to Canada as real form data instead of leaving it empty.
+
+### What Changed
+- Added a canonical welcome-step default country of `CA` and resolved it from the country options list so fresh onboarding sessions start with Canada selected.
+- Updated the bootstrap reset path so draft/completed users still keep their saved country when present, while missing country values fall back to the same Canada default.
+- Extended the welcome-page regression to assert that Canada stays selected while the rotating placeholder examples change only in the text fields.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.146
+### Timestamp
+- 2026-04-02 14:53 EDT
+
+### Objective
+- Make the welcome step-2 placeholders get out of the user’s way as soon as they start typing, and move country into the required details card above phone verification.
+
+### What Changed
+- Changed the rotating welcome placeholders so they stop immediately once any text detail field receives user input, and all remaining example placeholders clear to blank instead of continuing to cycle.
+- Moved the Country selector into the left `Required to continue` card, positioned above the phone verification block.
+- Updated step-2 copy and validation so first name, last name, country, and phone verification are treated as the required onboarding details, while preferred name and username remain optional.
+- Expanded the welcome-page test to cover placeholder freeze/clear behaviour and the new country-before-phone layout.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.145
+### Timestamp
+- 2026-04-02 14:45 EDT
+
+### Objective
+- Refine the welcome-card economics copy so the stability framing and TTC ticket fact read more precisely.
+
+### What Changed
+- Replaced the transit-peg explanation so it now emphasises day-to-day intuitiveness and long-term value stability instead of contrasting TCOIN against speculative token pricing.
+- Updated the TTC ticket fun fact to refer to holding on to the ticket itself and to quantify the result as approximately `5,500%` total growth or `4%` per year.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.144
+### Timestamp
+- 2026-04-02 14:39 EDT
+
+### Objective
+- Add a non-production-only `Delete this profile` action to the authenticated header account menu without exposing it in production.
+
+### What Changed
+- Added a second account-menu action below `Log Out` in the authenticated wallet header, labelled `Delete this profile`, and gated it to non-production app environments only.
+- Reused `NEXT_PUBLIC_APP_ENVIRONMENT` as the UI gate because the wallet already depends on that app-environment contract for other local/development-only affordances.
+- Wired the new action to a clear informational toast for now because there is not yet a real profile-deletion backend mutation in the wallet stack.
+- Added navbar regressions covering the non-production visibility/toast path and the production-hidden path.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.143
+### Timestamp
+- 2026-04-02 14:28 EDT
+
+### Objective
+- Rotate the welcome step-2 name placeholders so the identity examples feel livelier than a single static `Mats Sundin`.
+
+### What Changed
+- Added a shared rotating placeholder list for the welcome user-details step, cycling every three seconds through Toronto-flavoured example names instead of keeping one fixed placeholder.
+- Derived the first-name, last-name, preferred-name, and username placeholders from the same active full-name entry so all four fields stay visually in sync.
+- Updated the welcome-page regression test to assert the initial `Mats Sundin` placeholders and the timed rotation to `Nathan Philips`.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.142
+### Timestamp
+- 2026-04-02 14:14 EDT
+
+### Objective
+- Fix the large-screen authenticated wallet shell so page content no longer slides under the fixed desktop sidebar rail.
+
+### What Changed
+- Added a dedicated shared desktop rail-offset contract, `walletRailPageClass`, in the authenticated UI primitives so sidebar-based pages expand their max width and clear the fixed rail with one shared inset definition instead of per-page padding hacks.
+- Switched `/dashboard`, `/merchant`, `/admin`, and `/city-manager` onto that shared rail class, and removed the stale `lg:pl-40 xl:pl-44` offsets from those routes as well as non-rail routes like `/welcome` and the contact detail page.
+- Updated the shared authenticated-ui regression test plus the operator page tests to assert the new rail-clearance class contract instead of the old page-local padding classes.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/admin/page.tsx app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/city-manager/page.tsx app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/merchant/page.tsx app/tcoin/wallet/merchant/page.test.tsx app/tcoin/wallet/welcome/page.tsx 'app/tcoin/wallet/dashboard/contacts/[id]/page.tsx'`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/merchant/page.test.tsx app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/admin/page.test.tsx`
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/city-manager/page.test.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/tcoin/wallet/merchant/page.test.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.141
+### Timestamp
+- 2026-04-02 14:03 EDT
+
+### Objective
+- Left-align the two introductory sales-pitch sentences on the public merchants page.
+
+### What Changed
+- Removed the hero section’s blanket centring on `/merchants` and applied `text-left` specifically to the two introductory paragraphs while leaving the `For Merchants` heading centred.
+- Extended the merchants-page regression test to verify that the main sales-pitch sentence now carries the left-alignment class.
+- Updated the required technical and functional specifications to record the intended hero alignment split.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/merchants/page.tsx app/tcoin/wallet/merchants/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/merchants/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/merchants/page.tsx`
+- `app/tcoin/wallet/merchants/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.140
+### Timestamp
+- 2026-04-02 13:59 EDT
+
+### Objective
+- Make the top `Return home` control on `/merchants` visually match the lower one.
+
+### What Changed
+- Removed the pill-style button treatment from the top `Return home` control on the public merchants page so both return links now share the same plain-link presentation.
+- Updated the required technical and functional specifications to record that the duplicated return-home actions intentionally use one consistent style.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/merchants/page.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/merchants/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.139
+### Timestamp
+- 2026-04-02 13:53 EDT
+
+### Objective
+- Make the `/merchants` lead-in statements visually match the main landing page.
+
+### What Changed
+- Replaced the merchant page’s plain bold lead-in phrases with the same highlighted inline treatment used on the main landing page (`bg-gray-200 dark:bg-gray-700 px-1`).
+- Added a focused merchants-page regression test that verifies the shared landing-style highlight classes on representative lead statements.
+- Updated the required technical and functional specifications to record that public-site visual-language alignment.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/merchants/page.tsx app/tcoin/wallet/merchants/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/merchants/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/merchants/page.tsx`
+- `app/tcoin/wallet/merchants/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.138
+### Timestamp
+- 2026-04-02 13:47 EDT
+
+### Objective
+- Increase the height of the public Contact page message input.
+
+### What Changed
+- Added a page-local `min-h-40` override to the `/contact` message textarea so longer outreach notes have more visible drafting space.
+- Extended the Contact page regression test to verify the taller message textarea class is present.
+- Updated the required technical and functional specifications to record the taller public-contact message field.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/contact/page.tsx app/tcoin/wallet/contact/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/contact/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/contact/page.tsx`
+- `app/tcoin/wallet/contact/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.137
+### Timestamp
+- 2026-04-02 13:39 EDT
+
+### Objective
+- Reduce the visual length of hyperlinks on the public Resources page without changing the body copy.
+
+### What Changed
+- Reworked the `/resources` body copy so each resource sentence remains intact while the anchors are limited to shorter CTA fragments such as `this hackathon submission`, `this Whitepaper`, `the presentation here`, and `on GitHub`.
+- Added a focused Resources page regression test that checks the shorter link names and confirms they still point to the expected targets.
+- Updated the required technical and functional specifications to record the public-link presentation rule on the Resources page as well.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/resources/page.tsx app/tcoin/wallet/resources/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/resources/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/resources/page.tsx`
+- `app/tcoin/wallet/resources/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.136
+### Timestamp
+- 2026-04-02 13:33 EDT
+
+### Objective
+- Improve the reading rhythm and header clearance of the public merchant sales page.
+
+### What Changed
+- Reworked `/merchants` from a stack of single-paragraph headings into broader sections with landing-page-style pacing, using `Benefits for Merchants`, `Grow Through the Network`, and `Simple to Start` as the primary headings.
+- Increased the page’s top padding so the `For Merchants` hero clears the fixed header, and added a top-left `Return home` control while keeping the existing footer-adjacent return link.
+- Updated the page test to guard the new grouped-heading structure and the presence of both return-home links, and recorded the change in the required specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/merchants/page.tsx app/tcoin/wallet/merchants/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/merchants/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/merchants/page.tsx`
+- `app/tcoin/wallet/merchants/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.135
+### Timestamp
+- 2026-04-02 13:26 EDT
+
+### Objective
+- Make the unauthenticated footer theme link reflect the real current theme on first paint so it does not need a throwaway first click.
+
+### What Changed
+- Updated the shared `useDarkMode` hook to initialize from cached theme preference or the current system preference during the first render instead of defaulting to light and correcting later in an effect.
+- Added a focused hook regression for the system-dark and cached-light first-render cases, plus a footer test that guards the public theme-link label when following system mode.
+- Updated the required technical and functional specifications to capture the footer-theme behaviour change.
+
+### Verification
+- `pnpm exec eslint shared/hooks/useDarkMode.tsx shared/hooks/useDarkMode.test.tsx app/tcoin/wallet/components/footer/Footer.test.tsx`
+- `pnpm exec vitest run shared/hooks/useDarkMode.test.tsx app/tcoin/wallet/components/footer/Footer.test.tsx`
+
+### Files Edited
+- `shared/hooks/useDarkMode.tsx`
+- `shared/hooks/useDarkMode.test.tsx`
+- `app/tcoin/wallet/components/footer/Footer.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.134
+### Timestamp
+- 2026-04-02 13:19 EDT
+
+### Objective
+- Reduce the visual length of the public Contact page hyperlink without changing the surrounding body copy.
+
+### What Changed
+- Adjusted the `/contact` intro paragraph so the invitation text stays in plain prose and only the word `WhatsApp` remains hyperlinked.
+- Added a focused Contact page regression test to guard that shorter anchor text contract.
+- Updated the required technical and functional specifications to record the public-link presentation tweak.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/contact/page.tsx app/tcoin/wallet/contact/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/contact/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/contact/page.tsx`
+- `app/tcoin/wallet/contact/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.133
+### Timestamp
+- 2026-04-02 12:55 EDT
+
+### Objective
+- Add a public merchant-sales page to the wallet site and surface it from the unauthenticated footer.
+
+### What Changed
+- Added a new public `/merchants` page using the same landing-header, body-width, and footer shell as the other unauthenticated wallet pages, and structured the provided merchant copy into a focused sales page.
+- Added a `Merchants` link to the shared unauthenticated footer, added `/merchants` to the wallet public-route allowlist, and included the page in the public sitemap.
+- Added focused tests for the new page, footer link, and sitemap entry, and updated the required technical/functional specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/components/footer/Footer.tsx app/tcoin/wallet/components/footer/Footer.test.tsx app/tcoin/wallet/merchants/page.tsx app/tcoin/wallet/merchants/page.test.tsx app/tcoin/wallet/sitemap.ts app/tcoin/wallet/sitemap.test.ts app/tcoin/wallet/page.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/footer/Footer.test.tsx app/tcoin/wallet/merchants/page.test.tsx app/tcoin/wallet/sitemap.test.ts`
+
+### Files Edited
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/components/footer/Footer.tsx`
+- `app/tcoin/wallet/components/footer/Footer.test.tsx`
+- `app/tcoin/wallet/merchants/page.tsx`
+- `app/tcoin/wallet/merchants/page.test.tsx`
+- `app/tcoin/wallet/sitemap.ts`
+- `app/tcoin/wallet/sitemap.test.ts`
+- `app/tcoin/wallet/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.132
+### Timestamp
+- 2026-04-02 12:33 EDT
+
+### Objective
+- Refresh several wallet landing-page copy blocks to better describe the RFID-note project, merchant usage, fee framing, and TCOIN governance.
+
+### What Changed
+- Rewrote the physical tBills paragraph to describe the embedded-RFID notes as work in progress and to invite people to help with that part of the project.
+- Expanded the QR recipient examples to include merchants, updated the fee comparison to say TCOIN aims to lower that fee while turning it into a city donation, and replaced the short closing sentence with the longer CAD-vs-TCOIN backing and stewardship explanation.
+- Updated the required functional and technical specs to reflect the revised public-facing landing-page narrative.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/page.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.131
+### Timestamp
+- 2026-04-02 12:27 EDT
+
+### Objective
+- Centre the wallet landing page’s initial auth-loading placeholder instead of leaving it pinned to the top-left corner.
+
+### What Changed
+- Updated the shared wallet `ContentLayout` loading branch to render `...loading` inside a viewport-centred flex wrapper rather than returning the raw layout shell with unaligned text.
+- Added a focused `ContentLayout` regression test that checks the loading shell uses centred alignment and still renders the loading label.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/ContentLayout.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/ContentLayout.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.130
+### Timestamp
+- 2026-04-02 12:18 EDT
+
+### Objective
+- Tighten the wallet onboarding step-1 lead sentence so it starts more directly and conversationally.
+
+### What Changed
+- Replaced the step-1 opener in wallet `/welcome` from “This step is about the signup process itself: we will …” to a shorter “Let’s …” sentence while keeping the rest of the signup guidance unchanged.
+- Updated the focused welcome-flow test expectation and the required spec/session artefacts to reflect the revised copy.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.129
+### Timestamp
+- 2026-04-02 09:49 EDT
+
+### Objective
+- Keep wallet signup reset on the true step-0 welcome state instead of auto-forwarding back into the wizard.
+
+### What Changed
+- Updated the wallet welcome-page reset handler to close the wizard client state after a successful reset, clear any staged profile-picture editor state, and leave the user on the pre-start welcome card.
+- Added a focused welcome-flow regression test that covers resetting a saved draft and verifies the UI stays on step 0 rather than reopening step 1.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.128
+### Timestamp
+- 2026-04-02 09:58 EDT
+
+### Objective
+- Refine wallet onboarding steps 2 and 3 so the user-details screen distinguishes required vs optional fields, and the profile-picture step uses the real avatar editor flow with clearer upload-error handling.
+
+### What Changed
+- Reworked onboarding step 2 into `Required to continue` and `Optional for now` panels, made first name/last name blank with `Mats` / `Sundin` placeholders for new signups, and relaxed continuation so only first name, last name, and phone verification are mandatory there.
+- Added a dedicated `WelcomeProfilePictureEditorModal` for onboarding step 3, reusing the circular avatar crop controls from Edit Profile so newly selected images are framed before upload instead of being accepted raw.
+- Updated step 3 to save the cropped avatar file and to translate low-level upload/network failures such as `name resolution failed` into a picture-specific recovery message instead of a misleading raw infrastructure toast.
+- Tightened modal-shell behaviour so content-only modals do not render empty title/description blocks, and added focused welcome-flow tests for the new step-2 grouping and step-3 editor-modal launch.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx app/tcoin/wallet/components/modals/WelcomeProfilePictureEditorModal.tsx shared/components/ui/Modal.tsx shared/components/ui/Modal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx shared/components/ui/Modal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `app/tcoin/wallet/components/modals/WelcomeProfilePictureEditorModal.tsx`
+- `shared/components/ui/Modal.tsx`
+- `shared/components/ui/Modal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.127
+### Timestamp
+- 2026-04-02 09:41 EDT
+
+### Objective
+- Separate the wallet `/welcome` intro copy from the signup-process copy so the first screen feels like a true welcome and step 1 focuses on how onboarding works.
+
+### What Changed
+- Rewrote the pre-start `/welcome` card to introduce TCOIN as a community-focused local currency, including the transit-value framing, charity contribution model, and a TTC fare fact instead of repeating the signup instructions.
+- Rewrote wizard step 1 so it now explains the signup process itself: what information will be collected, how the wallet setup is staged, and that progress is saved for resuming later.
+- Added focused test coverage to keep the new welcome copy and step-1 signup guidance distinct in the wallet onboarding flow.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.126
+### Timestamp
+- 2026-04-02 18:07 EDT
+
+### Objective
+- Move wallet `/welcome` onto the authenticated wallet shell so onboarding uses the signed-in visual language instead of the public landing-page styling.
+
+### What Changed
+- Reworked `/welcome` to use the shared authenticated wallet page and panel tokens for signed-out, first-run, resume, wizard, loading, and fallback states, keeping onboarding visually consistent with the dashboard shell.
+- Removed the stale dark-mode dependency from the welcome route after the shell move, since the page now relies on shared wallet UI tokens rather than a one-off public-card treatment.
+- Added a regression test that checks the authenticated welcome shell still wraps the loading state as well as the signed-in start state.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.125
+### Timestamp
+- 2026-04-02 02:29 EDT
+
+### Objective
+- Add multi-email management to wallet Edit Profile while preserving a primary email, soft-delete history, and active-email uniqueness in Supabase.
+
+### What Changed
+- Added `public.user_email_addresses` by migration as the canonical account-email history table, with one active unique email across the whole system, one active primary email per user, soft-delete timestamps, and a trigger that keeps `public.users.email` synced to the current primary address.
+- Extended wallet user-settings bootstrap and profile updates so Edit Profile now reads and saves a full active email list while keeping `bootstrap.user.email` as the compatibility primary-email mirror for the rest of the app.
+- Reworked the Edit Profile email panel into a managed list: users can add another email, choose a different primary email, and remove non-primary emails, while the UI blocks removing the only remaining email or deleting the primary email before another primary is selected.
+- Updated auth-side user resolution and ensure-user flows to look up active emails from the new history table and to retain authenticated email addresses without wiping any other saved active emails.
+- Seeded the local development users into the new email-history table so fresh local resets start with consistent primary-email records.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx shared/lib/userSettings/types.ts supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts supabase/functions/_shared/auth.ts supabase/functions/user-settings/index.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx supabase/functions/_shared/userSettings.test.ts shared/api/hooks/useAuth.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/migrations/20260402024500_v1.08_user_email_history.sql`
+- `supabase/seed.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.124
+### Timestamp
+- 2026-04-02 02:17 EDT
+
+### Objective
+- Rework wallet Edit Profile so desktop-sized screens can use a wider two-column layout, separate email from the photo controls, and let existing profile photos reopen in the framing editor.
+
+### What Changed
+- Split wallet Edit Profile into four panels: `Picture`, `Email`, `Banking info`, and `Info used in this app`, with a `lg` two-column grid so larger screens use width instead of stacking every section vertically.
+- Added `prepareProfilePictureFromUrl` and an `Adjust current photo` action so an already-saved profile image can be reopened in the same zoom and horizontal/vertical framing editor instead of forcing users to upload a new file first.
+- Added a wider `5xl` modal size and assigned it specifically to wallet Edit Profile launches from both the authenticated navbar and the More tab, so the new four-panel layout has enough room to reduce desktop scrolling.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx shared/lib/profilePictureCrop.ts shared/components/ui/Modal.tsx shared/contexts/ModalContext.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- Browser pass with the Playwright CLI against `http://127.0.0.1:3000/dashboard?tab=more` confirmed the modal opens from the More tab after local OTP auth; full loaded-form verification was blocked locally because `user-settings/bootstrap` is currently returning `401 Unauthorized` in that environment.
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `shared/lib/profilePictureCrop.ts`
+- `shared/components/ui/Modal.tsx`
+- `shared/contexts/ModalContext.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.123
+### Timestamp
+- 2026-04-02 01:58 EDT
+
+### Objective
+- Stabilize the local Colima-backed Supabase auth stack by removing the recurring GoTrue `GOTRUE_MAILER_EXTERNAL_HOSTS` warning during OTP traffic.
+
+### What Changed
+- Normalized the local Supabase `site_url` and redirect allow-list in the local `supabase/config.toml` so the local browser-facing hosts are explicit and match the wallet dev hosts we actually use.
+- Added `scripts/start-local-supabase.sh` plus the `pnpm supabase:start:local` package script to start the trimmed local Supabase stack and then recreate the GoTrue container with `GOTRUE_MAILER_EXTERNAL_HOSTS=localhost,127.0.0.1,kong`, which the CLI config does not currently expose.
+- Documented the local Supabase helper in `README.md` so the warning fix is repeatable instead of relying on one-off manual container surgery.
+
+### Verification
+- `pnpm supabase:start:local`
+- `docker inspect supabase_auth_Genero --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E '^GOTRUE_MAILER_EXTERNAL_HOSTS='`
+- `curl -sS -X POST http://localhost:54321/auth/v1/otp ...`
+- `curl -sS -X POST http://127.0.0.1:54321/auth/v1/otp ...`
+- `curl -sS -X POST http://127.0.0.1:54321/auth/v1/verify ...`
+- `docker logs --since 5s supabase_auth_Genero`
+
+### Files Edited
+- `supabase/config.toml`
+- `scripts/start-local-supabase.sh`
+- `package.json`
+- `README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.122
+### Timestamp
+- 2026-04-02 01:18 EDT
+
+### Objective
+- Improve light-mode contrast for the auth modal email input so the pre-OTP email field reads clearly as an editable control.
+
+### What Changed
+- Added a dedicated `authModalEmailFieldClass` token that keeps the auth modal email input white with a stronger light-mode border and placeholder colour while preserving the existing dark-mode behaviour.
+- Applied that higher-contrast field treatment to both wallet and SpareChange OTP auth forms so the shared sign-in flow stays visually consistent across apps.
+- Added focused regression checks to confirm the auth email field keeps the stronger light-mode surface classes.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/wallet/components/forms/OTPForm.test.tsx app/tcoin/sparechange/components/forms/OTPForm.tsx app/tcoin/sparechange/components/forms/OTPForm.test.tsx shared/components/ui/formFieldStyles.ts`
+
+### Files Edited
+- `shared/components/ui/formFieldStyles.ts`
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.121
+### Timestamp
+- 2026-04-02 00:51 EDT
+
+### Objective
+- Harden root wallet route aliasing so direct loads and refreshes on `/merchant` resolve reliably instead of intermittently falling into a 404/dev refresh loop.
+
+### What Changed
+- Added explicit root rewrite entries in `next.config.js` for the main wallet and operator pages (`/dashboard`, `/merchant`, `/admin`, `/city-manager`, `/city-admin`, `/welcome`, `/resources`, `/contact`, `/ecosystem`) ahead of the generic non-API fallback rewrite.
+- Added a focused `next.config` regression test to assert that the key operator/dashboard aliases remain present and that the broad catch-all rewrite stays last.
+- Re-verified the merchant alias over HTTP after the rewrite update so `/merchant` and `/tcoin/wallet/merchant` both resolve through the same workspace entrypoint.
+
+### Verification
+- `pnpm exec vitest run next.config.test.ts`
+- `curl -I http://localhost:3000/merchant`
+- `curl -I http://localhost:3000/tcoin/wallet/merchant`
+- `curl -I http://localhost:3000/dashboard`
+
+### Files Edited
+- `next.config.js`
+- `next.config.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.120
+### Timestamp
+- 2026-04-02 00:37 EDT
+
+### Objective
+- Make merchant applicants on the city-manager page inspectable so operators can review the person behind an application before approving or rejecting it.
+
+### What Changed
+- Extended the city-manager store-list payload so each applicant now includes username, phone, country, address, profile image URL, and account creation timestamp in addition to full name and email.
+- Turned the applicant name on `/city-manager` into a clear clickable control that opens a focused applicant-profile dialog instead of leaving the operator with a static text label.
+- Added a lightweight inspector layout in the dialog with avatar, full name, username, email, account age, country, phone, and address, while keeping the existing application-review controls in place.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/city-manager/page.tsx app/tcoin/wallet/city-manager/page.test.tsx shared/lib/merchantSignup/types.ts supabase/functions/_shared/merchantApplications.ts`
+- `pnpm exec vitest run app/tcoin/wallet/city-manager/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/city-manager/page.test.tsx`
+- `shared/lib/merchantSignup/types.ts`
+- `supabase/functions/_shared/merchantApplications.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.119
+### Timestamp
+- 2026-04-02 00:31 EDT
+
+### Objective
+- Add address capture to wallet Edit Profile, match the merchant-signup style more closely, and clarify how banking details are used.
+
+### What Changed
+- Added an editable address field to the wallet Edit Profile modal, using a multi-line address input similar to the merchant signup flow rather than a cramped single-line field.
+- Added two tooltip explanations in the Banking info section: one at the section level clarifying that banking details are not shared with other users, and one on the address field clarifying that the address is only needed before withdrawals.
+- Extended the shared user-settings bootstrap and profile-update contract so `address` now round-trips through the Edit Profile modal instead of being dropped from the wallet bootstrap mapper.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx shared/lib/userSettings/types.ts supabase/functions/_shared/userSettings.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.118
+### Timestamp
+- 2026-04-02 00:24 EDT
+
+### Objective
+- Fix the local Supabase edge-runtime boot failure caused by stale `corsHeaders` imports, then rerun the local wallet smoke flow against the Colima-backed stack.
+
+### What Changed
+- Standardized the affected Supabase edge-function entrypoints to import `resolveCorsHeaders` from the shared CORS helper and to answer `OPTIONS` requests with `resolveCorsHeaders(req)` instead of the removed `corsHeaders` symbol.
+- Verified there are no remaining stale `corsHeaders` references in `supabase/functions/**/*.ts` and ran focused ESLint on the touched edge domains.
+- Re-ran the local smoke pass against a wallet dev server pointed at the local Supabase URLs: the earlier edge-function `502` worker-boot failure is gone, and `citycoin-market` / `wallet-operations` now return real application responses (`404` / `401`) instead of runtime boot crashes. The smoke pass still uncovered a separate local auth issue where `POST /auth/v1/token?grant_type=pkce` times out with `504`, so the authenticated browser flow still does not complete locally.
+
+### Verification
+- `pnpm exec eslint supabase/functions/voucher-preferences/index.ts supabase/functions/onramp/index.ts supabase/functions/user-requests/index.ts supabase/functions/wallet-operations/index.ts supabase/functions/store-operations/index.ts supabase/functions/control-plane/index.ts supabase/functions/redemptions/index.ts supabase/functions/bia-service/index.ts supabase/functions/citycoin-market/index.ts supabase/functions/voucher-runtime/index.ts supabase/functions/governance/index.ts supabase/functions/payment-requests/index.ts supabase/functions/merchant-applications/index.ts`
+- `rg -n "corsHeaders" supabase/functions -g '*.ts'`
+- Local smoke checks against local Supabase:
+- `curl -I http://127.0.0.1:3002/dashboard`
+- `curl -i -X POST http://127.0.0.1:54321/functions/v1/citycoin-market/rate/current?citySlug=tcoin ...`
+- `curl -i http://127.0.0.1:54321/functions/v1/wallet-operations/contacts/imports ...`
+- Browser smoke via Playwright against `http://127.0.0.1:3002/dashboard?tab=contacts`
+
+### Files Edited
+- `supabase/functions/bia-service/index.ts`
+- `supabase/functions/citycoin-market/index.ts`
+- `supabase/functions/control-plane/index.ts`
+- `supabase/functions/governance/index.ts`
+- `supabase/functions/merchant-applications/index.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/payment-requests/index.ts`
+- `supabase/functions/redemptions/index.ts`
+- `supabase/functions/store-operations/index.ts`
+- `supabase/functions/user-requests/index.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/functions/voucher-runtime/index.ts`
+- `supabase/functions/wallet-operations/index.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.117
+### Timestamp
+- 2026-04-02 00:13 EDT
+
+### Objective
+- Reduce mobile authenticated-dashboard chrome so phone-sized layouts use less nested card framing and more content space.
+
+### What Changed
+- Flattened the shared authenticated wallet panel primitives on phone widths so the main panel, muted panel, and metric-tile shells now read as transparent sections with horizontal dividers instead of stacked boxed cards.
+- Tightened the wallet home grids and spacing on small screens and adjusted the account/merchant sub-panels so the mobile home tab wastes less space on nested framing.
+- Added a regression to lock in the mobile-first flattening rule while keeping the larger-screen card styling intact from `sm` upwards.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/components/dashboard/AccountCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.116
+### Timestamp
+- 2026-04-01 23:54 EDT
+
+### Objective
+- Turn the empty Contacts tab into a real invite-onboarding flow that can save imported contacts, collect manual email addresses, and queue an editable invite batch instead of stopping at a dead-end placeholder.
+
+### What Changed
+- Reworked the wallet Contacts empty state into a guided collaboration-first flow with friendlier copy, explicit loading behaviour, browser contact import where supported, manual “add another” email entry, saved imported-contact selection, and an editable invite note before queueing.
+- Added typed `wallet-operations` support for contact-import persistence and invite batching, including new `/contacts/imports` and `/contacts/invite-batches` routes plus matching client contracts.
+- Added an idempotent `v1.07` migration that creates app-scoped tables for saved contact-import approval, imported email contacts, invite batches, and batch recipients.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ContactsTab.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx shared/lib/edge/walletOperations.ts shared/lib/edge/walletOperationsClient.ts supabase/functions/_shared/walletOperations.ts supabase/functions/wallet-operations/index.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+- `shared/lib/edge/walletOperations.ts`
+- `shared/lib/edge/walletOperationsClient.ts`
+- `supabase/functions/_shared/walletOperations.ts`
+- `supabase/functions/wallet-operations/index.ts`
+- `supabase/migrations/20260402001000_v1.07_contact_invite_batches.sql`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.115
+### Timestamp
+- 2026-04-01 23:27 EDT
+
+### Objective
+- Make the authenticated header account widget reflect the saved user identity more clearly by showing the profile picture and prioritizing preferred name plus email.
+
+### What Changed
+- Updated the navbar account widget to source identity chrome from the normalized wallet user-settings bootstrap first, including the saved profile image.
+- Changed both the closed account trigger and the opened dropdown summary to lead with preferred name and email instead of the old username-first summary.
+- Expanded the navbar regression to assert the preferred-name summary and the presence of the saved profile-image source in the account widget.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.114
+### Timestamp
+- 2026-04-01 23:04 EDT
+
+### Objective
+- Fix the Edit Profile avatar editor so the small summary preview and the larger crop editor show the same framing.
+
+### What Changed
+- Split the Edit Profile avatar preview rendering into two crop-frame calculations: one for the 80px summary circle and one for the 176px editor circle.
+- Kept both previews tied to the same underlying crop state, so changing zoom or offset now yields the same apparent crop at two different sizes instead of reusing one mismatched pixel frame.
+- Expanded the modal regression to assert that crop-frame calculation happens for both preview sizes during an image edit session.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.113
+### Timestamp
+- 2026-04-01 23:02 EDT
+
+### Objective
+- Make the More-tab Account centre use the friendlier preferred-name display rule the user expects.
+
+### What Changed
+- Updated the More-tab Account centre heading to prefer the saved preferred name (`nickname`) before falling back to the given name and only then to fuller legacy name fields.
+- Added focused regression coverage for both branches: one test confirms the preferred name is shown when present, and another confirms the heading falls back to the given name when the preferred name is blank.
+- Documented the Account centre naming rule in the technical and functional specs so future UI changes keep the same priority order.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.112
+### Timestamp
+- 2026-04-01 22:59 EDT
+
+### Objective
+- Make the Edit Profile modal sectioning clearer by separating account-holder details from wallet-local display settings.
+
+### What Changed
+- Reorganized the Edit Profile form so the first details card is now labeled `Banking info` and contains `Given name(s)`, last name, country, and phone.
+- Relabeled the final details card as `Info used in this app`, leaving username and preferred name grouped as wallet-local profile settings.
+- Expanded the modal regression to assert the new section headings and the updated `Given name(s)` field label.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.111
+### Timestamp
+- 2026-04-01 22:56 EDT
+
+### Objective
+- Standardize app-facing input backgrounds so editable fields read clearly as controls instead of blending into their surrounding panels.
+
+### What Changed
+- Added shared field-surface tokens in `shared/components/ui/formFieldStyles.ts` and applied them to the base text input, textarea, Radix select trigger, command-search input, file input, and OTP digit styles.
+- Updated wallet onboarding, the Edit Profile modal, BIA Preferences, and the remaining raw wallet/sparechange profile inputs to use the same surfaced treatment, and aligned the country `react-select` instances with that visual system.
+- Added a regression test for the shared field-surface tokens and cleaned up the touched SpareChange profile modal so the pass linted without new warnings.
+
+### Verification
+- `pnpm exec eslint shared/components/ui/Input.tsx shared/components/ui/TextArea.tsx shared/components/ui/Select.tsx shared/components/ui/command.tsx shared/components/ui/ImageUpload.tsx shared/components/ui/formFieldStyles.ts shared/components/ui/formFieldStyles.test.ts app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/welcome/page.tsx app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/sparechange/components/forms/OTPForm.tsx app/tcoin/sparechange/components/modals/UserProfileModal.tsx`
+- `pnpm exec vitest run shared/components/ui/formFieldStyles.test.ts app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `shared/components/ui/formFieldStyles.ts`
+- `shared/components/ui/formFieldStyles.test.ts`
+- `shared/components/ui/Input.tsx`
+- `shared/components/ui/TextArea.tsx`
+- `shared/components/ui/Select.tsx`
+- `shared/components/ui/command.tsx`
+- `shared/components/ui/ImageUpload.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/forms/OTPForm.tsx`
+- `app/tcoin/sparechange/components/modals/UserProfileModal.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.110
+### Timestamp
+- 2026-04-01 22:47 EDT
+
+### Objective
+- Make the Edit Profile country field more intentional by changing the label and only showing matching country options after the user starts typing.
+
+### What Changed
+- Renamed the Edit Profile field to “Country or Country number” so the dial-code use case is explicit.
+- Updated the `react-select` configuration to keep the country menu closed on focus, open only once there is typed input, and filter against both the visible country label and the stored country code.
+- Added a focused modal regression to confirm the picker stays closed until typing begins and then reveals the matching option list.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.109
+### Timestamp
+- 2026-04-01 22:43 EDT
+
+### Objective
+- Stop forcing square profile photos in Edit Profile, and add a signed-in framing step so users can place any uploaded image correctly inside the circular avatar.
+
+### What Changed
+- Added a client-side profile-picture preparation and crop helper that reads the selected image dimensions, builds a local preview model, and exports the framed result as a cropped square PNG for upload.
+- Reworked the Edit Profile modal to accept any image, show a circular preview immediately after selection, and expose zoom plus horizontal or vertical positioning controls depending on the photo shape and crop state.
+- Updated the shared avatar image styling to use `object-cover`, and expanded the modal regression test to cover the new framing flow and cropped upload path.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx shared/lib/profilePictureCrop.ts shared/components/ui/Avatar.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.test.tsx`
+- `shared/lib/profilePictureCrop.ts`
+- `shared/components/ui/Avatar.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.108
+### Timestamp
+- 2026-04-01 22:33:51 EDT
+
+### Objective
+- Patch the missing `user_identifier` write path so wallet setup and related authenticated flows actually create the shareable identifier that receive-QR lookup depends on.
+
+### What Changed
+- Added identifier-generation helpers in the shared user-settings backend to normalize username-based candidates, fall back to deterministic `user-<id>` identifiers, and suffix collisions safely within the length budget.
+- Wired those helpers into the canonical authenticated-user, profile-update, and wallet-custody registration flows so missing identifiers are backfilled, fallback identifiers can upgrade to username-based ones, and step 5 wallet setup now guarantees an identifier exists after custody registration.
+- Added focused unit coverage for the identifier helper rules and re-ran the welcome/auth tests to confirm the wallet-setup path still behaves correctly.
+
+### Verification
+- `pnpm exec eslint supabase/functions/_shared/userSettings.ts supabase/functions/_shared/userSettings.test.ts app/tcoin/wallet/welcome/page.tsx`
+- `pnpm exec vitest run supabase/functions/_shared/userSettings.test.ts shared/api/hooks/useAuth.test.tsx app/tcoin/wallet/welcome/page.test.tsx`
+
+### Files Edited
+- `supabase/functions/_shared/userSettings.ts`
+- `supabase/functions/_shared/userSettings.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.107
+### Timestamp
+- 2026-04-01 22:27:48 EDT
+
+### Objective
+- Make long identity fields in the More-tab `public.users` inspection card easier to read, especially `cubid_identity`.
+
+### What Changed
+- Added a wide-row treatment for JSON-heavy `public.users` fields in `MoreTab`, so `cubid_score`, `cubid_identity`, and `cubid_score_details` now render in a stacked, roomier layout instead of the tighter two-column row.
+- Switched object formatting to pretty-printed JSON and preserved wrapping with a monospace multi-line container, which gives long identity payloads more horizontal room and cleaner scanning.
+- Added a More-tab regression to assert that the long identity row uses the wide layout and keeps wrapped formatting.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.106
+### Timestamp
+- 2026-04-01 22:26:00 EDT
+
+### Objective
+- Add a bottom-of-More account-record card that shows every current `public.users` column alongside whatever value the authenticated wallet currently knows for that field.
+
+### What Changed
+- Added a schema-aligned `PUBLIC_USERS_COLUMNS` list and value-formatting helper to `MoreTab`, then rendered a new bottom section that lists each `public.users` column in order with the current authenticated value or an explicit empty placeholder.
+- Mapped the card values from the available wallet bootstrap, Cubid-style user payload, and auth session so fields like `auth_user_id`, `user_identifier`, names, contact details, booleans, timestamps, and JSON score blobs all render from the best available source.
+- Expanded the More-tab test coverage to assert that the new card renders, that known values appear in the right rows, and that empty database fields still remain visible.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.105
+### Timestamp
+- 2026-04-01 19:15:08 EDT
+
+### Objective
+- Fix the Receive tab QR bootstrap so authenticated users get their real wallet identifier, and make the fallback message distinguish between a record that is still loading and one that is actually missing.
+
+### What Changed
+- Added `userIdentifier` to the shared user-settings bootstrap type, selected `users.user_identifier` in the server bootstrap query, and preserved that value in the legacy Cubid-data mapper that `useAuth` consumes.
+- Updated `ReceiveTab` to read `isLoadingUser` from `useAuth`, so the tab now shows a true loading message only while the authenticated user record is resolving and switches to a missing-identity message once loading is complete without a `user_identifier`.
+- Extended the Receive-tab tests to cover the missing-identity and still-loading cases, and documented the corrected QR bootstrap behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx shared/lib/userSettings/types.ts shared/api/hooks/useAuth.ts shared/api/services/supabaseService.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx shared/api/hooks/useAuth.test.tsx`
+
+### Files Edited
+- `shared/lib/userSettings/types.ts`
+- `supabase/functions/_shared/userSettings.ts`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.104
+### Timestamp
+- 2026-04-01 19:05:54 EDT
+
+### Objective
+- Make exchange-rate fallback messaging precise across the wallet surfaces and move the fallback CAD estimate off the hardcoded client constant into environment configuration.
+
+### What Changed
+- Refactored `useGetLatestExchangeRate` so it exposes state-specific fallback messaging for `empty` and `setup_required`, keeps `ready` free of warning copy, and reads the fallback CAD estimate from `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE` with `3.35` as the default.
+- Updated the wallet account card, Buy TCOIN, Top Up, and off-ramp modals, plus the SpareChange off-ramp modal, to render the shared precise fallback message instead of their older hand-written “live rate unavailable” variants.
+- Added hook regressions covering the new warning semantics and the env override, documented the behaviour in the functional and technical specs, and added the new variable to `.env.local.example`.
+
+### Verification
+- `pnpm exec eslint shared/hooks/useGetLatestExchangeRate.ts shared/hooks/useGetLatestExchangeRate.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.tsx app/tcoin/wallet/components/modals/TopUpModal.tsx app/tcoin/wallet/components/modals/BuyTcoinModal.tsx app/tcoin/wallet/components/modals/OffRampModal.tsx app/tcoin/sparechange/components/modals/OffRampModal.tsx`
+- `pnpm exec vitest run shared/hooks/useGetLatestExchangeRate.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.test.tsx app/tcoin/wallet/components/modals/TopUpModal.test.tsx app/tcoin/wallet/components/modals/BuyTcoinModal.test.tsx app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+
+### Files Edited
+- `.env.local.example`
+- `shared/hooks/useGetLatestExchangeRate.ts`
+- `shared/hooks/useGetLatestExchangeRate.test.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/modals/TopUpModal.tsx`
+- `app/tcoin/wallet/components/modals/BuyTcoinModal.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `app/tcoin/sparechange/components/modals/OffRampModal.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.103
+### Timestamp
+- 2026-04-01 18:49:53 EDT
+
+### Objective
+- Unstick the Receive tab QR generator and stop showing a permanent loading state when the wallet’s shareable identifier is missing or arrives before the numeric user id.
+
+### What Changed
+- Refactored `ReceiveTab` so QR payload generation depends on the wallet `user_identifier` itself rather than the numeric `id`, which allows QR setup to proceed as soon as the shareable receive identity is available.
+- Added an explicit unavailable-state message for cases where the QR identifier is absent, replacing the indefinite “Loading QR Code...” fallback in `ReceiveCard`.
+- Added focused regressions for both the receive-tab identifier edge cases and the receive-card unavailable-state message, then documented the behavior in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.102
+### Timestamp
+- 2026-04-01 18:44:15 EDT
+
+### Objective
+- Prevent the Interac top-up modal from crashing when the legacy onramp route is missing, and surface a clearer error for that environment mismatch.
+
+### What Changed
+- Added a route-specific 404 message in the shared edge-function client so bare `Not found.` responses identify which onramp path is unavailable in the current environment.
+- Wrapped the wallet `TopUpModal` Next-step legacy Interac reference call in a `try/catch`, keeping the modal on the input step and showing a toast instead of throwing an unhandled runtime error.
+- Added focused regressions for the new 404 message and the modal’s failure handling, then documented the degraded-environment top-up behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint shared/lib/edge/core.ts shared/lib/edge/core.test.ts app/tcoin/wallet/components/modals/TopUpModal.tsx app/tcoin/wallet/components/modals/TopUpModal.test.tsx`
+- `pnpm exec vitest run shared/lib/edge/core.test.ts app/tcoin/wallet/components/modals/TopUpModal.test.tsx`
+
+### Files Edited
+- `shared/lib/edge/core.ts`
+- `shared/lib/edge/core.test.ts`
+- `app/tcoin/wallet/components/modals/TopUpModal.tsx`
+- `app/tcoin/wallet/components/modals/TopUpModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.101
+### Timestamp
+- 2026-04-01 17:49:04 EDT
+
+### Objective
+- Make the authenticated theme icon communicate `system`, `light`, and `dark` clearly so theme changes never appear to do nothing.
+
+### What Changed
+- Refactored the wallet navbar theme button to use the shared `themeMode` value directly instead of inferring state from resolved dark mode alone.
+- Added an explicit three-state cycle (`system -> light -> dark -> system`), a dedicated system/laptop icon, and current/next-state labels on the button so the control always communicates what mode is active and what a click will do next.
+- Added focused tests covering the explicit system state plus all three cycle transitions and persisted theme writes, then documented the new behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/ThemeToggleButton.tsx app/tcoin/wallet/components/navbar/ThemeToggleButton.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/ThemeToggleButton.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/ThemeToggleButton.tsx`
+- `app/tcoin/wallet/components/navbar/ThemeToggleButton.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.100
+### Timestamp
+- 2026-04-01 17:46:33 EDT
+
+### Objective
+- Stop authenticated mobile and tablet layouts from shifting sideways between tab changes when the footer is visible and scrollbar presence changes.
+
+### What Changed
+- Marked authenticated non-public wallet routes as a dedicated mobile/tablet frame and inner scroll region so the signed-in shell, not the viewport, owns vertical scrolling under `1024px`.
+- Added shared authenticated scrollbar styling that reserves a stable gutter, keeps the scrollbar thin and low-contrast, and lets it sit inside the shell instead of pushing the whole layout left and right as tabs change height.
+- Added a focused `ContentLayout` regression test to confirm the scroll-frame classes apply only to authenticated non-public wallet routes, then documented the behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/ContentLayout.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/ContentLayout.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.99
+### Timestamp
+- 2026-04-01 17:43:39 EDT
+
+### Objective
+- Use ultra-wide desktop space more efficiently on authenticated Home and More so key wallet content fits with less vertical scrolling.
+
+### What Changed
+- Expanded the shared authenticated shell again at `min-[1850px]`, increasing the signed-in page max width and restoring some horizontal space specifically for ultra-wide desktop layouts.
+- Reworked `WalletHome` into broader three-track desktop compositions where the summary, send, and support rows give the primary task surfaces wider spans and use the extra width for parallel panels instead of taller stacking.
+- Updated `MoreTab` so the account-centre overview becomes a three-column layout and the lower action-section grid grows from two columns to three on ultra-wide screens, making better use of large desktop space.
+- Added focused breakpoint regressions for the new Home and More grid classes, then documented the ultra-wide layout behaviour in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.98
+### Timestamp
+- 2026-04-01 17:35:00 EDT
+
+### Objective
+- Make the active tab in the authenticated sidebar and footer obvious at a glance, and stop permanently highlighting Send.
+
+### What Changed
+- Refactored `DashboardFooter` so the strong primary-filled icon treatment, raised mobile offset, and stronger label weight now follow the selected tab instead of being hardcoded to Send.
+- Applied that same active-state rule across both the mobile footer and the desktop sidebar, so the selected destination uses one consistent visual language in both nav layouts.
+- Updated the footer regression tests to assert that active-state styling follows the current tab and that inactive Send returns to the neutral state, then documented the change in the functional and technical specs.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/DashboardFooter.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.97
+### Timestamp
+- 2026-04-01 17:32:00 EDT
+
+### Objective
+- Hide scan controls on devices without a reported camera and keep QR-scan flows from presenting broken camera UI there.
+
+### What Changed
+- Added a shared `useCameraAvailability()` hook that detects whether the browser reports any `videoinput` devices, along with whether multiple cameras are available.
+- Updated wallet and sparechange scan entry points to hide header and send-flow scan buttons when no camera is available, and prevented SpareChange’s deferred `openQR` flow from reopening the scanner on camera-less devices.
+- Refactored both QR-scan modals to reuse the shared camera capability state, keep flip-camera support when multiple cameras exist, and show a clear non-camera fallback message instead of always mounting the scanner.
+- Added focused tests for the new camera hook plus wallet navbar and send-tab camera gating, then updated the functional and technical specs to document the capability rule.
+
+### Verification
+- `pnpm exec eslint shared/hooks/useCameraAvailability.ts shared/hooks/useCameraAvailability.test.tsx app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/SendTab.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx app/tcoin/wallet/components/modals/QrScanModal.tsx app/tcoin/sparechange/components/navbar/Navbar.tsx app/tcoin/sparechange/components/modals/QrScanModal.tsx app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+- `pnpm exec vitest run shared/hooks/useCameraAvailability.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+
+### Files Edited
+- `shared/hooks/useCameraAvailability.ts`
+- `shared/hooks/useCameraAvailability.test.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `app/tcoin/wallet/components/modals/QrScanModal.tsx`
+- `app/tcoin/sparechange/components/navbar/Navbar.tsx`
+- `app/tcoin/sparechange/components/modals/QrScanModal.tsx`
+- `app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.96
+### Timestamp
+- 2026-04-01 17:25:00 EDT
+
+### Objective
+- Make clickable controls visually distinct from non-clickable frames across the authenticated wallet without depending on hover.
+
+### What Changed
+- Split the shared authenticated surface styling into quieter static panels and more obviously interactive surfaces, giving clickable cards and rows a persistent teal edge, ring, and stronger at-rest control treatment.
+- Applied that interactive treatment to the wallet’s shared action rows and choice cards, the small authenticated action buttons, global outline-style buttons, the Recents contact tiles, and the Send-card contact suggestion rows so the distinction carries across dashboard and modal flows.
+- Added focused regressions for the shared interaction-language tokens, the outline button variant, and the custom Recents and Send-card clickable tiles, then updated the functional and technical specs to document the new affordance rule.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/SendCard.tsx app/tcoin/wallet/components/dashboard/SendCard.test.tsx shared/components/ui/Button.tsx shared/components/ui/Button.test.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/SendCard.test.tsx shared/components/ui/Button.test.ts`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.test.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+- `shared/components/ui/Button.tsx`
+- `shared/components/ui/Button.test.ts`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.95
+### Timestamp
+- 2026-04-01 00:42:00 EDT
+
+### Objective
+- Improve readability in the More tab by letting action-row body copy use the full available text width.
+
+### What Changed
+- Refactored the shared More-tab action row layout from a flex row into a three-column grid so the icon, text, and meta/chevron areas have explicit structure.
+- Moved the action-row description onto `col-[2/4]`, allowing the body copy in the Community defaults and Workspaces and previews cards to span the full right-side text area instead of wrapping in a narrow centre strip.
+- Added a focused More-tab regression test and updated the functional and technical specs to document the wider action-row copy behaviour.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.94
+### Timestamp
+- 2026-04-01 00:27:00 EDT
+
+### Objective
+- Make the authenticated home and More screens denser on large displays so users can see more without extra scrolling.
+
+### What Changed
+- Widened the shared authenticated page shell to `max-w-[90rem]` and reduced large-screen outer padding so `/dashboard` and `/dashboard?tab=more` use more of the available viewport width.
+- Tightened large-screen section and grid spacing in the authenticated home and More surfaces so balance, shortcuts, and account-centre content sit higher on the page.
+- Updated the functional and technical specs to document the new desktop-density behaviour for the authenticated wallet shell.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.93
+### Timestamp
+- 2026-04-01 00:02:00 EDT
+
+### Objective
+- Prevent the More-tab cash-out modal from crashing when Cubid phone-stamp lookup fails in local or degraded environments.
+
+### What Changed
+- Wrapped the Cubid SDK phone-stamp prefill in a fail-safe path so `fetchStamps(...)` errors no longer bubble into an unhandled runtime exception during modal mount.
+- Kept the cash-out modal usable after lookup failure by falling back to manual phone entry and showing a short explanatory note in the phone-verification section.
+- Added a focused regression test that simulates a Cubid 404 and confirms the modal stays mounted in the manual-entry state, then updated the functional and technical specs to document the graceful-degradation rule.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/modals/OffRampModal.tsx app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.92
+### Timestamp
+- 2026-03-31 23:49:00 EDT
+
+### Objective
+- Refactor the authenticated More tab into a clearer account centre and align its linked modals and workspaces with the same signed-in wallet UX.
+
+### What Changed
+- Rebuilt `/dashboard?tab=more` around a stronger account-centre layout with identity, wallet address and explorer access, defaults summaries, grouped settings/actions, and the moved wallet-optimisation guidance.
+- Removed wallet-address and optimisation explainer chrome from the authenticated home screen so `/dashboard` stays focused on balance, money movement, recents, and a handoff into More for account settings.
+- Restyled the More-linked modal bodies and operator pages to share calmer signed-in hierarchy and grouped task panels, including profile, theme, BIA, voucher-routing, charity, future-features, cash-out, merchant, city-manager, and admin surfaces.
+- Added focused regression coverage for the More tab, wallet home, account card, merchant page, and key modals, then updated the functional and technical specs to document the new account-centre model.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.test.tsx app/tcoin/wallet/components/modals/CharitySelectModal.test.tsx app/tcoin/wallet/components/modals/UserProfileModal.test.tsx app/tcoin/wallet/admin/page.test.tsx app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/merchant/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/AccountCard.tsx app/tcoin/wallet/components/dashboard/AccountCard.test.tsx app/tcoin/wallet/components/modals/ThemeSelectModal.tsx app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx app/tcoin/wallet/components/modals/VoucherRoutingPreferencesModal.tsx app/tcoin/wallet/components/modals/CharityContributionsModal.tsx app/tcoin/wallet/components/modals/CharitySelectModal.tsx app/tcoin/wallet/components/modals/FutureAppFeaturesModal.tsx app/tcoin/wallet/components/modals/OffRampModal.tsx app/tcoin/wallet/components/modals/UserProfileModal.tsx app/tcoin/wallet/admin/page.tsx app/tcoin/wallet/city-manager/page.tsx app/tcoin/wallet/merchant/page.tsx app/tcoin/wallet/merchant/LiveMerchantDashboard.tsx app/tcoin/wallet/merchant/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.test.tsx`
+- `app/tcoin/wallet/components/modals/ThemeSelectModal.tsx`
+- `app/tcoin/wallet/components/modals/BiaPreferencesModal.tsx`
+- `app/tcoin/wallet/components/modals/VoucherRoutingPreferencesModal.tsx`
+- `app/tcoin/wallet/components/modals/CharityContributionsModal.tsx`
+- `app/tcoin/wallet/components/modals/CharitySelectModal.tsx`
+- `app/tcoin/wallet/components/modals/FutureAppFeaturesModal.tsx`
+- `app/tcoin/wallet/components/modals/OffRampModal.tsx`
+- `app/tcoin/wallet/components/modals/UserProfileModal.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/tcoin/wallet/merchant/LiveMerchantDashboard.tsx`
+- `app/tcoin/wallet/merchant/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.91
+### Timestamp
+- 2026-03-31 23:56:00 EDT
+
+### Objective
+- Align the authenticated More-linked operator pages with the shared dashboard shell and navigation chrome.
+
+### What Changed
+- Switched `/city-manager` and `/merchant` onto the shared authenticated `walletPageClass` wrapper so they inherit the same dashboard padding and desktop sidebar offsets as `/dashboard`.
+- Refactored `/admin` to use that same shell across loading, restricted, error, and normal states, and mounted the shared `DashboardFooter` so the side and bottom navigation stay available there too.
+- Added focused route regression coverage for the city-manager, merchant, and admin pages, and updated the functional and technical specs to document the shared shell requirement for More-linked authenticated routes.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/merchant/page.test.tsx app/tcoin/wallet/admin/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/city-manager/page.tsx app/tcoin/wallet/city-manager/page.test.tsx app/tcoin/wallet/merchant/page.tsx app/tcoin/wallet/merchant/page.test.tsx app/tcoin/wallet/admin/page.tsx app/tcoin/wallet/admin/page.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/city-manager/page.tsx`
+- `app/tcoin/wallet/city-manager/page.test.tsx`
+- `app/tcoin/wallet/merchant/page.tsx`
+- `app/tcoin/wallet/merchant/page.test.tsx`
+- `app/tcoin/wallet/admin/page.tsx`
+- `app/tcoin/wallet/admin/page.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.90
+### Timestamp
+- 2026-03-31 23:24:02 EDT
+
+### Objective
+- Make authenticated wallet modals use the signed-in wallet shell styling instead of the landing-page modal chrome.
+
+### What Changed
+- Added a route-aware modal theme handoff so authenticated non-public wallet routes automatically pass `wallet-auth-shell font-sans` into the shared modal layer.
+- Restyled the shared modal component to use authenticated shell panel, typography, and close-button chrome whenever that theme is present, covering the signed-in wallet modals from contacts, buy/top-up, off-ramp, profile, theme, BIA, voucher, charity, future-features, and admin flows.
+- Added a focused modal regression test and updated the functional and technical specs to document the authenticated modal theme behaviour.
+
+### Verification
+- `pnpm exec vitest run shared/components/ui/Modal.test.tsx`
+- `pnpm exec eslint shared/contexts/ModalContext.tsx shared/components/ui/Modal.tsx shared/components/ui/Modal.test.tsx app/tcoin/wallet/layout.tsx`
+
+### Files Edited
+- `shared/contexts/ModalContext.tsx`
+- `shared/components/ui/Modal.tsx`
+- `shared/components/ui/Modal.test.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.89
+### Timestamp
+- 2026-03-31 17:38:28 EDT
+
+### Objective
+- Make the authenticated header and navigation controls use the wallet app’s sans-serif UI font instead of inheriting the landing page font.
+
+### What Changed
+- Added explicit `font-sans` overrides to the authenticated navbar shell, account control, dropdown, nav links, mobile footer, desktop sidebar rail, and footer buttons.
+- Added focused navbar/footer regression checks that assert the authenticated chrome keeps its sans-serif font override in place.
+- Updated the functional and technical specs to document the authenticated chrome font override.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/NavLink.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/NavLink.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.88
+### Timestamp
+- 2026-03-31 17:36:06 EDT
+
+### Objective
+- Make the authenticated sidebar feel proportionate on mid/large screens and tone down the main-screen scale on phone-sized devices.
+
+### What Changed
+- Widened the authenticated desktop sidebar, increased its compact label/icon sizing, and adjusted the dashboard/contact-page left offsets so the larger rail stays balanced against the main workspace.
+- Reduced the shared authenticated shell scale on small devices by tightening page gaps, outer padding, panel padding, badge sizing, action-chip sizing, and intro typography.
+- Added a sidebar sizing regression check and documented the new responsive shell sizing rules in the functional and technical specs.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/dashboard/page.tsx 'app/tcoin/wallet/dashboard/contacts/[id]/page.tsx'`
+
+### Files Edited
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.87
+### Timestamp
+- 2026-03-31 17:30:29 EDT
+
+### Objective
+- Keep the authenticated header visible on midsized and large screens while preserving the phone-sized hide-on-scroll behaviour.
+
+### What Changed
+- Updated the authenticated wallet navbar so both scroll-driven hiding and `hide-header` event handling only apply below the phone breakpoint.
+- Added resize handling so the header snaps back into view when the viewport widens from phone size to tablet or desktop.
+- Added navbar tests that lock in the new desktop-visible and phone-hide behaviour, and documented the responsive header rule in the specs.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/DashboardFooter.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.86
+### Timestamp
+- 2026-03-31 17:26:52 EDT
+
+### Objective
+- Remove the remaining large-screen send-tab padding that was still collapsing the payment workspace into a narrow centre column.
+
+### What Changed
+- Removed the send tab’s `lg:px-[25vw]` wrapper padding so the desktop send flow now uses the same authenticated workspace width as the rest of the wallet dashboard.
+- Trimmed the local action-switcher panel padding slightly and added a focused regression check that guards against reintroducing the oversized desktop padding class.
+- Updated the functional and technical specs to document the corrected send-tab width behaviour.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/SendTab.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.85
+### Timestamp
+- 2026-03-31 16:52:00 EDT
+
+### Objective
+- Make the auth modal’s email input behave like a proper browser-recognized email field.
+
+### What Changed
+- Tagged the wallet OTP form’s pre-send email input with standard email-field attributes, including `name="email"` and `autoComplete="email"`, plus email keyboard/autocorrect hints.
+- Added a focused OTP form test to lock in the expected email semantics before passcode submission.
+- Updated the functional and technical specs to document the browser-recognizable auth email field behaviour.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/forms/OTPForm.tsx app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/forms/OTPForm.tsx`
+- `app/tcoin/wallet/components/forms/OTPForm.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.84
+### Timestamp
+- 2026-03-31 14:32:13 EDT
+
+### Objective
+- Restore a mobile path to transaction history now that the compact footer omits the dedicated History tab on small screens.
+
+### What Changed
+- Added a small-screen-only History button to the More tab so mobile users can still reach transaction history from the authenticated wallet overflow menu.
+- Passed the dashboard tab-navigation callback into `MoreTab`, keeping the new mobile History action aligned with the existing URL-backed tab routing.
+- Updated the functional and technical specs to document the mobile overflow behaviour.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/dashboard/page.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.83
+### Timestamp
+- 2026-03-31 14:29:51 EDT
+
+### Objective
+- Make the authenticated wallet send and receive tabs use the full dashboard workspace width on large screens.
+
+### What Changed
+- Removed the nested width cap from the send tab so the payment form now expands across the same signed-in content column as the rest of the wallet dashboard.
+- Removed the nested width cap from the receive tab so request and QR surfaces no longer render slightly narrower than adjacent authenticated tabs.
+- Updated the functional and technical specs to document the full-width authenticated send/receive layout behaviour.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/components/dashboard/SendCard.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- Browser route checks on `http://127.0.0.1:3002/dashboard?tab=send` and `http://127.0.0.1:3002/dashboard?tab=receive` confirmed both deep links still resolve cleanly in signed-out preview mode; no authenticated local session was available to visually exercise the widened tabs.
+
+### Files Edited
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.82
+### Timestamp
+- 2026-03-31 13:55:13 EDT
+
+### Objective
+- Clean up the local smoke-test blockers on wallet routes so signed-out preview mode stops generating avoidable runtime noise and React DOM warnings.
+
+### What Changed
+- Added a signed-out wallet preview state on `/dashboard` so local-dev bypass no longer mounts authenticated wallet tabs and their protected edge requests before a user signs in.
+- Scoped Cubid wallet runtime providers to authenticated non-public wallet routes, which suppresses WalletConnect boot on public and signed-out preview pages.
+- Updated the shared `Input` component to strip legacy presentation props such as `label` and `elSize` before they hit the DOM.
+- Added a simple app icon so the local app no longer requests a missing favicon by default.
+- Extended the dashboard test coverage to assert the new signed-out preview behaviour.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/layout.tsx shared/components/ui/Input.tsx`
+- Browser smoke pass on `http://127.0.0.1:3000/dashboard` confirmed the signed-out dashboard preview renders with `0` console errors and only existing dev warnings.
+
+### Files Edited
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `shared/components/ui/Input.tsx`
+- `app/icon.svg`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.81
+### Timestamp
+- 2026-03-27 01:54:59 EDT
+
+### Objective
+- Reimagine the authenticated Toronto Coin wallet experience so it feels sleeker, simpler, and more familiar to novice users while leaving the public wallet pages unchanged.
+
+### What Changed
+- Added a dedicated authenticated wallet shell with scoped theme tokens, calmer light/dark palettes, and a frosted-surface visual system that applies only to signed-in wallet routes.
+- Refactored the authenticated navbar and wallet footer navigation into lighter, pill-based controls with clearer scan/account affordances.
+- Restructured the wallet dashboard around a summary-first home screen with a stronger account overview, explicit quick actions, recent contacts, and simplified supporting panels.
+- Restyled the authenticated send, receive, contacts, history, more, contributions, and contact-profile surfaces to share the same bank-style interaction language without changing their underlying data contracts.
+- Updated the functional and technical specs to document the new authenticated-shell separation from the public wallet pages.
+
+### Verification
+- `pnpm install --frozen-lockfile`
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/DashboardFooter.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/ContactsTab.test.tsx`
+- `pnpm exec eslint app/tcoin/wallet/dashboard/page.tsx app/tcoin/wallet/components/DashboardFooter.tsx app/tcoin/wallet/components/navbar/Navbar.tsx app/tcoin/wallet/components/dashboard/authenticated-ui.tsx app/tcoin/wallet/components/dashboard/WalletHome.tsx app/tcoin/wallet/components/dashboard/AccountCard.tsx app/tcoin/wallet/components/dashboard/SendCard.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.tsx app/tcoin/wallet/components/dashboard/ReceiveTab.tsx app/tcoin/wallet/components/dashboard/ContactsTab.tsx app/tcoin/wallet/components/dashboard/ContributionsCard.tsx app/tcoin/wallet/components/dashboard/MoreTab.tsx app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx 'app/tcoin/wallet/dashboard/contacts/[id]/page.tsx' app/tcoin/wallet/ContentLayout.tsx`
+- `pnpm lint`
+
+### Files Edited
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `app/tcoin/wallet/dashboard/contacts/[id]/page.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/dashboard/authenticated-ui.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/AccountCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContactsTab.tsx`
+- `app/tcoin/wallet/components/dashboard/ContributionsCard.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
 ## v1.80
 ### Timestamp
 - 2026-03-26 00:14:52 EDT

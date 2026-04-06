@@ -3,20 +3,24 @@ import QRCode from "react-qr-code";
 import { LuShare2, LuUsers, LuX } from "react-icons/lu";
 import { toast } from "react-toastify";
 import { Button } from "@shared/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
-import useDarkMode from "@shared/hooks/useDarkMode";
 import { cn } from "@shared/utils/classnames";
 import { ContactSelectModal, ShareQrModal } from "@tcoin/wallet/components/modals";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Hypodata, InvoicePayRequest } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
+import type { PaymentRequestLinkMode } from "@shared/lib/edge/paymentRequestLinks";
+import { walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
 
 export function ReceiveCard({
   qrCodeData,
   qrTcoinAmount,
   qrCadAmount,
+  qrLinkMode = "rotating_multi_use",
+  qrLinkExpiresAt = null,
+  isGeneratingQrCode = false,
+  onSwitchQrLinkMode,
   handleQrTcoinChange,
   handleQrCadChange,
   senderWallet,
@@ -25,6 +29,7 @@ export function ReceiveCard({
   qrBgColor,
   qrFgColor,
   qrWrapperClassName,
+  qrUnavailableReason = null,
   tokenLabel = "Tcoin",
   requestContact = null,
   onClearRequestContact,
@@ -39,6 +44,10 @@ export function ReceiveCard({
   qrCodeData: string;
   qrTcoinAmount: string;
   qrCadAmount: string;
+  qrLinkMode?: PaymentRequestLinkMode;
+  qrLinkExpiresAt?: string | null;
+  isGeneratingQrCode?: boolean;
+  onSwitchQrLinkMode?: (mode: PaymentRequestLinkMode) => void;
   handleQrTcoinChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleQrCadChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   senderWallet: string;
@@ -47,6 +56,7 @@ export function ReceiveCard({
   qrBgColor?: string;
   qrFgColor?: string;
   qrWrapperClassName?: string;
+  qrUnavailableReason?: string | null;
   tokenLabel?: string;
   requestContact?: Hypodata | null;
   onClearRequestContact?: () => void;
@@ -62,7 +72,6 @@ export function ReceiveCard({
   onDeleteRequest?: (requestId: number) => Promise<void>;
   showQrCode?: boolean;
 }) {
-  const { isDarkMode } = useDarkMode();
   const { openModal, closeModal } = useModal();
   void senderWallet;
 
@@ -135,6 +144,39 @@ export function ReceiveCard({
       label: formatRequestAmount(amount),
       note: null,
     };
+  };
+
+  const formatSavedRequestTimestamp = (value: string) => {
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return null;
+    }
+
+    const dateLabel = new Intl.DateTimeFormat("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(parsedDate);
+
+    const timeParts = new Intl.DateTimeFormat("en-CA", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).formatToParts(parsedDate);
+
+    const hour = timeParts.find((part) => part.type === "hour")?.value ?? "";
+    const minute = timeParts.find((part) => part.type === "minute")?.value ?? "";
+    const dayPeriod = (
+      timeParts.find((part) => part.type === "dayPeriod")?.value ?? ""
+    )
+      .replace(/\./g, "")
+      .toLowerCase();
+
+    if (!hour || !minute) {
+      return `Saved ${dateLabel}`;
+    }
+
+    return `Saved ${dateLabel} at ${hour}.${minute}${dayPeriod ? ` ${dayPeriod}` : ""}`;
   };
 
   const contactNamesById = React.useMemo(() => {
@@ -232,14 +274,40 @@ export function ReceiveCard({
     });
   };
 
-  const rawAmount = qrTcoinAmount?.trim() ?? "";
-  const cleanedAmount = rawAmount
-    .replace(new RegExp(`\\s*${uppercaseToken}\\s*$`, "i"), "")
-    .trim();
-  const hasAmount = cleanedAmount !== "" && cleanedAmount !== "0.00";
-  const qrCaption = hasAmount
-    ? `Receive ${cleanedAmount} ${uppercaseToken}`
+  const parsedQrTcoinAmount = parseAmountFromString(qrTcoinAmount);
+  const parsedQrCadAmount = parseAmountFromString(qrCadAmount);
+  const qrCaption = parsedQrTcoinAmount
+    ? `Receive ${formatRequestAmount(parsedQrTcoinAmount)}${
+        parsedQrCadAmount ? ` (${formatCadAmount(parsedQrCadAmount)})` : ""
+      }`
     : "Receive any amount";
+  const qrModeLabel =
+    qrLinkMode === "single_use" ? "Long-lived one-time QR" : "Rotating secure QR";
+  const qrModeDescription =
+    qrLinkMode === "single_use"
+      ? "This QR code will work only once."
+      : "This QR code can be shown to multiple people.";
+  const qrExpiryLabel = React.useMemo(() => {
+    if (!qrLinkExpiresAt) {
+      return null;
+    }
+
+    if (qrLinkMode === "rotating_multi_use") {
+      return "Expires within 60 seconds";
+    }
+
+    const expiresAtMs = Date.parse(qrLinkExpiresAt);
+    if (!Number.isFinite(expiresAtMs)) {
+      return null;
+    }
+
+    const remainingDays = Math.max(
+      1,
+      Math.ceil((expiresAtMs - Date.now()) / (24 * 60 * 60 * 1000))
+    );
+
+    return `Expires in ${remainingDays} ${remainingDays === 1 ? "day" : "days"}`;
+  }, [qrLinkExpiresAt, qrLinkMode]);
 
   const formatContactName = (contact: Hypodata) =>
     contact.full_name?.trim() || contact.username?.trim() || "Unknown";
@@ -413,151 +481,234 @@ export function ReceiveCard({
   const shouldShowQrCode = showQrCode && !requestContact;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Receive</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 mt-[-10px]">
-        <div
-          className={cn(
-            "relative flex flex-col items-center justify-center rounded-xl transform transition duration-500 hover:scale-105",
-            qrWrapperClassName ?? "p-2"
-          )}
-        >
-          {shouldShowQrCode ? (
-            qrCodeData ? (
-              <>
-                <p className="mb-3 text-center text-base font-semibold text-gray-900">
-                  {qrCaption}
+    <section className={`${walletPanelClass} space-y-5`}>
+      <div className="space-y-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+          Receive money
+        </p>
+        <h2 className="text-2xl font-semibold tracking-[-0.04em]">Receive</h2>
+      </div>
+      <div
+        data-testid="receive-layout"
+        className="grid gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start"
+      >
+        <div className="space-y-4">
+          <div
+            data-testid="receive-qr-stage"
+            className={cn(
+              "relative mx-auto flex aspect-square w-full max-w-[26rem] flex-col items-center justify-center gap-3 rounded-[24px] bg-white p-4 text-slate-950 shadow-[0_18px_45px_-28px_rgba(15,23,42,0.45)] transition duration-500 hover:scale-[1.01] sm:p-5",
+              qrWrapperClassName
+            )}
+          >
+            {shouldShowQrCode ? (
+              qrCodeData ? (
+                <>
+                  <div className="space-y-1 text-center">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-700">
+                      {qrModeLabel}
+                    </p>
+                    {qrExpiryLabel ? (
+                      <p className="text-xs text-slate-700">{qrExpiryLabel}</p>
+                    ) : null}
+                  </div>
+                  <p className="text-center text-base font-semibold text-slate-950">
+                    {qrCaption}
+                  </p>
+                  <QRCode
+                    value={qrCodeData}
+                    size={250}
+                    bgColor={qrBgColor ?? "transparent"}
+                    fgColor={qrFgColor ?? "#000"}
+                  />
+                  <div className="space-y-2 text-center">
+                    <p className="text-xs text-slate-700">{qrModeDescription}</p>
+                    {onSwitchQrLinkMode ? (
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-slate-900 underline underline-offset-4"
+                        onClick={() =>
+                          onSwitchQrLinkMode(
+                            qrLinkMode === "single_use"
+                              ? "rotating_multi_use"
+                              : "single_use"
+                          )
+                        }
+                      >
+                        {qrLinkMode === "single_use"
+                          ? "Back to rotating QR"
+                          : "Switch to long-lived QR"}
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              ) : qrUnavailableReason ? (
+                <p className="text-center text-sm text-slate-700">{qrUnavailableReason}</p>
+              ) : (
+                <p className="text-center text-sm text-slate-700">
+                  {isGeneratingQrCode ? "Generating pay link..." : "Loading QR Code..."}
                 </p>
-                <QRCode
-                  value={qrCodeData}
-                  size={250}
-                  bgColor={qrBgColor ?? "transparent"}
-                  fgColor={qrFgColor ?? (isDarkMode ? "#fff" : "#000")}
-                />
-              </>
+              )
             ) : (
-              <p className="text-sm text-muted-foreground">Loading QR Code...</p>
-            )
-          ) : (
-            <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-sm text-slate-700">
               QR code hidden while preparing a direct contact request.
             </p>
           )}
-        </div>
-        <div className="space-y-2">
-          <p>{tokenLabel}</p>
-          <Input
-            name="qrTcoin"
-            elSize="md"
-            label={tokenLabel}
-            className="w-full"
-            value={qrTcoinAmount}
-            onChange={handleQrTcoinChange}
-            onBlur={handleQrTcoinBlur}
-            placeholder={`Enter ${tokenLabel.toUpperCase()} amount`}
-          />
-          <p>Cad</p>
-          <Input
-            name="qrCad"
-            elSize="md"
-            label="Cad"
-            className="w-full"
-            value={qrCadAmount}
-            onChange={handleQrCadChange}
-            onBlur={handleQrCadBlur}
-            placeholder="Enter CAD amount"
-          />
-        </div>
-        {requestContact && (
-          <div className="rounded-2xl border border-border bg-background/70 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-11 w-11">
-                  <AvatarImage
-                    src={requestContact.profile_image_url ?? undefined}
-                    alt={formatContactName(requestContact)}
-                  />
-                  <AvatarFallback>
-                    {formatContactName(requestContact).charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    Request From:
-                  </p>
-                  <p className="text-sm font-medium">
-                    {formatContactName(requestContact)}
-                  </p>
-                  {requestContact.username && (
-                    <p className="text-xs text-muted-foreground">
-                      @{requestContact.username}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {onClearRequestContact && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClearRequestContact}
-                  aria-label="Clear request contact"
-                >
-                  <LuX className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
           </div>
-        )}
-        <div className="flex flex-col gap-4 sm:flex-row">
-          {requestContact ? (
-            <Button className="flex-1" onClick={handleReviewClick}>
-              Review Request
-            </Button>
-          ) : (
-            <>
-              <Button className="flex-1" onClick={handleRequestClick}>
-                <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
-              </Button>
-              <Button className="flex-1" onClick={handleShareableRequest}>
-                <LuShare2 className="mr-2 h-4 w-4" /> Create a shareable request
-              </Button>
-            </>
-          )}
         </div>
-        {hasOpenRequests && (
-          <div className="space-y-4 rounded-2xl border border-border/60 bg-background/60 p-4">
-            <h3 className="text-sm font-semibold">Payment requests I have sent</h3>
-            {shareableRequests.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">
-                  Shareable
-                </p>
-                {shareableRequests.map((request) => {
-                  const amountValue = normaliseAmount(request.amountRequested);
-                  const { label, note } = describeRequestAmount(amountValue);
-                  return (
-                    <div
-                      key={request.id}
-                      className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/50 bg-background/80 p-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{label}</p>
-                        {note && (
-                          <p className="text-xs text-muted-foreground">{note}</p>
-                        )}
-                        {request.createdAt && (
-                          <p className="text-xs text-muted-foreground">
-                            Saved {new Date(request.createdAt).toLocaleDateString("en-CA")}
-                          </p>
-                        )}
+        <div className="space-y-4">
+          <div
+            data-testid="receive-controls"
+            className={`${walletPanelMutedClass} space-y-3`}
+          >
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{tokenLabel}</p>
+            </div>
+            <Input
+              name="qrTcoin"
+              elSize="md"
+              label={tokenLabel}
+              className="wallet-auth-input h-12 w-full rounded-2xl"
+              value={qrTcoinAmount}
+              onChange={handleQrTcoinChange}
+              onBlur={handleQrTcoinBlur}
+              placeholder={`Enter ${tokenLabel.toUpperCase()} amount`}
+            />
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Cad</p>
+            <Input
+              name="qrCad"
+              elSize="md"
+              label="Cad"
+              className="wallet-auth-input h-12 w-full rounded-2xl"
+              value={qrCadAmount}
+              onChange={handleQrCadChange}
+              onBlur={handleQrCadBlur}
+              placeholder="Enter CAD amount"
+            />
+          </div>
+          {requestContact && (
+            <div className={walletPanelMutedClass}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-11 w-11">
+                    <AvatarImage
+                      src={requestContact.profile_image_url ?? undefined}
+                      alt={formatContactName(requestContact)}
+                    />
+                    <AvatarFallback>
+                      {formatContactName(requestContact).charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      Request From:
+                    </p>
+                    <p className="text-sm font-medium">
+                      {formatContactName(requestContact)}
+                    </p>
+                    {requestContact.username && (
+                      <p className="text-xs text-muted-foreground">
+                        @{requestContact.username}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {onClearRequestContact && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClearRequestContact}
+                    aria-label="Clear request contact"
+                  >
+                    <LuX className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col gap-4 sm:flex-row lg:flex-col xl:flex-row">
+            {requestContact ? (
+              <Button className="flex-1" onClick={handleReviewClick}>
+                Review Request
+              </Button>
+            ) : (
+              <>
+                <Button className="flex-1" onClick={handleRequestClick}>
+                  <LuUsers className="mr-2 h-4 w-4" /> Request from Contact
+                </Button>
+                <Button className="flex-1" onClick={handleShareableRequest}>
+                  <LuShare2 className="mr-2 h-4 w-4" /> Create a shareable request
+                </Button>
+              </>
+            )}
+          </div>
+          {hasOpenRequests && (
+            <div className={`${walletPanelMutedClass} space-y-4`}>
+              <h3 className="text-sm font-semibold">Payment requests I have sent</h3>
+              {shareableRequests.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Shareable
+                  </p>
+                  {shareableRequests.map((request) => {
+                    const amountValue = normaliseAmount(request.amountRequested);
+                    const { label, note } = describeRequestAmount(amountValue);
+                    return (
+                      <div key={request.id} className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/50 bg-background/80 p-3">
+                        <div>
+                          <p className="text-sm font-medium">{label}</p>
+                          {note && (
+                            <p className="text-xs text-muted-foreground">{note}</p>
+                          )}
+                          {request.createdAt && (
+                            <p className="text-xs text-muted-foreground">
+                              {formatSavedRequestTimestamp(request.createdAt)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={openShareModal}>
+                            Share
+                          </Button>
+                          {onDeleteRequest && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                void handleDeleteRequest(request);
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={openShareModal}>
-                          Share
-                        </Button>
+                    );
+                  })}
+                </div>
+              )}
+              {targetedRequests.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    To Contacts
+                  </p>
+                  {targetedRequests.map((request) => {
+                    const amountValue = normaliseAmount(request.amountRequested);
+                    const recipientLabel = getContactLabel(request.requestFrom ?? null);
+                    const { label, note } = describeRequestAmount(amountValue);
+                    return (
+                      <div key={request.id} className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/50 bg-background/80 p-3">
+                        <div>
+                          <p className="text-sm font-medium">{label}</p>
+                          {note && (
+                            <p className="text-xs text-muted-foreground">{note}</p>
+                          )}
+                          {recipientLabel && (
+                            <p className="text-xs text-muted-foreground">
+                              Request sent to {recipientLabel}
+                            </p>
+                          )}
+                        </div>
                         {onDeleteRequest && (
                           <Button
                             variant="destructive"
@@ -570,55 +721,14 @@ export function ReceiveCard({
                           </Button>
                         )}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {targetedRequests.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">
-                  To Contacts
-                </p>
-                {targetedRequests.map((request) => {
-                  const amountValue = normaliseAmount(request.amountRequested);
-                  const recipientLabel = getContactLabel(request.requestFrom ?? null);
-                  const { label, note } = describeRequestAmount(amountValue);
-                  return (
-                    <div
-                      key={request.id}
-                      className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/50 bg-background/80 p-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{label}</p>
-                        {note && (
-                          <p className="text-xs text-muted-foreground">{note}</p>
-                        )}
-                        {recipientLabel && (
-                          <p className="text-xs text-muted-foreground">
-                            Request sent to {recipientLabel}
-                          </p>
-                        )}
-                      </div>
-                      {onDeleteRequest && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            void handleDeleteRequest(request);
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }

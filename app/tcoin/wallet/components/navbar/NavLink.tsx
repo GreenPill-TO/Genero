@@ -16,7 +16,7 @@ export default function NavLink({ link, title, optionalClass = "" }: TNavLinkPro
   return (
     <Link
       className={cn(
-        "px-3 font-semibold my-4 mr-2 lg:m-0 no-underline",
+        "my-4 mr-2 px-3 font-sans font-semibold no-underline lg:m-0",
         { "opacity-80": pathname !== link },
         optionalClass
       )}

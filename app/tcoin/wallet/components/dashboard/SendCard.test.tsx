@@ -230,6 +230,8 @@ describe("SendCard", () => {
     fireEvent.change(recipientInput, { target: { value: "ali" } });
 
     const suggestionButton = screen.getByRole("button", { name: /Alice Johnson/i });
+    expect(suggestionButton.className).toContain("ring-teal-500/12");
+    expect(suggestionButton.className).toContain("before:bg-teal-600/40");
     fireEvent.click(suggestionButton);
 
     expect(setToSendData).toHaveBeenCalledWith(

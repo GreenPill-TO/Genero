@@ -8,6 +8,10 @@ type EdgeInvokeOptions = {
   appContext?: AppScopeInput | null;
 };
 
+function normalizePath(path: string): string {
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
 function resolveSupabaseUrl(): string {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   if (!url) {
@@ -54,7 +58,7 @@ export async function invokeEdgeFunction<T>(
   } = await supabase.auth.getSession();
 
   const response = await fetch(
-    `${resolveSupabaseUrl()}/functions/v1/${functionName}${path.startsWith("/") ? path : `/${path}`}`,
+    `${resolveSupabaseUrl()}/functions/v1/${functionName}${normalizePath(path)}`,
     {
       method,
       headers: resolveHeaders(context, session?.access_token),
@@ -76,10 +80,15 @@ export async function invokeEdgeFunction<T>(
   }
 
   if (!response.ok) {
-    const message =
+    const normalizedPath = normalizePath(path);
+    const payloadError =
       payload && typeof payload === "object" && "error" in payload && typeof (payload as { error?: unknown }).error === "string"
         ? (payload as { error: string }).error
-        : `${functionName} request failed (${response.status})`;
+        : null;
+    const message =
+      response.status === 404 && (!payloadError || payloadError === "Not found.")
+        ? `${functionName} route ${normalizedPath} is not available in this environment.`
+        : payloadError ?? `${functionName} request failed (${response.status})`;
     throw new Error(message);
   }
 

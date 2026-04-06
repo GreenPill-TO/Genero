@@ -23,6 +23,17 @@ ON CONFLICT (slug) DO UPDATE
 SET display_name = EXCLUDED.display_name,
     symbol = EXCLUDED.symbol;
 
+INSERT INTO public.charities (id, name, value)
+VALUES
+  ('a1111111-1111-4111-8111-111111111111', 'Daily Bread Food Bank', 'daily-bread-food-bank'),
+  ('a2222222-2222-4222-8222-222222222222', 'Native Women''s Resource Centre of Toronto', 'native-womens-resource-centre-of-toronto'),
+  ('a3333333-3333-4333-8333-333333333333', 'Parkdale Community Food Bank', 'parkdale-community-food-bank'),
+  ('a4444444-4444-4444-8444-444444444444', 'Universal Basic Income', 'Universal Basic Income')
+ON CONFLICT (value) DO UPDATE
+SET
+  name = EXCLUDED.name,
+  updated_at = timezone('utc', now());
+
 WITH apps AS (
   SELECT id, slug FROM public.ref_apps WHERE slug IN ('wallet', 'sparechange', 'contracts')
 ), city AS (
@@ -68,6 +79,24 @@ SET username = EXCLUDED.username,
     auth_user_id = EXCLUDED.auth_user_id,
     country = EXCLUDED.country,
     updated_at = now();
+
+INSERT INTO public.user_email_addresses (user_id, email, is_primary, created_at, updated_at)
+SELECT
+  u.id,
+  lower(u.email),
+  true,
+  u.created_at,
+  u.updated_at
+FROM public.users u
+WHERE u.id IN (1001, 1002, 1003, 1004)
+  AND u.email IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.user_email_addresses ue
+    WHERE ue.user_id = u.id
+      AND ue.email = lower(u.email)
+      AND ue.deleted_at IS NULL
+  );
 
 INSERT INTO public.roles (user_id, role, assigned_by, app_instance_id, created_at)
 SELECT 1001, 'admin', 1001, ai.id, now()
@@ -490,7 +519,8 @@ INSERT INTO public.bia_registry (id, city_slug, code, name, center_lat, center_l
 VALUES
   ('11111111-1111-4111-8111-111111111111', 'tcoin', 'KING-WEST', 'King West', 43.6465000, -79.3923000, 'active', '{}'::jsonb, now(), now()),
   ('22222222-2222-4222-8222-222222222222', 'tcoin', 'RIVERDALE', 'Riverdale', 43.6714000, -79.3520000, 'active', '{}'::jsonb, now(), now()),
-  ('33333333-3333-4333-8333-333333333333', 'tcoin', 'YONGE', 'Yonge Corridor', 43.6669000, -79.3849000, 'inactive', '{}'::jsonb, now(), now())
+  ('33333333-3333-4333-8333-333333333333', 'tcoin', 'YONGE', 'Yonge Corridor', 43.6669000, -79.3849000, 'inactive', '{}'::jsonb, now(), now()),
+  ('44444444-4444-4444-8444-444444444443', 'tcoin', 'REST-OF-TORONTO', 'Rest of Toronto', 43.6532000, -79.3832000, 'active', '{}'::jsonb, now(), now())
 ON CONFLICT (id) DO UPDATE
 SET code = EXCLUDED.code,
     name = EXCLUDED.name,

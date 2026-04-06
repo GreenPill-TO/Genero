@@ -12,6 +12,21 @@ type WalletIdentityRow = {
   public_key: string;
 };
 
+type ImportedContactRow = {
+  id: number;
+  display_name: string | null;
+  email: string;
+  source: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type InviteRecipientInput = {
+  email: string;
+  displayName: string | null;
+  source: string;
+};
+
 function toInteger(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return Math.trunc(value);
@@ -46,9 +61,28 @@ function toStringOrNull(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function toBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    return value.trim().toLowerCase() === "true";
+  }
+  return false;
+}
+
 function normalizeWallet(value: unknown): string | null {
   const wallet = toStringOrNull(value);
   return wallet ? wallet.toLowerCase() : null;
+}
+
+function normalizeEmail(value: unknown): string | null {
+  const email = toStringOrNull(value)?.toLowerCase() ?? null;
+  if (!email) {
+    return null;
+  }
+  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return isValid ? email : null;
 }
 
 function toTimestamp(value: string | null | undefined): number {
@@ -57,6 +91,81 @@ function toTimestamp(value: string | null | undefined): number {
   }
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+}
+
+function isMissingLegacyTransactionLedgerError(error: unknown): boolean {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : "";
+
+  return (
+    message.includes("Could not find the table 'public.act_transaction_entries'") ||
+    message.includes("relation \"public.act_transaction_entries\" does not exist")
+  );
+}
+
+function inferInviteSource(sources: string[]): string {
+  const unique = Array.from(new Set(sources));
+  if (unique.length === 0) {
+    return "manual";
+  }
+  if (unique.length === 1) {
+    return unique[0];
+  }
+  return "mixed";
+}
+
+function normalizeImportedContactsInput(value: unknown): InviteRecipientInput[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const deduped = new Map<string, InviteRecipientInput>();
+
+  value.forEach((item) => {
+    if (!item || typeof item !== "object") {
+      return;
+    }
+    const record = item as Record<string, unknown>;
+    const email = normalizeEmail(record.email);
+    if (!email) {
+      return;
+    }
+    deduped.set(email, {
+      email,
+      displayName: toStringOrNull(record.displayName),
+      source: toStringOrNull(record.source) ?? "browser-contact-picker",
+    });
+  });
+
+  return Array.from(deduped.values());
+}
+
+function normalizeInviteRecipients(value: unknown): InviteRecipientInput[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const deduped = new Map<string, InviteRecipientInput>();
+
+  value.forEach((item) => {
+    if (!item || typeof item !== "object") {
+      return;
+    }
+    const record = item as Record<string, unknown>;
+    const email = normalizeEmail(record.email);
+    if (!email) {
+      return;
+    }
+    deduped.set(email, {
+      email,
+      displayName: toStringOrNull(record.displayName),
+      source: toStringOrNull(record.source) ?? "manual",
+    });
+  });
+
+  return Array.from(deduped.values());
 }
 
 async function listWalletIdentityRows(options: {
@@ -362,6 +471,184 @@ export async function getWalletContactDetail(
   };
 }
 
+export async function listWalletContactImports(options: WalletOperationsContext) {
+  const [{ data: preferenceRow, error: preferenceError }, { data: contactRows, error: contactsError }] =
+    await Promise.all([
+      options.supabase
+        .from("user_contact_import_preferences")
+        .select("granted,source,created_at,updated_at")
+        .eq("user_id", options.userId)
+        .eq("app_instance_id", options.appContext.appInstanceId)
+        .limit(1)
+        .maybeSingle(),
+      options.supabase
+        .from("user_imported_contacts")
+        .select("id,display_name,email,source,created_at,updated_at")
+        .eq("user_id", options.userId)
+        .eq("app_instance_id", options.appContext.appInstanceId)
+        .order("display_name", { ascending: true, nullsFirst: false })
+        .order("email", { ascending: true }),
+    ]);
+
+  if (preferenceError) {
+    throw new Error(`Failed to load contact import preference: ${preferenceError.message}`);
+  }
+  if (contactsError) {
+    throw new Error(`Failed to load imported contacts: ${contactsError.message}`);
+  }
+
+  return {
+    preference: preferenceRow
+      ? {
+          granted: toBoolean(preferenceRow.granted),
+          source: toStringOrNull(preferenceRow.source),
+          createdAt: toStringOrNull(preferenceRow.created_at),
+          updatedAt: toStringOrNull(preferenceRow.updated_at),
+        }
+      : null,
+    importedContacts: ((contactRows ?? []) as ImportedContactRow[]).map((row) => ({
+      id: toInteger(row.id) ?? 0,
+      displayName: toStringOrNull(row.display_name),
+      email: normalizeEmail(row.email) ?? row.email,
+      source: toStringOrNull(row.source),
+      createdAt: toStringOrNull(row.created_at),
+      updatedAt: toStringOrNull(row.updated_at),
+    })),
+  };
+}
+
+export async function saveWalletContactImports(
+  options: WalletOperationsContext & {
+    granted: boolean;
+    source?: string;
+    contacts?: unknown;
+  }
+) {
+  const nowIso = new Date().toISOString();
+  const source = toStringOrNull(options.source) ?? "browser-contact-picker";
+
+  const { error: preferenceError } = await options.supabase
+    .from("user_contact_import_preferences")
+    .upsert(
+      {
+        user_id: options.userId,
+        app_instance_id: options.appContext.appInstanceId,
+        granted: options.granted,
+        source,
+        updated_at: nowIso,
+      },
+      {
+        onConflict: "user_id,app_instance_id",
+      }
+    );
+
+  if (preferenceError) {
+    throw new Error(`Failed to save contact import preference: ${preferenceError.message}`);
+  }
+
+  const importedContacts = normalizeImportedContactsInput(options.contacts);
+  if (importedContacts.length > 0) {
+    const { error: contactsError } = await options.supabase
+      .from("user_imported_contacts")
+      .upsert(
+        importedContacts.map((contact) => ({
+          user_id: options.userId,
+          app_instance_id: options.appContext.appInstanceId,
+          display_name: contact.displayName,
+          email: contact.email,
+          source: contact.source,
+          updated_at: nowIso,
+        })),
+        {
+          onConflict: "user_id,app_instance_id,email",
+        }
+      );
+
+    if (contactsError) {
+      throw new Error(`Failed to save imported contacts: ${contactsError.message}`);
+    }
+  }
+
+  return listWalletContactImports(options);
+}
+
+export async function queueWalletContactInviteBatch(
+  options: WalletOperationsContext & {
+    subject: string;
+    message: string;
+    recipients?: unknown;
+  }
+) {
+  const subject = toStringOrNull(options.subject);
+  if (!subject) {
+    throw new Error("subject is required.");
+  }
+
+  const message = toStringOrNull(options.message);
+  if (!message) {
+    throw new Error("message is required.");
+  }
+
+  const recipients = normalizeInviteRecipients(options.recipients);
+  if (recipients.length === 0) {
+    throw new Error("At least one invite recipient is required.");
+  }
+
+  const source = inferInviteSource(recipients.map((recipient) => recipient.source));
+  const nowIso = new Date().toISOString();
+
+  const { data: batchRow, error: batchError } = await options.supabase
+    .from("contact_invite_batches")
+    .insert({
+      user_id: options.userId,
+      app_instance_id: options.appContext.appInstanceId,
+      source,
+      subject,
+      message,
+      status: "queued",
+      updated_at: nowIso,
+    })
+    .select("id,source,status,subject,message,created_at")
+    .single();
+
+  if (batchError) {
+    throw new Error(`Failed to queue invite batch: ${batchError.message}`);
+  }
+
+  const batchId = toInteger(batchRow?.id);
+  if (batchId == null) {
+    throw new Error("Invite batch did not return an id.");
+  }
+
+  const { error: recipientsError } = await options.supabase
+    .from("contact_invite_batch_recipients")
+    .insert(
+      recipients.map((recipient) => ({
+        batch_id: batchId,
+        email: recipient.email,
+        display_name: recipient.displayName,
+        source: recipient.source,
+      }))
+    );
+
+  if (recipientsError) {
+    await options.supabase.from("contact_invite_batches").delete().eq("id", batchId);
+    throw new Error(`Failed to queue invite recipients: ${recipientsError.message}`);
+  }
+
+  return {
+    batch: {
+      id: batchId,
+      source: toStringOrNull(batchRow?.source) ?? source,
+      status: toStringOrNull(batchRow?.status) ?? "queued",
+      subject: toStringOrNull(batchRow?.subject) ?? subject,
+      message: toStringOrNull(batchRow?.message) ?? message,
+      recipientCount: recipients.length,
+      createdAt: toStringOrNull(batchRow?.created_at),
+    },
+  };
+}
+
 async function listTransactionRowsForWallets(options: {
   supabase: any;
   wallets: string[];
@@ -381,6 +668,9 @@ async function listTransactionRowsForWallets(options: {
     .limit(options.limit);
 
   if (error) {
+    if (isMissingLegacyTransactionLedgerError(error)) {
+      return [];
+    }
     throw new Error(`Failed to load transaction entries: ${error.message}`);
   }
 
@@ -500,9 +790,15 @@ export async function getWalletContactTransactionHistory(
   ]);
 
   if (sentRows.error) {
+    if (isMissingLegacyTransactionLedgerError(sentRows.error)) {
+      return { transactions: [] };
+    }
     throw new Error(`Failed to load sent contact transactions: ${sentRows.error.message}`);
   }
   if (receivedRows.error) {
+    if (isMissingLegacyTransactionLedgerError(receivedRows.error)) {
+      return { transactions: [] };
+    }
     throw new Error(`Failed to load received contact transactions: ${receivedRows.error.message}`);
   }
 
@@ -654,12 +950,17 @@ export async function recordWalletTransfer(
     transfer_user_id: number;
   }
 ) {
+  const requestedTransferUserId = toInteger(options.transfer_user_id);
+  if (requestedTransferUserId == null || requestedTransferUserId !== options.userId) {
+    throw new Error("transfer_user_id must match the authenticated user.");
+  }
+
   const { data, error } = await options.supabase.rpc("simple_transfer", {
     recipient_wallet: options.recipient_wallet,
     sender_wallet: options.sender_wallet,
     token_price: options.token_price ?? 3.3,
     transfer_amount: options.transfer_amount,
-    transfer_user_id: options.transfer_user_id,
+    transfer_user_id: options.userId,
   });
 
   if (error) {
@@ -711,3 +1012,7 @@ export async function sendWalletAdminNotification(
 
   return { ok: true };
 }
+
+export const __testOnly__ = {
+  isMissingLegacyTransactionLedgerError,
+};

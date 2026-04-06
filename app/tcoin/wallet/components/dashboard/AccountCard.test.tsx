@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 
 const useTokenBalanceMock = vi.hoisted(() =>
   vi.fn().mockReturnValue({ balance: "1", loading: false, error: null })
@@ -18,34 +18,24 @@ vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
 import { AccountCard } from "./AccountCard";
 
 describe("AccountCard", () => {
-  const originalExplorerUrl = process.env.NEXT_PUBLIC_EXPLORER_URL;
-
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_EXPLORER_URL = "https://env.example/address/";
     useTokenBalanceMock.mockClear();
   });
 
-  afterEach(() => {
-    if (originalExplorerUrl === undefined) {
-      delete process.env.NEXT_PUBLIC_EXPLORER_URL;
-    } else {
-      process.env.NEXT_PUBLIC_EXPLORER_URL = originalExplorerUrl;
-    }
-  });
-
-  it("builds the explorer link using NEXT_PUBLIC_EXPLORER_URL", () => {
+  it("keeps the home card focused on balance and activity", () => {
+    const onOpenTransactionHistory = vi.fn();
     render(
       <AccountCard
         balance={10}
         senderWallet="0xabc123"
-        onOpenTransactionHistory={vi.fn()}
+        onOpenTransactionHistory={onOpenTransactionHistory}
       />
     );
 
     expect(useTokenBalanceMock).toHaveBeenCalledWith("0xabc123");
-    const link = screen.getByRole("link", { name: /View on Explorer/i });
-    expect(link.getAttribute("href")).toBe(
-      "https://env.example/address/0xabc123"
-    );
+    expect(screen.queryByRole("link", { name: /View on Explorer/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /View transaction history/i }));
+    expect(onOpenTransactionHistory).toHaveBeenCalledTimes(1);
   });
 });

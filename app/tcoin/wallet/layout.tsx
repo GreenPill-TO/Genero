@@ -1,12 +1,14 @@
 'use client';
+import { useAuth } from "@shared/api/hooks/useAuth";
 import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
 import { WalletConnectErrorGuard } from "@shared/providers/walletconnect-error-guard";
 import "@tcoin/wallet/styles/app.scss";
-import ContentLayout from "./ContentLayout";
+import ContentLayout, { isPublicWalletPath } from "./ContentLayout";
 import dynamic from "next/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import Script from "next/script";
 
 
@@ -24,6 +26,42 @@ import "cubid-sdk/dist/index.css";
 
 const queryClient = new QueryClient();
 const themeCacheKey = `theme_cache:${(process.env.NEXT_PUBLIC_APP_NAME ?? "wallet").trim().toLowerCase()}:${(process.env.NEXT_PUBLIC_CITYCOIN ?? "tcoin").trim().toLowerCase()}:${((process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase() || "default")}`;
+
+function WalletRuntimeProviders({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
+  const shouldMountWalletProviders = isAuthenticated && !isPublicWalletPath(pathname);
+  const modalThemeClassName = shouldMountWalletProviders
+    ? "wallet-auth-shell font-sans"
+    : undefined;
+
+  const content = (
+    <ReactQueryProvider>
+      <DarkModeProvider>
+        <ModalProvider modalThemeClassName={modalThemeClassName}>
+          {children}
+        </ModalProvider>
+      </DarkModeProvider>
+    </ReactQueryProvider>
+  );
+
+  if (!shouldMountWalletProviders) {
+    return content;
+  }
+
+  return (
+    <>
+      <WalletConnectErrorGuard />
+      <Provider>
+        <WalletCubidProvider>{content}</WalletCubidProvider>
+      </Provider>
+    </>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -53,18 +91,9 @@ export default function RootLayout({
           }
         `}</style>
         <QueryClientProvider client={queryClient}>
-          <WalletConnectErrorGuard />
-          <Provider>
-            <WalletCubidProvider>
-              <ReactQueryProvider>
-                <DarkModeProvider>
-                  <ModalProvider>
-                    <ContentLayout>{children}</ContentLayout>
-                  </ModalProvider>
-                </DarkModeProvider>
-              </ReactQueryProvider>
-            </WalletCubidProvider>
-          </Provider>
+          <WalletRuntimeProviders>
+            <ContentLayout>{children}</ContentLayout>
+          </WalletRuntimeProviders>
         </QueryClientProvider>
       </body>
     </html>

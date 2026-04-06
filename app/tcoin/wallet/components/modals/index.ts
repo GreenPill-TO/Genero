@@ -10,4 +10,5 @@ export * from "./BuyTcoinModal";
 export * from "./BiaPreferencesModal";
 export * from "./VoucherRoutingPreferencesModal";
 export * from "./ThemeSelectModal";
+export * from "./ExperienceModeModal";
 export * from "./FutureAppFeaturesModal";
