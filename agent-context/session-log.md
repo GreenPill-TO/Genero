@@ -1,3 +1,21 @@
+## v1.190
+### Timestamp
+- 2026-04-06 19:14 EDT
+
+### Objective
+- Capture a future auth-refactor idea in the agent context so the OTP transport discussion is not lost after the branch cleanup.
+
+### What Changed
+- Added `agent-context/todo.md` with a follow-up note about revisiting passcode delivery and verification behind a shared server boundary, potentially via a Supabase Edge Function or a common server-side helper.
+- Recorded the constraint that any future refactor must preserve the immediate post-OTP session handoff needed by the current wallet auth bootstrap flow.
+
+### Verification
+- Not run; documentation-only change.
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+
 ## v1.189
 ### Timestamp
 - 2026-04-06 16:30 EDT
