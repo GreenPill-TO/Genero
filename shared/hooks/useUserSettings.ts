@@ -15,9 +15,10 @@ export function useUserSettings(options?: {
   enabled?: boolean;
   appContext?: Partial<UserSettingsAppContext> | null;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoadingUser, userData } = useAuth();
   const appContext = resolveUserSettingsAppContext(options?.appContext);
-  const enabled = (options?.enabled ?? true) && isAuthenticated;
+  const hasResolvedUserRecord = Boolean(userData?.user);
+  const enabled = (options?.enabled ?? true) && isAuthenticated && !isLoadingUser && hasResolvedUserRecord;
 
   const query = useQuery({
     queryKey: getUserSettingsQueryKey(appContext),

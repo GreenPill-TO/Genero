@@ -106,6 +106,17 @@
     color: hsl(var(--primary));
   }
 
+  .wallet-public-shell {
+    --link-color: 183 80% 24%;
+    --wallet-logo-color: 183 80% 24%;
+  }
+
+  .wallet-public-shell.dark,
+  .dark .wallet-public-shell {
+    --link-color: 183 78% 68%;
+    --wallet-logo-color: 183 78% 68%;
+  }
+
   .wallet-auth-shell {
     --background: 210 38% 97%;
     --foreground: 215 35% 15%;

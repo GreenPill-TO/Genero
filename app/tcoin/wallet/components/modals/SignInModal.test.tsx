@@ -205,4 +205,31 @@ describe("SignInModal", () => {
     });
     document.body.removeChild(container);
   });
+
+  it("uses the freshly verified session without waiting for auth polling", async () => {
+    const closeModal = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42, has_completed_intro: true }, error: null });
+
+    act(() => {
+      root.render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
+    });
+
+    await act(async () => {
+      await verifySuccess?.({ access_token: "fresh-token" });
+    });
+
+    expect(waitForAuthenticatedSessionMock).not.toHaveBeenCalled();
+    expect(fetchUserByContactMock).toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith("/dashboard");
+    expect(closeModal).toHaveBeenCalled();
+
+    act(() => {
+      root.unmount();
+    });
+    document.body.removeChild(container);
+  });
 });

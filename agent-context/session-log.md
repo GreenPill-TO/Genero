@@ -1,3 +1,203 @@
+## v1.189
+### Timestamp
+- 2026-04-06 16:30 EDT
+
+### Objective
+- Clear the renewed GitHub Actions failure on PR #62 by making the shared auth-listener fan-out compatible with the repository's CI TypeScript target.
+
+### What Changed
+- Replaced the `for...of` iteration over `Map.keys()` inside `useAuth()` with `Map.forEach(...)`, preserving the multi-`QueryClient` auth fan-out while avoiding the downlevel-iteration requirement that CI rejected.
+- Kept the auth behaviour unchanged: every active React Query client still receives the session update, and the best-effort indexer touch still runs once per `SIGNED_IN` event.
+
+### Verification
+- `pnpm exec tsc --noEmit -p tsconfig.ci.json`
+- `pnpm exec vitest run shared/api/hooks/useAuth.test.tsx shared/lib/supabase/session.test.ts shared/lib/edge/core.test.ts`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `shared/api/hooks/useAuth.ts`
+
+## v1.188
+### Timestamp
+- 2026-04-06 17:19 EDT
+
+### Objective
+- Address the inline PR review feedback on the wallet auth-bootstrap work by fixing the shared auth listener for nested React Query providers and making the Supabase session snapshot browser-only.
+
+### What Changed
+- Reworked `useAuth()` so the single shared Supabase `onAuthStateChange(...)` listener now reference-counts every active `QueryClient` and fans auth cache updates out to each one, instead of only updating the last-mounted client.
+- Kept the best-effort `/api/indexer/touch` trigger tied to the auth event itself, so one sign-in still emits only one indexer touch even when multiple query clients are active.
+- Restricted the shared Supabase session snapshot helper to browser-only caching, preventing SSR or other server-side execution from persisting a process-global auth token across requests.
+- Added regression coverage for multi-client auth propagation and the server-side no-cache guard, and updated the engineering specs to reflect both constraints.
+
+### Verification
+- `pnpm exec eslint shared/api/hooks/useAuth.ts shared/api/hooks/useAuth.test.tsx shared/lib/supabase/session.ts shared/lib/supabase/session.test.ts`
+- `pnpm exec vitest run shared/api/hooks/useAuth.test.tsx shared/lib/supabase/session.test.ts shared/lib/edge/core.test.ts`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `shared/api/hooks/useAuth.ts`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/lib/supabase/session.ts`
+- `shared/lib/supabase/session.test.ts`
+
+## v1.187
+### Timestamp
+- 2026-04-06 13:56 EDT
+
+### Objective
+- Fold the already-documented wallet public-shell and auth-field styling fixes into the active auth PR branch so the review bundle includes the matching UI polish instead of leaving those useful changes behind locally.
+
+### What Changed
+- Added the `wallet-public-shell` class to public wallet routes and kept the matching tests/styles that scope unauthenticated link and brand colours to the teal palette in both light and dark mode.
+- Kept the shared auth-only form-field updates that switch the sign-in email field and OTP digit boxes to a light dark-mode surface with dark text for stronger contrast inside the auth modal.
+- Validated the focused wallet layout and auth-field styling tests before packaging the changes onto the same feature branch and PR.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/ContentLayout.test.tsx shared/components/ui/formFieldStyles.ts shared/components/ui/formFieldStyles.test.ts`
+- `pnpm exec vitest run app/tcoin/wallet/ContentLayout.test.tsx shared/components/ui/formFieldStyles.test.ts`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `shared/components/ui/formFieldStyles.ts`
+- `shared/components/ui/formFieldStyles.test.ts`
+
+## v1.186
+### Timestamp
+- 2026-04-06 13:45 EDT
+
+### Objective
+- Finish the remaining local wallet auth issues by removing the last bootstrap ordering race and the duplicate auth-event fan-out that still appeared during OTP smoke testing.
+
+### What Changed
+- Updated `useUserSettings()` so authenticated settings bootstrap waits for `useAuth()` to finish `ensure-user` and expose a concrete authenticated user record before it ever calls `user-settings/bootstrap`.
+- Reworked `useAuth()` to share one Supabase `onAuthStateChange(...)` subscription across hook consumers, preventing a single sign-in from triggering repeated `user-data` invalidations and duplicate best-effort indexer touches from every mounted auth consumer.
+- Added focused regression tests for both behaviours, then reran the clean local Supabase + Playwright OTP smoke flow to confirm the wallet now reaches `/welcome` without `401` responses or the earlier auth bootstrap failures.
+
+### Verification
+- `pnpm exec eslint shared/api/hooks/useAuth.ts shared/api/hooks/useAuth.test.tsx shared/hooks/useUserSettings.ts shared/hooks/useUserSettings.test.tsx`
+- `pnpm exec vitest run shared/api/hooks/useAuth.test.tsx shared/hooks/useUserSettings.test.tsx app/tcoin/wallet/components/modals/SignInModal.test.tsx shared/lib/edge/core.test.ts`
+- `supabase start --ignore-health-check -x storage-api -x imgproxy -x studio -x postgres-meta -x logflare -x vector -x supavisor --workdir /Users/botmaster/.codex-smoke/genero-local-home`
+- `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55421 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=... SUPABASE_SERVICE_ROLE_KEY=... PORT=3001 pnpm dev`
+- `HOME=/tmp/genero-playwright-home PLAYWRIGHT_BROWSERS_PATH=/tmp/genero-playwright-browsers node /tmp/genero-smoke-pw/smoke-auth.js`
+
+### Files Edited
+- `shared/api/hooks/useAuth.ts`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/hooks/useUserSettings.ts`
+- `shared/hooks/useUserSettings.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.185
+### Timestamp
+- 2026-04-06 13:37 EDT
+
+### Objective
+- Smoke-test the post-OTP auth-race fix locally, harden the wallet sign-in handoff when OTP verification already returns a usable Supabase session, and record the remaining local-only runtime failures discovered during the browser pass.
+
+### What Changed
+- Reworked the wallet sign-in modal so the OTP verify success path reuses the `Session` returned by `supabase.auth.verifyOtp(...)` for the immediate `/welcome` versus `/dashboard` decision, only falling back to `waitForAuthenticatedSession(...)` if the verify response does not include a usable access token.
+- Updated the shared passcode service to return the verified Supabase session object, and added a regression test proving the wallet modal no longer waits on auth polling when a fresh verified session is already available.
+- Re-ran the local Colima/Supabase/Playwright smoke flow outside `/tmp`, confirmed the earlier `/tmp` bind-mount problem was causing the initial local `503` boot failures, and captured the remaining valid-stack issues: local edge-worker creation timeouts plus a later `user-settings` app-profile statement timeout during bootstrap.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/SignInModal.test.tsx shared/api/hooks/useAuth.test.tsx shared/lib/edge/core.test.ts`
+- `pnpm exec eslint app/tcoin/wallet/components/modals/SignInModal.tsx app/tcoin/wallet/components/modals/SignInModal.test.tsx shared/api/services/supabaseService.ts`
+- Local smoke environment:
+- `supabase start --ignore-health-check -x storage-api -x imgproxy -x studio -x postgres-meta -x logflare -x vector -x supavisor --workdir /Users/botmaster/.codex-smoke/genero-local-home`
+- `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55421 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=... SUPABASE_SERVICE_ROLE_KEY=... PORT=3001 pnpm dev`
+- `HOME=/tmp/genero-playwright-home PLAYWRIGHT_BROWSERS_PATH=/tmp/genero-playwright-browsers node /tmp/genero-smoke-pw/smoke-auth.js`
+
+### Files Edited
+- `shared/api/services/supabaseService.ts`
+- `app/tcoin/wallet/components/modals/SignInModal.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `agent-context/session-log.md`
+
+## v1.184
+### Timestamp
+- 2026-04-06 12:11 EDT
+
+### Objective
+- Fix the post-OTP auth bootstrap race that was leaving wallet sign-in stuck behind repeated `401 Unauthorized` responses from the shared user-settings edge routes.
+
+### What Changed
+- Added a shared browser-session snapshot helper so auth-aware clients can reuse the newest Supabase access token immediately after OTP verification instead of depending on a second `getSession()` read to settle first.
+- Updated wallet auth state, Supabase auth service helpers, and the shared edge/user-settings clients to gate authenticated bootstrap work on a non-empty access token and to omit empty bearer headers when no token is available yet.
+- Extended auth and edge-client tests to cover the cached-token path and the no-token-auth-state guard, and recorded the new auth bootstrap contract in the engineering specs.
+
+### Verification
+- `pnpm exec eslint shared/lib/supabase/session.ts shared/api/hooks/useAuth.ts shared/api/services/supabaseService.ts shared/lib/userSettings/client.ts shared/lib/edge/core.ts shared/api/hooks/useAuth.test.tsx shared/lib/edge/core.test.ts`
+- `pnpm exec vitest run shared/api/hooks/useAuth.test.tsx shared/lib/edge/core.test.ts`
+
+### Files Edited
+- `shared/lib/supabase/session.ts`
+- `shared/api/hooks/useAuth.ts`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/api/services/supabaseService.ts`
+- `shared/lib/userSettings/client.ts`
+- `shared/lib/edge/core.ts`
+- `shared/lib/edge/core.test.ts`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.183
+### Timestamp
+- 2026-04-06 11:53 EDT
+
+### Objective
+- Fix the auth modal field surface in dark mode so the email and OTP inputs use a very light grey fill instead of the current dark grey background.
+
+### What Changed
+- Updated the shared auth-only field classes so the sign-in email input and OTP digit inputs now render with a light grey dark-mode surface, darker text, and a matching lighter border for clearer contrast inside the auth modal.
+- Left the broader signed-in form-field surface tokens unchanged, keeping this styling fix scoped to the authentication modal flows used by wallet and SpareChange.
+- Extended the shared form-field style test to lock in the new dark-mode auth-field surface contract.
+
+### Verification
+- `pnpm exec eslint shared/components/ui/formFieldStyles.ts shared/components/ui/formFieldStyles.test.ts`
+- `pnpm exec vitest run shared/components/ui/formFieldStyles.test.ts`
+
+### Files Edited
+- `shared/components/ui/formFieldStyles.ts`
+- `shared/components/ui/formFieldStyles.test.ts`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
+## v1.182
+### Timestamp
+- 2026-04-06 11:50 EDT
+
+### Objective
+- Fix unauthenticated wallet hyperlink colours in dark mode so public links use the shared teal palette instead of the old pink token, and keep public link colour ownership inside the shared unauthenticated shell styling.
+
+### What Changed
+- Added a dedicated `wallet-public-shell` class to public wallet routes in `ContentLayout`, so all landing, resources, contact, merchants, ecosystem, and pay-link descendants share one unauthenticated theme scope.
+- Updated the wallet stylesheet so `wallet-public-shell` now defines teal link and brand-logo tokens in light mode plus a lighter teal variant in dark mode, replacing the old pink dark-mode hyperlink colour on unauthenticated pages.
+- Extended the `ContentLayout` test coverage to assert that both standard public routes and `/pay/[token]` routes receive the shared public shell class.
+
+### Verification
+- `pnpm exec eslint app/tcoin/wallet/ContentLayout.tsx app/tcoin/wallet/ContentLayout.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/ContentLayout.test.tsx`
+
+### Files Edited
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+
 ## v1.181
 ### Timestamp
 - 2026-04-06 12:04 EDT

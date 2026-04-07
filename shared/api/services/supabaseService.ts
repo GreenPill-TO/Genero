@@ -1,4 +1,5 @@
 import { createClient } from "@shared/lib/supabase/client";
+import { resolveSessionSnapshot, setSessionSnapshot } from "@shared/lib/supabase/session";
 import {
   ensureAuthenticatedUserRecord,
   getEdgePersonas,
@@ -262,10 +263,7 @@ export const updateCubidDataInSupabase = async (payload: CubidUpdatePayload) => 
 export const getSession = async (): Promise<Session | null> => {
   try {
     const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    return session;
+    return await resolveSessionSnapshot(supabase);
   } catch (err) {
     console.error("Error fetching session:", err);
     return null;
@@ -299,6 +297,7 @@ export const signOut = async () => {
   try {
     const supabase = createClient();
     await supabase.auth.signOut();
+    setSessionSnapshot(null);
   } catch (error) {
     throw error;
   }
@@ -315,7 +314,15 @@ export const sendPasscode = async ({ contact, method }: { contact: string; metho
   }
 };
 
-export const verifyPasscode = async ({ contact, method, passcode }: { contact: string; method: "phone" | "email"; passcode: string }) => {
+export const verifyPasscode = async ({
+  contact,
+  method,
+  passcode,
+}: {
+  contact: string;
+  method: "phone" | "email";
+  passcode: string;
+}): Promise<Session | null> => {
   try {
     const supabase = createClient();
     let verificationPayload: { phone: string; token: string; type: "sms" } | { email: string; token: string; type: "email" };
@@ -325,10 +332,15 @@ export const verifyPasscode = async ({ contact, method, passcode }: { contact: s
     } else {
       verificationPayload = { email: contact, token: passcode, type: "email" };
     }
-    const { error } = await supabase.auth.verifyOtp(verificationPayload);
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.verifyOtp(verificationPayload);
     if (error) {
       throw error;
     }
+    setSessionSnapshot(session ?? null);
+    return session ?? null;
   } catch (err) {
     throw err; // Let the calling function handle the error
   }

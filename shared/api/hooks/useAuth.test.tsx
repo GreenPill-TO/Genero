@@ -7,10 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const authStateChangeHandlerRef = vi.hoisted(() => ({
   current: null as ((event: string, session: Session | null) => void) | null,
 }));
+const authStateChangeHandlersRef = vi.hoisted(() => ({
+  current: [] as Array<(event: string, session: Session | null) => void>,
+}));
 const unsubscribeMock = vi.hoisted(() => vi.fn());
 const onAuthStateChangeMock = vi.hoisted(() =>
   vi.fn((callback: (event: string, session: Session | null) => void) => {
     authStateChangeHandlerRef.current = callback;
+    authStateChangeHandlersRef.current.push(callback);
     return { data: { subscription: { unsubscribe: unsubscribeMock } } };
   })
 );
@@ -53,7 +57,8 @@ vi.mock("../services/cubidService", () => ({
   fetchCubidData: mockFetchCubidData,
 }));
 
-import { useAuth } from "./useAuth";
+import { resetUseAuthSubscriptionForTests, useAuth } from "./useAuth";
+import { getSessionSnapshot, setSessionSnapshot } from "@shared/lib/supabase/session";
 
 const createTestSession = (): Session =>
   ({
@@ -149,9 +154,14 @@ const baseCubidData = {
 
 describe("useAuth", () => {
   let queryClient: QueryClient;
+  let secondaryQueryClient: QueryClient;
 
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  const secondaryWrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={secondaryQueryClient}>{children}</QueryClientProvider>
   );
 
   beforeEach(() => {
@@ -160,8 +170,14 @@ describe("useAuth", () => {
         queries: { retry: false },
       },
     });
+    secondaryQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
 
     authStateChangeHandlerRef.current = null;
+    authStateChangeHandlersRef.current = [];
     createClientMock.mockClear();
     onAuthStateChangeMock.mockClear();
     unsubscribeMock.mockClear();
@@ -179,10 +195,15 @@ describe("useAuth", () => {
       error: null,
     });
     mockFetchCubidDataFromSupabase.mockResolvedValue(baseCubidData);
+    resetUseAuthSubscriptionForTests();
+    setSessionSnapshot(null);
   });
 
   afterEach(() => {
     queryClient.clear();
+    secondaryQueryClient.clear();
+    resetUseAuthSubscriptionForTests();
+    setSessionSnapshot(null);
   });
 
   it("sets the user as authenticated when Supabase emits a sign-in event", async () => {
@@ -209,7 +230,31 @@ describe("useAuth", () => {
       expect(mockTriggerIndexerTouch).toHaveBeenCalledTimes(1);
     });
 
+    expect(getSessionSnapshot()?.access_token).toBe("access-token");
+
     unmount();
+  });
+
+  it("does not treat a session without an access token as authenticated", async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(onAuthStateChangeMock).toHaveBeenCalled();
+      expect(typeof authStateChangeHandlerRef.current).toBe("function");
+    });
+
+    act(() => {
+      authStateChangeHandlerRef.current?.(
+        "SIGNED_IN",
+        { ...createTestSession(), access_token: "" } as Session
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.isAuthenticated).toBe(false);
+    });
+
+    expect(mockFetchUserByContact).not.toHaveBeenCalled();
   });
 
   it("cleans up the Supabase auth subscription on unmount", async () => {
@@ -222,6 +267,49 @@ describe("useAuth", () => {
     unmount();
 
     expect(unsubscribeMock).toHaveBeenCalled();
+  });
+
+  it("shares one Supabase auth subscription across multiple hook consumers", async () => {
+    const first = renderHook(() => useAuth(), { wrapper });
+    const second = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(onAuthStateChangeMock).toHaveBeenCalledTimes(1);
+    });
+
+    first.unmount();
+    expect(unsubscribeMock).not.toHaveBeenCalled();
+
+    second.unmount();
+    expect(unsubscribeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("fans auth state changes out to every active query client without duplicating indexer touches", async () => {
+    const first = renderHook(() => useAuth(), { wrapper });
+    const second = renderHook(() => useAuth(), { wrapper: secondaryWrapper });
+
+    await waitFor(() => {
+      expect(onAuthStateChangeMock).toHaveBeenCalledTimes(1);
+      expect(typeof authStateChangeHandlerRef.current).toBe("function");
+    });
+
+    act(() => {
+      authStateChangeHandlerRef.current?.("SIGNED_IN", createTestSession());
+    });
+
+    await waitFor(() => {
+      expect(first.result.current.isAuthenticated).toBe(true);
+      expect(second.result.current.isAuthenticated).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(mockFetchUserByContact).toHaveBeenCalledTimes(2);
+    });
+
+    expect(mockTriggerIndexerTouch).toHaveBeenCalledTimes(1);
+
+    first.unmount();
+    second.unmount();
   });
 
   it("surfaces ensure-user failures instead of collapsing them into an invalid cubid warning", async () => {
