@@ -48,13 +48,19 @@ function createStorageStub() {
   } as Storage;
 }
 
-const currentStorage = (globalThis as any).localStorage;
-if (!currentStorage || typeof currentStorage.getItem !== "function") {
-  const storageStub = createStorageStub();
-  (globalThis as any).localStorage = storageStub;
-  if (typeof window !== "undefined") {
-    (window as any).localStorage = storageStub;
-  }
+function installStorageStub(target: typeof globalThis | Window, key: "localStorage") {
+  Object.defineProperty(target, key, {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: createStorageStub(),
+  });
+}
+
+// Override the storage binding without touching Node's built-in webstorage getter.
+installStorageStub(globalThis, "localStorage");
+if (typeof window !== "undefined") {
+  installStorageStub(window, "localStorage");
 }
 
 process.env.NEXT_PUBLIC_SUPABASE_URL =

@@ -1,3 +1,24 @@
+## v1.194
+### Timestamp
+- 2026-04-13 13:27 EDT
+
+### Objective
+- Remove the remaining repeated `--localstorage-file` warning from local Vitest output so the test baseline is genuinely quiet instead of relying on a known-runtime footnote.
+
+### What Changed
+- Updated `vitest.setup.ts` so the shared storage stub is installed with `Object.defineProperty(...)` on `globalThis` and `window`, avoiding the initial `globalThis.localStorage` read that was triggering Node's built-in webstorage getter.
+- Confirmed the warning source was the runtime getter path rather than repo-owned test logic, then refreshed the technical spec to record that the local warning is now suppressed in normal repo test runs.
+
+### Verification
+- `node --trace-warnings node_modules/vitest/vitest.mjs run app/api/send_otp/route.test.ts`
+- `pnpm lint`
+- `pnpm test`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `vitest.setup.ts`
+
 ## v1.193
 ### Timestamp
 - 2026-04-13 09:41 EDT
