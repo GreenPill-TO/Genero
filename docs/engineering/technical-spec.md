@@ -57,6 +57,7 @@
   - Secret scanning now matches the repo guard-rails: `secret-scan.yml` runs TruffleHog on pull-request diffs and runs a scheduled full-repo scan nightly.
   - The current repo-owned lint baseline is clean. Remaining repeated `--localstorage-file` warnings seen under local Vitest runs come from the surrounding runtime environment rather than from checked-in app code.
   - The local Supabase smoke helper is intentionally launched with `zsh scripts/start-local-supabase.sh`, matching the script shebang and array-based shell syntax instead of assuming bash compatibility.
+  - `docs/engineering/wallet-release-runbook.md` is now the canonical wallet go-live checklist. It captures the checked-in env matrix, repo preflight commands, local and production smoke steps, pay-link cleanup cron verification, indexer health expectations, and rollback guidance.
   - Supabase PR migration validation is branch-targeted and non-destructive: PRs into `dev` dry-run against the DEV session-pooler connection, while PRs into `main` dry-run against the PROD session-pooler connection.
   - Remote deploy workflows still use `SUPABASE_ACCESS_TOKEN` plus `SUPABASE_PROJECT_REF_DEV` / `SUPABASE_PROJECT_REF_PROD`, while drift/dry-run workflows use session-pooler connection strings for DEV and PROD.
 

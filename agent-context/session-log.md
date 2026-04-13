@@ -1,3 +1,27 @@
+## v1.193
+### Timestamp
+- 2026-04-13 09:41 EDT
+
+### Objective
+- Complete the wallet release runbook so production launch checks are explicit, repo-grounded, and reusable by humans instead of living only in scattered notes and prior session context.
+
+### What Changed
+- Added `docs/engineering/wallet-release-runbook.md` as the canonical wallet go-live checklist, wiring it to the repo's actual runtime contracts: required env groups, release preflight commands, local and production smoke steps, pay-link cleanup cron verification, indexer health expectations, and rollback guidance.
+- Synced `.env.local.example` with production-facing runtime inputs that were already used in code but not surfaced in the template, including `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_EXPLORER_URL`, and the Twilio Verify env vars for off-ramp SMS verification.
+- Marked the release-runbook todo item complete and updated the technical/functional specs so the new runbook is discoverable from the main engineering artefacts.
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `.env.local.example`
+
 ## v1.192
 ### Timestamp
 - 2026-04-13 09:21 EDT

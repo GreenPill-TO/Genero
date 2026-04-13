@@ -10,7 +10,7 @@
   Add TruffleHog scanning for pull-request diffs and a scheduled full-repo scan so secret leaks are caught before release instead of during incident response.
 - [x] `P1` Warning reduction:
   Trim the current lint / test noise floor, especially the wallet test warnings around mocked auth session access, `next/image` mock props, and React test `act(...)` noise, so CI output stays actionable.
-- [ ] `P1` Release runbook:
+- [x] `P1` Release runbook:
   Capture a wallet go-live checklist covering required env vars, local/prod smoke tests, pay-link cleanup cron verification, indexer health checks, and rollback expectations.
 - [ ] `P2` Performance pass:
   Review the heaviest wallet routes and reduce avoidable client bundle weight before launch, especially the dashboard and operator surfaces that currently ship large first-load payloads.

@@ -14,6 +14,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Modal windows close when the Escape key is pressed, and zero-value requests prompt for confirmation before sending.
 - Sign-in flow presents six single-digit inputs that auto-focus, advance and accept pasted codes.
 - Wallet and sparechange off-ramp OTP routes now reject malformed phone numbers and passcodes before they hit Twilio, and they surface Twilio verification failures through one consistent API contract.
+- Wallet go-live and rollback expectations now live in a dedicated engineering runbook, covering env readiness, smoke coverage, pay-link retention verification, and operator/indexer health checks for release day.
 - The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
 - In the public auth modal, the pre-OTP email field now uses a brighter light-mode input surface with stronger border and placeholder contrast so the “Enter your email” control remains clearly distinguishable from the modal background.
 - In dark mode, the auth modal’s email field and six OTP inputs now switch to a very light grey fill with dark text, replacing the older dark-grey input treatment.
