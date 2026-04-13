@@ -53,6 +53,7 @@
   - Wallet-wide analytics now have a dedicated authenticated aggregation path at `/api/tcoin/stats/summary`. It uses service-role reads to combine existing `users`, wallet identity, payment request, exchange rate, BIA, indexer, and TorontoCoin ops sources into one stable read-only contract for the signed-in stats UI.
   - Wallet release readiness now has a machine-checkable CLI companion, `pnpm ops:wallet:preflight`. It auto-loads `.env.local`, verifies the required wallet host/origin env, confirms `public.payment_request_links` is readable, and attempts a live tcoin indexer status read before release-day smoke begins.
   - TorontoCoin release/ops scripts now use service-role Supabase reads for their indexer-backed checks and translate `Invalid schema: indexer` / `Invalid schema: chain_data` into an explicit exposed-schema remediation path instead of silently downgrading to chain-only output.
+  - Supabase browser/request clients now use one public runtime key name, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. The older `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` compatibility layer has been removed.
   - The `v1.04` operational-read-model migration is intentionally self-sufficient on older linked environments: it creates `wallet_list.public_key` if absent before building `v_wallet_identities_v1`, and its rollback instructions are kept as a non-executed `-- DOWN` section so `supabase db push` applies only the forward schema changes.
   - Agents may prepare migrations and inspect local schema files, but linked-database mutation commands remain human-only and require explicit approval before any `supabase --linked` or equivalent write operation is attempted.
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
@@ -147,6 +148,7 @@
   - Transitional Next routes under `app/api/onramp/*`, `app/api/vouchers/*`, `app/api/redemptions/*`, `app/api/merchant/application/*`, `app/api/stores*`, `app/api/city-manager/stores*`, `app/api/bias/*`, `app/api/control-plane/access`, `app/api/governance/actions`, and `app/api/user_requests` now act as compatibility shims that proxy to the canonical edge functions instead of owning duplicate domain logic.
   - Client control-plane access caching is now keyed by authenticated user identity as well as city slug so role-derived UI state cannot leak across account switches.
   - **Environment-Based Config**: CityCoin-specific logic toggled via `.env`.
+    - The root env contract is now documented canonically in `.env.example`, which is the single checked-in template for local copy-to-`.env.local` workflows.
   - **App Registry**: `ref_apps`, `ref_citycoins`, and `ref_app_instances` tables track each deployment pairing with unique slugs;
     runtime helpers resolve the active combination from `NEXT_PUBLIC_APP_NAME`/`NEXT_PUBLIC_CITYCOIN` and cache the identifier for Supabase
     queries.

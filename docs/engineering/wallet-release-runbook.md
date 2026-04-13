@@ -16,7 +16,7 @@ Companion references:
 
 | Area | Env vars | Why it matters |
 | --- | --- | --- |
-| Core Supabase runtime | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Required by browser auth, edge-function proxying, server-side indexer reads, and operator status APIs. |
+| Core Supabase runtime | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Required by browser auth, edge-function proxying, server-side indexer reads, and operator status APIs. |
 | App scoping | `NEXT_PUBLIC_CITYCOIN=tcoin`, `NEXT_PUBLIC_APP_NAME=wallet`, `NEXT_PUBLIC_APP_ENVIRONMENT=staging|production` | Controls app-instance scoping, auth bootstrap behaviour, and production-versus-local auth rules. |
 | Public wallet URLing | `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `USER_SETTINGS_ALLOWED_ORIGINS` | Required for pay-link generation, edge CORS, and public callback/origin checks. |
 | Wallet user experience | `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL`, `NEXT_PUBLIC_TCOIN_BANNER_DARK_URL` | Keeps public landing and authenticated wallet flows coherent when exchange-rate or explorer data is needed. |
@@ -29,7 +29,7 @@ Companion references:
 | Cubid-backed onboarding widgets | `NEXT_PUBLIC_CUBID_API_KEY`, `NEXT_PUBLIC_CUBID_APP_ID` | Required for the `/tcoin/wallet/welcome` onboarding surface that renders the Cubid verification widget and provider wrapper. |
 | Wallet off-ramp SMS verification | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` | Required for `/api/send_otp` and `/api/verify_otp`, which the wallet off-ramp flow uses. |
 | Merchant signup | `NEXT_PUBLIC_MERCHANT_SIGNUP_V1`, `NOMINATIM_USER_AGENT` | Merchant geocoding falls back to a default user agent, but production should set an explicit one. |
-| Buy TCOIN checkout | `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1` plus all `ONRAMP_*` vars in `.env.local.example` | Keep the feature flag `false` unless the full Transak plus deposit-wallet path has been validated end to end. |
+| Buy TCOIN checkout | `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1` plus all `ONRAMP_*` vars in `.env.example` | Keep the feature flag `false` unless the full Transak plus deposit-wallet path has been validated end to end. |
 
 ### Local-only or non-production helpers
 
@@ -100,7 +100,7 @@ If either value is `null`, stop the release. The deployed app expects the pay-li
 ### 1. Start the local stack
 
 ```bash
-cp .env.local.example .env.local
+cp .env.example .env.local
 pnpm supabase:start:local
 pnpm dev
 ```

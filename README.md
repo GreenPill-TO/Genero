@@ -11,7 +11,7 @@ The project integrates Supabase for storage, Cubid for identity and wallet manag
 
 ## Setup
 
-1. Copy `.env.local.example` to `.env.local` and populate the variables. The sample file lists the expected values and explains what each is for.
+1. Copy `.env.example` to `.env.local` and populate the variables. The sample file lists the expected values and explains what each is for.
 2. Install dependencies:
    ```bash
    pnpm install
@@ -66,7 +66,7 @@ TorontoCoin retail runtime now uses the fresh Celo mainnet suite surfaced throug
 
 ## Environment Variables
 
-Credentials for Supabase, Cubid and Twilio are required. They are referenced throughout the hooks in `shared/` and the API routes. Refer to `.env.local.example` for full details.
+Credentials for Supabase, Cubid and Twilio are required. They are referenced throughout the hooks in `shared/` and the API routes. Refer to `.env.example` for full details.
 
 Notably, use variables NEXT_PUBLIC_CITYCOIN= to determin which city and citycoin to deploy, and NEXT_PUBLIC_APP_NAME= to pich which app to deploy to serve your citycoin.
 

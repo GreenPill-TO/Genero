@@ -205,7 +205,7 @@ Provider `completed/success` is mapped to `crypto_sent` (not `mint_complete`).
 5. Concurrent webhook/touch/retry -> lock prevents duplicate mint execution.
 
 ## Configuration
-Required runtime keys are in `.env.local.example` under Buy TCOIN section, including:
+Required runtime keys are in `.env.example` under Buy TCOIN section, including:
 - provider keys/secrets (`ONRAMP_TRANSAK_*`)
 - chain/router/token addresses
 - HD seed/derivation path

@@ -1,3 +1,91 @@
+## v1.200
+### Timestamp
+- 2026-04-13 18:33 EDT
+
+### Objective
+- Simplify the Supabase public-key env contract by replacing the old dual-key compatibility setup with one canonical `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
+### What Changed
+- Replaced every active runtime read of `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` with `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` across the shared Supabase clients, edge helpers, user-settings client, onramp webhook ingress, release preflight, and related tests.
+- Updated `.env.example`, `.env.local`, and the wallet release runbook so the documented env contract now exposes only `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. In the local file, the new key was set to the same value that `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` previously held.
+- Updated the technical and functional specs to record that the compatibility layer is gone and that one publishable-key name is now required across browser and request-scoped server paths.
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+- `pnpm ops:wallet:preflight`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `.env.example`
+- `.env.local`
+- `shared/lib/supabase/client.ts`
+- `shared/lib/supabase/server.ts`
+- `shared/lib/supabase/middleware.ts`
+- `shared/lib/edge/core.ts`
+- `shared/lib/edge/serverProxy.ts`
+- `shared/lib/userSettings/client.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `shared/lib/edge/core.test.ts`
+- `shared/lib/edge/serverProxy.test.ts`
+- `scripts/wallet-release-preflight.ts`
+- `vitest.setup.ts`
+
+## v1.199
+### Timestamp
+- 2026-04-13 18:25 EDT
+
+### Objective
+- Remove the redundant root env example duplication so the repo has one canonical checked-in env template instead of both `.env.example` and `.env.local.example`.
+
+### What Changed
+- Kept `.env.example` as the single authoritative root env template and removed the duplicate `.env.local.example`.
+- Updated README and engineering docs to point local setup, runbook steps, and Buy TCOIN env references at `.env.example`.
+- Updated the technical and functional specs to reflect that the repo now maintains one checked-in wallet env template rather than two parallel copies.
+
+### Verification
+- `rg -n "\\.env\\.local\\.example|\\.env\\.example|env.local.example|env.example" README.md docs agent-context AGENTS.md`
+- Manual review of `.env.example` and `.env.local`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/buy-tcoin-checkout-orchestrator-architecture.md`
+- `.env.example`
+- `.env.local.example`
+
+## v1.198
+### Timestamp
+- 2026-04-13 18:21 EDT
+
+### Objective
+- Normalise the root env templates so the documented example is grouped and fully commented, and make the local `.env.local` follow the same ordering with a lighter, heading-only layout.
+
+### What Changed
+- Added a canonical root `.env.example` that groups the wallet runtime variables into Supabase, app URLs, wallet assets, Cubid onboarding, merchant/Twilio services, contract-management toggles, indexer settings, Buy TCOIN checkout, and TorontoCoin operator-script controls, with comments for every variable.
+- Synced `.env.local.example` to match the new `.env.example` exactly so the existing README and runbook references still work without drift.
+- Reordered the local `.env.local` into the same section and key order, preserved existing populated values, and inserted the missing documented variables with empty assignments. The local file keeps only single-line section headings plus one extra `OPENAI_API_KEY` block because that key existed locally but is not part of the repo-documented runtime contract.
+- Verified that `.env.example` and `.env.local.example` now match exactly, and that `.env.local` contains every documented variable with no missing keys.
+
+### Verification
+- Key-order and presence check across `.env.example`, `.env.local.example`, and `.env.local`
+- Manual review of the reordered files
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.env.example`
+- `.env.local.example`
+- `.env.local`
+
 ## v1.197
 ### Timestamp
 - 2026-04-13 18:01 EDT

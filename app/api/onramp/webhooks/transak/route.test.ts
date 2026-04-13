@@ -43,7 +43,7 @@ describe("POST /api/onramp/webhooks/transak", () => {
     );
     vi.stubGlobal("fetch", h.fetchMock);
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY = "publishable-key";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "publishable-key";
     process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "test";
     process.env.ONRAMP_WEBHOOK_FORWARD_SECRET = "forward-secret";
   });

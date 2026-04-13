@@ -11,19 +11,15 @@ type CookieStore = {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 function resolveSupabasePublishableKey(): string {
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!key) {
-    throw new Error(
-      "Missing Supabase publishable key. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY (preferred) or NEXT_PUBLIC_SUPABASE_ANON_KEY."
-    );
+    throw new Error("Missing Supabase publishable key. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
   }
 
   return key;
 }
-const supabasePublishableDefaultKey = resolveSupabasePublishableKey();
+const supabasePublishableKey = resolveSupabasePublishableKey();
 
 let browserClient: SupabaseClient<any, any, any> | null = null;
 
@@ -44,7 +40,7 @@ export function createClient(): SupabaseClient<any, any, any> {
       cookieStore = null;
     }
 
-    return createServerClient(supabaseUrl, supabasePublishableDefaultKey, {
+    return createServerClient(supabaseUrl, supabasePublishableKey, {
       cookies: {
         getAll() {
           return cookieStore?.getAll?.() ?? [];
@@ -68,7 +64,7 @@ export function createClient(): SupabaseClient<any, any, any> {
   }
 
   if (!browserClient) {
-    browserClient = createBrowserClient(supabaseUrl, supabasePublishableDefaultKey);
+    browserClient = createBrowserClient(supabaseUrl, supabasePublishableKey);
   }
 
   return browserClient;

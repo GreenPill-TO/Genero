@@ -44,10 +44,7 @@ async function invokeUserSettings<T>(
       method,
       headers: withAuthorization({
         ...resolveInvokeHeaders(context),
-        apikey:
-          process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-          "",
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
       }, accessToken),
       body:
         method === "GET"
