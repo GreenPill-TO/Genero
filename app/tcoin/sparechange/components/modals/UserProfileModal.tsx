@@ -58,7 +58,6 @@ const EditProfileContent = ({ onCancel }: EditProfileContentProps) => {
       return;
     }
 
-    console.log("Profile updated successfully");
     onCancel();
   };
 
@@ -107,8 +106,6 @@ interface ViewProfileContentProps {
 const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => {
   const { signOut, userData } = useAuth();
 
-  console.log({ userData })
-
   return (
     <>
       <>
@@ -120,7 +117,7 @@ const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => 
             <AvatarImage src={userData?.cubidData?.profile_image_url || "https://github.com/shadcn.png"} alt="@shadcn" />
             <AvatarFallback>U</AvatarFallback>
           </Avatar>
-          <Button variant="link" className="p-0 h-auto" onClick={() => console.log("Change avatar")}>
+          <Button variant="link" className="p-0 h-auto" onClick={onEdit}>
             Change avatar
           </Button>
         </div>

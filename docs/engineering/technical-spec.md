@@ -13,6 +13,8 @@
   - React Query hooks in tests are wrapped with `QueryClientProvider` and external modules are mocked as needed
 - **Documentation tooling**: Internal engineering notes may include Mermaid diagrams generated through the shared local `mermaid-chart` Codex skill, which keeps Mermaid source editable and uses local HTML previews plus browser screenshots for visual checks and image exports
 - **Authentication**: Twilio SMS OTP via API routes
+  - `/api/send_otp` and `/api/verify_otp` now share one server-side Twilio Verify helper that validates E.164 phone numbers plus digit-only passcodes before any upstream request is made.
+  - The deprecated raw `/api/sendsms` route has been removed so OTP traffic flows only through the Twilio Verify contract that wallet and sparechange off-ramp flows actively use.
 - **Storage**: Supabase (Postgres + Auth)
   - `public.users.cubid_id` remains nullable. Auth-backed wallet/sparechange users must no longer persist a fallback Cubid id that merely mirrors `auth_user_id`; the shared user-settings bootstrap normalizes those legacy mirror values back to `null`.
   - Local cleanup migration `20260405214500_v1.13_nullify_app_derived_cubid_ids.sql` backs up and nulls stored `users.cubid_id` values where `cubid_id = auth_user_id`, treating those rows as app-derived placeholders rather than real Cubid identities.
@@ -51,6 +53,7 @@
   - Agents may prepare migrations and inspect local schema files, but linked-database mutation commands remain human-only and require explicit approval before any `supabase --linked` or equivalent write operation is attempted.
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
+  - Secret scanning now matches the repo guard-rails: `secret-scan.yml` runs TruffleHog on pull-request diffs and runs a scheduled full-repo scan nightly.
   - The local Supabase smoke helper is intentionally launched with `zsh scripts/start-local-supabase.sh`, matching the script shebang and array-based shell syntax instead of assuming bash compatibility.
   - Supabase PR migration validation is branch-targeted and non-destructive: PRs into `dev` dry-run against the DEV session-pooler connection, while PRs into `main` dry-run against the PROD session-pooler connection.
   - Remote deploy workflows still use `SUPABASE_ACCESS_TOKEN` plus `SUPABASE_PROJECT_REF_DEV` / `SUPABASE_PROJECT_REF_PROD`, while drift/dry-run workflows use session-pooler connection strings for DEV and PROD.
@@ -241,6 +244,7 @@
 - Dashboard tab deep-links are now URL-backed for both footer navigation and programmatic tab changes, so internal transitions remain consistent with `/dashboard?tab=...`.
 - Landing page links resolve to the whitepaper, Telegram chat, presentation and source code repository.
 - Twilio API routes initialise clients inside handlers so builds succeed without environment variables.
+- Wallet custody and send-money flows must not log decrypted user shares, reconstructed private keys, wallet instances, or raw QR payloads; only non-secret operational errors may be emitted from those browser/runtime paths.
 - All section headings use the `font-extrabold` class for extra emphasis.
 - Next.js config allows remote images from Supabase for the banner.
 - Copy uses standard dashes and closes with "build up - not extract from - our communities".

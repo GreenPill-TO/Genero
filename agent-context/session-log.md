@@ -1,3 +1,39 @@
+## v1.191
+### Timestamp
+- 2026-04-13 01:16 EDT
+
+### Objective
+- Turn the initial wallet production-readiness audit into concrete repo work by hardening public OTP endpoints, removing unsafe runtime logging, and adding the missing CI secret-scan gate.
+
+### What Changed
+- Added a prioritised production-readiness checklist to `agent-context/todo.md`, then completed the first three items: wallet-runtime logging hardening, OTP contract hardening, and CI secret scanning.
+- Removed the unused `/api/sendsms` route, stripped unsafe `console.log(...)` calls from wallet custody/send flows and related QR/profile screens, and kept the remaining runtime logging focused on non-secret operational errors.
+- Extracted the active Twilio Verify integration into `shared/lib/twilioVerify.ts`, updated `/api/send_otp` and `/api/verify_otp` to share input validation and upstream error handling, and added route tests for malformed input, missing env, upstream failures, and success paths.
+- Added `.github/workflows/secret-scan.yml` so pull requests run a TruffleHog diff scan and nightly/manual runs perform a full repository scan, aligning CI with the repo security guard-rails.
+- Updated the engineering specs to record the shared OTP validation contract, the retired raw SMS endpoint, the no-secret-logging rule for wallet runtime flows, and the new secret-scan posture.
+
+### Verification
+- `pnpm exec vitest run app/api/send_otp/route.test.ts app/api/verify_otp/route.test.ts shared/hooks/useSendMoney.test.ts`
+- `pnpm lint`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.github/workflows/secret-scan.yml`
+- `shared/lib/twilioVerify.ts`
+- `app/api/send_otp/route.ts`
+- `app/api/send_otp/route.test.ts`
+- `app/api/verify_otp/route.ts`
+- `app/api/verify_otp/route.test.ts`
+- `app/api/sendsms/route.ts`
+- `shared/hooks/useSendMoney.tsx`
+- `app/tcoin/sparechange/components/modals/QrScanModal.tsx`
+- `app/tcoin/sparechange/components/modals/UserProfileModal.tsx`
+- `app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+
 ## v1.190
 ### Timestamp
 - 2026-04-06 19:14 EDT

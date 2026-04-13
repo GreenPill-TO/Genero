@@ -276,7 +276,6 @@ export const useSendMoney = ({
         };
 
 	useEffect(() => {
-		console.log({ receiverId })
 		if (senderId) fetchWalletAddress(senderId, setSenderWallet);
 		if (receiverId) fetchWalletAddress(receiverId, setReceiverWallet);
 	}, [senderId, receiverId]);
@@ -334,9 +333,7 @@ export const useSendMoney = ({
 				credentialId: base64ToArrayBuffer(user_share_encrypted.credentialId),
 			};
 
-			// Decrypt to get the user share.
                         const user_share = await decodeUserShare(jsonData);
-			console.log('Decrypted user share:', user_share);
 
 			// Reconstruct the private key.
 			const privateKeyHex = combineShares([app_share, user_share]);
@@ -345,7 +342,6 @@ export const useSendMoney = ({
 			}
 			// Ensure the key has the proper "0x" prefix.
 			const privateKey = privateKeyHex.startsWith('0x') ? privateKeyHex : `0x${privateKeyHex}`;
-			console.log('Reconstructed private key:', privateKey);
 
 			const runtimeConfig = await resolveTokenRuntimeConfig();
 			const provider = new ethers.providers.JsonRpcProvider(runtimeConfig.rpcUrl);
@@ -355,7 +351,6 @@ export const useSendMoney = ({
 			const fromAddress = walletInstance.address;
 
 			const tokenAddress = runtimeConfig.tokenAddress;
-			console.log({ walletInstance })
 			// Create a contract instance.
 			const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, walletInstance);
 
@@ -384,7 +379,6 @@ export const useSendMoney = ({
 
 			// Send the token transfer.
 			const txResponse = await tokenContract.burn(parsedAmount, overrides);
-			console.log('Transaction sent:', txResponse.hash);
 
 			// Wait for the transaction to be mined.
 			const txReceipt = await txResponse.wait();
@@ -454,21 +448,18 @@ export const useSendMoney = ({
                         };
 
                         const user_share = await decodeUserShare(jsonData);
-                        console.log('Decrypted user share:', user_share);
 
                         const privateKeyHex = combineShares([app_share, user_share]);
                         if (!privateKeyHex) {
                                 throw new Error('Failed to reconstruct private key from shares');
                         }
                         const privateKey = privateKeyHex.startsWith('0x') ? privateKeyHex : `0x${privateKeyHex}`;
-                        console.log('Reconstructed private key:', privateKey);
 
                         const runtimeConfig = await resolveTokenRuntimeConfig();
                         const provider = new ethers.providers.JsonRpcProvider(runtimeConfig.rpcUrl);
 
                         const walletInstance = new ethers.Wallet(privateKey, provider);
                         const tokenAddress = runtimeConfig.tokenAddress;
-                        console.log({ walletInstance })
                         const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, walletInstance);
 
                         const numAmount = extractDecimalFromString(amount);
@@ -480,7 +471,6 @@ export const useSendMoney = ({
                         let gasLimit;
                         try {
                                 gasLimit = await tokenContract.estimateGas.transfer(receiverWallet, parsedAmount);
-                                console.log('Estimated gas limit:', gasLimit.toString());
                         } catch (estimateError: any) {
                                 console.warn('Gas estimation failed, falling back to default gas limit. Error:', estimateError.message);
                                 gasLimit = ethers.BigNumber.from(50000000);
@@ -493,7 +483,6 @@ export const useSendMoney = ({
                         };
 
                         const txResponse = await tokenContract.transfer(receiverWallet, parsedAmount, overrides);
-                        console.log('Transaction sent:', txResponse.hash);
 
                         const txReceipt = await txResponse.wait();
                         const transactionHash = txReceipt?.transactionHash ?? txResponse.hash;

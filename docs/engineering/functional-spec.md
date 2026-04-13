@@ -13,6 +13,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Digital wallet for holding, sending, and receiving CityCoins.
 - Modal windows close when the Escape key is pressed, and zero-value requests prompt for confirmation before sending.
 - Sign-in flow presents six single-digit inputs that auto-focus, advance and accept pasted codes.
+- Wallet and sparechange off-ramp OTP routes now reject malformed phone numbers and passcodes before they hit Twilio, and they surface Twilio verification failures through one consistent API contract.
 - The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
 - In the public auth modal, the pre-OTP email field now uses a brighter light-mode input surface with stronger border and placeholder contrast so the “Enter your email” control remains clearly distinguishable from the modal background.
 - In dark mode, the auth modal’s email field and six OTP inputs now switch to a very light grey fill with dark text, replacing the older dark-grey input treatment.
@@ -273,3 +274,4 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Local charities & service workers
 - Visitors looking for an ethical spending alternative
 - Resending a wallet or sparechange OTP must clear the previously entered six-digit code before the next attempt so repeat sign-in cannot auto-submit a mixed old/new code.
+- Repository CI now includes secret scanning on pull-request diffs plus a nightly full scan, so production-readiness checks cover committed credential leaks as well as app behaviour.

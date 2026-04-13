@@ -1073,7 +1073,6 @@ export function MobileWalletDashboardComponent({
       const urlObj = new URL(url);
       const base64Data = urlObj.searchParams.get("pay");
       if (!base64Data) throw new Error("No Base64 data found in URL.");
-      console.log({ base64Data })
       // Decode Base64 data
       const decodedData = decodeURIComponent(escape(atob(base64Data)));
       return JSON.parse(decodedData); // Assuming the data is in JSON format
@@ -1086,7 +1085,6 @@ export function MobileWalletDashboardComponent({
 
   const handleScan = useCallback(async (data: any) => {
     const { ...rest } = extractAndDecodeBase64(data)
-    console.log({ rest })
     toast.success("Scanned User Successfully")
     if (rest?.nano_id) {
       const lookup = await lookupWalletUserByIdentifier(
@@ -1230,8 +1228,6 @@ export function MobileWalletDashboardComponent({
     receiverId: toSendData?.id ?? null,
   });
 
-  console.log({ senderWallet, user_id })
-
   const { balance: userBalance } = useTokenBalance(senderWallet)
 
   const dynamicQrData = qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData;
@@ -1242,7 +1238,6 @@ export function MobileWalletDashboardComponent({
 
   const qrData = `https://tcoin.me?pay=${base64Encode(dynamicQrData)}`;
 
-  // Debug logging.
   return (
     <div className="container mx-auto p-4 space-y-8">
       {/* --- Mobile View (Single Card with Tab Navigation) --- */}

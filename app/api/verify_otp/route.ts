@@ -1,81 +1,48 @@
 import { NextResponse } from "next/server";
-
-type TwilioConfig = {
-  accountSid: string;
-  authToken: string;
-  verifyServiceSid: string;
-};
-
-function getTwilioConfig(): TwilioConfig | null {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID ?? process.env.accountSid;
-  const authToken = process.env.TWILIO_AUTH_TOKEN ?? process.env.authToken;
-  const verifyServiceSid =
-    process.env.TWILIO_VERIFY_SERVICE_SID ?? process.env.verifyServiceSid;
-
-  if (!accountSid || !authToken || !verifyServiceSid) {
-    return null;
-  }
-
-  return { accountSid, authToken, verifyServiceSid };
-}
+import {
+  getTwilioVerifyConfig,
+  normaliseTwilioPasscode,
+  normaliseTwilioPhone,
+  verifyTwilioPasscode,
+} from "@shared/lib/twilioVerify";
 
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as { phone?: string; otp?: string };
-    const phone = body.phone?.trim();
-    const otp = body.otp?.trim();
+    const phone = normaliseTwilioPhone(body.phone);
+    const otp = normaliseTwilioPasscode(body.otp);
 
     if (!phone || !otp) {
       return NextResponse.json(
-        { success: false, message: "Phone number and OTP are required" },
+        {
+          success: false,
+          message: "Phone number and OTP are required in the expected formats.",
+        },
         { status: 400 }
       );
     }
 
-    const config = getTwilioConfig();
+    const config = getTwilioVerifyConfig();
     if (!config) {
       return NextResponse.json(
-        { success: false, message: "Twilio environment variables are not set properly" },
+        { success: false, message: "SMS verification is not configured." },
         { status: 500 }
       );
     }
 
-    const authHeader = Buffer.from(
-      `${config.accountSid}:${config.authToken}`,
-      "utf8"
-    ).toString("base64");
-    const form = new URLSearchParams({
-      To: phone,
-      Code: otp,
-    });
+    const { response, payload } = await verifyTwilioPasscode(config, phone, otp);
 
-    const twilioResponse = await fetch(
-      `https://verify.twilio.com/v2/Services/${config.verifyServiceSid}/VerificationCheck`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${authHeader}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: form.toString(),
-      }
-    );
-    const verificationCheck = (await twilioResponse.json()) as {
-      status?: string;
-      message?: string;
-    };
-
-    if (!twilioResponse.ok) {
+    if (!response.ok) {
       return NextResponse.json(
         {
           success: false,
-          message: verificationCheck.message ?? "Failed to verify OTP.",
+          message: payload.message ?? "Failed to verify OTP.",
         },
-        { status: twilioResponse.status }
+        { status: response.status }
       );
     }
 
-    if (verificationCheck.status === "approved") {
+    if (payload.status === "approved") {
       return NextResponse.json({ success: true });
     } else {
       return NextResponse.json(
@@ -84,9 +51,8 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { success: false, message },
+      { success: false, message: "Failed to verify OTP." },
       { status: 500 }
     );
   }
