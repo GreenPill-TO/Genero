@@ -5,8 +5,6 @@ import { useEffect, useState } from "react";
 import {
   getRegistrySnapshot,
   getVersionRecord,
-  promoteVersion,
-  registerAndPromote,
 } from "@shared/lib/contracts/management/registryOps";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 
@@ -52,6 +50,7 @@ export default function RegistryPage() {
     setMessage(null);
 
     try {
+      const { promoteVersion } = await import("@shared/lib/contracts/management/registryOps-write");
       const tx = await promoteVersion({ userId, version: Number(versionToPromote) });
       setMessage(`Promotion submitted. Tx: ${tx.txHash}`);
       await refresh();
@@ -72,6 +71,7 @@ export default function RegistryPage() {
     setMessage(null);
 
     try {
+      const { registerAndPromote } = await import("@shared/lib/contracts/management/registryOps-write");
       const tx = await registerAndPromote({
         userId,
         chainId: Number(registerInput.chainId),

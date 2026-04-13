@@ -11,7 +11,6 @@ import {
   updateWalletContactState,
 } from "@shared/lib/edge/walletOperationsClient";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
-import { ContactSelectModal } from "@tcoin/wallet/components/modals";
 import { Hypodata, contactRecordToHypodata } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { TransferRecordSnapshot } from "@shared/utils/transferRecord";
@@ -241,8 +240,11 @@ export function SendCard({
     handleContactSelection(contactRecordToHypodata(contact));
   };
 
-  const openContactSelector = () => {
+  const openContactSelector = async () => {
     if (recipientLocked) return;
+    const { ContactSelectModal } = await import(
+      "@tcoin/wallet/components/modals/ContactSelectModal"
+    );
     openModal({
       content: (
         <ContactSelectModal
@@ -324,7 +326,9 @@ export function SendCard({
               type="button"
               variant="secondary"
               className="rounded-full"
-              onClick={openContactSelector}
+              onClick={() => {
+                void openContactSelector();
+              }}
               disabled={recipientLocked}
             >
               <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact

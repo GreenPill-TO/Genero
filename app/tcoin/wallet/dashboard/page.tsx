@@ -3,20 +3,13 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import Link from "next/link";
 import React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  WalletHome,
-  SimpleWalletHome,
-  ContactsTab,
-  SendTab,
-  ReceiveTab,
-  MoreTab,
-  TransactionHistoryTab,
-} from "@tcoin/wallet/components/dashboard";
+import { WalletHome } from "@tcoin/wallet/components/dashboard/WalletHome";
+import { SimpleWalletHome } from "@tcoin/wallet/components/dashboard/SimpleWalletHome";
 import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
 import { ErrorBoundary } from "@shared/components/ErrorBoundary";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
-import type { Hypodata } from "@tcoin/wallet/components/dashboard";
+import type { Hypodata } from "@tcoin/wallet/components/dashboard/types";
 import type {
   UserSettingsExperienceMode,
   UserSettingsPendingPaymentIntent,
@@ -33,6 +26,45 @@ import { useUserSettings } from "@shared/hooks/useUserSettings";
 
 const VALID_TAB_KEYS = new Set(["home", "receive", "send", "contacts", "more", "history"]);
 const FOCUSED_TAB_KEYS = new Set(["receive", "send", "contacts", "history"]);
+
+type AsyncTabComponent = React.ComponentType<any>;
+type TabKey = "contacts" | "send" | "receive" | "more" | "history";
+
+const tabLoaders: Record<TabKey, () => Promise<AsyncTabComponent>> = {
+  contacts: () => import("@tcoin/wallet/components/dashboard/ContactsTab").then((mod) => mod.ContactsTab),
+  send: () => import("@tcoin/wallet/components/dashboard/SendTab").then((mod) => mod.SendTab),
+  receive: () => import("@tcoin/wallet/components/dashboard/ReceiveTab").then((mod) => mod.ReceiveTab),
+  more: () => import("@tcoin/wallet/components/dashboard/MoreTab").then((mod) => mod.MoreTab),
+  history: () =>
+    import("@tcoin/wallet/components/dashboard/TransactionHistoryTab").then((mod) => mod.TransactionHistoryTab),
+};
+
+const tabComponentCache = new Map<TabKey, AsyncTabComponent>();
+const tabPromiseCache = new Map<TabKey, Promise<AsyncTabComponent>>();
+
+function loadTabComponent(tab: TabKey): Promise<AsyncTabComponent> {
+  const cachedComponent = tabComponentCache.get(tab);
+  if (cachedComponent) {
+    return Promise.resolve(cachedComponent);
+  }
+
+  const cachedPromise = tabPromiseCache.get(tab);
+  if (cachedPromise) {
+    return cachedPromise;
+  }
+
+  const loadPromise = tabLoaders[tab]().then((component) => {
+    tabComponentCache.set(tab, component);
+    tabPromiseCache.delete(tab);
+    return component;
+  });
+  tabPromiseCache.set(tab, loadPromise);
+  return loadPromise;
+}
+
+function DashboardTabLoading() {
+  return <div className="py-10 text-sm text-muted-foreground">Loading wallet tools...</div>;
+}
 
 const areContactRecordsEqual = (
   current: ContactRecord[] | null,
@@ -101,6 +133,7 @@ export default function Dashboard() {
   const [requestRecipient, setRequestRecipient] = useState<Hypodata | null>(null);
   const [cachedContacts, setCachedContacts] = useState<ContactRecord[] | null>(null);
   const [receiveQrVisible, setReceiveQrVisible] = useState(true);
+  const [loadedTabs, setLoadedTabs] = useState<Partial<Record<TabKey, AsyncTabComponent>>>({});
   const router = useRouter();
   const experienceMode: UserSettingsExperienceMode = bootstrap?.preferences.experienceMode ?? "simple";
   const pendingPaymentIntent: UserSettingsPendingPaymentIntent | null =
@@ -114,6 +147,16 @@ export default function Dashboard() {
   const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans");
   const isFocusedTaskTab = FOCUSED_TAB_KEYS.has(activeTab) || (experienceMode === "simple" && activeTab === "home");
   const taskContentClass = cn("w-full", isFocusedTaskTab && "mx-auto max-w-[62.5rem]");
+  const preloadTab = useCallback((next: string) => {
+    if (!(next in tabLoaders)) {
+      return;
+    }
+
+    const tab = next as TabKey;
+    void loadTabComponent(tab).then((component) => {
+      setLoadedTabs((current) => (current[tab] ? current : { ...current, [tab]: component }));
+    });
+  }, []);
   const introActions =
     activeTab === "home" && experienceMode === "simple"
       ? null
@@ -124,6 +167,8 @@ export default function Dashboard() {
               type="button"
               className={walletActionButtonClass}
               onClick={() => handleTabChange("send")}
+              onMouseEnter={() => preloadTab("send")}
+              onFocus={() => preloadTab("send")}
             >
               Send money
             </button>
@@ -134,6 +179,8 @@ export default function Dashboard() {
               type="button"
               className={walletActionButtonClass}
               onClick={() => handleTabChange("receive")}
+              onMouseEnter={() => preloadTab("receive")}
+              onFocus={() => preloadTab("receive")}
             >
               Request money
             </button>
@@ -145,6 +192,7 @@ export default function Dashboard() {
       if (!validTabs.has(next)) {
         next = "home";
       }
+      preloadTab(next);
       setActiveTab(next);
       if (next === "home") {
         router.push("/dashboard");
@@ -155,12 +203,20 @@ export default function Dashboard() {
         setReceiveQrVisible(options?.showReceiveQr ?? true);
       }
     },
-    [router, validTabs]
+    [preloadTab, router, validTabs]
   );
 
   const handleContactsResolved = useCallback((records: ContactRecord[]) => {
     setCachedContacts((current) => (areContactRecordsEqual(current, records) ? current : records));
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "home") {
+      return;
+    }
+
+    preloadTab(activeTab);
+  }, [activeTab, preloadTab]);
 
   const content = useMemo(() => {
     if (isLoadingUser || error) return null;
@@ -176,6 +232,10 @@ export default function Dashboard() {
       );
     }
     if (activeTab === "contacts") {
+      const ContactsTab = loadedTabs.contacts;
+      if (!ContactsTab) {
+        return <DashboardTabLoading />;
+      }
       return (
         <ContactsTab
           showInviteEmptyState={experienceMode !== "simple"}
@@ -193,6 +253,10 @@ export default function Dashboard() {
       );
     }
     if (activeTab === "send") {
+      const SendTab = loadedTabs.send;
+      if (!SendTab) {
+        return <DashboardTabLoading />;
+      }
       return (
         <SendTab
           recipient={sendRecipient}
@@ -205,6 +269,10 @@ export default function Dashboard() {
       );
     }
     if (activeTab === "receive") {
+      const ReceiveTab = loadedTabs.receive;
+      if (!ReceiveTab) {
+        return <DashboardTabLoading />;
+      }
       return (
         <ReceiveTab
           contact={requestRecipient}
@@ -215,9 +283,17 @@ export default function Dashboard() {
       );
     }
     if (activeTab === "more") {
+      const MoreTab = loadedTabs.more;
+      if (!MoreTab) {
+        return <DashboardTabLoading />;
+      }
       return <MoreTab tokenLabel="TCOIN" onOpenHistory={() => handleTabChange("history")} />;
     }
     if (activeTab === "history") {
+      const TransactionHistoryTab = loadedTabs.history;
+      if (!TransactionHistoryTab) {
+        return <DashboardTabLoading />;
+      }
       return (
         <TransactionHistoryTab
           onBackToDashboard={() => handleTabChange("home")}
@@ -239,6 +315,7 @@ export default function Dashboard() {
     pendingPaymentIntent,
     receiveQrVisible,
     experienceMode,
+    loadedTabs,
     handleTabChange,
     handleContactsResolved,
     shouldResumePendingPayment,
@@ -328,7 +405,12 @@ export default function Dashboard() {
             </div>
           </WalletSection>
         </div>
-        <DashboardFooter active={activeTab} onChange={(next) => handleTabChange(next)} experienceMode={experienceMode} />
+        <DashboardFooter
+          active={activeTab}
+          onChange={(next) => handleTabChange(next)}
+          onPreload={preloadTab}
+          experienceMode={experienceMode}
+        />
       </div>
     </ErrorBoundary>
   );

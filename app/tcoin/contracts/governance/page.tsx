@@ -3,15 +3,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  cancelProposal,
-  executeProposal,
   getProposal,
   listProposalIdsByStatus,
-  proposeCharity,
-  proposePegValue,
-  proposeReserveCurrency,
-  votePegValue,
-  voteProposal,
 } from "@shared/lib/contracts/management/proposals";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 
@@ -84,6 +77,16 @@ export default function GovernancePage() {
     }
   }
 
+  async function runProposalWrite(
+    action: (writes: typeof import("@shared/lib/contracts/management/proposals-write")) => Promise<any>,
+    doneMessage: string
+  ) {
+    return run(async () => {
+      const writes = await import("@shared/lib/contracts/management/proposals-write");
+      return action(writes);
+    }, doneMessage);
+  }
+
   return (
     <div className="contract-grid">
       <section className="contract-card">
@@ -109,9 +112,9 @@ export default function GovernancePage() {
           <button
             disabled={loading || !flags?.GOVERNANCE_STEWARD}
             onClick={() =>
-              run(
-                () =>
-                  proposePegValue({
+              runProposalWrite(
+                (writes) =>
+                  writes.proposePegValue({
                     userId,
                     proposedPegValue: Number(pegValue),
                     votingWindowSeconds: Number(pegWindow),
@@ -125,8 +128,8 @@ export default function GovernancePage() {
           <button
             disabled={loading || !flags?.GOVERNANCE_STEWARD}
             onClick={() =>
-              run(
-                () => votePegValue({ userId, proposedPegValue: Number(pegValue) }),
+              runProposalWrite(
+                (writes) => writes.votePegValue({ userId, proposedPegValue: Number(pegValue) }),
                 "Peg vote submitted."
               )
             }
@@ -158,9 +161,9 @@ export default function GovernancePage() {
           <button
             disabled={loading || !flags?.GOVERNANCE_STEWARD}
             onClick={() =>
-              run(
-                () =>
-                  proposeCharity({
+              runProposalWrite(
+                (writes) =>
+                  writes.proposeCharity({
                     userId,
                     charityId: Number(charityId),
                     name: charityName,
@@ -199,9 +202,9 @@ export default function GovernancePage() {
           <button
             disabled={loading || !flags?.GOVERNANCE_STEWARD}
             onClick={() =>
-              run(
-                () =>
-                  proposeReserveCurrency({
+              runProposalWrite(
+                (writes) =>
+                  writes.proposeReserveCurrency({
                     userId,
                     code: reserveCode,
                     token: reserveToken as `0x${string}`,
@@ -232,25 +235,45 @@ export default function GovernancePage() {
             <div className="contract-actions">
               <button
                 disabled={loading || !flags?.GOVERNANCE_STEWARD}
-                onClick={() => run(() => voteProposal({ userId, proposalId: proposal.proposalId, support: true }), "Voted yes.")}
+                onClick={() =>
+                  runProposalWrite(
+                    (writes) => writes.voteProposal({ userId, proposalId: proposal.proposalId, support: true }),
+                    "Voted yes."
+                  )
+                }
               >
                 Vote Yes
               </button>
               <button
                 disabled={loading || !flags?.GOVERNANCE_STEWARD}
-                onClick={() => run(() => voteProposal({ userId, proposalId: proposal.proposalId, support: false }), "Voted no.")}
+                onClick={() =>
+                  runProposalWrite(
+                    (writes) => writes.voteProposal({ userId, proposalId: proposal.proposalId, support: false }),
+                    "Voted no."
+                  )
+                }
               >
                 Vote No
               </button>
               <button
                 disabled={loading || !flags?.CITY_MANAGER}
-                onClick={() => run(() => executeProposal({ userId, proposalId: proposal.proposalId }), "Proposal executed.")}
+                onClick={() =>
+                  runProposalWrite(
+                    (writes) => writes.executeProposal({ userId, proposalId: proposal.proposalId }),
+                    "Proposal executed."
+                  )
+                }
               >
                 Execute
               </button>
               <button
                 disabled={loading || !flags?.CITY_MANAGER}
-                onClick={() => run(() => cancelProposal({ userId, proposalId: proposal.proposalId }), "Proposal cancelled.")}
+                onClick={() =>
+                  runProposalWrite(
+                    (writes) => writes.cancelProposal({ userId, proposalId: proposal.proposalId }),
+                    "Proposal cancelled."
+                  )
+                }
               >
                 Cancel
               </button>
@@ -270,7 +293,12 @@ export default function GovernancePage() {
             <div className="contract-actions">
               <button
                 disabled={loading || !flags?.CITY_MANAGER}
-                onClick={() => run(() => executeProposal({ userId, proposalId: proposal.proposalId }), "Proposal executed.")}
+                onClick={() =>
+                  runProposalWrite(
+                    (writes) => writes.executeProposal({ userId, proposalId: proposal.proposalId }),
+                    "Proposal executed."
+                  )
+                }
               >
                 Execute
               </button>

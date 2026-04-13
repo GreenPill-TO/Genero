@@ -6,7 +6,6 @@ import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { useModal } from "@shared/contexts/ModalContext";
 import { cn } from "@shared/utils/classnames";
-import { ContactSelectModal, ShareQrModal } from "@tcoin/wallet/components/modals";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Hypodata, InvoicePayRequest } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
@@ -212,7 +211,8 @@ export function ReceiveCard({
     [openRequests]
   );
 
-  const openShareModal = () => {
+  const openShareModal = async () => {
+    const { ShareQrModal } = await import("@tcoin/wallet/components/modals/ShareQrModal");
     openModal({
       content: <ShareQrModal qrCodeData={qrCodeData} closeModal={closeModal} />,
       title: "Share QR Code",
@@ -229,14 +229,14 @@ export function ReceiveCard({
     }
 
     if (!onCreateShareableRequest) {
-      openShareModal();
+      void openShareModal();
       return;
     }
 
     try {
       await onCreateShareableRequest(parsedAmount);
       toast.success(`Request for ${formatRequestAmount(parsedAmount)} has been saved.`);
-      openShareModal();
+      await openShareModal();
     } catch (error) {
       console.error("Unable to save shareable request:", error);
       toast.error("Failed to save the request.");
@@ -257,7 +257,8 @@ export function ReceiveCard({
   const hasOpenRequests =
     shareableRequests.length > 0 || targetedRequests.length > 0;
 
-  const handleRequestClick = () => {
+  const handleRequestClick = async () => {
+    const { ContactSelectModal } = await import("@tcoin/wallet/components/modals/ContactSelectModal");
     openModal({
       content: (
         <ContactSelectModal

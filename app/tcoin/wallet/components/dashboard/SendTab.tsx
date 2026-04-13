@@ -25,10 +25,10 @@ import {
 } from "@shared/lib/walletPayLinks";
 import { Hypodata, InvoicePayRequest, contactRecordToHypodata } from "./types";
 import { SendCard, type PaymentCompletionDetails } from "./SendCard";
-import { QrScanModal } from "@tcoin/wallet/components/modals";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { UserSettingsPendingPaymentIntent } from "@shared/lib/userSettings/types";
 import { extractTransactionId } from "@shared/utils/transferRecord";
+import type { QrScanModalProps } from "@tcoin/wallet/components/modals/QrScanModal";
 
 interface SendTabProps {
   recipient: Hypodata | null;
@@ -40,6 +40,7 @@ interface SendTabProps {
 }
 
 type IncomingRequest = InvoicePayRequest & { requester: Hypodata | null };
+type QrScannerComponent = React.ComponentType<QrScanModalProps>;
 
 const CLOSED_REQUEST_STATUSES = new Set([
   "paid",
@@ -48,6 +49,26 @@ const CLOSED_REQUEST_STATUSES = new Set([
   "closed",
   "fulfilled",
 ]);
+
+let qrScannerPromise: Promise<QrScannerComponent> | null = null;
+let qrScannerComponent: QrScannerComponent | null = null;
+
+const loadQrScannerComponent = async () => {
+  if (qrScannerComponent) {
+    return qrScannerComponent;
+  }
+
+  if (!qrScannerPromise) {
+    qrScannerPromise = import("@tcoin/wallet/components/modals/QrScanModal").then(
+      (mod) => {
+        qrScannerComponent = mod.QrScanModal;
+        return qrScannerComponent;
+      }
+    );
+  }
+
+  return qrScannerPromise;
+};
 
 const formatRequestAmount = (amount: number | null | undefined) => {
   if (!Number.isFinite(amount ?? NaN) || (amount ?? 0) <= 0) {
@@ -149,6 +170,9 @@ export function SendTab({
   const [payLink, setPayLink] = useState("");
   const [activePaymentLinkToken, setActivePaymentLinkToken] = useState<string | null>(null);
   const [pendingPaymentSource, setPendingPaymentSource] = useState<"payment-link" | "signup" | null>(null);
+  const [QrScanner, setQrScanner] = useState<QrScannerComponent | null>(
+    qrScannerComponent
+  );
   const processedPaymentLinkTokenRef = useRef<string | null>(null);
   const processedResumeIntentRef = useRef<string | null>(null);
   const contactsById = useMemo(() => {
@@ -706,6 +730,9 @@ export function SendTab({
     }
     reset();
     setActiveAction("scan");
+    void loadQrScannerComponent().then((component) => {
+      setQrScanner(() => component);
+    });
   };
 
   const handleLinkClick = () => {
@@ -805,6 +832,16 @@ export function SendTab({
     }
   }, [activeAction, hasCamera, isCheckingCamera]);
 
+  useEffect(() => {
+    if (activeAction !== "scan" || QrScanner) {
+      return;
+    }
+
+    void loadQrScannerComponent().then((component) => {
+      setQrScanner(() => component);
+    });
+  }, [QrScanner, activeAction]);
+
   const applyLegacyPayPayload = useCallback(
     async (payload: Record<string, unknown>) => {
       const nanoId =
@@ -895,6 +932,12 @@ export function SendTab({
           type="button"
           variant={activeAction === "scan" ? "default" : "outline"}
           onClick={handleScanClick}
+          onMouseEnter={() => {
+            void loadQrScannerComponent();
+          }}
+          onFocus={() => {
+            void loadQrScannerComponent();
+          }}
           className="min-w-[120px]"
         >
           Scan QR Code
@@ -969,20 +1012,26 @@ export function SendTab({
             Scan a payment QR code to load recipient and amount details.
           </p>
           <div className="mt-4">
-            <QrScanModal
-              closeModal={() => setActiveAction("manual")}
-              setToSendData={(d: Hypodata) => updateRecipient(d)}
-              setTcoin={setTcoinAmount}
-              setCad={setCadAmount}
-              onResolvedPaymentLink={(link: PaymentRequestLinkResolution) => {
-                applyResolvedPaymentLink(link);
-              }}
-              onResolvedLegacyPayload={() => {
-                setActivePaymentLinkToken(null);
-                setPendingPaymentSource(null);
-                setActiveAction("manual");
-              }}
-            />
+            {QrScanner ? (
+              <QrScanner
+                closeModal={() => setActiveAction("manual")}
+                setToSendData={(d: Hypodata) => updateRecipient(d)}
+                setTcoin={setTcoinAmount}
+                setCad={setCadAmount}
+                onResolvedPaymentLink={(link: PaymentRequestLinkResolution) => {
+                  applyResolvedPaymentLink(link);
+                }}
+                onResolvedLegacyPayload={() => {
+                  setActivePaymentLinkToken(null);
+                  setPendingPaymentSource(null);
+                  setActiveAction("manual");
+                }}
+              />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border/80 p-4 text-sm text-muted-foreground">
+                Loading scanner…
+              </div>
+            )}
           </div>
         </section>
       )}

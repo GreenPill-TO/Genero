@@ -1,3 +1,105 @@
+## v1.196
+### Timestamp
+- 2026-04-13 17:14 EDT
+
+### Objective
+- Finish the authenticated wallet dashboard bundle trim by removing the remaining Cubid auth-shell weight and deferring signer/scanner/modal code until the user actually needs it.
+
+### What Changed
+- Removed the global Cubid runtime from `app/tcoin/wallet/layout.tsx`, leaving the shared wallet shell with one React Query provider plus dark-mode, modal, and content layout wrappers only. Added `app/tcoin/wallet/welcome/WalletOnboardingRuntime.tsx` so `/welcome` still owns the Cubid provider stack, wallet-connect error guard, and related stylesheet loading for onboarding-only widgets.
+- Split the heavy wallet signing path out of `useSendMoney()` into `shared/lib/wallet/sendMoneyRuntime.ts`, with lightweight runtime-config/share-selection helpers in `shared/lib/wallet/sendMoneyShared.ts`. The hook now stays render-safe and only loads `ethers`, `cubid-wallet` WebAuthn crypto, Shamir reconstruction, and voucher signer code when send, burn, or voucher-payment actions are actually invoked.
+- Removed the last eager dashboard modal/scanner imports by loading `ContactSelectModal`, `CharitySelectModal`, and `QrScanModal` on demand from `SendCard`, `ContributionsCard`, and `SendTab`. Focused tests were updated so they wait for the new async loader boundaries instead of asserting synchronously against the earlier eager imports.
+- Route-size result from `pnpm build`: `/tcoin/wallet/dashboard` is now `267 kB` first-load JS, `/tcoin/wallet/dashboard/contacts/[id]` is `252 kB`, `/tcoin/sparechange/dashboard` is `164 kB`, and `/tcoin/contracts*` remains around `234–242 kB`. A manifest inspection after the build confirmed the dashboard route no longer includes the prior Cubid/RainbowKit/wallet-connect/WebAuthn chunk markers.
+
+### Verification
+- `pnpm exec vitest run shared/hooks/useSendMoney.test.ts app/tcoin/wallet/components/dashboard/SendCard.test.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm lint`
+- `pnpm build`
+- `python - <<'PY' ...` manifest inspection for `/tcoin/wallet/dashboard/page` chunk keywords
+- `pnpm test`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `app/tcoin/wallet/welcome/WalletOnboardingRuntime.tsx`
+- `app/tcoin/wallet/components/dashboard/ContributionsCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/hooks/useSendMoney.test.ts`
+- `shared/lib/wallet/sendMoneyShared.ts`
+- `shared/lib/wallet/sendMoneyRuntime.ts`
+
+## v1.195
+### Timestamp
+- 2026-04-13 15:49 EDT
+
+### Objective
+- Execute the `P2` production-readiness performance pass against the heaviest routes, with a focus on reducing avoidable first-load JS on wallet dashboard, SpareChange dashboard, and the contracts management screens.
+
+### What Changed
+- Reworked wallet read-only balance/address flows so dashboard home and More no longer pull `useSendMoney()` just to discover the active wallet. `useTokenBalance()` now reads through a cached `viem` public client, and the new lightweight `useCurrentWalletAddress()` hook resolves the current custody wallet for read-only panels.
+- Split contract-management read helpers from Cubid write helpers by introducing dedicated write modules, then updated governance, registry, treasury, token-admin, steward, charity-operator, city-manager, and proposal-detail screens so transaction code is imported only when an operator actually executes an action. The contracts layout was also reduced to the providers those pages really use.
+- Moved wallet dashboard non-home tabs and multiple modal-heavy surfaces behind lazy/event-time imports, including authenticated navbar modals and the More/Receive/Other modal stack. SpareChange dashboard now enters through a thin shell and dynamically loads the heavy wallet screen. Focused tests were updated to cover the new lazy boundaries and hook contracts.
+- Route-size result from `pnpm build`: `/tcoin/contracts*` now sits around `234–242 kB`, `/tcoin/sparechange/dashboard` is `163 kB`, and `/tcoin/wallet/dashboard` is reduced from the earlier `1.55 MB` baseline to `1.39 MB`. The wallet dashboard target is improved but not yet complete, so the todo remains open for the next pass.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/sparechange/dashboard/page.test.tsx shared/lib/contracts/management/proposals.test.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx shared/hooks/useTokenBalance.test.tsx`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `app/tcoin/contracts/layout.tsx`
+- `app/tcoin/contracts/charity-operator/page.tsx`
+- `app/tcoin/contracts/city-manager/page.tsx`
+- `app/tcoin/contracts/governance/page.tsx`
+- `app/tcoin/contracts/proposals/[id]/page.tsx`
+- `app/tcoin/contracts/registry/page.tsx`
+- `app/tcoin/contracts/stewards/page.tsx`
+- `app/tcoin/contracts/token-admin/page.tsx`
+- `app/tcoin/contracts/treasury/page.tsx`
+- `app/tcoin/sparechange/dashboard/page.tsx`
+- `app/tcoin/sparechange/dashboard/page.test.tsx`
+- `app/tcoin/sparechange/dashboard/screens/WalletScreen.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/OtherCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `shared/hooks/useCurrentWalletAddress.ts`
+- `shared/hooks/useTokenBalance.test.tsx`
+- `shared/hooks/useTokenBalance.ts`
+- `shared/lib/contracts/management/clients.ts`
+- `shared/lib/contracts/management/proposals.test.ts`
+- `shared/lib/contracts/management/proposals.ts`
+- `shared/lib/contracts/management/proposals-write.ts`
+- `shared/lib/contracts/management/registryOps.ts`
+- `shared/lib/contracts/management/registryOps-write.ts`
+- `shared/lib/contracts/management/writes.ts`
+
 ## v1.194
 ### Timestamp
 - 2026-04-13 13:27 EDT

@@ -10,19 +10,15 @@ const { getTorontoCoinRuntimeConfigMock } = vi.hoisted(() => ({
   getTorontoCoinRuntimeConfigMock: vi.fn(),
 }));
 
-const { balanceCallMock, balanceOfMock, decimalsCallMock, decimalsMock, contractCtorMock } = vi.hoisted(() => {
-  const balanceCall = vi.fn();
-  const balanceOf = vi.fn(() => ({ call: balanceCall }));
-  const decimalsCall = vi.fn();
-  const decimals = vi.fn(() => ({ call: decimalsCall }));
-  const contractCtor = vi.fn(() => ({ methods: { balanceOf, decimals } }));
+const { createPublicClientMock, httpMock, readContractMock } = vi.hoisted(() => {
+  const readContract = vi.fn();
+  const createPublicClient = vi.fn(() => ({ readContract }));
+  const http = vi.fn((url: string) => ({ url }));
 
   return {
-    balanceCallMock: balanceCall,
-    balanceOfMock: balanceOf,
-    decimalsCallMock: decimalsCall,
-    decimalsMock: decimals,
-    contractCtorMock: contractCtor,
+    createPublicClientMock: createPublicClient,
+    httpMock: http,
+    readContractMock: readContract,
   };
 });
 
@@ -40,21 +36,14 @@ vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
   getTorontoCoinRuntimeConfig: getTorontoCoinRuntimeConfigMock,
 }));
 
-vi.mock("web3", () => {
-  class MockWeb3 {
-    static providers = {
-      HttpProvider: vi.fn((url: string) => ({ url })),
-    };
-
-    eth = {
-      Contract: contractCtorMock,
-    };
-
-    constructor(_: unknown) {}
-  }
-
-  return { default: MockWeb3 };
-});
+vi.mock("viem", () => ({
+  createPublicClient: createPublicClientMock,
+  http: httpMock,
+  formatUnits: (value: bigint, decimals: number) => {
+    const normalized = Number(value) / 10 ** decimals;
+    return Number.isInteger(normalized) ? String(normalized) : String(normalized);
+  },
+}));
 
 import { useTokenBalance } from "./useTokenBalance";
 
@@ -63,11 +52,9 @@ describe("useTokenBalance", () => {
     getActiveCityContractsMock.mockReset();
     getRpcUrlForChainIdMock.mockReset();
     getTorontoCoinRuntimeConfigMock.mockReset();
-    balanceCallMock.mockReset();
-    balanceOfMock.mockClear();
-    decimalsCallMock.mockReset();
-    decimalsMock.mockClear();
-    contractCtorMock.mockClear();
+    createPublicClientMock.mockClear();
+    httpMock.mockClear();
+    readContractMock.mockReset();
   });
 
   it("reads cplTCOIN balance from the TorontoCoin runtime bridge", async () => {
@@ -76,8 +63,17 @@ describe("useTokenBalance", () => {
       rpcUrl: "https://forno.celo.org",
       chainId: 42220,
     });
-    balanceCallMock.mockResolvedValue("1000000");
-    decimalsCallMock.mockResolvedValue("6");
+    readContractMock.mockImplementation(async ({ functionName }: { functionName: string }) => {
+      if (functionName === "balanceOf") {
+        return BigInt(1000000);
+      }
+
+      if (functionName === "decimals") {
+        return 6;
+      }
+
+      return 0;
+    });
 
     const { result } = renderHook(() =>
       useTokenBalance("0x00000000000000000000000000000000000000aa")
@@ -87,11 +83,16 @@ describe("useTokenBalance", () => {
       expect(result.current.balance).toBe("1");
     });
 
-    expect(contractCtorMock).toHaveBeenCalledWith(
-      expect.anything(),
-      "0x1111111111111111111111111111111111111111"
+    expect(createPublicClientMock).toHaveBeenCalledWith({
+      transport: { url: "https://forno.celo.org" },
+    });
+    expect(readContractMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address: "0x1111111111111111111111111111111111111111",
+        functionName: "balanceOf",
+        args: ["0x00000000000000000000000000000000000000aa"],
+      })
     );
-    expect(balanceOfMock).toHaveBeenCalledWith("0x00000000000000000000000000000000000000aa");
   });
 
   it("falls back to registry-resolved legacy contracts outside the TorontoCoin runtime", async () => {
@@ -101,8 +102,17 @@ describe("useTokenBalance", () => {
       contracts: { TCOIN: "0x0000000000000000000000000000000000000001" },
     });
     getRpcUrlForChainIdMock.mockReturnValue("https://testnet.evm.nodes.onflow.org");
-    balanceCallMock.mockResolvedValue("1000000000000000000");
-    decimalsCallMock.mockResolvedValue("18");
+    readContractMock.mockImplementation(async ({ functionName }: { functionName: string }) => {
+      if (functionName === "balanceOf") {
+        return BigInt("1000000000000000000");
+      }
+
+      if (functionName === "decimals") {
+        return 18;
+      }
+
+      return 0;
+    });
 
     const { result } = renderHook(() =>
       useTokenBalance("0x00000000000000000000000000000000000000aa")
@@ -114,11 +124,13 @@ describe("useTokenBalance", () => {
 
     expect(getActiveCityContractsMock).toHaveBeenCalledTimes(1);
     expect(getRpcUrlForChainIdMock).toHaveBeenCalledWith(545);
-    expect(contractCtorMock).toHaveBeenCalledWith(
-      expect.anything(),
-      "0x0000000000000000000000000000000000000001"
+    expect(readContractMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address: "0x0000000000000000000000000000000000000001",
+        functionName: "balanceOf",
+        args: ["0x00000000000000000000000000000000000000aa"],
+      })
     );
-    expect(balanceOfMock).toHaveBeenCalledWith("0x00000000000000000000000000000000000000aa");
   });
 
   it("surfaces registry resolution errors", async () => {

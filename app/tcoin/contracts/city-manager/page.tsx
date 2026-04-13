@@ -7,7 +7,7 @@ import {
   linkOnChainProposal,
   uploadContractManagementImage,
 } from "@shared/api/services/contractManagementService";
-import { getProposalCount, proposeCharity } from "@shared/lib/contracts/management/proposals";
+import { getProposalCount } from "@shared/lib/contracts/management/proposals";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 
 export default function CityManagerPage() {
@@ -52,6 +52,7 @@ export default function CityManagerPage() {
       });
 
       const beforeCount = await getProposalCount();
+      const { proposeCharity } = await import("@shared/lib/contracts/management/proposals-write");
       const tx = await proposeCharity({
         userId,
         charityId: Number(charityId),

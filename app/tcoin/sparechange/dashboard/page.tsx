@@ -1,6 +1,14 @@
 "use client";
+import React from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { WalletScreen } from "./screens";
+import dynamic from "next/dynamic";
+
+const WalletScreen = dynamic(
+  () => import("./screens/WalletScreen").then((mod) => mod.WalletScreen),
+  {
+    loading: () => <div className="p-4 text-sm text-muted-foreground sm:p-8">Loading SpareChange wallet…</div>,
+  }
+);
 
 export default function Dashboard() {
   const { userData, error, isLoadingUser } = useAuth();
@@ -19,6 +27,10 @@ export default function Dashboard() {
     // case "dr":
     //   return <div className={mainClass}><DonorScreen /></div>;
     default:
-      return <div className={mainClass}><WalletScreen /></div>;
+      return (
+        <div className={mainClass}>
+          <WalletScreen />
+        </div>
+      );
   }
 }

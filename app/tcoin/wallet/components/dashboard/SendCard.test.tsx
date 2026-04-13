@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SendCard, calculateResponsiveFontSize } from "./SendCard";
 
@@ -112,6 +112,21 @@ describe("SendCard", () => {
     renderSendCard();
     const selectButtons = screen.getAllByRole("button", { name: /Select Contact/i });
     expect(selectButtons.length).toBeGreaterThan(0);
+  });
+
+  it("opens the contact selector through the on-demand modal import", async () => {
+    renderSendCard();
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: /Select Contact/i })[0]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(openModalMock).toHaveBeenCalled();
+      expect(openModalMock.mock.calls[0][0].title).toBe("Select Contact");
+    });
   });
 
   it("focuses the amount input on mount", () => {
@@ -270,11 +285,16 @@ describe("SendCard", () => {
     expect(setToSendData).toHaveBeenCalledWith(null);
   });
 
-  it("opens the contact selector modal when Select Contact is clicked", () => {
+  it("opens the contact selector modal when Select Contact is clicked", async () => {
     renderSendCard();
-    const buttons = screen.getAllByRole("button", { name: /Select Contact/i });
-    fireEvent.click(buttons[0]);
-    expect(openModalMock).toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: /Select Contact/i })[0]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(openModalMock).toHaveBeenCalled();
+    });
   });
 
   it("does not render the clear recipient button when locked", () => {

@@ -4,12 +4,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import {
-  cancelProposal,
-  executeProposal,
-  getProposal,
-  voteProposal,
-} from "@shared/lib/contracts/management/proposals";
+import { getProposal } from "@shared/lib/contracts/management/proposals";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 
 export default function ProposalDetailPage() {
@@ -61,6 +56,16 @@ export default function ProposalDetailPage() {
     }
   }
 
+  async function runProposalWrite(
+    action: (writes: typeof import("@shared/lib/contracts/management/proposals-write")) => Promise<any>,
+    done: string
+  ) {
+    return run(async () => {
+      const writes = await import("@shared/lib/contracts/management/proposals-write");
+      return action(writes);
+    }, done);
+  }
+
   return (
     <div className="contract-grid">
       <section className="contract-card">
@@ -78,25 +83,29 @@ export default function ProposalDetailPage() {
         <div className="contract-actions">
           <button
             disabled={loading || !flags?.GOVERNANCE_STEWARD}
-            onClick={() => run(() => voteProposal({ userId, proposalId, support: true }), "Voted yes.")}
+            onClick={() =>
+              runProposalWrite((writes) => writes.voteProposal({ userId, proposalId, support: true }), "Voted yes.")
+            }
           >
             Vote Yes
           </button>
           <button
             disabled={loading || !flags?.GOVERNANCE_STEWARD}
-            onClick={() => run(() => voteProposal({ userId, proposalId, support: false }), "Voted no.")}
+            onClick={() =>
+              runProposalWrite((writes) => writes.voteProposal({ userId, proposalId, support: false }), "Voted no.")
+            }
           >
             Vote No
           </button>
           <button
             disabled={loading || !flags?.CITY_MANAGER}
-            onClick={() => run(() => executeProposal({ userId, proposalId }), "Executed.")}
+            onClick={() => runProposalWrite((writes) => writes.executeProposal({ userId, proposalId }), "Executed.")}
           >
             Execute
           </button>
           <button
             disabled={loading || !flags?.CITY_MANAGER}
-            onClick={() => run(() => cancelProposal({ userId, proposalId }), "Cancelled.")}
+            onClick={() => runProposalWrite((writes) => writes.cancelProposal({ userId, proposalId }), "Cancelled.")}
           >
             Cancel
           </button>

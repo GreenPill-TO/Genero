@@ -26,6 +26,11 @@ vi.mock("next/dynamic", () => ({
   },
 }));
 
+vi.mock("./WalletOnboardingRuntime", () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,

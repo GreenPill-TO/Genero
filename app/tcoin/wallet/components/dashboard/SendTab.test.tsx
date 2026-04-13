@@ -186,8 +186,7 @@ vi.mock("./SendCard", () => ({
   },
 }));
 
-
-vi.mock("@tcoin/wallet/components/modals", () => ({
+vi.mock("@tcoin/wallet/components/modals/QrScanModal", () => ({
   QrScanModal: () => <div>qr-modal</div>,
 }));
 
@@ -221,14 +220,17 @@ describe("SendTab", () => {
     });
   });
 
-  it("renders send mode actions and shows inline QR scanner panel", () => {
+  it("renders send mode actions and shows inline QR scanner panel", async () => {
     render(<SendTab recipient={null} />);
     expect(screen.getByTestId("send-tab-layout").className).not.toContain("lg:px-[25vw]");
     expect(screen.getByText("Manual")).toBeTruthy();
     expect(screen.getByText("Scan QR Code")).toBeTruthy();
     expect(screen.getByText("Pay Link")).toBeTruthy();
     expect(screen.getByText("Requests")).toBeTruthy();
-    fireEvent.click(screen.getByText("Scan QR Code"));
+    await act(async () => {
+      fireEvent.click(screen.getByText("Scan QR Code"));
+      await Promise.resolve();
+    });
     expect(screen.getByText("Scan QR")).toBeTruthy();
     expect(screen.getByText("qr-modal")).toBeTruthy();
   });

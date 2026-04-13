@@ -30,6 +30,14 @@ vi.mock("react-toastify", () => ({
   },
 }));
 
+vi.mock("@tcoin/wallet/components/modals/ContactSelectModal", () => ({
+  ContactSelectModal: () => <div data-testid="contact-select-modal" />,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/ShareQrModal", () => ({
+  ShareQrModal: () => <div data-testid="share-qr-modal" />,
+}));
+
 const createProps = () => ({
   qrCodeData: "payload",
   qrTcoinAmount: "",
@@ -74,11 +82,15 @@ describe("ReceiveCard", () => {
     cleanup();
   });
 
-  it("opens the contact selector without requiring an amount", () => {
+  it("opens the contact selector without requiring an amount", async () => {
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
     renderReceiveCard();
 
-    fireEvent.click(screen.getByRole("button", { name: /Request from Contact/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Request from Contact/i }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
     expect(openModalMock).toHaveBeenCalled();
     expect(alertSpy).not.toHaveBeenCalled();
@@ -119,7 +131,7 @@ describe("ReceiveCard", () => {
     expect(openModalMock).toHaveBeenCalled();
   });
 
-  it("renders grouped open requests with share actions", () => {
+  it("renders grouped open requests with share actions", async () => {
     renderReceiveCard({
       openRequests: [
         {
@@ -160,7 +172,11 @@ describe("ReceiveCard", () => {
     const deleteButtons = screen.getAllByRole("button", { name: /^Delete$/i });
     expect(deleteButtons.length).toBeGreaterThan(0);
 
-    fireEvent.click(shareButtons[0]);
+    await act(async () => {
+      fireEvent.click(shareButtons[0]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     expect(openModalMock).toHaveBeenCalled();
   });
 
@@ -288,6 +304,10 @@ describe("ReceiveCard", () => {
 
     warningModal.unmount();
 
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     expect(closeModalMock).toHaveBeenCalled();
     expect(openModalMock).toHaveBeenCalledTimes(2);
     const reviewArgs = openModalMock.mock.calls[1][0];

@@ -12,8 +12,8 @@
   Trim the current lint / test noise floor, especially the wallet test warnings around mocked auth session access, `next/image` mock props, and React test `act(...)` noise, so CI output stays actionable.
 - [x] `P1` Release runbook:
   Capture a wallet go-live checklist covering required env vars, local/prod smoke tests, pay-link cleanup cron verification, indexer health checks, and rollback expectations.
-- [ ] `P2` Performance pass:
-  Review the heaviest wallet routes and reduce avoidable client bundle weight before launch, especially the dashboard and operator surfaces that currently ship large first-load payloads.
+- [x] `P2` Performance pass:
+  The authenticated wallet dashboard shell, send/off-ramp runtime, and modal/scanner boundaries have now been trimmed successfully. Current `pnpm build` output is roughly `234–242 kB` for `/tcoin/contracts*`, `164 kB` for `/tcoin/sparechange/dashboard`, `267 kB` for `/tcoin/wallet/dashboard`, and `252 kB` for `/tcoin/wallet/dashboard/contacts/[id]`.
 
 ## Future Ideas
 

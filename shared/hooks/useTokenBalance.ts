@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from "react";
-import Web3 from "web3";
-import { formatUnits } from "viem";
+import { createPublicClient, formatUnits, http, type Address } from "viem";
 import { tokenAbi } from "./abi";
 import {
   getActiveCityContracts,
@@ -11,6 +10,26 @@ import {
   getTorontoCoinRuntimeConfig,
   TORONTOCOIN_RUNTIME,
 } from "@shared/lib/contracts/torontocoinRuntime";
+
+const publicClientCache = new Map<string, ReturnType<typeof createPublicClient>>();
+
+function getCachedPublicClient(chainId: number, rpcUrl: string) {
+  const cacheKey = `${chainId}:${rpcUrl}`;
+  const cached = publicClientCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const client = createPublicClient({
+    transport: http(rpcUrl),
+  });
+  publicClientCache.set(cacheKey, client);
+  return client;
+}
+
+function normaliseWalletAddress(value: string): Address {
+  return value as Address;
+}
 
 export const useTokenBalance = (walletAddress: string | null) => {
   const [balance, setBalance] = useState<string>("0");
@@ -28,6 +47,7 @@ export const useTokenBalance = (walletAddress: string | null) => {
     try {
       let tokenAddress: string;
       let rpcUrl: string;
+      let chainId = TORONTOCOIN_RUNTIME.chainId;
       let tokenDecimals = 18;
 
       const torontoCoinRuntime = getTorontoCoinRuntimeConfig({
@@ -38,21 +58,34 @@ export const useTokenBalance = (walletAddress: string | null) => {
       if (torontoCoinRuntime) {
         tokenAddress = torontoCoinRuntime.cplTcoin.address;
         rpcUrl = torontoCoinRuntime.rpcUrl;
+        chainId = torontoCoinRuntime.chainId;
         tokenDecimals = torontoCoinRuntime.cplTcoin.decimals;
       } else {
         const activeContracts = await getActiveCityContracts();
         tokenAddress = activeContracts.contracts.TCOIN;
-        rpcUrl = getRpcUrlForChainId(activeContracts.chainId);
+        chainId = activeContracts.chainId;
+        rpcUrl = getRpcUrlForChainId(chainId);
       }
 
-      const web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
+      const client = getCachedPublicClient(chainId, rpcUrl);
 
-      const tokenContract = new web3.eth.Contract(tokenAbi as any, tokenAddress);
+      const [balanceRaw, decimalsRaw] = await Promise.all([
+        client.readContract({
+          address: tokenAddress as Address,
+          abi: tokenAbi as any,
+          functionName: "balanceOf",
+          args: [normaliseWalletAddress(walletAddress)],
+        }),
+        client
+          .readContract({
+            address: tokenAddress as Address,
+            abi: tokenAbi as any,
+            functionName: "decimals",
+            args: [],
+          })
+          .catch(() => tokenDecimals),
+      ]);
 
-      const balanceRaw = await tokenContract.methods.balanceOf(walletAddress).call();
-      const decimalsRaw = tokenContract.methods.decimals
-        ? await tokenContract.methods.decimals().call().catch(() => String(tokenDecimals))
-        : String(tokenDecimals);
       const formattedBalance = formatUnits(BigInt(balanceRaw), Number(decimalsRaw));
 
       setBalance(formattedBalance);

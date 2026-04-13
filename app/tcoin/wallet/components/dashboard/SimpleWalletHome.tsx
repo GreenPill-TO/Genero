@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useSendMoney } from "@shared/hooks/useSendMoney";
+import { useCurrentWalletAddress } from "@shared/hooks/useCurrentWalletAddress";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useModal } from "@shared/contexts/ModalContext";
 import { walletActionButtonClass, walletBadgeClass, walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
-import { BuyTcoinModal, TopUpModal } from "@tcoin/wallet/components/modals";
 import { LuChevronDown } from "react-icons/lu";
 
 export function SimpleWalletHome({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
@@ -14,9 +13,8 @@ export function SimpleWalletHome({ tokenLabel = "TCOIN" }: { tokenLabel?: string
   const [isBuyMenuOpen, setIsBuyMenuOpen] = useState(false);
   const buyMenuRef = useRef<HTMLDivElement | null>(null);
   const userId = userData?.cubidData?.id;
-  const { senderWallet } = useSendMoney({
-    senderId: userId ?? 0,
-    receiverId: null,
+  const { walletAddress: senderWallet } = useCurrentWalletAddress({
+    enabled: Boolean(userId),
   });
   const { balance } = useTokenBalance(senderWallet);
   const { exchangeRate, fallbackMessage } = useControlVariables();
@@ -30,8 +28,9 @@ export function SimpleWalletHome({ tokenLabel = "TCOIN" }: { tokenLabel?: string
     return isCad ? `$${formatted}` : `${formatted} TCOIN`;
   };
 
-  const openBuyTcoinModal = () => {
+  const openBuyTcoinModal = async () => {
     setIsBuyMenuOpen(false);
+    const { BuyTcoinModal } = await import("@tcoin/wallet/components/modals/BuyTcoinModal");
     openModal({
       content: <BuyTcoinModal closeModal={closeModal} />,
       title: "Buy TCOIN",
@@ -39,8 +38,9 @@ export function SimpleWalletHome({ tokenLabel = "TCOIN" }: { tokenLabel?: string
     });
   };
 
-  const openTopUpModal = () => {
+  const openTopUpModal = async () => {
     setIsBuyMenuOpen(false);
+    const { TopUpModal } = await import("@tcoin/wallet/components/modals/TopUpModal");
     openModal({
       content: <TopUpModal closeModal={closeModal} tokenLabel={tokenLabel} />,
       title: "Top Up with Interac eTransfer",

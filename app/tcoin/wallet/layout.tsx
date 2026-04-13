@@ -2,28 +2,12 @@
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
-import { ReactQueryProvider } from "@shared/providers/react-query-provider";
-import { WalletConnectErrorGuard } from "@shared/providers/walletconnect-error-guard";
 import "@tcoin/wallet/styles/app.scss";
 import ContentLayout, { isPublicWalletPath } from "./ContentLayout";
-import dynamic from "next/dynamic";
 import { Special_Elite } from "next/font/google";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import Script from "next/script";
-
-
-
-const Provider = dynamic(
-  () => import('cubid-sdk').then((mod) => mod.Provider),
-  { ssr: false }
-);
-const WalletCubidProvider = dynamic(
-  () => import('cubid-wallet').then((mod) => mod.WalletCubidProvider),
-  { ssr: false }
-);
-import "cubid-wallet/dist/styles.css";
-import "cubid-sdk/dist/index.css";
 
 const queryClient = new QueryClient();
 const specialElite = Special_Elite({
@@ -40,32 +24,17 @@ function WalletRuntimeProviders({
 }>) {
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
-  const shouldMountWalletProviders = isAuthenticated && !isPublicWalletPath(pathname);
-  const modalThemeClassName = shouldMountWalletProviders
+  const shouldUseWalletTheme = isAuthenticated && !isPublicWalletPath(pathname);
+  const modalThemeClassName = shouldUseWalletTheme
     ? "wallet-auth-shell font-sans"
     : undefined;
 
-  const content = (
-    <ReactQueryProvider>
-      <DarkModeProvider>
-        <ModalProvider modalThemeClassName={modalThemeClassName}>
-          {children}
-        </ModalProvider>
-      </DarkModeProvider>
-    </ReactQueryProvider>
-  );
-
-  if (!shouldMountWalletProviders) {
-    return content;
-  }
-
   return (
-    <>
-      <WalletConnectErrorGuard />
-      <Provider>
-        <WalletCubidProvider>{content}</WalletCubidProvider>
-      </Provider>
-    </>
+    <DarkModeProvider>
+      <ModalProvider modalThemeClassName={modalThemeClassName}>
+        {children}
+      </ModalProvider>
+    </DarkModeProvider>
   );
 }
 

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Navbar from "./Navbar";
@@ -67,6 +67,14 @@ vi.mock("@tcoin/wallet/components/modals", () => ({
 
 vi.mock("@tcoin/wallet/components/modals/UserProfileModal", () => ({
   UserProfileModal: () => <div data-testid="profile-modal" />,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/QrScanModal", () => ({
+  QrScanModal: () => <div data-testid="qr-modal" />,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/ExperienceModeModal", () => ({
+  ExperienceModeModal: () => <div data-testid="experience-mode-modal" />,
 }));
 
 vi.mock("@tcoin/wallet/components/modals/SignInModal", () => ({
@@ -147,27 +155,31 @@ describe("Navbar session control", () => {
     );
   });
 
-  it("opens the edit profile modal from the dropdown", () => {
+  it("opens the edit profile modal from the dropdown", async () => {
     render(<Navbar />);
 
     fireEvent.click(screen.getByRole("button", { name: /Edit Profile/i }));
 
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Edit Profile");
-    expect(openModal.mock.calls[0][0].elSize).toBe("5xl");
-    expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("Edit Profile");
+      expect(openModal.mock.calls[0][0].elSize).toBe("5xl");
+      expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+    });
   });
 
-  it("opens the experience-mode modal from the dropdown", () => {
+  it("opens the experience-mode modal from the dropdown", async () => {
     render(<Navbar />);
 
     fireEvent.click(screen.getByRole("button", { name: /Experience mode/i }));
 
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Experience mode");
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("Experience mode");
+    });
   });
 
-  it("uses a switch-mode label when the current experience mode is simple", () => {
+  it("uses a switch-mode label when the current experience mode is simple", async () => {
     useUserSettingsMock.mockReturnValue({
       bootstrap: {
         user: {
@@ -188,8 +200,10 @@ describe("Navbar session control", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Switch mode/i }));
 
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Switch mode");
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("Switch mode");
+    });
   });
 
   it("logs the user out from the dropdown", () => {
@@ -216,15 +230,17 @@ describe("Navbar session control", () => {
     expect(screen.queryByRole("button", { name: /Delete this profile/i })).toBeNull();
   });
 
-  it("opens a large responsive QR scanner modal from the camera button", () => {
+  it("opens a large responsive QR scanner modal from the camera button", async () => {
     render(<Navbar />);
 
     fireEvent.click(screen.getByRole("button", { name: /open qr scanner/i }));
 
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Scan QR");
-    expect(openModal.mock.calls[0][0].elSize).toBe("4xl");
-    expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("Scan QR");
+      expect(openModal.mock.calls[0][0].elSize).toBe("4xl");
+      expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+    });
   });
 
   it("hides the camera button when the device reports no camera", () => {

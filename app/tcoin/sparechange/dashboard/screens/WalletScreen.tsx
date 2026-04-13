@@ -1,4 +1,14 @@
-import { MobileWalletDashboardComponent } from "@tcoin/sparechange/dashboard/screens/WalletComponent";
+import dynamic from "next/dynamic";
+
+const MobileWalletDashboardComponent = dynamic(
+  () =>
+    import("@tcoin/sparechange/dashboard/screens/WalletComponent").then(
+      (mod) => mod.MobileWalletDashboardComponent
+    ),
+  {
+    loading: () => <div className="py-8 text-sm text-muted-foreground">Loading wallet dashboard…</div>,
+  }
+);
 
 export function WalletScreen({
   qrBgColor,

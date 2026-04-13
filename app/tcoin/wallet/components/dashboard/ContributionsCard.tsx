@@ -1,6 +1,5 @@
 import React from "react";
 import { Button } from "@shared/components/ui/Button";
-import { CharitySelectModal } from "@tcoin/wallet/components/modals";
 import { walletPanelClass } from "./authenticated-ui";
 
 export function ContributionsCard({
@@ -46,7 +45,10 @@ export function ContributionsCard({
         <Button
           variant="default"
           className="mt-2 h-11 rounded-full px-5 font-normal"
-          onClick={() => {
+          onClick={async () => {
+            const { CharitySelectModal } = await import(
+              "@tcoin/wallet/components/modals/CharitySelectModal"
+            );
             openModal({
               content: (
                 <CharitySelectModal

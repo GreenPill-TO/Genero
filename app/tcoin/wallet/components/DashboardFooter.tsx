@@ -6,6 +6,7 @@ import type { UserSettingsExperienceMode } from "@shared/lib/userSettings/types"
 interface FooterProps {
   active: string;
   onChange: (key: string) => void;
+  onPreload?: (key: string) => void;
   experienceMode?: UserSettingsExperienceMode;
 }
 
@@ -46,7 +47,7 @@ function getDesktopItems(experienceMode: UserSettingsExperienceMode) {
       ];
 }
 
-export function DashboardFooter({ active, onChange, experienceMode = "advanced" }: FooterProps) {
+export function DashboardFooter({ active, onChange, onPreload, experienceMode = "advanced" }: FooterProps) {
   const handleSelect = (key: string) => {
     onChange(key);
     window.scrollTo({ top: 0 });
@@ -76,6 +77,9 @@ export function DashboardFooter({ active, onChange, experienceMode = "advanced" 
         onClick={() => {
           handleSelect(key);
         }}
+        onMouseEnter={() => onPreload?.(key)}
+        onFocus={() => onPreload?.(key)}
+        onTouchStart={() => onPreload?.(key)}
         className={cn(
           "w-full flex flex-col items-center justify-center rounded-2xl font-sans transition duration-200",
           compact ? "gap-2 px-2 py-3 text-xs xl:text-[13px]" : "gap-1 px-1 py-2 text-[11px]",

@@ -1,11 +1,11 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SimpleWalletHome } from "./SimpleWalletHome";
 
 const useAuthMock = vi.hoisted(() => vi.fn());
-const useSendMoneyMock = vi.hoisted(() => vi.fn());
+const useCurrentWalletAddressMock = vi.hoisted(() => vi.fn());
 const useTokenBalanceMock = vi.hoisted(() => vi.fn());
 const useControlVariablesMock = vi.hoisted(() => vi.fn());
 const openModalMock = vi.hoisted(() => vi.fn());
@@ -15,8 +15,8 @@ vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
 }));
 
-vi.mock("@shared/hooks/useSendMoney", () => ({
-  useSendMoney: () => useSendMoneyMock(),
+vi.mock("@shared/hooks/useCurrentWalletAddress", () => ({
+  useCurrentWalletAddress: () => useCurrentWalletAddressMock(),
 }));
 
 vi.mock("@shared/hooks/useTokenBalance", () => ({
@@ -34,8 +34,11 @@ vi.mock("@shared/contexts/ModalContext", () => ({
   }),
 }));
 
-vi.mock("@tcoin/wallet/components/modals", () => ({
+vi.mock("@tcoin/wallet/components/modals/BuyTcoinModal", () => ({
   BuyTcoinModal: () => <div data-testid="buy-tcoin-modal" />,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/TopUpModal", () => ({
   TopUpModal: () => <div data-testid="top-up-modal" />,
 }));
 
@@ -49,8 +52,8 @@ describe("SimpleWalletHome", () => {
         },
       },
     });
-    useSendMoneyMock.mockReturnValue({
-      senderWallet: "0x1111111111111111111111111111111111111001",
+    useCurrentWalletAddressMock.mockReturnValue({
+      walletAddress: "0x1111111111111111111111111111111111111001",
     });
     useTokenBalanceMock.mockReturnValue({
       balance: "42.5",
@@ -75,29 +78,33 @@ describe("SimpleWalletHome", () => {
     expect(screen.getByRole("menuitem", { name: /Top up with Credit Card/i })).toBeTruthy();
   });
 
-  it("opens the Interac top-up modal from the floating menu", () => {
+  it("opens the Interac top-up modal from the floating menu", async () => {
     render(<SimpleWalletHome />);
 
     fireEvent.click(screen.getByRole("button", { name: /Buy more TCOIN/i }));
     fireEvent.click(screen.getByRole("menuitem", { name: /Top up with Interac/i }));
 
-    expect(openModalMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Top Up with Interac eTransfer",
-      })
-    );
+    await waitFor(() => {
+      expect(openModalMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Top Up with Interac eTransfer",
+        })
+      );
+    });
   });
 
-  it("opens the buy-tcoin modal from the floating menu", () => {
+  it("opens the buy-tcoin modal from the floating menu", async () => {
     render(<SimpleWalletHome />);
 
     fireEvent.click(screen.getByRole("button", { name: /Buy more TCOIN/i }));
     fireEvent.click(screen.getByRole("menuitem", { name: /Top up with Credit Card/i }));
 
-    expect(openModalMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Buy TCOIN",
-      })
-    );
+    await waitFor(() => {
+      expect(openModalMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Buy TCOIN",
+        })
+      );
+    });
   });
 });
