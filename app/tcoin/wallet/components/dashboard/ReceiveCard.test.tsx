@@ -58,6 +58,8 @@ const renderReceiveCard = (overrides: Partial<ReturnType<typeof createProps>> = 
 
 
 describe("ReceiveCard", () => {
+  const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
   beforeEach(() => {
     vi.useFakeTimers();
     openModalMock.mockReset();
@@ -67,6 +69,7 @@ describe("ReceiveCard", () => {
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockClear();
     vi.useRealTimers();
     cleanup();
   });

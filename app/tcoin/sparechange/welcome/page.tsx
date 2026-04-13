@@ -182,11 +182,11 @@ const WelcomeFlow: React.FC = () => {
 
   const mainClass = cn("flex-grow flex flex-col items-center justify-center overflow-auto");
 
-  const saveToLocalStorage = () => {
+  const saveToLocalStorage = useCallback(() => {
     localStorage.setItem("welcomeFlowData", JSON.stringify(userFormData));
-  };
+  }, [userFormData]);
 
-  const syncToSupabase = async (isCompleted?: boolean) => {
+  const syncToSupabase = useCallback(async (isCompleted?: boolean) => {
     if (!userData?.user) {
       return;
     }
@@ -239,31 +239,31 @@ const WelcomeFlow: React.FC = () => {
     if (error) {
       console.error("Error syncing user data to Supabase:", error.message ?? error);
     }
-  };
+  }, [userData?.cubidData?.activeProfile?.charityPreferences?.charity, userData?.cubidData?.activeProfile?.charityPreferences?.selectedCause, userData?.user, userFormData]);
 
   const nextStep = useCallback(() => {
     saveToLocalStorage();
-    syncToSupabase();
-    setUserFormData({ ...userFormData, current_step: userFormData.current_step + 1 });
-  }, [userFormData]);
+    void syncToSupabase();
+    setUserFormData((current) => ({ ...current, current_step: current.current_step + 1 }));
+  }, [saveToLocalStorage, syncToSupabase]);
 
   const previousStep = useCallback(() => {
-    setUserFormData({ ...userFormData, current_step: userFormData.current_step - 1 });
-  }, [userFormData]);
+    setUserFormData((current) => ({ ...current, current_step: current.current_step - 1 }));
+  }, []);
 
   const handlePersonaSelection = useCallback(
     (selectedPersona: string) => {
-      setUserFormData({ ...userFormData, persona: selectedPersona });
+      setUserFormData((current) => ({ ...current, persona: selectedPersona }));
       setIsNextEnabled(true); // Enable the Continue button after persona selection
     },
-    [userFormData]
+    []
   );
 
   const updateUserFormField = useCallback(
     (key: string, value: any) => {
-      setUserFormData({ ...userFormData, [key]: value });
+      setUserFormData((current) => ({ ...current, [key]: value }));
     },
-    [userFormData]
+    []
   );
 
   useEffect(() => {

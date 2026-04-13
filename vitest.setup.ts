@@ -1,6 +1,10 @@
 import { vi } from "vitest";
 
 vi.mock("server-only", () => ({}), { virtual: true });
+vi.mock("cubid-sdk", async () => import("@shared/stubs/cubid-sdk"));
+vi.mock("cubid-wallet", async () => import("@shared/stubs/cubid-wallet"));
+vi.mock("cubid-wallet/dist/styles.css", () => ({}), { virtual: true });
+vi.mock("cubid-sdk/dist/index.css", () => ({}), { virtual: true });
 
 const indexedDbStub =
   (globalThis as any).indexedDB ??

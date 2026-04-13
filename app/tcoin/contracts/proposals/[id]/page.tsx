@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   cancelProposal,
   executeProposal,
@@ -20,7 +20,7 @@ export default function ProposalDetailPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (!proposalId) {
       setMessage("Invalid proposal id.");
       return;
@@ -35,11 +35,11 @@ export default function ProposalDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [proposalId]);
 
   useEffect(() => {
-    refresh();
-  }, [proposalId]);
+    void refresh();
+  }, [refresh]);
 
   async function run(action: () => Promise<any>, done: string) {
     if (!userId) {

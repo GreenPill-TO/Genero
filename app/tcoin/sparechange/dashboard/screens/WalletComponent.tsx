@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
@@ -511,11 +512,15 @@ function SendCard({
             </button>
             <div className="flex items-center">
               {toSendData.profile_image_url ? (
-                <img
-                  src={toSendData.profile_image_url}
-                  alt={toSendData.full_name}
-                  className="w-16 h-16 rounded-full"
-                />
+                <Avatar className="h-16 w-16">
+                  <AvatarImage
+                    src={toSendData.profile_image_url}
+                    alt={toSendData.full_name}
+                  />
+                  <AvatarFallback>
+                    {toSendData.full_name ? toSendData.full_name.charAt(0) : "?"}
+                  </AvatarFallback>
+                </Avatar>
               ) : (
                 <div className="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center">
                   <span className="text-2xl font-bold text-white">
@@ -1066,7 +1071,7 @@ export function MobileWalletDashboardComponent({
       setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
     }, 2000);
     return () => clearInterval(interval);
-  }, [user_id, tcoinAmount]);
+  }, [nano_id, user_id]);
 
   function extractAndDecodeBase64(url: string) {
     try {
@@ -1113,11 +1118,11 @@ export function MobileWalletDashboardComponent({
       }
     }
 
-  }, [exchangeRate]);
+  }, [exchangeRate, setToSendData]);
 
   useEffect(() => {
-    handleScan(window.location.href)
-  }, [])
+    void handleScan(window.location.href)
+  }, [handleScan])
 
   useEffect(() => {
     const interval = setInterval(() => {

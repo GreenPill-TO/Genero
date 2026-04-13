@@ -11,6 +11,7 @@
 - **Testing**: Vitest with tsconfig path resolution for unit tests
   - Tests run in a jsdom environment to provide DOM APIs
   - React Query hooks in tests are wrapped with `QueryClientProvider` and external modules are mocked as needed
+  - The warning-reduction pass now keeps repo-owned test output largely quiet: Cubid SDK/provider modules are stubbed in Vitest setup, component tests use Testing Library’s `act(...)` helpers instead of deprecated `react-dom/test-utils`, and expected failure-path tests silence their own intentional console noise so real regressions remain visible.
 - **Documentation tooling**: Internal engineering notes may include Mermaid diagrams generated through the shared local `mermaid-chart` Codex skill, which keeps Mermaid source editable and uses local HTML previews plus browser screenshots for visual checks and image exports
 - **Authentication**: Twilio SMS OTP via API routes
   - `/api/send_otp` and `/api/verify_otp` now share one server-side Twilio Verify helper that validates E.164 phone numbers plus digit-only passcodes before any upstream request is made.
@@ -54,6 +55,7 @@
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
 - **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
   - Secret scanning now matches the repo guard-rails: `secret-scan.yml` runs TruffleHog on pull-request diffs and runs a scheduled full-repo scan nightly.
+  - The current repo-owned lint baseline is clean. Remaining repeated `--localstorage-file` warnings seen under local Vitest runs come from the surrounding runtime environment rather than from checked-in app code.
   - The local Supabase smoke helper is intentionally launched with `zsh scripts/start-local-supabase.sh`, matching the script shebang and array-based shell syntax instead of assuming bash compatibility.
   - Supabase PR migration validation is branch-targeted and non-destructive: PRs into `dev` dry-run against the DEV session-pooler connection, while PRs into `main` dry-run against the PROD session-pooler connection.
   - Remote deploy workflows still use `SUPABASE_ACCESS_TOKEN` plus `SUPABASE_PROJECT_REF_DEV` / `SUPABASE_PROJECT_REF_PROD`, while drift/dry-run workflows use session-pooler connection strings for DEV and PROD.

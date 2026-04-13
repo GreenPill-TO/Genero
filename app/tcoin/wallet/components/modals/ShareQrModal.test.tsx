@@ -1,33 +1,19 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi } from "vitest";
 import React from "react";
-import { createRoot } from "react-dom/client";
-import { act } from "react-dom/test-utils";
 import { ShareQrModal } from "./ShareQrModal";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, cleanup } from "@testing-library/react";
 
 describe("ShareQrModal", () => {
   it("calls closeModal on Escape key press", () => {
     const closeModal = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
+    render(<ShareQrModal closeModal={closeModal} qrCodeData="https://example.com" />);
 
-    act(() => {
-      root.render(<ShareQrModal closeModal={closeModal} />);
-    });
-
-    act(() => {
-      const event = new KeyboardEvent("keydown", { key: "Escape" });
-      document.dispatchEvent(event);
-    });
+    const event = new KeyboardEvent("keydown", { key: "Escape" });
+    document.dispatchEvent(event);
 
     expect(closeModal).toHaveBeenCalled();
-
-    act(() => {
-      root.unmount();
-    });
-    document.body.removeChild(container);
+    cleanup();
   });
 
   it("uses the updated TCOIN invoice copy for email sharing", () => {

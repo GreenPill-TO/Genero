@@ -1,6 +1,5 @@
 "use client";
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { useMemo } from "react";
 import { WalletScreen } from "./screens";
 
 export default function Dashboard() {
@@ -8,24 +7,18 @@ export default function Dashboard() {
 
   const mainClass = "p-4 sm:p-8";
 
-  const screenContent = useMemo(() => {
-    if (isLoadingUser || error) return null;
-
-    switch (userData?.cubidData?.activeProfile?.persona) {
-      // case "ph":
-      //   return <PanhandlerScreen />;
-      // case "dr":
-      //   return <DonorScreen />;
-      default:
-        return <WalletScreen />;
-    }
-  }, [userData]);
-
   if (error) {
     return <div className={mainClass}>Error loading data: {error.message}</div>;
   }
 
   if (isLoadingUser) return <div className={mainClass}> ... Loading </div>;
 
-  return <div className={mainClass}>{screenContent}</div>;
+  switch (userData?.cubidData?.activeProfile?.persona) {
+    // case "ph":
+    //   return <div className={mainClass}><PanhandlerScreen /></div>;
+    // case "dr":
+    //   return <div className={mainClass}><DonorScreen /></div>;
+    default:
+      return <div className={mainClass}><WalletScreen /></div>;
+  }
 }

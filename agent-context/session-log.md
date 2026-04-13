@@ -1,3 +1,50 @@
+## v1.192
+### Timestamp
+- 2026-04-13 09:21 EDT
+
+### Objective
+- Eliminate the repo-owned lint and test warnings uncovered during the production-readiness pass so new warnings stand out as real regressions instead of background noise.
+
+### What Changed
+- Fixed every current ESLint warning by tightening hook dependencies, replacing legacy image usage in the warned SpareChange surfaces, and moving the wallet layout’s Special Elite font loading onto `next/font/google`.
+- Reduced test noise by stubbing Cubid SDK/provider modules in `vitest.setup.ts`, modernizing modal tests away from deprecated `react-dom/test-utils`, fixing the `next/image` test mock that leaked the `priority` prop to the DOM, and mocking or silencing expected error-path logging in focused component/hook tests.
+- Hardened a few warning-adjacent implementation details while touching those files, including the SpareChange user-info username hydration bug and the wallet dashboard tests’ missing edge-client mocks.
+- Updated the todo/spec artefacts to mark the warning-reduction work complete and to record that the remaining repeated `--localstorage-file` warning comes from the surrounding local runtime rather than from checked-in repo code.
+
+### Verification
+- `pnpm lint`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/ContactSelectModal.test.tsx app/tcoin/wallet/components/modals/ShareQrModal.test.tsx app/tcoin/wallet/components/modals/SignInModal.test.tsx app/tcoin/wallet/components/landing-header/LandingHeader.test.tsx app/tcoin/wallet/components/dashboard/SendCard.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx shared/api/hooks/useAuth.test.tsx shared/hooks/useSendMoney.test.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `next.config.js`
+- `vitest.setup.ts`
+- `app/tcoin/contracts/proposals/[id]/page.tsx`
+- `app/tcoin/sparechange/ContentLayout.tsx`
+- `app/tcoin/sparechange/components/navbar/Navbar.tsx`
+- `app/tcoin/sparechange/dashboard/page.tsx`
+- `app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+- `app/tcoin/sparechange/home/Hero.tsx`
+- `app/tcoin/sparechange/welcome/page.tsx`
+- `app/tcoin/sparechange/welcome/steps/UserInfoStep.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/wallet/components/landing-header/LandingHeader.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `app/tcoin/wallet/components/modals/CharitySelectModal.test.tsx`
+- `app/tcoin/wallet/components/modals/ContactSelectModal.test.tsx`
+- `app/tcoin/wallet/components/modals/ShareQrModal.test.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/hooks/useSendMoney.test.ts`
+
 ## v1.191
 ### Timestamp
 - 2026-04-13 01:16 EDT

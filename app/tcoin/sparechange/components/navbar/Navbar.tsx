@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { Avatar } from "@shared/components/ui/Avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
 import { useModal } from "@shared/contexts/ModalContext";
 import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
@@ -17,11 +17,10 @@ import { ThemeToggleButton } from "./ThemeToggleButton";
 
 export default function Navbar({ title }: { title?: string }) {
   const { openModal, closeModal } = useModal();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userData } = useAuth();
   const { hasCamera } = useCameraAvailability();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
-  const { userData } = useAuth()
   const pathname = usePathname();
 
   const onAuth = () => {
@@ -59,7 +58,8 @@ export default function Navbar({ title }: { title?: string }) {
   const Account = () => {
     if (isAuthenticated)
       return (
-        <img
+        <button
+          type="button"
           onClick={() => {
             openModal({
               content: <UserProfileModal closeModal={closeModal} />,
@@ -68,10 +68,19 @@ export default function Navbar({ title }: { title?: string }) {
               description: "Manage your account settings and preferences.",
             });
           }}
-          src={userData?.cubidData?.profile_image_url || "https://github.com/shadcn.png"}
-          alt={"Avatar"}
-          className="mx-2 h-8 w-8 rounded-full"
-        />
+          className="mx-2 rounded-full"
+          aria-label="Open profile"
+        >
+          <Avatar className="h-8 w-8">
+            <AvatarImage
+              src={userData?.cubidData?.profile_image_url || "https://github.com/shadcn.png"}
+              alt="Avatar"
+            />
+            <AvatarFallback>
+              {(userData?.cubidData?.full_name?.trim()?.[0] ?? "U").toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </button>
       );
     return <Button onClick={onAuth}>Authenticate</Button>;
   };
@@ -109,7 +118,7 @@ export default function Navbar({ title }: { title?: string }) {
         </>
       );
     return null;
-  }, [pathname]);
+  }, [pathname, userData?.cubidData?.id]);
 
   return (
     <nav

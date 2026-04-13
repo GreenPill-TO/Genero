@@ -35,7 +35,10 @@ vi.mock("cubid-wallet", () => ({
 import { __internal, WebAuthnRequestInProgressError } from "./useSendMoney";
 
 describe("runWithWebAuthnLock", () => {
+  const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
   afterEach(() => {
+    consoleWarnSpy.mockClear();
     __internal.resetWebAuthnLock();
     getActiveCityContractsMock.mockReset();
     getRpcUrlForChainIdMock.mockReset();

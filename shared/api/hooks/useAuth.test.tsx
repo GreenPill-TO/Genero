@@ -155,6 +155,7 @@ const baseCubidData = {
 describe("useAuth", () => {
   let queryClient: QueryClient;
   let secondaryQueryClient: QueryClient;
+  const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -200,6 +201,7 @@ describe("useAuth", () => {
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockClear();
     queryClient.clear();
     secondaryQueryClient.clear();
     resetUseAuthSubscriptionForTests();

@@ -275,3 +275,4 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Visitors looking for an ethical spending alternative
 - Resending a wallet or sparechange OTP must clear the previously entered six-digit code before the next attempt so repeat sign-in cannot auto-submit a mixed old/new code.
 - Repository CI now includes secret scanning on pull-request diffs plus a nightly full scan, so production-readiness checks cover committed credential leaks as well as app behaviour.
+- Repository-owned lint and unit-test output is now intentionally low-noise, so operators and engineers can treat new warnings during wallet work as actionable signals instead of background clutter.

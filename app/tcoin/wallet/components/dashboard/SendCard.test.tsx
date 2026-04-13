@@ -32,8 +32,14 @@ vi.mock("@shared/lib/supabase/client", () => ({
   }),
 }));
 const insertSuccessNotificationMock = vi.hoisted(() => vi.fn());
+const getWalletContactDetailMock = vi.hoisted(() => vi.fn().mockResolvedValue({ contact: null }));
+const updateWalletContactStateMock = vi.hoisted(() => vi.fn().mockResolvedValue({ contact: null }));
 vi.mock("@shared/utils/insertNotification", () => ({
   insertSuccessNotification: insertSuccessNotificationMock,
+}));
+vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
+  getWalletContactDetail: getWalletContactDetailMock,
+  updateWalletContactState: updateWalletContactStateMock,
 }));
 
 const createProps = () => ({
@@ -59,11 +65,18 @@ const renderSendCard = (overrides: Partial<ReturnType<typeof createProps>> = {})
 };
 
 describe("SendCard", () => {
+  const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
   beforeEach(() => {
     openModalMock.mockReset();
+    getWalletContactDetailMock.mockReset();
+    getWalletContactDetailMock.mockResolvedValue({ contact: null });
+    updateWalletContactStateMock.mockReset();
+    updateWalletContactStateMock.mockResolvedValue({ contact: null });
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockClear();
     cleanup();
     insertSuccessNotificationMock.mockReset();
     Object.values(toastMock).forEach((fn) => fn.mockReset());

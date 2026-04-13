@@ -30,7 +30,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     if (!isLoading && !isAuthenticated) {
       router.push("/"); // Redirect to the main page or login page
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, router]);
 
   return (
     <div className={GeistSans.className}>

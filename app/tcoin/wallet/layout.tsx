@@ -7,6 +7,7 @@ import { WalletConnectErrorGuard } from "@shared/providers/walletconnect-error-g
 import "@tcoin/wallet/styles/app.scss";
 import ContentLayout, { isPublicWalletPath } from "./ContentLayout";
 import dynamic from "next/dynamic";
+import { Special_Elite } from "next/font/google";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import Script from "next/script";
@@ -25,6 +26,11 @@ import "cubid-wallet/dist/styles.css";
 import "cubid-sdk/dist/index.css";
 
 const queryClient = new QueryClient();
+const specialElite = Special_Elite({
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
 const themeCacheKey = `theme_cache:${(process.env.NEXT_PUBLIC_APP_NAME ?? "wallet").trim().toLowerCase()}:${(process.env.NEXT_PUBLIC_CITYCOIN ?? "tcoin").trim().toLowerCase()}:${((process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase() || "default")}`;
 
 function WalletRuntimeProviders({
@@ -71,14 +77,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" />
         <Script id="theme-bootstrap" strategy="beforeInteractive">
           {`(function(){try{var key=${JSON.stringify(themeCacheKey)};var stored=window.localStorage.getItem(key);if(stored==null){var legacy=window.localStorage.getItem('theme');var legacyUserSet=window.localStorage.getItem('theme_user_set')==='1';if(legacyUserSet&&(legacy==='light'||legacy==='dark')){stored=legacy;window.localStorage.setItem(key, legacy);}}var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var shouldUseDark=stored==='dark'||(stored!=='light'&&prefersDark);if(shouldUseDark){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`}
         </Script>
       </head>
-      <body style={{ fontFamily: "'Special Elite', system-ui" }}>
+      <body className={specialElite.className}>
         <style jsx global>{`
           body {
             line-height: 1.333;
