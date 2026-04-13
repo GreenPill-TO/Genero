@@ -1,34 +1,20 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getIndexerScopeStatus } from "../services/indexer/src/index.ts";
 import { getTorontoCoinOpsStatus } from "../shared/lib/contracts/torontocoinOps.ts";
+import {
+  createOpsSupabaseClient,
+  describeSupabaseAccessError,
+  loadRepoEnv,
+} from "./load-repo-env.ts";
 
-function createIndexerClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !publishableKey) {
-    return null;
-  }
-
-  return createSupabaseClient(supabaseUrl, publishableKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
+loadRepoEnv();
 
 async function main() {
   const status = await getTorontoCoinOpsStatus();
-  const supabase = createIndexerClient();
-  const indexerStatus = supabase
-    ? await getIndexerScopeStatus({
-        supabase,
-        citySlug: "tcoin",
-      })
-    : null;
+  const supabase = createOpsSupabaseClient();
+  const indexerStatus = await getIndexerScopeStatus({
+    supabase,
+    citySlug: "tcoin",
+  });
 
   const poolSummaries = status.pools.map((pool) => {
     const indexerPool = indexerStatus?.torontoCoinTracking?.trackedPools.find(
@@ -39,6 +25,8 @@ async function main() {
       poolId: pool.poolId,
       poolAddress: pool.poolAddress,
       name: pool.name,
+      expectedIndexerVisibility: pool.expectedIndexerVisibility,
+      acceptanceEnabled: pool.acceptanceEnabled,
       registered: pool.registration.registryAddressMatches,
       active: pool.registration.active,
       feeBypassEligible: pool.registration.feeBypassEligible,
@@ -50,6 +38,20 @@ async function main() {
     };
   });
 
+  const blockers = poolSummaries.flatMap((pool) => {
+    const errors: string[] = [];
+    if (pool.expectedIndexerVisibility && !pool.indexed) {
+      errors.push(`${pool.name} is expected to be indexed but is currently missing from the tracked-pool set.`);
+    }
+    if (pool.acceptanceEnabled && !pool.previewHealthy) {
+      errors.push(`${pool.name} is acceptance-enabled but previewBuyCplTcoin is failing.`);
+    }
+    if (!pool.registered || !pool.active) {
+      errors.push(`${pool.name} is not fully registered and active.`);
+    }
+    return errors;
+  });
+
   const summary = [
     "TorontoCoin pool compatibility",
     ...poolSummaries.map(
@@ -59,20 +61,28 @@ async function main() {
   ];
 
   console.log(summary.join("\n"));
+  if (blockers.length > 0) {
+    console.error(`\nRelease blockers:\n- ${blockers.join("\n- ")}`);
+  }
   console.log(
     JSON.stringify(
       {
         generatedAt: new Date().toISOString(),
         reserveRouteHealth: status.reserveRouteHealth,
         pools: poolSummaries,
+        releaseBlockers: blockers,
       },
       null,
       2
     )
   );
+
+  if (blockers.length > 0) {
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(describeSupabaseAccessError(error));
   process.exitCode = 1;
 });

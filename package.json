@@ -11,6 +11,7 @@
     "lint:next": "next lint",
     "lint:edge-boundary": "node scripts/check-no-direct-supabase-db.mjs",
     "test": "vitest run",
+    "ops:wallet:preflight": "tsx scripts/wallet-release-preflight.ts",
     "ops:torontocoin": "tsx scripts/torontocoin-ops-check.ts",
     "ops:torontocoin:pools": "tsx scripts/torontocoin-pool-compatibility-check.ts",
     "ops:torontocoin:acceptance": "tsx scripts/torontocoin-pool-acceptance.ts",

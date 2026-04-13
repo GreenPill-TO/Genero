@@ -26,7 +26,7 @@ Companion references:
 
 | Surface | Env vars | Notes |
 | --- | --- | --- |
-| Cubid-backed wallet wrappers | `NEXT_PUBLIC_CUBID_API_KEY`, `NEXT_PUBLIC_CUBID_APP_ID`, `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS` | Needed when production is using Cubid wallet-provider wrappers rather than leaving them disabled. |
+| Cubid-backed onboarding widgets | `NEXT_PUBLIC_CUBID_API_KEY`, `NEXT_PUBLIC_CUBID_APP_ID` | Required for the `/tcoin/wallet/welcome` onboarding surface that renders the Cubid verification widget and provider wrapper. |
 | Wallet off-ramp SMS verification | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` | Required for `/api/send_otp` and `/api/verify_otp`, which the wallet off-ramp flow uses. |
 | Merchant signup | `NEXT_PUBLIC_MERCHANT_SIGNUP_V1`, `NOMINATIM_USER_AGENT` | Merchant geocoding falls back to a default user agent, but production should set an explicit one. |
 | Buy TCOIN checkout | `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1` plus all `ONRAMP_*` vars in `.env.local.example` | Keep the feature flag `false` unless the full Transak plus deposit-wallet path has been validated end to end. |
@@ -47,13 +47,14 @@ Before any deploy:
 3. Confirm `NEXT_PUBLIC_APP_NAME=wallet`, `NEXT_PUBLIC_CITYCOIN=tcoin`, and the target `NEXT_PUBLIC_APP_ENVIRONMENT` are set correctly.
 4. Confirm optional features that are not launch-critical remain off:
    - `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1=false` unless onramp has been fully validated
-   - `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS=false` unless that wrapper path is intentionally live
+   - leave Cubid env unset unless the `/tcoin/wallet/welcome` onboarding widget is intentionally live in the target environment
 
 ### 2. Run the repo validation suite
 
 Run these from the repo root:
 
 ```bash
+pnpm ops:wallet:preflight
 pnpm lint
 pnpm test
 pnpm build
@@ -64,10 +65,18 @@ pnpm ops:torontocoin:acceptance
 
 Expected outcome:
 
+- `pnpm ops:wallet:preflight` confirms the required wallet env is present, `public.payment_request_links` is reachable, and the tcoin indexer status is readable.
 - `lint`, `test`, and `build` all pass.
-- `pnpm ops:torontocoin` shows healthy ownership, reserve-route, and pool summaries.
+- `pnpm ops:torontocoin` shows healthy ownership, reserve-route, pool summaries, and a non-null indexer payload.
 - `pnpm ops:torontocoin:pools` reports the tracked pools as healthy and visible.
 - `pnpm ops:torontocoin:acceptance` stays in preview-only mode by default. Do not set `TORONTOCOIN_LIVE_BUY_ENABLED=true` as part of a normal release preflight.
+
+Operational note:
+
+- `pnpm ops:torontocoin`, `pnpm ops:torontocoin:pools`, and `pnpm ops:torontocoin:acceptance` auto-load `.env.local` through Next's env loader.
+- `pnpm ops:wallet:preflight`, `pnpm ops:torontocoin`, and `pnpm ops:torontocoin:pools` use the server-side Supabase key and now fail fast if `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY` is missing, because a partial chain-only pass is not production-ready.
+- If any command reports `Invalid schema: indexer` or `Invalid schema: chain_data`, the target Supabase Data API is missing required exposed schemas for the wallet's indexer features.
+- Treat any reported `releaseBlockers` output as a hard stop for go-live.
 
 ### 3. Confirm the target database exposes the required wallet contracts
 
@@ -138,6 +147,22 @@ Run these immediately after deploy against the production host.
 
 The checked-in migration expects a `pg_cron` job named `wallet-payment-request-links-cleanup` with schedule `15 6 * * *`, which corresponds to `06:15 UTC` daily.
 
+### Verify `pg_cron` is available before querying scheduler tables
+
+```sql
+select exists (
+  select 1
+  from pg_extension
+  where extname = 'pg_cron'
+) as pg_cron_installed;
+```
+
+Expected outcome:
+
+- `pg_cron_installed = true`
+
+If this returns `false`, stop the release and document the approved fallback scheduler or manual retention process before calling the wallet production-ready.
+
 ### Verify the job exists
 
 ```sql
@@ -173,7 +198,7 @@ Expected outcome:
 - no repeating error message
 - the latest successful run is recent enough for your release window
 
-If `pg_cron` is unavailable in the target environment, treat that as an explicit go-live gap. Record the fallback scheduler or manual retention process before calling the wallet production-ready.
+If the job row is missing, inactive, or scheduled differently, treat that as an explicit go-live gap and resolve it before release.
 
 ## Indexer health checks
 
@@ -237,7 +262,7 @@ If the fault is isolated, disable the affected surface instead of taking the who
 
 - set `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1=false` to remove the new onramp flow
 - set `NEXT_PUBLIC_MERCHANT_SIGNUP_V1=false` to hide merchant signup
-- set `NEXT_PUBLIC_ENABLE_CUBID_WALLET_PROVIDERS=false` if Cubid wallet wrappers are the issue
+- remove `NEXT_PUBLIC_CUBID_API_KEY` and `NEXT_PUBLIC_CUBID_APP_ID` if the Cubid onboarding widget is the issue
 
 ### Database and schema safety
 

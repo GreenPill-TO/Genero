@@ -1,34 +1,57 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getIndexerScopeStatus } from "../services/indexer/src/index.ts";
 import { getTorontoCoinOpsStatus } from "../shared/lib/contracts/torontocoinOps.ts";
+import {
+  createOpsSupabaseClient,
+  describeSupabaseAccessError,
+  loadRepoEnv,
+} from "./load-repo-env.ts";
 
-function createIndexerClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+loadRepoEnv();
 
-  if (!supabaseUrl || !publishableKey) {
-    return null;
+function collectReleaseBlockers(options: {
+  opsStatus: Awaited<ReturnType<typeof getTorontoCoinOpsStatus>>;
+  indexerStatus: Awaited<ReturnType<typeof getIndexerScopeStatus>>;
+}) {
+  const blockers: string[] = [];
+  const tracking = options.indexerStatus.torontoCoinTracking;
+
+  if (!tracking) {
+    blockers.push("Indexer status returned no TorontoCoin tracking payload.");
+    return blockers;
   }
 
-  return createSupabaseClient(supabaseUrl, publishableKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  if (!tracking.cplTcoinTracked) {
+    blockers.push("Indexer is not tracking the required cplTCOIN token.");
+  }
+
+  for (const pool of options.opsStatus.pools) {
+    const trackedPool = tracking.trackedPools.find(
+      (entry) => entry.poolId.toLowerCase() === pool.poolId.toLowerCase()
+    );
+
+    if (pool.expectedIndexerVisibility && !trackedPool?.tracked) {
+      blockers.push(`${pool.name} is expected to be indexed but is not currently tracked.`);
+    }
+
+    if (pool.acceptanceEnabled && !(pool.scenarioPreview?.healthy ?? false)) {
+      blockers.push(`${pool.name} is acceptance-enabled but its Scenario B preview is failing.`);
+    }
+  }
+
+  return blockers;
 }
 
 async function main() {
   const opsStatus = await getTorontoCoinOpsStatus();
-  const supabase = createIndexerClient();
-  const indexerStatus = supabase
-    ? await getIndexerScopeStatus({
-        supabase,
-        citySlug: "tcoin",
-      })
-    : null;
+  const supabase = createOpsSupabaseClient();
+  const indexerStatus = await getIndexerScopeStatus({
+    supabase,
+    citySlug: "tcoin",
+  });
+  const blockers = collectReleaseBlockers({
+    opsStatus,
+    indexerStatus,
+  });
 
   const summary = [
     "TorontoCoin ops check",
@@ -41,6 +64,9 @@ async function main() {
         opsStatus.reserveRouteHealth.mentoUsdcRouteConfigured &&
         opsStatus.reserveRouteHealth.liquidityRouterPointerHealthy &&
         opsStatus.reserveRouteHealth.treasuryControllerPointerHealthy
+    )}`,
+    `Indexer cplTCOIN tracked: ${String(
+      indexerStatus.torontoCoinTracking?.cplTcoinTracked ?? false
     )}`,
     ...opsStatus.pools.map((pool) => {
       const trackedPool = indexerStatus?.torontoCoinTracking?.trackedPools.find(
@@ -56,9 +82,13 @@ async function main() {
   const payload = {
     ...opsStatus,
     indexer: indexerStatus?.torontoCoinTracking ?? null,
+    releaseBlockers: blockers,
   };
 
   console.log(summary.join("\n"));
+  if (blockers.length > 0) {
+    console.error(`\nRelease blockers:\n- ${blockers.join("\n- ")}`);
+  }
   console.log(
     JSON.stringify(
       payload,
@@ -66,9 +96,13 @@ async function main() {
       2
     )
   );
+
+  if (blockers.length > 0) {
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(describeSupabaseAccessError(error));
   process.exitCode = 1;
 });

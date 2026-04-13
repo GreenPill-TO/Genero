@@ -7,6 +7,9 @@ import {
 } from "viem";
 import { getTorontoCoinTrackedPoolStatuses } from "../shared/lib/contracts/torontocoinPools.ts";
 import { getTorontoCoinRpcUrl, TORONTOCOIN_RUNTIME } from "../shared/lib/contracts/torontocoinRuntime.ts";
+import { loadRepoEnv } from "./load-repo-env.ts";
+
+loadRepoEnv();
 
 const erc20Abi = [
   {

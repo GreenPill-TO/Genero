@@ -1,3 +1,42 @@
+## v1.197
+### Timestamp
+- 2026-04-13 18:01 EDT
+
+### Objective
+- Run a production-readiness dry run against the wallet release runbook, then close the repo-side gaps it reveals around env loading, Supabase/indexer checks, and pay-link operational readiness.
+
+### What Changed
+- Added `scripts/load-repo-env.ts` as a shared release-ops helper that auto-loads Next env files, creates a service-role Supabase client for server-side checks, and explains the common `Invalid schema: indexer` / `Invalid schema: chain_data` failure mode as a Supabase exposed-schema problem instead of a vague runtime error.
+- Tightened `scripts/torontocoin-ops-check.ts` and `scripts/torontocoin-pool-compatibility-check.ts` so they no longer pass with a partial chain-only view. Both scripts now auto-load `.env.local`, use the server-side Supabase key for indexer-backed reads, and fail loudly when the target project cannot actually serve the wallet’s indexer schemas.
+- Added `scripts/wallet-release-preflight.ts` plus `pnpm ops:wallet:preflight` to turn the release runbook into a machine-checkable preflight. The new command checks required wallet env, flags partial Buy TCOIN/Twilio setup, confirms `public.payment_request_links` is reachable, and attempts a live tcoin indexer status read before release.
+- Updated `docs/engineering/wallet-release-runbook.md`, `docs/engineering/torontocoin-ops-runbook.md`, and `.env.local.example` to match the current runtime: Cubid now only applies to onboarding widgets, wallet/TorontoCoin preflight scripts use service-role Supabase reads, and pay-link cleanup verification now starts by explicitly checking `pg_cron` availability.
+- The current target env is still not production-ready. The dry run now surfaces the real blockers instead of masking them: missing `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_EXPLORER_URL`, and `USER_SETTINGS_ALLOWED_ORIGINS`; `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1=true` with `ONRAMP_WEBHOOK_FORWARD_SECRET` missing; and Supabase Data API rejection of the `indexer` schema. `public.payment_request_links` is reachable, so pay-link storage exists, but the manual `pg_cron` SQL verification is still required.
+- No on-chain write action was executed in this session. The acceptance script remained preview-only, so there is no deployer-wallet balance delta to record.
+
+### Verification
+- `pnpm ops:wallet:preflight`
+- `pnpm ops:torontocoin`
+- `pnpm ops:torontocoin:pools`
+- `pnpm ops:torontocoin:acceptance`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `.env.local.example`
+- `package.json`
+- `scripts/load-repo-env.ts`
+- `scripts/torontocoin-ops-check.ts`
+- `scripts/torontocoin-pool-compatibility-check.ts`
+- `scripts/torontocoin-pool-acceptance.ts`
+- `scripts/wallet-release-preflight.ts`
+
 ## v1.196
 ### Timestamp
 - 2026-04-13 17:14 EDT

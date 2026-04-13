@@ -12,6 +12,8 @@
   Trim the current lint / test noise floor, especially the wallet test warnings around mocked auth session access, `next/image` mock props, and React test `act(...)` noise, so CI output stays actionable.
 - [x] `P1` Release runbook:
   Capture a wallet go-live checklist covering required env vars, local/prod smoke tests, pay-link cleanup cron verification, indexer health checks, and rollback expectations.
+- [ ] `P1` Release environment alignment:
+  The new dry-run preflight now shows that the current target env is not launch-ready. Before go-live, expose Supabase Data API schemas `indexer` and `chain_data`, set `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_EXPLORER_URL`, and `USER_SETTINGS_ALLOWED_ORIGINS`, then either complete the Buy TCOIN / Twilio env contracts or explicitly disable those surfaces. Finish with the manual `pg_cron` verification from `docs/engineering/wallet-release-runbook.md`.
 - [x] `P2` Performance pass:
   The authenticated wallet dashboard shell, send/off-ramp runtime, and modal/scanner boundaries have now been trimmed successfully. Current `pnpm build` output is roughly `234–242 kB` for `/tcoin/contracts*`, `164 kB` for `/tcoin/sparechange/dashboard`, `267 kB` for `/tcoin/wallet/dashboard`, and `252 kB` for `/tcoin/wallet/dashboard/contacts/[id]`.
 
