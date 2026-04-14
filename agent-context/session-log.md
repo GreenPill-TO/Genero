@@ -1,3 +1,21 @@
+## v1.213
+### Timestamp
+- 2026-04-14 10:11 EDT
+
+### Objective
+- Address the Codex review follow-up on PR #64 by restoring the wallet shell's shared React Query defaults after the performance refactor.
+
+### What Changed
+- Swapped the wallet layout back to the shared `ReactQueryProvider` wrapper instead of mounting a bare `QueryClientProvider`, so wallet queries keep the repo-standard `refetchOnWindowFocus: false` default after the Cubid-provider trim.
+- Left the lighter authenticated wallet shell in place; this change only restores the query-client defaults that the original shared provider already enforced.
+
+### Verification
+- Pending local validation before push
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/wallet/layout.tsx`
+
 ## v1.212
 ### Timestamp
 - 2026-04-14 01:38 EDT

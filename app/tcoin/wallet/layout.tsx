@@ -2,14 +2,13 @@
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
+import { ReactQueryProvider } from "@shared/providers/react-query-provider";
 import "@tcoin/wallet/styles/app.scss";
 import ContentLayout, { isPublicWalletPath } from "./ContentLayout";
 import { Special_Elite } from "next/font/google";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import Script from "next/script";
 
-const queryClient = new QueryClient();
 const specialElite = Special_Elite({
   subsets: ["latin"],
   weight: "400",
@@ -62,11 +61,11 @@ export default function RootLayout({
             text-decoration: underline;
           }
         `}</style>
-        <QueryClientProvider client={queryClient}>
+        <ReactQueryProvider>
           <WalletRuntimeProviders>
             <ContentLayout>{children}</ContentLayout>
           </WalletRuntimeProviders>
-        </QueryClientProvider>
+        </ReactQueryProvider>
       </body>
     </html>
   );
