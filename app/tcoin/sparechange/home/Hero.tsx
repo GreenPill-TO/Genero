@@ -18,7 +18,6 @@ export function Hero({ onAuthClick }: HeroProps) {
           height={1288}
           className="max-w-sm h-80 object-cover rounded-lg shadow-2xl"
           alt="Community Support"
-          unoptimized
         />
         <div className="lg:flex lg:flex-col lg:justify-center lg:items-start w-full md:ml-8 md:mr-8 px-4">
           <h1 className="text-5xl text-white font-bold md:leading-none leading-tight md:mt-0 mt-10">

@@ -1,3 +1,28 @@
+## v1.212
+### Timestamp
+- 2026-04-14 01:38 EDT
+
+### Objective
+- Address the first Copilot review pass on the env-contract PR without changing the intended runtime behaviour.
+
+### What Changed
+- Removed the temporary file-wide `ts-nocheck` markers from the contract-management write entrypoints and replaced them with a narrow typed dynamic-call helper in `shared/lib/contracts/management/writes.ts`, so the Cubid-backed transaction path stays runtime-flexible without muting the whole file.
+- Pinned the secret-scan workflow from `trufflesecurity/trufflehog@main` to the published `v3.94.3` action tag so CI no longer follows an unbounded branch head.
+- Tightened `scripts/run-with-env-profile.ts` so profile values are trimmed after quote stripping, which keeps trailing whitespace or newline bleed from breaking layered local env overrides.
+- Removed the unnecessary `unoptimized` flag from the SpareChange hero image because the configured remote-image allow-list already supports that Unsplash asset.
+
+### Verification
+- Pending local validation before push
+
+### Files Edited
+- `agent-context/session-log.md`
+- `shared/lib/contracts/management/writes.ts`
+- `shared/lib/contracts/management/proposals-write.ts`
+- `shared/lib/contracts/management/registryOps-write.ts`
+- `.github/workflows/secret-scan.yml`
+- `scripts/run-with-env-profile.ts`
+- `app/tcoin/sparechange/home/Hero.tsx`
+
 ## v1.211
 ### Timestamp
 - 2026-04-14 01:04 EDT

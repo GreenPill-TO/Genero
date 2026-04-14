@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { stringToHex, type Hex } from "viem";
 import { votingV2Abi } from "@shared/lib/contracts/management/abis";
 import { getCityContext } from "@shared/lib/contracts/management/clients";

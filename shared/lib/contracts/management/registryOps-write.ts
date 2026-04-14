@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { cityImplementationRegistryAbi } from "@shared/lib/contracts/management/abis";
 import { getCityContext } from "@shared/lib/contracts/management/clients";
 import { writeRegistryContractWithCubid } from "@shared/lib/contracts/management/writes";

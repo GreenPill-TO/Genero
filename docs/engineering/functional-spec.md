@@ -31,9 +31,11 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - The local seeded wallet admin account keyed to `hubert.cormac@gmail.com` is now named consistently in the seed data, so local bypass and seeded-role workflows no longer present that email as `Alice Merchant`.
 - Local or development auth bypass now requires an explicitly configured `AUTH_BYPASS_USER_ID`; if the env is unset, bypassed server flows must fail clearly instead of silently binding themselves to the first seeded user.
 - Local app development now supports one shared base env file plus two Supabase target profile files, so switching between local app plus local Supabase and local app plus remote Supabase does not require rewriting the whole local env contract each time.
+- Those Supabase profile overlays now ignore trailing whitespace after quoted values are parsed, which makes copy-pasted local overrides less fragile.
 - Merchant signup now uses one clearer feature flag name, `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP`, across runtime checks and release docs.
 - Buy TCOIN checkout now uses one clearer feature flag name, `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT`, across runtime checks and release docs.
 - The documented Buy TCOIN env contract now excludes the deprecated router, adapter, swap-data, and raw-USDC address knobs, and TorontoCoin operator flows now use `DEPLOYER_KEY` instead of the older generic `PRIVATE_KEY` name.
+- Repository CI secret scanning now runs against a pinned published TruffleHog action release, so security checks stay reproducible across pull requests and scheduled scans.
 - After OTP sign-in, wallet auth state must stay consistent across the shared wallet shell and the route-local Cubid onboarding runtime, so `/welcome` can mount its verification widgets against the resolved session while the authenticated dashboard stays free of the Cubid provider stack.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.

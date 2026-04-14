@@ -30,7 +30,7 @@ function loadProfileEnv(profilePath: string) {
     }
 
     const key = rawLine.slice(0, separatorIndex).trim();
-    const value = stripWrappingQuotes(rawLine.slice(separatorIndex + 1));
+    const value = stripWrappingQuotes(rawLine.slice(separatorIndex + 1)).trim();
     process.env[key] = value;
   }
 }

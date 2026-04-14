@@ -1,7 +1,19 @@
-// @ts-nocheck
 import { ethers } from "ethers";
 import { getCityContext, isManagementWritesEnabled } from "./clients";
 import { createCubidWalletSigner } from "./cubidSigner";
+
+type ContractWriter = ethers.Contract & {
+  [methodName: string]: (...args: unknown[]) => Promise<ethers.ContractTransaction>;
+};
+
+function getWriteMethod(contract: ContractWriter, functionName: string) {
+  const candidate = contract[functionName];
+  if (typeof candidate !== "function") {
+    throw new Error(`Contract method "${functionName}" is not available on the supplied ABI.`);
+  }
+
+  return candidate;
+}
 
 export async function writeCityContractWithCubid({
   citySlug,
@@ -26,9 +38,12 @@ export async function writeCityContractWithCubid({
 
   const context = await getCityContext(citySlug);
   const signer = await createCubidWalletSigner(userId, context.rpcUrl);
-  const contract = new ethers.Contract(address, abi as any, signer);
-
-  const tx = await contract[functionName](...(args as []));
+  const contract = new ethers.Contract(
+    address,
+    abi as unknown as ethers.ContractInterface,
+    signer
+  ) as ContractWriter;
+  const tx = await getWriteMethod(contract, functionName)(...args);
   const receipt = await tx.wait();
 
   return {
@@ -60,9 +75,12 @@ export async function writeRegistryContractWithCubid({
 
   const context = await getCityContext(citySlug);
   const signer = await createCubidWalletSigner(userId, context.registry.rpcUrl);
-  const contract = new ethers.Contract(address, abi as any, signer);
-
-  const tx = await contract[functionName](...(args as []));
+  const contract = new ethers.Contract(
+    address,
+    abi as unknown as ethers.ContractInterface,
+    signer
+  ) as ContractWriter;
+  const tx = await getWriteMethod(contract, functionName)(...args);
   const receipt = await tx.wait();
 
   return {
