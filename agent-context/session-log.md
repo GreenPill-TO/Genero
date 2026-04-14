@@ -1,3 +1,21 @@
+## v1.210
+### Timestamp
+- 2026-04-14 00:39 EDT
+
+### Objective
+- Record the small seed-data cleanup separately from the env-contract work so the Hubert identity fix remains easy to review and revert on its own if needed.
+
+### What Changed
+- Updated the seeded `public.users` row for `hubert.cormac@gmail.com` so `id = 1001` now uses `username = 'hubert.cormac'` and `full_name = 'Hubert Cormac'` instead of the older placeholder Alice identity.
+- Left the seeded user id, auth binding, and downstream references unchanged so the local seed graph stays stable while the visible identity data becomes coherent.
+
+### Verification
+- Manual review of `supabase/seed.sql`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `supabase/seed.sql`
+
 ## v1.209
 ### Timestamp
 - 2026-04-14 00:34 EDT
