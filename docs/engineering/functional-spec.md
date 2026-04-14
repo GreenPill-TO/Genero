@@ -16,8 +16,10 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Wallet and sparechange off-ramp OTP routes now reject malformed phone numbers and passcodes before they hit Twilio, and they surface Twilio verification failures through one consistent API contract.
 - Wallet go-live and rollback expectations now live in a dedicated engineering runbook, covering env readiness, smoke coverage, pay-link retention verification, and operator/indexer health checks for release day.
 - Wallet release checks now also include a CLI preflight that fails early on missing public wallet host/origin env, incomplete Buy TCOIN or Twilio setup, unreachable pay-link storage, and Supabase indexer-schema exposure problems, so launch blockers surface before manual smoke begins.
-- The checked-in wallet env template is now kept in one stable root file, `.env.example`, so local `.env.local` setup can mirror the documented runtime contract without hunting through duplicate examples or missing newer release variables.
+- The checked-in Next app env template now lives in one stable root file, `.env.example`, so local `.env.local` setup can mirror the app/runtime contract without hunting through duplicate examples or missing newer release variables.
+- Repo-owned env templates are now split by runtime: `.env.example` covers the Next app and local scripts, while `supabase/functions/.env.example` covers the Supabase Edge Function runtime and the shared values that must stay aligned with the app.
 - The wallet runtime now expects one Supabase public key env name, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, instead of the earlier dual-key compatibility setup.
+- The wallet runtime now also expects one app-environment key, `NEXT_PUBLIC_APP_ENVIRONMENT`; the older `NEXT_PUBLIC_DEPLOY_ENV` and `NEXT_PUBLIC_ENV` aliases no longer change runtime behaviour.
 - The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
 - In the public auth modal, the pre-OTP email field now uses a brighter light-mode input surface with stronger border and placeholder contrast so the “Enter your email” control remains clearly distinguishable from the modal background.
 - In dark mode, the auth modal’s email field and six OTP inputs now switch to a very light grey fill with dark text, replacing the older dark-grey input treatment.
@@ -25,6 +27,12 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Auth-backed wallet and sparechange users may now legitimately have no persisted Cubid identity yet. In that state the apps should keep onboarding and preferences usable without silently writing the Supabase auth UUID into `users.cubid_id`.
 - A single Supabase auth user may only bind to one wallet `users` row. If a duplicate local race tries to create another row for the same `auth_user_id`, the app should reconcile back to the canonical account instead of creating a second active user record.
 - Local Supabase OTP testing now has a dedicated startup helper, `pnpm supabase:start:local`, which keeps the Colima-backed GoTrue container quiet during OTP email sends and gateway-auth checks by patching the missing local mailer-host allow-list after startup.
+- The local seeded wallet admin account keyed to `hubert.cormac@gmail.com` is now named consistently in the seed data, so local bypass and seeded-role workflows no longer present that email as `Alice Merchant`.
+- Local or development auth bypass now requires an explicitly configured `AUTH_BYPASS_USER_ID`; if the env is unset, bypassed server flows must fail clearly instead of silently binding themselves to the first seeded user.
+- Local app development now supports one shared base env file plus two Supabase target profile files, so switching between local app plus local Supabase and local app plus remote Supabase does not require rewriting the whole local env contract each time.
+- Merchant signup now uses one clearer feature flag name, `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP`, across runtime checks and release docs.
+- Buy TCOIN checkout now uses one clearer feature flag name, `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT`, across runtime checks and release docs.
+- The documented Buy TCOIN env contract now excludes the deprecated router, adapter, swap-data, and raw-USDC address knobs, and TorontoCoin operator flows now use `DEPLOYER_KEY` instead of the older generic `PRIVATE_KEY` name.
 - After OTP sign-in, wallet auth state must stay consistent across the shared wallet shell and the route-local Cubid onboarding runtime, so `/welcome` can mount its verification widgets against the resolved session while the authenticated dashboard stays free of the Cubid provider stack.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.

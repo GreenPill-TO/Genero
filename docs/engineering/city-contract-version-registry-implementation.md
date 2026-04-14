@@ -47,7 +47,7 @@ The first city implementation is `tcoin` (Toronto). The bootstrap registry chain
     - `contracts/foundry/deployments/registry/<chainId>/promotions/<timestamp>.json`
 - Script runtime contract:
   - checked-in public values come from `contracts/foundry/deploy-config.json`
-  - secrets come from local env (`PRIVATE_KEY`, RPC URL, optional explorer key)
+  - secrets come from local env (`DEPLOYER_KEY`, RPC URL, optional explorer key)
 
 ### 3) App Integration for Runtime Resolution
 - Added shared registry modules:

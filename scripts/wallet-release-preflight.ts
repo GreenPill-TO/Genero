@@ -99,11 +99,11 @@ async function main() {
     );
   }
 
-  if (isEnabled("NEXT_PUBLIC_MERCHANT_SIGNUP_V1") && getMissingEnv(["NOMINATIM_USER_AGENT"]).length > 0) {
+  if (isEnabled("NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP") && getMissingEnv(["NOMINATIM_USER_AGENT"]).length > 0) {
     addFinding(
       findings,
       "blocker",
-      "NEXT_PUBLIC_MERCHANT_SIGNUP_V1=true but NOMINATIM_USER_AGENT is missing."
+      "NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP=true but NOMINATIM_USER_AGENT is missing."
     );
   }
 
@@ -128,23 +128,21 @@ async function main() {
     "ONRAMP_GAS_BANK_PRIVATE_KEY",
     "ONRAMP_GAS_TOPUP_MIN_WEI",
     "ONRAMP_GAS_TOPUP_TARGET_WEI",
-    "ONRAMP_USDC_TOKEN_ADDRESS",
-    "ONRAMP_ROUTER_ADDRESS",
   ];
-  if (isEnabled("NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1")) {
+  if (isEnabled("NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT")) {
     const missingOnrampEnv = getMissingEnv(onrampRequiredEnv);
     if (missingOnrampEnv.length > 0) {
       addFinding(
         findings,
         "blocker",
-        `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1=true but required onramp env is missing: ${missingOnrampEnv.join(", ")}.`
+        `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true but required onramp env is missing: ${missingOnrampEnv.join(", ")}.`
       );
     }
   } else if (hasAnyEnv(onrampRequiredEnv)) {
     addFinding(
       findings,
       "warning",
-      "Onramp secrets are present while NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 is disabled. Confirm that dormant production secrets are intentional."
+      "Onramp secrets are present while NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT is disabled. Confirm that dormant production secrets are intentional."
     );
   }
 

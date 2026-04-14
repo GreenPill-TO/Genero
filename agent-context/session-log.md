@@ -1,3 +1,265 @@
+## v1.209
+### Timestamp
+- 2026-04-14 00:34 EDT
+
+### Objective
+- Summarize the repo-wide env contract cleanup so the recent naming, template, profile, and stale-variable changes are captured in one reviewable session entry before shipping them together.
+
+### What Changed
+- Consolidated the Supabase public browser key contract to `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, removed the older `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` runtime aliases, and simplified app-environment resolution down to `NEXT_PUBLIC_APP_ENVIRONMENT`.
+- Split the checked-in env documentation by runtime, with `.env.example` for the Next app and repo-local scripts plus `supabase/functions/.env.example` for the Edge Function runtime, then aligned the release runbook and README around that two-template model.
+- Standardized the feature-flag env names to `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP` and `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT`, and updated the preflight plus engineering docs so release guidance matches the implementation.
+- Added local Supabase profile layering support through `.env.local`, `.env.local-supabase-local`, `.env.local-supabase-remote`, and `scripts/run-with-env-profile.ts`, so switching between local and remote Supabase targets no longer requires rewriting the whole local env contract.
+- Removed stale Buy TCOIN knobs that the live runtime no longer reads (`ONRAMP_USDC_TOKEN_ADDRESS`, `ONRAMP_ROUTER_ADDRESS`, `ONRAMP_SWAP_ADAPTER_ID`, and `ONRAMP_SWAP_DATA_HEX`) and renamed the shared deploy signer from `PRIVATE_KEY` to `DEPLOYER_KEY` across the acceptance script, Foundry env template, deploy scripts, and docs.
+- Tightened local-only bypass semantics so `AUTH_BYPASS_USER_ID` must be explicit in local or development mode and can no longer silently fall back to the first seeded user row.
+
+### Verification
+- `pnpm lint`
+- `pnpm exec vitest run shared/lib/supabase/appInstance.test.ts shared/lib/bia/apiAuth.test.ts`
+- `rg -n "ONRAMP_USDC_TOKEN_ADDRESS|ONRAMP_ROUTER_ADDRESS|ONRAMP_SWAP_ADAPTER_ID|ONRAMP_SWAP_DATA_HEX|PRIVATE_KEY|DEPLOYER_KEY" .env.example contracts/foundry docs scripts -S`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `.env.example`
+- `.gitignore`
+- `README.md`
+- `supabase/functions/.env.example`
+- `package.json`
+- `scripts/run-with-env-profile.ts`
+- `scripts/wallet-release-preflight.ts`
+- `scripts/torontocoin-pool-acceptance.ts`
+- `shared/lib/supabase/appInstance.ts`
+- `shared/lib/supabase/appInstance.test.ts`
+- `shared/lib/bia/apiAuth.ts`
+- `shared/lib/bia/apiAuth.test.ts`
+- `shared/lib/merchantSignup/server.ts`
+- `shared/lib/onramp/feature.ts`
+- `services/onramp/src/config.ts`
+- `supabase/functions/_shared/onramp.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/buy-tcoin-checkout-orchestrator-architecture.md`
+- `docs/engineering/merchant-signup-city-manager-architecture.md`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `docs/engineering/torontocoin-ops-runbook.md`
+
+## v1.208
+### Timestamp
+- 2026-04-14 00:25 EDT
+
+### Objective
+- Remove stale onramp env knobs that the current runtime no longer reads, and rename the shared deployer secret from `PRIVATE_KEY` to `DEPLOYER_KEY` across the repo and Foundry workspace.
+
+### What Changed
+- Removed the deprecated `ONRAMP_USDC_TOKEN_ADDRESS`, `ONRAMP_ROUTER_ADDRESS`, `ONRAMP_SWAP_ADAPTER_ID`, and `ONRAMP_SWAP_DATA_HEX` entries from the root env template and from the wallet release preflight, so the documented Buy TCOIN contract now matches the active TorontoCoin runtime bridge.
+- Renamed the TorontoCoin live-acceptance and Foundry deploy env key from `PRIVATE_KEY` to `DEPLOYER_KEY` in the acceptance script, Foundry env template, deploy scripts, and operator/deployment documentation.
+- Updated the technical and functional specs to record the narrower onramp env surface and the clearer deployer-key naming.
+
+### Verification
+- `rg -n "ONRAMP_USDC_TOKEN_ADDRESS|ONRAMP_ROUTER_ADDRESS|ONRAMP_SWAP_ADAPTER_ID|ONRAMP_SWAP_DATA_HEX|PRIVATE_KEY|DEPLOYER_KEY" .env.example contracts/foundry docs scripts -S`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `.env.example`
+- `scripts/wallet-release-preflight.ts`
+- `scripts/torontocoin-pool-acceptance.ts`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+
+## v1.207
+### Timestamp
+- 2026-04-13 23:39 EDT
+
+### Objective
+- Rename the Buy TCOIN checkout feature flag to `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT` so it matches the repo's clearer enable-style env naming.
+
+### What Changed
+- Replaced the active feature-flag reads in the wallet app runtime, the shared onramp helper, the onramp service config, and the Supabase edge onramp helper so Buy TCOIN enablement now comes only from `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT`.
+- Updated the release preflight, app and edge env templates, and the Buy TCOIN / wallet release docs to use the new flag name consistently.
+- Recorded the rename in the technical and functional specs so the current env contract matches the implementation.
+
+### Verification
+- `rg -n "NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1|NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT" .env.example supabase/functions/.env.example app shared services scripts docs -S`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/buy-tcoin-checkout-orchestrator-architecture.md`
+- `.env.example`
+- `supabase/functions/.env.example`
+- `scripts/wallet-release-preflight.ts`
+- `services/onramp/src/config.ts`
+- `supabase/functions/_shared/onramp.ts`
+- `shared/lib/onramp/feature.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+
+## v1.206
+### Timestamp
+- 2026-04-13 23:24 EDT
+
+### Objective
+- Split the checked-in env examples by runtime so the Next app contract and the Supabase Edge Function contract are documented separately instead of being implied by one root file.
+
+### What Changed
+- Kept the root `.env.example` as the Next app and repo-local script template, and clarified in its header that Supabase Edge Functions now have their own companion template.
+- Added `supabase/functions/.env.example` with the current edge-function env contract: service-role Supabase access, shared CORS and pay-link URLs, mirrored shared feature flags, and the onramp forwarding/settlement secrets the Deno runtime actually reads.
+- Updated the README, wallet release runbook, and engineering specs so operators know which template applies to the Next app versus the Supabase function runtime.
+
+### Verification
+- Manual review of `supabase/functions/_shared/auth.ts`, `supabase/functions/_shared/cors.ts`, `supabase/functions/_shared/paymentRequestLinks.ts`, and `supabase/functions/_shared/onramp.ts` against the new edge template
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `.env.example`
+- `supabase/functions/.env.example`
+
+## v1.205
+### Timestamp
+- 2026-04-13 22:39 EDT
+
+### Objective
+- Rename the merchant-signup feature flag env var to `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP` so the contract reads like the other explicit enable flags in the repo.
+
+### What Changed
+- Replaced the active runtime read in `shared/lib/merchantSignup/server.ts` so merchant-signup enablement now comes only from `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP`.
+- Updated the wallet release preflight, env template, and merchant/release docs to use the new name and removed the old `NEXT_PUBLIC_MERCHANT_SIGNUP_V1` references from the checked-in repo.
+- Recorded the rename in the technical and functional specs so the current env contract stays aligned with the implementation.
+
+### Verification
+- `rg -n "NEXT_PUBLIC_MERCHANT_SIGNUP_V1|NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP" .env.example docs scripts shared -S`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/merchant-signup-city-manager-architecture.md`
+- `.env.example`
+- `scripts/wallet-release-preflight.ts`
+- `shared/lib/merchantSignup/server.ts`
+
+## v1.204
+### Timestamp
+- 2026-04-13 22:24 EDT
+
+### Objective
+- Split local development env management into one shared base file plus two small Supabase-target profiles so switching between local Supabase and remote Supabase no longer requires rewriting the whole `.env.local`.
+
+### What Changed
+- Added a lightweight `scripts/run-with-env-profile.ts` launcher that loads the standard Next env files, applies one chosen local-only profile override, and then runs the requested command with the merged env.
+- Added `pnpm dev:supabase-local`, `pnpm dev:supabase-remote`, and matching wallet-preflight scripts so local app runs can target either local or remote Supabase without editing the common env file.
+- Documented the new three-file local pattern in `.env.example`, the README, and the engineering specs, while keeping the actual profile files ignored from git.
+
+### Verification
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- node -e "if (process.env.NEXT_PUBLIC_APP_ENVIRONMENT !== 'development') process.exit(1)"`
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- node -e "if (process.env.NEXT_PUBLIC_APP_ENVIRONMENT !== 'local' || process.env.AUTH_BYPASS_USER_ID !== '1001') process.exit(1)"`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.env.example`
+- `.gitignore`
+- `package.json`
+- `scripts/run-with-env-profile.ts`
+
+## v1.203
+### Timestamp
+- 2026-04-13 21:09 EDT
+
+### Objective
+- Tighten the local-development auth bypass so it never silently falls back to the first seeded user when `AUTH_BYPASS_USER_ID` is unset.
+
+### What Changed
+- Kept the existing `local` / `development` environment guard in `shared/lib/bia/apiAuth.ts`, but removed the fallback query that previously selected the first `public.users` row when `AUTH_BYPASS_USER_ID` was missing.
+- Made bypass mode fail fast with explicit errors unless `AUTH_BYPASS_USER_ID` is set to a positive `public.users.id` that actually exists.
+- Added focused unit coverage for unauthenticated production rejection, explicit local-dev bypass requirements, configured bypass resolution, and the normal authenticated path.
+- Updated `.env.example` plus the technical and functional specs so the documented bypass contract now matches the safer implementation.
+
+### Verification
+- `pnpm exec vitest run shared/lib/bia/apiAuth.test.ts`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.env.example`
+- `shared/lib/bia/apiAuth.ts`
+- `shared/lib/bia/apiAuth.test.ts`
+
+## v1.202
+### Timestamp
+- 2026-04-13 20:38 EDT
+
+### Objective
+- Fix the inconsistent root seed user so the seeded email `hubert.cormac@gmail.com` maps to a matching username and full name instead of the older Alice placeholder values.
+
+### What Changed
+- Updated `supabase/seed.sql` so seeded user `id = 1001` now uses `username = 'hubert.cormac'` and `full_name = 'Hubert Cormac'` while keeping the existing seeded id, email, auth-user binding, and admin-role wiring intact.
+- Left the rest of the seed graph untouched so downstream seeded roles, profiles, wallets, invites, and analytics rows that reference `user_id = 1001` remain stable.
+
+### Verification
+- `rg -n "hubert\\.cormac@gmail\\.com|Hubert Cormac|hubert\\.cormac" supabase/seed.sql`
+- Manual review of the surrounding seed rows that reference `user_id = 1001`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `supabase/seed.sql`
+
+## v1.201
+### Timestamp
+- 2026-04-13 19:06 EDT
+
+### Objective
+- Remove the redundant app-environment aliases so runtime environment selection depends only on `NEXT_PUBLIC_APP_ENVIRONMENT`.
+
+### What Changed
+- Removed the fallback reads of `NEXT_PUBLIC_DEPLOY_ENV` and `NEXT_PUBLIC_ENV` from `shared/lib/supabase/appInstance.ts`, leaving `NEXT_PUBLIC_APP_ENVIRONMENT` as the single active app-instance environment selector.
+- Simplified the matching unit test in `shared/lib/supabase/appInstance.test.ts` so it no longer clears or relies on the removed aliases.
+- Removed `NEXT_PUBLIC_DEPLOY_ENV` and `NEXT_PUBLIC_ENV` from `.env.example` and from the local `.env.local` ordering so the documented runtime contract now reflects the actual code.
+- Updated the technical and functional specs to note that app-environment selection no longer has parallel alias names.
+
+### Verification
+- `pnpm exec vitest run shared/lib/supabase/appInstance.test.ts`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.env.example`
+- `.env.local`
+- `shared/lib/supabase/appInstance.ts`
+- `shared/lib/supabase/appInstance.test.ts`
+
 ## v1.200
 ### Timestamp
 - 2026-04-13 18:33 EDT

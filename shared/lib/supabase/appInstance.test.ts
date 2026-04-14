@@ -88,8 +88,6 @@ describe("getActiveAppInstance", () => {
     process.env.NEXT_PUBLIC_APP_NAME = "wallet";
     process.env.NEXT_PUBLIC_CITYCOIN = "tcoin";
     delete process.env.NEXT_PUBLIC_APP_ENVIRONMENT;
-    delete process.env.NEXT_PUBLIC_DEPLOY_ENV;
-    delete process.env.NEXT_PUBLIC_ENV;
   });
 
   afterEach(() => {

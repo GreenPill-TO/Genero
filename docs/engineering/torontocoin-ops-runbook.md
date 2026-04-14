@@ -57,7 +57,7 @@ Optional env for that script:
 
 - `TORONTOCOIN_ACCEPTANCE_POOL_IDS=0x...[,0x...]` to target specific pool ids
 - `TORONTOCOIN_LIVE_BUY_ENABLED=true` to execute one real buy instead of preview-only
-- `PRIVATE_KEY=...` required only when live buy is enabled
+- `DEPLOYER_KEY=...` required only when live buy is enabled
 
 ## Manual spot checks
 

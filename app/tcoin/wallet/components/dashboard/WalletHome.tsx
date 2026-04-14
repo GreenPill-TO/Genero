@@ -42,7 +42,7 @@ export function WalletHome({
   const [recentInteractions, setRecentInteractions] = useState<RecentInteraction[]>([]);
 
   const buyCheckoutEnabled =
-    (process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 ?? "false").trim().toLowerCase() === "true";
+    (process.env.NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT ?? "false").trim().toLowerCase() === "true";
 
   useEffect(() => {
     const defaultCharity = activeProfile?.charityPreferences?.charity;

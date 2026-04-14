@@ -267,7 +267,7 @@ function getOnrampConfig(): OnrampConfig {
 }
 
 export function isBuyTcoinCheckoutEnabled(): boolean {
-  return (optionalEnv("NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1", "false") ?? "false").toLowerCase() === "true";
+  return (optionalEnv("NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT", "false") ?? "false").toLowerCase() === "true";
 }
 
 function toNumber(value: unknown, fallback = 0): number {

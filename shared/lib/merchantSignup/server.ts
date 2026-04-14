@@ -7,7 +7,7 @@ const LIFECYCLE_PRIORITY: StoreLifecycleStatus[] = ["draft", "pending", "live", 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export function isMerchantSignupEnabled(): boolean {
-  const raw = (process.env.NEXT_PUBLIC_MERCHANT_SIGNUP_V1 ?? "true").trim().toLowerCase();
+  const raw = (process.env.NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP ?? "true").trim().toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes";
 }
 

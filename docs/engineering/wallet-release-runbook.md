@@ -10,6 +10,11 @@ Companion references:
 - [BIA Pools + Indexer Tandem Runbook](./bia-pools-runbook.md) for deeper BIA and voucher-indexer operations
 - [Technical Specification](./technical-spec.md) for the current wallet, pay-link, and indexer contracts
 
+Env template references:
+
+- `.env.example` for the Next app / repo-local runtime
+- `supabase/functions/.env.example` for the Supabase Edge Function runtime
+
 ## Required env configuration
 
 ### Always required for wallet go-live
@@ -28,8 +33,8 @@ Companion references:
 | --- | --- | --- |
 | Cubid-backed onboarding widgets | `NEXT_PUBLIC_CUBID_API_KEY`, `NEXT_PUBLIC_CUBID_APP_ID` | Required for the `/tcoin/wallet/welcome` onboarding surface that renders the Cubid verification widget and provider wrapper. |
 | Wallet off-ramp SMS verification | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` | Required for `/api/send_otp` and `/api/verify_otp`, which the wallet off-ramp flow uses. |
-| Merchant signup | `NEXT_PUBLIC_MERCHANT_SIGNUP_V1`, `NOMINATIM_USER_AGENT` | Merchant geocoding falls back to a default user agent, but production should set an explicit one. |
-| Buy TCOIN checkout | `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1` plus all `ONRAMP_*` vars in `.env.example` | Keep the feature flag `false` unless the full Transak plus deposit-wallet path has been validated end to end. |
+| Merchant signup | `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP`, `NOMINATIM_USER_AGENT` | Merchant geocoding falls back to a default user agent, but production should set an explicit one. |
+| Buy TCOIN checkout | `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT` plus the `ONRAMP_*` vars across `.env.example` and `supabase/functions/.env.example` | Keep the feature flag `false` unless the full Transak plus deposit-wallet path has been validated end to end. |
 
 ### Local-only or non-production helpers
 
@@ -46,7 +51,7 @@ Before any deploy:
 2. Confirm `USER_SETTINGS_ALLOWED_ORIGINS` includes every deployed wallet or sparechange origin that will call authenticated edge functions.
 3. Confirm `NEXT_PUBLIC_APP_NAME=wallet`, `NEXT_PUBLIC_CITYCOIN=tcoin`, and the target `NEXT_PUBLIC_APP_ENVIRONMENT` are set correctly.
 4. Confirm optional features that are not launch-critical remain off:
-   - `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1=false` unless onramp has been fully validated
+   - `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false` unless onramp has been fully validated
    - leave Cubid env unset unless the `/tcoin/wallet/welcome` onboarding widget is intentionally live in the target environment
 
 ### 2. Run the repo validation suite
@@ -122,7 +127,7 @@ Use a clean browser profile if possible.
 6. Open `/tcoin/wallet/dashboard?tab=more` and confirm the account-centre panels render, including the configured explorer link.
 7. If you have an operator account, open `/tcoin/wallet/admin` and confirm the read-only health cards populate.
 8. If Twilio env is configured, open the wallet off-ramp flow and confirm `/api/send_otp` plus `/api/verify_otp` both succeed.
-9. If `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1=true`, open the Buy TCOIN modal and confirm it can create a checkout session without exposing the configuration-error fallback state.
+9. If `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true`, open the Buy TCOIN modal and confirm it can create a checkout session without exposing the configuration-error fallback state.
 
 ## Production smoke steps
 
@@ -260,8 +265,8 @@ If the indexer looks stale, sign in and trigger normal user activity or `POST /a
 
 If the fault is isolated, disable the affected surface instead of taking the whole wallet down:
 
-- set `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1=false` to remove the new onramp flow
-- set `NEXT_PUBLIC_MERCHANT_SIGNUP_V1=false` to hide merchant signup
+- set `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false` to remove the new onramp flow
+- set `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP=false` to hide merchant signup
 - remove `NEXT_PUBLIC_CUBID_API_KEY` and `NEXT_PUBLIC_CUBID_APP_ID` if the Cubid onboarding widget is the issue
 
 ### Database and schema safety

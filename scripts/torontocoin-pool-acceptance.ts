@@ -102,9 +102,9 @@ async function main() {
     return;
   }
 
-  const privateKey = process.env.PRIVATE_KEY?.trim();
+  const privateKey = process.env.DEPLOYER_KEY?.trim();
   if (!privateKey || !/^0x[a-fA-F0-9]{64}$/.test(privateKey)) {
-    throw new Error("PRIVATE_KEY is required for a live acceptance buy.");
+    throw new Error("DEPLOYER_KEY is required for a live acceptance buy.");
   }
 
   if (eligiblePools.length === 0) {

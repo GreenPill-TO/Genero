@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:supabase-local": "tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm exec next dev",
+    "dev:supabase-remote": "tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm exec next dev",
     "build": "next build",
     "start": "next start",
     "supabase:start:local": "zsh scripts/start-local-supabase.sh",
@@ -12,6 +14,8 @@
     "lint:edge-boundary": "node scripts/check-no-direct-supabase-db.mjs",
     "test": "vitest run",
     "ops:wallet:preflight": "tsx scripts/wallet-release-preflight.ts",
+    "ops:wallet:preflight:supabase-local": "tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm exec tsx scripts/wallet-release-preflight.ts",
+    "ops:wallet:preflight:supabase-remote": "tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm exec tsx scripts/wallet-release-preflight.ts",
     "ops:torontocoin": "tsx scripts/torontocoin-ops-check.ts",
     "ops:torontocoin:pools": "tsx scripts/torontocoin-pool-compatibility-check.ts",
     "ops:torontocoin:acceptance": "tsx scripts/torontocoin-pool-acceptance.ts",

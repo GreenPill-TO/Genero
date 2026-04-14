@@ -24,7 +24,7 @@ contract PromoteCityVersion is DeployChainConfig {
     }
 
     function run() external returns (uint64 promotedVersion) {
-        uint256 privateKey = vm.envUint("PRIVATE_KEY");
+        uint256 privateKey = vm.envUint("DEPLOYER_KEY");
         ChainSelection memory selection = _assertDeployTargetChain();
         address registryAddress = _chainConfigAddress(selection, ".registry.registryAddress");
         string memory deploymentFile = _chainConfigString(selection, ".registry.deploymentFile");

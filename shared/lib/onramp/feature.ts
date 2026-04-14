@@ -1,3 +1,3 @@
 export function isBuyTcoinCheckoutEnabled(): boolean {
-  return (process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 ?? "false").trim().toLowerCase() === "true";
+  return (process.env.NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT ?? "false").trim().toLowerCase() === "true";
 }

@@ -47,7 +47,7 @@ forge snapshot
 # Public addresses come from deploy-config.json.
 # Pass DEPLOY_TARGET_CHAIN as a runtime override when you want something other than the config default.
 
-# Deploy registry on Celo mainnet (requires PRIVATE_KEY and a configured registry.initialOwner)
+# Deploy registry on Celo mainnet (requires DEPLOYER_KEY and a configured registry.initialOwner)
 forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --rpc-url celo-mainnet --broadcast
 
 # Promote city version from the deployment file configured in deploy-config.json
@@ -206,7 +206,7 @@ This script uses a funded wallet to:
 - execute `buyCplTcoin(...)`
 - record the resulting pool choice and `cplTCOIN` balance delta
 
-By default it uses `SCENARIO_B_PRIVATE_KEY` when present, otherwise it falls back to `PRIVATE_KEY`.
+By default it uses `SCENARIO_B_PRIVATE_KEY` when present, otherwise it falls back to `DEPLOYER_KEY`.
 
 For limited profiles:
 
@@ -235,7 +235,7 @@ Only secrets stay in `.env.example`:
 - `SEPOLIA_RPC_URL`
 - `CELO_SEPOLIA_RPC_URL`
 - `CELO_MAINNET_RPC_URL`
-- `PRIVATE_KEY`
+- `DEPLOYER_KEY`
 - `SCENARIO_B_PRIVATE_KEY`
 - `ETHERSCAN_API_KEY`
 - `CELOSCAN_API_KEY`

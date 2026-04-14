@@ -10,7 +10,7 @@ contract DeployCityImplementationRegistry is DeployChainConfig {
     error MissingConfigAddress(string key);
 
     function run() external returns (address deployedAddress) {
-        uint256 privateKey = vm.envUint("PRIVATE_KEY");
+        uint256 privateKey = vm.envUint("DEPLOYER_KEY");
         ChainSelection memory selection = _assertDeployTargetChain();
         address initialOwner = _chainConfigAddress(selection, ".registry.initialOwner");
         if (initialOwner == address(0)) revert MissingConfigAddress("registry.initialOwner");
