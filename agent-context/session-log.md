@@ -1,3 +1,30 @@
+## v1.211
+### Timestamp
+- 2026-04-14 01:04 EDT
+
+### Objective
+- Unblock the env-contract PR after CI and Vercel previews surfaced one lingering publishable-key compatibility gap plus a TypeScript mismatch in the wallet send runtime.
+
+### What Changed
+- Added a shared Supabase publishable-key resolver that still prefers `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` but temporarily falls back to the older `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` names, so GitHub Actions and Vercel previews that still inject the old key can build while the canonical env contract remains unchanged.
+- Updated the Next app, server, middleware, edge proxy, and onramp webhook paths to use that shared resolver instead of open-coding the canonical key lookup in multiple places.
+- Tightened the wallet send-money runtime typing so the WebAuthn decrypt payload now matches the `cubid-wallet` `decryptString(...)` signature during CI typechecking.
+
+### Verification
+- Pending rerun of PR checks after push
+
+### Files Edited
+- `agent-context/session-log.md`
+- `shared/lib/supabase/env.ts`
+- `shared/lib/supabase/client.ts`
+- `shared/lib/supabase/server.ts`
+- `shared/lib/supabase/middleware.ts`
+- `shared/lib/edge/core.ts`
+- `shared/lib/edge/serverProxy.ts`
+- `shared/lib/userSettings/client.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `shared/lib/wallet/sendMoneyRuntime.ts`
+
 ## v1.210
 ### Timestamp
 - 2026-04-14 00:39 EDT

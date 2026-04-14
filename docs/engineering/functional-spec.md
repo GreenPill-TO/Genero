@@ -19,6 +19,7 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - The checked-in Next app env template now lives in one stable root file, `.env.example`, so local `.env.local` setup can mirror the app/runtime contract without hunting through duplicate examples or missing newer release variables.
 - Repo-owned env templates are now split by runtime: `.env.example` covers the Next app and local scripts, while `supabase/functions/.env.example` covers the Supabase Edge Function runtime and the shared values that must stay aligned with the app.
 - The wallet runtime now expects one Supabase public key env name, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, instead of the earlier dual-key compatibility setup.
+- During rollout, the app may still accept the older publishable-key env names as a temporary fallback so CI and preview environments keep building until their runtime config is updated to the canonical key.
 - The wallet runtime now also expects one app-environment key, `NEXT_PUBLIC_APP_ENVIRONMENT`; the older `NEXT_PUBLIC_DEPLOY_ENV` and `NEXT_PUBLIC_ENV` aliases no longer change runtime behaviour.
 - The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
 - In the public auth modal, the pre-OTP email field now uses a brighter light-mode input surface with stronger border and placeholder contrast so the “Enter your email” control remains clearly distinguishable from the modal background.

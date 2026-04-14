@@ -1,5 +1,6 @@
 import { createBrowserClient, createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveSupabasePublishableKey } from "./env";
 
 type StoredCookie = { name: string; value: string; options?: Record<string, unknown> };
 
@@ -10,15 +11,6 @@ type CookieStore = {
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-function resolveSupabasePublishableKey(): string {
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!key) {
-    throw new Error("Missing Supabase publishable key. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
-  }
-
-  return key;
-}
 const supabasePublishableKey = resolveSupabasePublishableKey();
 
 let browserClient: SupabaseClient<any, any, any> | null = null;

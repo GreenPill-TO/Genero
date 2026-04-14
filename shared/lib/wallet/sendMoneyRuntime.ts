@@ -29,6 +29,8 @@ type SharePayload = {
   userShareEncrypted: SerializedEncryptedShare;
 };
 
+type WebAuthnDecryptPayload = Parameters<WebAuthnCrypto["decryptString"]>[0];
+
 let webAuthnInstance: WebAuthnCrypto | null = null;
 let webAuthnLocked = false;
 
@@ -100,7 +102,7 @@ export async function runWithWebAuthnLock<T>(
   }
 }
 
-async function decodeUserShare(jsonData: Record<string, unknown>): Promise<string> {
+async function decodeUserShare(jsonData: WebAuthnDecryptPayload): Promise<string> {
   try {
     return await runWithWebAuthnLock(() => getWebAuthn().decryptString(jsonData));
   } catch (error: any) {
@@ -129,7 +131,7 @@ async function buildWalletFromShares({ appShare, userShareEncrypted }: SharePayl
     ivForKeyEncryption: userShareEncrypted.ivForKeyEncryption,
     salt: userShareEncrypted.salt,
     credentialId: base64ToArrayBuffer(userShareEncrypted.credentialId),
-  };
+  } as unknown as WebAuthnDecryptPayload;
 
   const userShare = await decodeUserShare(jsonData);
   const privateKeyHex = combineShares([appShare, userShare]);

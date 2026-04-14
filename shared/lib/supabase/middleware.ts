@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { resolveSupabasePublishableKey } from "./env";
 
 type SupabaseCookie = {
   name: string;
@@ -7,15 +8,6 @@ type SupabaseCookie = {
   options?: Record<string, unknown>;
 };
 
-function resolveSupabasePublishableKey(): string {
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!key) {
-    throw new Error("Missing Supabase publishable key. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
-  }
-
-  return key;
-}
 const supabasePublishableKey = resolveSupabasePublishableKey();
 
 export async function updateSession(request: NextRequest) {

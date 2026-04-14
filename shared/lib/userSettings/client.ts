@@ -1,4 +1,5 @@
 import { createClient } from "@shared/lib/supabase/client";
+import { resolveSupabasePublishableKey } from "@shared/lib/supabase/env";
 import { resolveAccessToken } from "@shared/lib/supabase/session";
 import { resolveUserSettingsAppContext } from "./context";
 import type {
@@ -44,7 +45,7 @@ async function invokeUserSettings<T>(
       method,
       headers: withAuthorization({
         ...resolveInvokeHeaders(context),
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
+        apikey: resolveSupabasePublishableKey(),
       }, accessToken),
       body:
         method === "GET"

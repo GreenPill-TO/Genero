@@ -1,4 +1,5 @@
 import { createClient } from "@shared/lib/supabase/client";
+import { resolveSupabasePublishableKey } from "@shared/lib/supabase/env";
 import { resolveAccessToken } from "@shared/lib/supabase/session";
 import { resolveAppScope } from "./appScope";
 import type { AppScopeInput, ResolvedAppScope } from "./types";
@@ -21,20 +22,10 @@ function resolveSupabaseUrl(): string {
   return url;
 }
 
-function resolvePublishableKey(): string {
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!key) {
-    throw new Error("Missing Supabase publishable key. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
-  }
-
-  return key;
-}
-
 function resolveHeaders(context: ResolvedAppScope, accessToken?: string): Record<string, string> {
   return {
     "content-type": "application/json",
-    apikey: resolvePublishableKey(),
+    apikey: resolveSupabasePublishableKey(),
     "x-app-slug": context.appSlug,
     "x-city-slug": context.citySlug,
     "x-app-environment": context.environment,
