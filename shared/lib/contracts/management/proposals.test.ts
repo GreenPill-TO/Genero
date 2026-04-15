@@ -9,15 +9,14 @@ const { getCityContextMock, getCityPublicClientMock, writeCityContractWithCubidM
 vi.mock("@shared/lib/contracts/management/clients", () => ({
   getCityContext: getCityContextMock,
   getCityPublicClient: getCityPublicClientMock,
+}));
+
+vi.mock("@shared/lib/contracts/management/writes", () => ({
   writeCityContractWithCubid: writeCityContractWithCubidMock,
 }));
 
-import {
-  getProposal,
-  listProposalIdsByStatus,
-  proposeReserveCurrency,
-  voteProposal,
-} from "./proposals";
+import { getProposal, listProposalIdsByStatus } from "./proposals";
+import { proposeReserveCurrency, voteProposal } from "./proposals-write";
 
 describe("management proposals client", () => {
   beforeEach(() => {

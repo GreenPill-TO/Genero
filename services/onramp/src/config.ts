@@ -133,6 +133,6 @@ export function resolveOnrampConfig(): OnrampConfig {
     appBaseUrl: parseString("ONRAMP_APP_BASE_URL", "http://localhost:3000"),
     rpcUrl: parseString("INDEXER_CHAIN_RPC_URL", runtime.rpcUrl),
     buyCheckoutFlag:
-      (parseOptionalString("NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1", "false") ?? "false").toLowerCase() === "true",
+      (parseOptionalString("NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT", "false") ?? "false").toLowerCase() === "true",
   };
 }

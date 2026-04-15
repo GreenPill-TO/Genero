@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
+import { resolveSupabasePublishableKey } from "@shared/lib/supabase/env";
 import { resolveAppScope, type AppScopeInput } from "./appScope";
 
 type ProxyEdgeRequestOptions = {
@@ -20,20 +21,6 @@ function resolveSupabaseUrl(): string {
   return url;
 }
 
-function resolvePublishableKey(): string {
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!key) {
-    throw new Error(
-      "Missing Supabase publishable key. Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY."
-    );
-  }
-
-  return key;
-}
-
 function normalizePath(path: string): string {
   return path.startsWith("/") ? path : `/${path}`;
 }
@@ -44,7 +31,7 @@ function buildProxyHeaders(options: {
 }): Record<string, string> {
   return {
     "content-type": "application/json",
-    apikey: resolvePublishableKey(),
+    apikey: resolveSupabasePublishableKey(),
     "x-app-slug": options.appContext.appSlug,
     "x-city-slug": options.appContext.citySlug,
     "x-app-environment": options.appContext.environment,

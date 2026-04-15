@@ -1,3 +1,728 @@
+## v1.214
+### Timestamp
+- 2026-04-15 14:36 EDT
+
+### Objective
+- Fix the GitHub Actions regression on PR #64 after the Codex review follow-up push.
+
+### What Changed
+- Stabilized `SendCard`'s on-demand contact-selector test by mocking `@tcoin/wallet/components/modals/ContactSelectModal` directly, matching the pattern already used by the comparable Receive-card modal tests.
+- Kept the runtime behaviour unchanged; this follow-up only removes CI timing sensitivity around the dynamic modal import.
+
+### Verification
+- Pending local validation before push
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+
+## v1.213
+### Timestamp
+- 2026-04-14 10:11 EDT
+
+### Objective
+- Address the Codex review follow-up on PR #64 by restoring the wallet shell's shared React Query defaults after the performance refactor.
+
+### What Changed
+- Swapped the wallet layout back to the shared `ReactQueryProvider` wrapper instead of mounting a bare `QueryClientProvider`, so wallet queries keep the repo-standard `refetchOnWindowFocus: false` default after the Cubid-provider trim.
+- Left the lighter authenticated wallet shell in place; this change only restores the query-client defaults that the original shared provider already enforced.
+
+### Verification
+- Pending local validation before push
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/wallet/layout.tsx`
+
+## v1.212
+### Timestamp
+- 2026-04-14 01:38 EDT
+
+### Objective
+- Address the first Copilot review pass on the env-contract PR without changing the intended runtime behaviour.
+
+### What Changed
+- Removed the temporary file-wide `ts-nocheck` markers from the contract-management write entrypoints and replaced them with a narrow typed dynamic-call helper in `shared/lib/contracts/management/writes.ts`, so the Cubid-backed transaction path stays runtime-flexible without muting the whole file.
+- Pinned the secret-scan workflow from `trufflesecurity/trufflehog@main` to the published `v3.94.3` action tag so CI no longer follows an unbounded branch head.
+- Tightened `scripts/run-with-env-profile.ts` so profile values are trimmed after quote stripping, which keeps trailing whitespace or newline bleed from breaking layered local env overrides.
+- Removed the unnecessary `unoptimized` flag from the SpareChange hero image because the configured remote-image allow-list already supports that Unsplash asset.
+
+### Verification
+- Pending local validation before push
+
+### Files Edited
+- `agent-context/session-log.md`
+- `shared/lib/contracts/management/writes.ts`
+- `shared/lib/contracts/management/proposals-write.ts`
+- `shared/lib/contracts/management/registryOps-write.ts`
+- `.github/workflows/secret-scan.yml`
+- `scripts/run-with-env-profile.ts`
+- `app/tcoin/sparechange/home/Hero.tsx`
+
+## v1.211
+### Timestamp
+- 2026-04-14 01:04 EDT
+
+### Objective
+- Unblock the env-contract PR after CI and Vercel previews surfaced one lingering publishable-key compatibility gap plus a TypeScript mismatch in the wallet send runtime.
+
+### What Changed
+- Added a shared Supabase publishable-key resolver that still prefers `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` but temporarily falls back to the older `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` names, so GitHub Actions and Vercel previews that still inject the old key can build while the canonical env contract remains unchanged.
+- Updated the Next app, server, middleware, edge proxy, and onramp webhook paths to use that shared resolver instead of open-coding the canonical key lookup in multiple places.
+- Tightened the wallet send-money runtime typing so the WebAuthn decrypt payload now matches the `cubid-wallet` `decryptString(...)` signature during CI typechecking.
+
+### Verification
+- Pending rerun of PR checks after push
+
+### Files Edited
+- `agent-context/session-log.md`
+- `shared/lib/supabase/env.ts`
+- `shared/lib/supabase/client.ts`
+- `shared/lib/supabase/server.ts`
+- `shared/lib/supabase/middleware.ts`
+- `shared/lib/edge/core.ts`
+- `shared/lib/edge/serverProxy.ts`
+- `shared/lib/userSettings/client.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `shared/lib/wallet/sendMoneyRuntime.ts`
+
+## v1.210
+### Timestamp
+- 2026-04-14 00:39 EDT
+
+### Objective
+- Record the small seed-data cleanup separately from the env-contract work so the Hubert identity fix remains easy to review and revert on its own if needed.
+
+### What Changed
+- Updated the seeded `public.users` row for `hubert.cormac@gmail.com` so `id = 1001` now uses `username = 'hubert.cormac'` and `full_name = 'Hubert Cormac'` instead of the older placeholder Alice identity.
+- Left the seeded user id, auth binding, and downstream references unchanged so the local seed graph stays stable while the visible identity data becomes coherent.
+
+### Verification
+- Manual review of `supabase/seed.sql`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `supabase/seed.sql`
+
+## v1.209
+### Timestamp
+- 2026-04-14 00:34 EDT
+
+### Objective
+- Summarize the repo-wide env contract cleanup so the recent naming, template, profile, and stale-variable changes are captured in one reviewable session entry before shipping them together.
+
+### What Changed
+- Consolidated the Supabase public browser key contract to `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, removed the older `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` runtime aliases, and simplified app-environment resolution down to `NEXT_PUBLIC_APP_ENVIRONMENT`.
+- Split the checked-in env documentation by runtime, with `.env.example` for the Next app and repo-local scripts plus `supabase/functions/.env.example` for the Edge Function runtime, then aligned the release runbook and README around that two-template model.
+- Standardized the feature-flag env names to `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP` and `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT`, and updated the preflight plus engineering docs so release guidance matches the implementation.
+- Added local Supabase profile layering support through `.env.local`, `.env.local-supabase-local`, `.env.local-supabase-remote`, and `scripts/run-with-env-profile.ts`, so switching between local and remote Supabase targets no longer requires rewriting the whole local env contract.
+- Removed stale Buy TCOIN knobs that the live runtime no longer reads (`ONRAMP_USDC_TOKEN_ADDRESS`, `ONRAMP_ROUTER_ADDRESS`, `ONRAMP_SWAP_ADAPTER_ID`, and `ONRAMP_SWAP_DATA_HEX`) and renamed the shared deploy signer from `PRIVATE_KEY` to `DEPLOYER_KEY` across the acceptance script, Foundry env template, deploy scripts, and docs.
+- Tightened local-only bypass semantics so `AUTH_BYPASS_USER_ID` must be explicit in local or development mode and can no longer silently fall back to the first seeded user row.
+
+### Verification
+- `pnpm lint`
+- `pnpm exec vitest run shared/lib/supabase/appInstance.test.ts shared/lib/bia/apiAuth.test.ts`
+- `rg -n "ONRAMP_USDC_TOKEN_ADDRESS|ONRAMP_ROUTER_ADDRESS|ONRAMP_SWAP_ADAPTER_ID|ONRAMP_SWAP_DATA_HEX|PRIVATE_KEY|DEPLOYER_KEY" .env.example contracts/foundry docs scripts -S`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `.env.example`
+- `.gitignore`
+- `README.md`
+- `supabase/functions/.env.example`
+- `package.json`
+- `scripts/run-with-env-profile.ts`
+- `scripts/wallet-release-preflight.ts`
+- `scripts/torontocoin-pool-acceptance.ts`
+- `shared/lib/supabase/appInstance.ts`
+- `shared/lib/supabase/appInstance.test.ts`
+- `shared/lib/bia/apiAuth.ts`
+- `shared/lib/bia/apiAuth.test.ts`
+- `shared/lib/merchantSignup/server.ts`
+- `shared/lib/onramp/feature.ts`
+- `services/onramp/src/config.ts`
+- `supabase/functions/_shared/onramp.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/buy-tcoin-checkout-orchestrator-architecture.md`
+- `docs/engineering/merchant-signup-city-manager-architecture.md`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `docs/engineering/torontocoin-ops-runbook.md`
+
+## v1.208
+### Timestamp
+- 2026-04-14 00:25 EDT
+
+### Objective
+- Remove stale onramp env knobs that the current runtime no longer reads, and rename the shared deployer secret from `PRIVATE_KEY` to `DEPLOYER_KEY` across the repo and Foundry workspace.
+
+### What Changed
+- Removed the deprecated `ONRAMP_USDC_TOKEN_ADDRESS`, `ONRAMP_ROUTER_ADDRESS`, `ONRAMP_SWAP_ADAPTER_ID`, and `ONRAMP_SWAP_DATA_HEX` entries from the root env template and from the wallet release preflight, so the documented Buy TCOIN contract now matches the active TorontoCoin runtime bridge.
+- Renamed the TorontoCoin live-acceptance and Foundry deploy env key from `PRIVATE_KEY` to `DEPLOYER_KEY` in the acceptance script, Foundry env template, deploy scripts, and operator/deployment documentation.
+- Updated the technical and functional specs to record the narrower onramp env surface and the clearer deployer-key naming.
+
+### Verification
+- `rg -n "ONRAMP_USDC_TOKEN_ADDRESS|ONRAMP_ROUTER_ADDRESS|ONRAMP_SWAP_ADAPTER_ID|ONRAMP_SWAP_DATA_HEX|PRIVATE_KEY|DEPLOYER_KEY" .env.example contracts/foundry docs scripts -S`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `docs/engineering/city-contract-version-registry-implementation.md`
+- `.env.example`
+- `scripts/wallet-release-preflight.ts`
+- `scripts/torontocoin-pool-acceptance.ts`
+- `contracts/foundry/.env.example`
+- `contracts/foundry/README.md`
+- `contracts/foundry/script/deploy/DeployTorontoCoinSuite.s.sol`
+- `contracts/foundry/script/deploy/PromoteCityVersion.s.sol`
+- `contracts/foundry/script/deploy/DeployCityImplementationRegistry.s.sol`
+- `contracts/foundry/script/deploy/RunTorontoCoinScenarioB.s.sol`
+
+## v1.207
+### Timestamp
+- 2026-04-13 23:39 EDT
+
+### Objective
+- Rename the Buy TCOIN checkout feature flag to `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT` so it matches the repo's clearer enable-style env naming.
+
+### What Changed
+- Replaced the active feature-flag reads in the wallet app runtime, the shared onramp helper, the onramp service config, and the Supabase edge onramp helper so Buy TCOIN enablement now comes only from `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT`.
+- Updated the release preflight, app and edge env templates, and the Buy TCOIN / wallet release docs to use the new flag name consistently.
+- Recorded the rename in the technical and functional specs so the current env contract matches the implementation.
+
+### Verification
+- `rg -n "NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1|NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT" .env.example supabase/functions/.env.example app shared services scripts docs -S`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/buy-tcoin-checkout-orchestrator-architecture.md`
+- `.env.example`
+- `supabase/functions/.env.example`
+- `scripts/wallet-release-preflight.ts`
+- `services/onramp/src/config.ts`
+- `supabase/functions/_shared/onramp.ts`
+- `shared/lib/onramp/feature.ts`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+
+## v1.206
+### Timestamp
+- 2026-04-13 23:24 EDT
+
+### Objective
+- Split the checked-in env examples by runtime so the Next app contract and the Supabase Edge Function contract are documented separately instead of being implied by one root file.
+
+### What Changed
+- Kept the root `.env.example` as the Next app and repo-local script template, and clarified in its header that Supabase Edge Functions now have their own companion template.
+- Added `supabase/functions/.env.example` with the current edge-function env contract: service-role Supabase access, shared CORS and pay-link URLs, mirrored shared feature flags, and the onramp forwarding/settlement secrets the Deno runtime actually reads.
+- Updated the README, wallet release runbook, and engineering specs so operators know which template applies to the Next app versus the Supabase function runtime.
+
+### Verification
+- Manual review of `supabase/functions/_shared/auth.ts`, `supabase/functions/_shared/cors.ts`, `supabase/functions/_shared/paymentRequestLinks.ts`, and `supabase/functions/_shared/onramp.ts` against the new edge template
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `.env.example`
+- `supabase/functions/.env.example`
+
+## v1.205
+### Timestamp
+- 2026-04-13 22:39 EDT
+
+### Objective
+- Rename the merchant-signup feature flag env var to `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP` so the contract reads like the other explicit enable flags in the repo.
+
+### What Changed
+- Replaced the active runtime read in `shared/lib/merchantSignup/server.ts` so merchant-signup enablement now comes only from `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP`.
+- Updated the wallet release preflight, env template, and merchant/release docs to use the new name and removed the old `NEXT_PUBLIC_MERCHANT_SIGNUP_V1` references from the checked-in repo.
+- Recorded the rename in the technical and functional specs so the current env contract stays aligned with the implementation.
+
+### Verification
+- `rg -n "NEXT_PUBLIC_MERCHANT_SIGNUP_V1|NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP" .env.example docs scripts shared -S`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/merchant-signup-city-manager-architecture.md`
+- `.env.example`
+- `scripts/wallet-release-preflight.ts`
+- `shared/lib/merchantSignup/server.ts`
+
+## v1.204
+### Timestamp
+- 2026-04-13 22:24 EDT
+
+### Objective
+- Split local development env management into one shared base file plus two small Supabase-target profiles so switching between local Supabase and remote Supabase no longer requires rewriting the whole `.env.local`.
+
+### What Changed
+- Added a lightweight `scripts/run-with-env-profile.ts` launcher that loads the standard Next env files, applies one chosen local-only profile override, and then runs the requested command with the merged env.
+- Added `pnpm dev:supabase-local`, `pnpm dev:supabase-remote`, and matching wallet-preflight scripts so local app runs can target either local or remote Supabase without editing the common env file.
+- Documented the new three-file local pattern in `.env.example`, the README, and the engineering specs, while keeping the actual profile files ignored from git.
+
+### Verification
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- node -e "if (process.env.NEXT_PUBLIC_APP_ENVIRONMENT !== 'development') process.exit(1)"`
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- node -e "if (process.env.NEXT_PUBLIC_APP_ENVIRONMENT !== 'local' || process.env.AUTH_BYPASS_USER_ID !== '1001') process.exit(1)"`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.env.example`
+- `.gitignore`
+- `package.json`
+- `scripts/run-with-env-profile.ts`
+
+## v1.203
+### Timestamp
+- 2026-04-13 21:09 EDT
+
+### Objective
+- Tighten the local-development auth bypass so it never silently falls back to the first seeded user when `AUTH_BYPASS_USER_ID` is unset.
+
+### What Changed
+- Kept the existing `local` / `development` environment guard in `shared/lib/bia/apiAuth.ts`, but removed the fallback query that previously selected the first `public.users` row when `AUTH_BYPASS_USER_ID` was missing.
+- Made bypass mode fail fast with explicit errors unless `AUTH_BYPASS_USER_ID` is set to a positive `public.users.id` that actually exists.
+- Added focused unit coverage for unauthenticated production rejection, explicit local-dev bypass requirements, configured bypass resolution, and the normal authenticated path.
+- Updated `.env.example` plus the technical and functional specs so the documented bypass contract now matches the safer implementation.
+
+### Verification
+- `pnpm exec vitest run shared/lib/bia/apiAuth.test.ts`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.env.example`
+- `shared/lib/bia/apiAuth.ts`
+- `shared/lib/bia/apiAuth.test.ts`
+
+## v1.202
+### Timestamp
+- 2026-04-13 20:38 EDT
+
+### Objective
+- Fix the inconsistent root seed user so the seeded email `hubert.cormac@gmail.com` maps to a matching username and full name instead of the older Alice placeholder values.
+
+### What Changed
+- Updated `supabase/seed.sql` so seeded user `id = 1001` now uses `username = 'hubert.cormac'` and `full_name = 'Hubert Cormac'` while keeping the existing seeded id, email, auth-user binding, and admin-role wiring intact.
+- Left the rest of the seed graph untouched so downstream seeded roles, profiles, wallets, invites, and analytics rows that reference `user_id = 1001` remain stable.
+
+### Verification
+- `rg -n "hubert\\.cormac@gmail\\.com|Hubert Cormac|hubert\\.cormac" supabase/seed.sql`
+- Manual review of the surrounding seed rows that reference `user_id = 1001`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `supabase/seed.sql`
+
+## v1.201
+### Timestamp
+- 2026-04-13 19:06 EDT
+
+### Objective
+- Remove the redundant app-environment aliases so runtime environment selection depends only on `NEXT_PUBLIC_APP_ENVIRONMENT`.
+
+### What Changed
+- Removed the fallback reads of `NEXT_PUBLIC_DEPLOY_ENV` and `NEXT_PUBLIC_ENV` from `shared/lib/supabase/appInstance.ts`, leaving `NEXT_PUBLIC_APP_ENVIRONMENT` as the single active app-instance environment selector.
+- Simplified the matching unit test in `shared/lib/supabase/appInstance.test.ts` so it no longer clears or relies on the removed aliases.
+- Removed `NEXT_PUBLIC_DEPLOY_ENV` and `NEXT_PUBLIC_ENV` from `.env.example` and from the local `.env.local` ordering so the documented runtime contract now reflects the actual code.
+- Updated the technical and functional specs to note that app-environment selection no longer has parallel alias names.
+
+### Verification
+- `pnpm exec vitest run shared/lib/supabase/appInstance.test.ts`
+- `pnpm lint`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.env.example`
+- `.env.local`
+- `shared/lib/supabase/appInstance.ts`
+- `shared/lib/supabase/appInstance.test.ts`
+
+## v1.200
+### Timestamp
+- 2026-04-13 18:33 EDT
+
+### Objective
+- Simplify the Supabase public-key env contract by replacing the old dual-key compatibility setup with one canonical `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
+### What Changed
+- Replaced every active runtime read of `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` with `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` across the shared Supabase clients, edge helpers, user-settings client, onramp webhook ingress, release preflight, and related tests.
+- Updated `.env.example`, `.env.local`, and the wallet release runbook so the documented env contract now exposes only `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. In the local file, the new key was set to the same value that `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` previously held.
+- Updated the technical and functional specs to record that the compatibility layer is gone and that one publishable-key name is now required across browser and request-scoped server paths.
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+- `pnpm ops:wallet:preflight`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `.env.example`
+- `.env.local`
+- `shared/lib/supabase/client.ts`
+- `shared/lib/supabase/server.ts`
+- `shared/lib/supabase/middleware.ts`
+- `shared/lib/edge/core.ts`
+- `shared/lib/edge/serverProxy.ts`
+- `shared/lib/userSettings/client.ts`
+- `app/api/onramp/webhooks/transak/route.ts`
+- `app/api/onramp/webhooks/transak/route.test.ts`
+- `shared/lib/edge/core.test.ts`
+- `shared/lib/edge/serverProxy.test.ts`
+- `scripts/wallet-release-preflight.ts`
+- `vitest.setup.ts`
+
+## v1.199
+### Timestamp
+- 2026-04-13 18:25 EDT
+
+### Objective
+- Remove the redundant root env example duplication so the repo has one canonical checked-in env template instead of both `.env.example` and `.env.local.example`.
+
+### What Changed
+- Kept `.env.example` as the single authoritative root env template and removed the duplicate `.env.local.example`.
+- Updated README and engineering docs to point local setup, runbook steps, and Buy TCOIN env references at `.env.example`.
+- Updated the technical and functional specs to reflect that the repo now maintains one checked-in wallet env template rather than two parallel copies.
+
+### Verification
+- `rg -n "\\.env\\.local\\.example|\\.env\\.example|env.local.example|env.example" README.md docs agent-context AGENTS.md`
+- Manual review of `.env.example` and `.env.local`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `README.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/buy-tcoin-checkout-orchestrator-architecture.md`
+- `.env.example`
+- `.env.local.example`
+
+## v1.198
+### Timestamp
+- 2026-04-13 18:21 EDT
+
+### Objective
+- Normalise the root env templates so the documented example is grouped and fully commented, and make the local `.env.local` follow the same ordering with a lighter, heading-only layout.
+
+### What Changed
+- Added a canonical root `.env.example` that groups the wallet runtime variables into Supabase, app URLs, wallet assets, Cubid onboarding, merchant/Twilio services, contract-management toggles, indexer settings, Buy TCOIN checkout, and TorontoCoin operator-script controls, with comments for every variable.
+- Synced `.env.local.example` to match the new `.env.example` exactly so the existing README and runbook references still work without drift.
+- Reordered the local `.env.local` into the same section and key order, preserved existing populated values, and inserted the missing documented variables with empty assignments. The local file keeps only single-line section headings plus one extra `OPENAI_API_KEY` block because that key existed locally but is not part of the repo-documented runtime contract.
+- Verified that `.env.example` and `.env.local.example` now match exactly, and that `.env.local` contains every documented variable with no missing keys.
+
+### Verification
+- Key-order and presence check across `.env.example`, `.env.local.example`, and `.env.local`
+- Manual review of the reordered files
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.env.example`
+- `.env.local.example`
+- `.env.local`
+
+## v1.197
+### Timestamp
+- 2026-04-13 18:01 EDT
+
+### Objective
+- Run a production-readiness dry run against the wallet release runbook, then close the repo-side gaps it reveals around env loading, Supabase/indexer checks, and pay-link operational readiness.
+
+### What Changed
+- Added `scripts/load-repo-env.ts` as a shared release-ops helper that auto-loads Next env files, creates a service-role Supabase client for server-side checks, and explains the common `Invalid schema: indexer` / `Invalid schema: chain_data` failure mode as a Supabase exposed-schema problem instead of a vague runtime error.
+- Tightened `scripts/torontocoin-ops-check.ts` and `scripts/torontocoin-pool-compatibility-check.ts` so they no longer pass with a partial chain-only view. Both scripts now auto-load `.env.local`, use the server-side Supabase key for indexer-backed reads, and fail loudly when the target project cannot actually serve the wallet’s indexer schemas.
+- Added `scripts/wallet-release-preflight.ts` plus `pnpm ops:wallet:preflight` to turn the release runbook into a machine-checkable preflight. The new command checks required wallet env, flags partial Buy TCOIN/Twilio setup, confirms `public.payment_request_links` is reachable, and attempts a live tcoin indexer status read before release.
+- Updated `docs/engineering/wallet-release-runbook.md`, `docs/engineering/torontocoin-ops-runbook.md`, and `.env.local.example` to match the current runtime: Cubid now only applies to onboarding widgets, wallet/TorontoCoin preflight scripts use service-role Supabase reads, and pay-link cleanup verification now starts by explicitly checking `pg_cron` availability.
+- The current target env is still not production-ready. The dry run now surfaces the real blockers instead of masking them: missing `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_EXPLORER_URL`, and `USER_SETTINGS_ALLOWED_ORIGINS`; `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1=true` with `ONRAMP_WEBHOOK_FORWARD_SECRET` missing; and Supabase Data API rejection of the `indexer` schema. `public.payment_request_links` is reachable, so pay-link storage exists, but the manual `pg_cron` SQL verification is still required.
+- No on-chain write action was executed in this session. The acceptance script remained preview-only, so there is no deployer-wallet balance delta to record.
+
+### Verification
+- `pnpm ops:wallet:preflight`
+- `pnpm ops:torontocoin`
+- `pnpm ops:torontocoin:pools`
+- `pnpm ops:torontocoin:acceptance`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `.env.local.example`
+- `package.json`
+- `scripts/load-repo-env.ts`
+- `scripts/torontocoin-ops-check.ts`
+- `scripts/torontocoin-pool-compatibility-check.ts`
+- `scripts/torontocoin-pool-acceptance.ts`
+- `scripts/wallet-release-preflight.ts`
+
+## v1.196
+### Timestamp
+- 2026-04-13 17:14 EDT
+
+### Objective
+- Finish the authenticated wallet dashboard bundle trim by removing the remaining Cubid auth-shell weight and deferring signer/scanner/modal code until the user actually needs it.
+
+### What Changed
+- Removed the global Cubid runtime from `app/tcoin/wallet/layout.tsx`, leaving the shared wallet shell with one React Query provider plus dark-mode, modal, and content layout wrappers only. Added `app/tcoin/wallet/welcome/WalletOnboardingRuntime.tsx` so `/welcome` still owns the Cubid provider stack, wallet-connect error guard, and related stylesheet loading for onboarding-only widgets.
+- Split the heavy wallet signing path out of `useSendMoney()` into `shared/lib/wallet/sendMoneyRuntime.ts`, with lightweight runtime-config/share-selection helpers in `shared/lib/wallet/sendMoneyShared.ts`. The hook now stays render-safe and only loads `ethers`, `cubid-wallet` WebAuthn crypto, Shamir reconstruction, and voucher signer code when send, burn, or voucher-payment actions are actually invoked.
+- Removed the last eager dashboard modal/scanner imports by loading `ContactSelectModal`, `CharitySelectModal`, and `QrScanModal` on demand from `SendCard`, `ContributionsCard`, and `SendTab`. Focused tests were updated so they wait for the new async loader boundaries instead of asserting synchronously against the earlier eager imports.
+- Route-size result from `pnpm build`: `/tcoin/wallet/dashboard` is now `267 kB` first-load JS, `/tcoin/wallet/dashboard/contacts/[id]` is `252 kB`, `/tcoin/sparechange/dashboard` is `164 kB`, and `/tcoin/contracts*` remains around `234–242 kB`. A manifest inspection after the build confirmed the dashboard route no longer includes the prior Cubid/RainbowKit/wallet-connect/WebAuthn chunk markers.
+
+### Verification
+- `pnpm exec vitest run shared/hooks/useSendMoney.test.ts app/tcoin/wallet/components/dashboard/SendCard.test.tsx app/tcoin/wallet/components/dashboard/SendTab.test.tsx app/tcoin/wallet/welcome/page.test.tsx`
+- `pnpm lint`
+- `pnpm build`
+- `python - <<'PY' ...` manifest inspection for `/tcoin/wallet/dashboard/page` chunk keywords
+- `pnpm test`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/wallet/welcome/page.tsx`
+- `app/tcoin/wallet/welcome/page.test.tsx`
+- `app/tcoin/wallet/welcome/WalletOnboardingRuntime.tsx`
+- `app/tcoin/wallet/components/dashboard/ContributionsCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.tsx`
+- `app/tcoin/wallet/components/dashboard/SendTab.test.tsx`
+- `shared/hooks/useSendMoney.tsx`
+- `shared/hooks/useSendMoney.test.ts`
+- `shared/lib/wallet/sendMoneyShared.ts`
+- `shared/lib/wallet/sendMoneyRuntime.ts`
+
+## v1.195
+### Timestamp
+- 2026-04-13 15:49 EDT
+
+### Objective
+- Execute the `P2` production-readiness performance pass against the heaviest routes, with a focus on reducing avoidable first-load JS on wallet dashboard, SpareChange dashboard, and the contracts management screens.
+
+### What Changed
+- Reworked wallet read-only balance/address flows so dashboard home and More no longer pull `useSendMoney()` just to discover the active wallet. `useTokenBalance()` now reads through a cached `viem` public client, and the new lightweight `useCurrentWalletAddress()` hook resolves the current custody wallet for read-only panels.
+- Split contract-management read helpers from Cubid write helpers by introducing dedicated write modules, then updated governance, registry, treasury, token-admin, steward, charity-operator, city-manager, and proposal-detail screens so transaction code is imported only when an operator actually executes an action. The contracts layout was also reduced to the providers those pages really use.
+- Moved wallet dashboard non-home tabs and multiple modal-heavy surfaces behind lazy/event-time imports, including authenticated navbar modals and the More/Receive/Other modal stack. SpareChange dashboard now enters through a thin shell and dynamically loads the heavy wallet screen. Focused tests were updated to cover the new lazy boundaries and hook contracts.
+- Route-size result from `pnpm build`: `/tcoin/contracts*` now sits around `234–242 kB`, `/tcoin/sparechange/dashboard` is `163 kB`, and `/tcoin/wallet/dashboard` is reduced from the earlier `1.55 MB` baseline to `1.39 MB`. The wallet dashboard target is improved but not yet complete, so the todo remains open for the next pass.
+
+### Verification
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx app/tcoin/wallet/components/dashboard/WalletHome.test.tsx app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/sparechange/dashboard/page.test.tsx shared/lib/contracts/management/proposals.test.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/MoreTab.test.tsx app/tcoin/wallet/components/navbar/Navbar.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `pnpm exec vitest run app/tcoin/wallet/dashboard/page.test.tsx shared/hooks/useTokenBalance.test.tsx`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `app/tcoin/contracts/layout.tsx`
+- `app/tcoin/contracts/charity-operator/page.tsx`
+- `app/tcoin/contracts/city-manager/page.tsx`
+- `app/tcoin/contracts/governance/page.tsx`
+- `app/tcoin/contracts/proposals/[id]/page.tsx`
+- `app/tcoin/contracts/registry/page.tsx`
+- `app/tcoin/contracts/stewards/page.tsx`
+- `app/tcoin/contracts/token-admin/page.tsx`
+- `app/tcoin/contracts/treasury/page.tsx`
+- `app/tcoin/sparechange/dashboard/page.tsx`
+- `app/tcoin/sparechange/dashboard/page.test.tsx`
+- `app/tcoin/sparechange/dashboard/screens/WalletScreen.tsx`
+- `app/tcoin/wallet/components/DashboardFooter.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.tsx`
+- `app/tcoin/wallet/components/dashboard/MoreTab.test.tsx`
+- `app/tcoin/wallet/components/dashboard/OtherCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SimpleWalletHome.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.test.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/dashboard/page.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `shared/hooks/useCurrentWalletAddress.ts`
+- `shared/hooks/useTokenBalance.test.tsx`
+- `shared/hooks/useTokenBalance.ts`
+- `shared/lib/contracts/management/clients.ts`
+- `shared/lib/contracts/management/proposals.test.ts`
+- `shared/lib/contracts/management/proposals.ts`
+- `shared/lib/contracts/management/proposals-write.ts`
+- `shared/lib/contracts/management/registryOps.ts`
+- `shared/lib/contracts/management/registryOps-write.ts`
+- `shared/lib/contracts/management/writes.ts`
+
+## v1.194
+### Timestamp
+- 2026-04-13 13:27 EDT
+
+### Objective
+- Remove the remaining repeated `--localstorage-file` warning from local Vitest output so the test baseline is genuinely quiet instead of relying on a known-runtime footnote.
+
+### What Changed
+- Updated `vitest.setup.ts` so the shared storage stub is installed with `Object.defineProperty(...)` on `globalThis` and `window`, avoiding the initial `globalThis.localStorage` read that was triggering Node's built-in webstorage getter.
+- Confirmed the warning source was the runtime getter path rather than repo-owned test logic, then refreshed the technical spec to record that the local warning is now suppressed in normal repo test runs.
+
+### Verification
+- `node --trace-warnings node_modules/vitest/vitest.mjs run app/api/send_otp/route.test.ts`
+- `pnpm lint`
+- `pnpm test`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `vitest.setup.ts`
+
+## v1.193
+### Timestamp
+- 2026-04-13 09:41 EDT
+
+### Objective
+- Complete the wallet release runbook so production launch checks are explicit, repo-grounded, and reusable by humans instead of living only in scattered notes and prior session context.
+
+### What Changed
+- Added `docs/engineering/wallet-release-runbook.md` as the canonical wallet go-live checklist, wiring it to the repo's actual runtime contracts: required env groups, release preflight commands, local and production smoke steps, pay-link cleanup cron verification, indexer health expectations, and rollback guidance.
+- Synced `.env.local.example` with production-facing runtime inputs that were already used in code but not surfaced in the template, including `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_EXPLORER_URL`, and the Twilio Verify env vars for off-ramp SMS verification.
+- Marked the release-runbook todo item complete and updated the technical/functional specs so the new runbook is discoverable from the main engineering artefacts.
+
+### Verification
+- `pnpm lint`
+- `pnpm test`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `.env.local.example`
+
+## v1.192
+### Timestamp
+- 2026-04-13 09:21 EDT
+
+### Objective
+- Eliminate the repo-owned lint and test warnings uncovered during the production-readiness pass so new warnings stand out as real regressions instead of background noise.
+
+### What Changed
+- Fixed every current ESLint warning by tightening hook dependencies, replacing legacy image usage in the warned SpareChange surfaces, and moving the wallet layout’s Special Elite font loading onto `next/font/google`.
+- Reduced test noise by stubbing Cubid SDK/provider modules in `vitest.setup.ts`, modernizing modal tests away from deprecated `react-dom/test-utils`, fixing the `next/image` test mock that leaked the `priority` prop to the DOM, and mocking or silencing expected error-path logging in focused component/hook tests.
+- Hardened a few warning-adjacent implementation details while touching those files, including the SpareChange user-info username hydration bug and the wallet dashboard tests’ missing edge-client mocks.
+- Updated the todo/spec artefacts to mark the warning-reduction work complete and to record that the remaining repeated `--localstorage-file` warning comes from the surrounding local runtime rather than from checked-in repo code.
+
+### Verification
+- `pnpm lint`
+- `pnpm exec vitest run app/tcoin/wallet/components/modals/ContactSelectModal.test.tsx app/tcoin/wallet/components/modals/ShareQrModal.test.tsx app/tcoin/wallet/components/modals/SignInModal.test.tsx app/tcoin/wallet/components/landing-header/LandingHeader.test.tsx app/tcoin/wallet/components/dashboard/SendCard.test.tsx app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx shared/api/hooks/useAuth.test.tsx shared/hooks/useSendMoney.test.ts`
+- `pnpm exec vitest run app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `next.config.js`
+- `vitest.setup.ts`
+- `app/tcoin/contracts/proposals/[id]/page.tsx`
+- `app/tcoin/sparechange/ContentLayout.tsx`
+- `app/tcoin/sparechange/components/navbar/Navbar.tsx`
+- `app/tcoin/sparechange/dashboard/page.tsx`
+- `app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+- `app/tcoin/sparechange/home/Hero.tsx`
+- `app/tcoin/sparechange/welcome/page.tsx`
+- `app/tcoin/sparechange/welcome/steps/UserInfoStep.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/wallet/components/landing-header/LandingHeader.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveTab.test.tsx`
+- `app/tcoin/wallet/components/modals/CharitySelectModal.test.tsx`
+- `app/tcoin/wallet/components/modals/ContactSelectModal.test.tsx`
+- `app/tcoin/wallet/components/modals/ShareQrModal.test.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `shared/api/hooks/useAuth.test.tsx`
+- `shared/hooks/useSendMoney.test.ts`
+
+## v1.191
+### Timestamp
+- 2026-04-13 01:16 EDT
+
+### Objective
+- Turn the initial wallet production-readiness audit into concrete repo work by hardening public OTP endpoints, removing unsafe runtime logging, and adding the missing CI secret-scan gate.
+
+### What Changed
+- Added a prioritised production-readiness checklist to `agent-context/todo.md`, then completed the first three items: wallet-runtime logging hardening, OTP contract hardening, and CI secret scanning.
+- Removed the unused `/api/sendsms` route, stripped unsafe `console.log(...)` calls from wallet custody/send flows and related QR/profile screens, and kept the remaining runtime logging focused on non-secret operational errors.
+- Extracted the active Twilio Verify integration into `shared/lib/twilioVerify.ts`, updated `/api/send_otp` and `/api/verify_otp` to share input validation and upstream error handling, and added route tests for malformed input, missing env, upstream failures, and success paths.
+- Added `.github/workflows/secret-scan.yml` so pull requests run a TruffleHog diff scan and nightly/manual runs perform a full repository scan, aligning CI with the repo security guard-rails.
+- Updated the engineering specs to record the shared OTP validation contract, the retired raw SMS endpoint, the no-secret-logging rule for wallet runtime flows, and the new secret-scan posture.
+
+### Verification
+- `pnpm exec vitest run app/api/send_otp/route.test.ts app/api/verify_otp/route.test.ts shared/hooks/useSendMoney.test.ts`
+- `pnpm lint`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `.github/workflows/secret-scan.yml`
+- `shared/lib/twilioVerify.ts`
+- `app/api/send_otp/route.ts`
+- `app/api/send_otp/route.test.ts`
+- `app/api/verify_otp/route.ts`
+- `app/api/verify_otp/route.test.ts`
+- `app/api/sendsms/route.ts`
+- `shared/hooks/useSendMoney.tsx`
+- `app/tcoin/sparechange/components/modals/QrScanModal.tsx`
+- `app/tcoin/sparechange/components/modals/UserProfileModal.tsx`
+- `app/tcoin/sparechange/dashboard/screens/WalletComponent.tsx`
+
 ## v1.190
 ### Timestamp
 - 2026-04-06 19:14 EDT

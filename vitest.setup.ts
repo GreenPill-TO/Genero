@@ -1,6 +1,10 @@
 import { vi } from "vitest";
 
 vi.mock("server-only", () => ({}), { virtual: true });
+vi.mock("cubid-sdk", async () => import("@shared/stubs/cubid-sdk"));
+vi.mock("cubid-wallet", async () => import("@shared/stubs/cubid-wallet"));
+vi.mock("cubid-wallet/dist/styles.css", () => ({}), { virtual: true });
+vi.mock("cubid-sdk/dist/index.css", () => ({}), { virtual: true });
 
 const indexedDbStub =
   (globalThis as any).indexedDB ??
@@ -44,16 +48,22 @@ function createStorageStub() {
   } as Storage;
 }
 
-const currentStorage = (globalThis as any).localStorage;
-if (!currentStorage || typeof currentStorage.getItem !== "function") {
-  const storageStub = createStorageStub();
-  (globalThis as any).localStorage = storageStub;
-  if (typeof window !== "undefined") {
-    (window as any).localStorage = storageStub;
-  }
+function installStorageStub(target: typeof globalThis | Window, key: "localStorage") {
+  Object.defineProperty(target, key, {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: createStorageStub(),
+  });
+}
+
+// Override the storage binding without touching Node's built-in webstorage getter.
+installStorageStub(globalThis, "localStorage");
+if (typeof window !== "undefined") {
+  installStorageStub(window, "localStorage");
 }
 
 process.env.NEXT_PUBLIC_SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://example.supabase.co";
-process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ?? "test-publishable-key";
+process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "test-publishable-key";

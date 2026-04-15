@@ -14,13 +14,8 @@ import { useModal } from "@shared/contexts/ModalContext";
 import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
 import { useUserSettings } from "@shared/hooks/useUserSettings";
 import { cn } from "@shared/utils/classnames";
-
-import SignInModal from "@tcoin/wallet/components/modals/SignInModal";
-import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
-import { ExperienceModeModal } from "@tcoin/wallet/components/modals/ExperienceModeModal";
 import { usePathname } from "next/navigation";
 import { LuCamera, LuChevronDown, LuUser } from "react-icons/lu";
-import { QrScanModal } from "@tcoin/wallet/components/modals";
 import { toast } from "react-toastify";
 import NavLink from "./NavLink";
 import { ThemeToggleButton } from "./ThemeToggleButton";
@@ -42,7 +37,8 @@ export default function Navbar({ title }: { title?: string }) {
   const experienceMode = bootstrap?.preferences?.experienceMode ?? "simple";
   const experienceModeMenuLabel = experienceMode === "simple" ? "Switch mode" : "Experience mode";
 
-  const onAuth = () => {
+  const onAuth = async () => {
+    const { default: SignInModal } = await import("@tcoin/wallet/components/modals/SignInModal");
     openModal({ content: <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />, elSize: "4xl" });
   };
 
@@ -100,7 +96,8 @@ export default function Navbar({ title }: { title?: string }) {
     );
   }, [isAuthenticated]);
 
-  const handleEditProfile = () => {
+  const handleEditProfile = async () => {
+    const { UserProfileModal } = await import("@tcoin/wallet/components/modals/UserProfileModal");
     openModal({
       content: <UserProfileModal closeModal={closeModal} />,
       isResponsive: true,
@@ -114,7 +111,8 @@ export default function Navbar({ title }: { title?: string }) {
     signOut();
   };
 
-  const handleExperienceMode = () => {
+  const handleExperienceMode = async () => {
+    const { ExperienceModeModal } = await import("@tcoin/wallet/components/modals/ExperienceModeModal");
     openModal({
       content: <ExperienceModeModal closeModal={closeModal} />,
       title: experienceModeMenuLabel,
@@ -294,7 +292,8 @@ export default function Navbar({ title }: { title?: string }) {
               <Button
                 variant="ghost"
                 aria-label="Open QR scanner"
-                onClick={() =>
+                onClick={async () => {
+                  const { QrScanModal } = await import("@tcoin/wallet/components/modals/QrScanModal");
                   openModal({
                     content: (
                       <QrScanModal
@@ -308,8 +307,8 @@ export default function Navbar({ title }: { title?: string }) {
                     description: "Use your device's camera to scan a code.",
                     elSize: "4xl",
                     isResponsive: true,
-                  })
-                }
+                  });
+                }}
                 className="h-10 rounded-full border border-white/10 bg-white/70 px-4 text-slate-700 hover:bg-white dark:bg-white/[0.06] dark:text-slate-100 dark:hover:bg-white/[0.1]"
               >
                 <LuCamera className="h-4 w-4" />

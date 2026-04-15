@@ -1,81 +1,49 @@
 import { NextResponse } from "next/server";
-
-type TwilioConfig = {
-  accountSid: string;
-  authToken: string;
-  verifyServiceSid: string;
-};
-
-function getTwilioConfig(): TwilioConfig | null {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID ?? process.env.accountSid;
-  const authToken = process.env.TWILIO_AUTH_TOKEN ?? process.env.authToken;
-  const verifyServiceSid =
-    process.env.TWILIO_VERIFY_SERVICE_SID ?? process.env.verifyServiceSid;
-
-  if (!accountSid || !authToken || !verifyServiceSid) {
-    return null;
-  }
-
-  return { accountSid, authToken, verifyServiceSid };
-}
+import {
+  getTwilioVerifyConfig,
+  normaliseTwilioPhone,
+  sendTwilioPasscode,
+} from "@shared/lib/twilioVerify";
 
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as { phone?: string };
-    const phone = body.phone?.trim();
+    const phone = normaliseTwilioPhone(body.phone);
 
     if (!phone) {
       return NextResponse.json(
-        { success: false, message: "Phone number is required" },
+        {
+          success: false,
+          message: "Phone number must be provided in international format, for example +14165551234.",
+        },
         { status: 400 }
       );
     }
 
-    const config = getTwilioConfig();
+    const config = getTwilioVerifyConfig();
     if (!config) {
       return NextResponse.json(
-        { success: false, message: "Twilio environment variables are not set properly" },
+        { success: false, message: "SMS verification is not configured." },
         { status: 500 }
       );
     }
 
-    const authHeader = Buffer.from(
-      `${config.accountSid}:${config.authToken}`,
-      "utf8"
-    ).toString("base64");
-    const form = new URLSearchParams({
-      To: phone,
-      Channel: "sms",
-    });
+    const { response, payload } = await sendTwilioPasscode(config, phone);
 
-    const twilioResponse = await fetch(
-      `https://verify.twilio.com/v2/Services/${config.verifyServiceSid}/Verifications`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${authHeader}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: form.toString(),
-      }
-    );
-    const verification = (await twilioResponse.json()) as { status?: string; message?: string };
-
-    if (!twilioResponse.ok) {
+    if (!response.ok) {
       return NextResponse.json(
         {
           success: false,
-          message: verification.message ?? "Failed to send OTP.",
+          message: payload.message ?? "Failed to send OTP.",
         },
-        { status: twilioResponse.status }
+        { status: response.status }
       );
     }
 
-    return NextResponse.json({ success: true, status: verification.status });
+    return NextResponse.json({ success: true, status: payload.status });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { success: false, message },
+      { success: false, message: "Failed to send OTP." },
       { status: 500 }
     );
   }

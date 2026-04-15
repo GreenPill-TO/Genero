@@ -7,7 +7,6 @@ import { accessControlTokenAbi } from "@shared/lib/contracts/management/abis";
 import {
   getCityContext,
   getCityPublicClient,
-  writeCityContractWithCubid,
 } from "@shared/lib/contracts/management/clients";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 
@@ -34,6 +33,7 @@ export default function TokenAdminPage() {
     try {
       const context = await getCityContext();
       const address = selectedToken === "TTC" ? context.contracts.TTC : context.contracts.CAD;
+      const { writeCityContractWithCubid } = await import("@shared/lib/contracts/management/writes");
 
       const tx = await writeCityContractWithCubid({
         userId,

@@ -32,23 +32,34 @@ vi.mock("cubid-wallet", () => ({
   },
 }));
 
-import { __internal, WebAuthnRequestInProgressError } from "./useSendMoney";
+import {
+  resolveShareSelection,
+  resolveTokenRuntimeConfig,
+  WebAuthnRequestInProgressError,
+} from "@shared/lib/wallet/sendMoneyShared";
+import {
+  resetWebAuthnRuntimeForTests,
+  runWithWebAuthnLock,
+} from "@shared/lib/wallet/sendMoneyRuntime";
 
 describe("runWithWebAuthnLock", () => {
+  const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
   afterEach(() => {
-    __internal.resetWebAuthnLock();
+    consoleWarnSpy.mockClear();
+    resetWebAuthnRuntimeForTests();
     getActiveCityContractsMock.mockReset();
     getRpcUrlForChainIdMock.mockReset();
     getTorontoCoinRuntimeConfigMock.mockReset();
   });
 
   it("prevents concurrent WebAuthn requests", async () => {
-    const slowPromise = __internal.runWithWebAuthnLock(async () => {
+    const slowPromise = runWithWebAuthnLock(async () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
       return "done";
     });
 
-    await expect(__internal.runWithWebAuthnLock(async () => "second")).rejects.toBeInstanceOf(
+    await expect(runWithWebAuthnLock(async () => "second")).rejects.toBeInstanceOf(
       WebAuthnRequestInProgressError
     );
 
@@ -56,9 +67,9 @@ describe("runWithWebAuthnLock", () => {
   });
 
   it("releases the lock after completion", async () => {
-    await __internal.runWithWebAuthnLock(async () => "first");
+    await runWithWebAuthnLock(async () => "first");
 
-    await expect(__internal.runWithWebAuthnLock(async () => "second")).resolves.toBe("second");
+    await expect(runWithWebAuthnLock(async () => "second")).resolves.toBe("second");
   });
 
   it("resolves token runtime config from the TorontoCoin runtime bridge on Celo mainnet", async () => {
@@ -71,7 +82,7 @@ describe("runWithWebAuthnLock", () => {
       chainId: 42220,
     });
 
-    await expect(__internal.resolveTokenRuntimeConfig()).resolves.toEqual({
+    await expect(resolveTokenRuntimeConfig()).resolves.toEqual({
       tokenAddress: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
       rpcUrl: "https://forno.celo.org",
       chainId: 42220,
@@ -87,7 +98,7 @@ describe("runWithWebAuthnLock", () => {
       throw new Error("unexpected chain");
     });
 
-    await expect(__internal.resolveTokenRuntimeConfig()).resolves.toEqual({
+    await expect(resolveTokenRuntimeConfig()).resolves.toEqual({
       tokenAddress: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
       rpcUrl: "https://forno.celo.org",
       chainId: 42220,
@@ -98,7 +109,7 @@ describe("runWithWebAuthnLock", () => {
 
 describe("resolveShareSelection", () => {
   it("selects the share that matches the active credential", () => {
-    const result = __internal.resolveShareSelection({
+    const result = resolveShareSelection({
       activeCredentialId: "beef",
       activeAppSlug: "wallet-tcoin",
       userShares: [
@@ -113,7 +124,7 @@ describe("resolveShareSelection", () => {
   });
 
   it("falls back to the most recent share when the active credential is missing", () => {
-    const result = __internal.resolveShareSelection({
+    const result = resolveShareSelection({
       activeCredentialId: "missing-credential",
       activeAppSlug: "wallet-tcoin",
       userShares: [
@@ -129,7 +140,7 @@ describe("resolveShareSelection", () => {
 
   it("throws an app-scoped error when no shares are available", () => {
     expect(() =>
-      __internal.resolveShareSelection({
+      resolveShareSelection({
         activeCredentialId: null,
         activeAppSlug: "sparechange-tcoin",
         userShares: [],
@@ -140,7 +151,7 @@ describe("resolveShareSelection", () => {
   });
 
   it("normalises and filters credential candidates", () => {
-    const result = __internal.resolveShareSelection({
+    const result = resolveShareSelection({
       activeCredentialId: null,
       activeAppSlug: "wallet-tcoin",
       userShares: [

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveSupabasePublishableKey } from "@shared/lib/supabase/env";
 import {
   normaliseTransakWebhookEvent,
   verifyAndDecodeTransakWebhookPayload,
@@ -14,18 +15,6 @@ function resolveSupabaseUrl(): string {
     throw new Error("NEXT_PUBLIC_SUPABASE_URL is required.");
   }
   return url;
-}
-
-function resolvePublishableKey(): string {
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!key) {
-    throw new Error("Missing Supabase publishable key.");
-  }
-
-  return key;
 }
 
 function resolveWebhookForwardSecret(): string {
@@ -53,7 +42,7 @@ export async function POST(req: Request) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      apikey: resolvePublishableKey(),
+      apikey: resolveSupabasePublishableKey(),
       "x-app-slug": "wallet",
       "x-city-slug": "tcoin",
       "x-app-environment": process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "production",

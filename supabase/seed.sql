@@ -67,7 +67,7 @@ SET app_id = EXCLUDED.app_id,
 -- ---------------------------------------------------------------------------
 INSERT INTO public.users (id, cubid_id, username, email, full_name, is_admin, auth_user_id, country, created_at, updated_at)
 VALUES
-  (1001, 'cubid-seed-1', 'alice', 'hubert.cormac@gmail.com', 'Alice Merchant', true, 'seed-auth-user-1001', 'CA', now(), now()),
+  (1001, 'cubid-seed-1', 'hubert.cormac', 'hubert.cormac@gmail.com', 'Hubert Cormac', true, 'seed-auth-user-1001', 'CA', now(), now()),
   (1002, 'cubid-seed-2', 'bob', 'bob@example.com', 'Bob Shopper', false, 'seed-auth-user-1002', 'CA', now(), now()),
   (1003, 'cubid-seed-3', 'carol', 'carol@example.com', 'Carol Operator', true, 'seed-auth-user-1003', 'CA', now(), now()),
   (1004, 'cubid-seed-4', 'hubert-cormac', 'hubert-cormac@example.com', 'Hubert Cormac', true, 'seed-auth-user-1004', 'CA', now(), now())

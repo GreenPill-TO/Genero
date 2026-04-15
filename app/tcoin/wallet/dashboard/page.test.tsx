@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const useAuthMock = vi.hoisted(() => vi.fn());
@@ -23,6 +23,35 @@ vi.mock("@shared/hooks/useUserSettings", () => ({
   useUserSettings: () => useUserSettingsMock(),
 }));
 
+vi.mock("next/dynamic", () => ({
+  default: (loader: () => Promise<any>, options?: { loading?: () => React.ReactNode }) => {
+    const MockDynamicComponent = (props: Record<string, unknown>) => {
+      const [LoadedComponent, setLoadedComponent] = React.useState<React.ComponentType<any> | null>(null);
+
+      React.useEffect(() => {
+        let cancelled = false;
+        void loader().then((mod) => {
+          if (!cancelled) {
+            setLoadedComponent(() => (mod?.default ?? mod) as React.ComponentType<any>);
+          }
+        });
+
+        return () => {
+          cancelled = true;
+        };
+      }, []);
+
+      if (!LoadedComponent) {
+        return options?.loading ? <>{options.loading()}</> : null;
+      }
+
+      return <LoadedComponent {...props} />;
+    };
+
+    return MockDynamicComponent;
+  },
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
   useSearchParams: () => searchParamsMock,
@@ -38,21 +67,39 @@ vi.mock("@tcoin/wallet/components/DashboardFooter", () => ({
   ),
 }));
 
-vi.mock("@tcoin/wallet/components/dashboard", () => ({
+vi.mock("@tcoin/wallet/components/dashboard/WalletHome", () => ({
   WalletHome: ({ onOpenTransactionHistory }: { onOpenTransactionHistory?: () => void }) => (
     <button onClick={() => onOpenTransactionHistory?.()}>open-history</button>
   ),
+}));
+
+vi.mock("@tcoin/wallet/components/dashboard/SimpleWalletHome", () => ({
   SimpleWalletHome: () => <div>simple-home</div>,
+}));
+
+vi.mock("@tcoin/wallet/components/dashboard/ContactsTab", () => ({
   ContactsTab: (props: any) => {
     contactsTabPropsMock(props);
     return <div>contacts</div>;
   },
+}));
+
+vi.mock("@tcoin/wallet/components/dashboard/SendTab", () => ({
   SendTab: (props: any) => {
     sendTabPropsMock(props);
     return <div>send</div>;
   },
+}));
+
+vi.mock("@tcoin/wallet/components/dashboard/ReceiveTab", () => ({
   ReceiveTab: () => <div>receive</div>,
+}));
+
+vi.mock("@tcoin/wallet/components/dashboard/MoreTab", () => ({
   MoreTab: () => <div>more</div>,
+}));
+
+vi.mock("@tcoin/wallet/components/dashboard/TransactionHistoryTab", () => ({
   TransactionHistoryTab: ({ onBackToDashboard }: { onBackToDashboard?: () => void }) => (
     <button onClick={() => onBackToDashboard?.()}>back-home</button>
   ),
@@ -112,7 +159,7 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("open-history")).toBeNull();
   });
 
-  it("keeps home content uncapped while narrowing focused task tabs", () => {
+  it("keeps home content uncapped while narrowing focused task tabs", async () => {
     const { rerender } = render(<DashboardPage />);
 
     expect(screen.getByTestId("dashboard-tab-content").className).toBe("w-full");
@@ -120,8 +167,10 @@ describe("DashboardPage", () => {
     searchParamsMock.get = vi.fn((key: string) => (key === "tab" ? "receive" : null));
     rerender(<DashboardPage />);
 
-    expect(screen.getByTestId("dashboard-tab-content").className).toContain("max-w-[62.5rem]");
-    expect(screen.getByText("receive")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId("dashboard-tab-content").className).toContain("max-w-[62.5rem]");
+      expect(screen.getByText("receive")).toBeTruthy();
+    });
   });
 
   it("renders the simplified home and hides more in simple mode", () => {
@@ -156,10 +205,13 @@ describe("DashboardPage", () => {
     expect(pushMock).toHaveBeenCalledWith("/dashboard");
   });
 
-  it("stabilizes the contacts resolver so repeated identical results do not loop", () => {
+  it("stabilizes the contacts resolver so repeated identical results do not loop", async () => {
     searchParamsMock.get = vi.fn((key: string) => (key === "tab" ? "contacts" : null));
     render(<DashboardPage />);
 
+    await waitFor(() => {
+      expect(contactsTabPropsMock).toHaveBeenCalled();
+    });
     const firstProps = contactsTabPropsMock.mock.calls.at(-1)?.[0];
     const resolveContacts = firstProps.onContactsResolved as ((records: any[]) => void) | undefined;
     expect(typeof resolveContacts).toBe("function");
@@ -187,7 +239,7 @@ describe("DashboardPage", () => {
     expect(contactsTabPropsMock).toHaveBeenCalledTimes(2);
   });
 
-  it("disables the invite empty state in simple-mode contacts", () => {
+  it("disables the invite empty state in simple-mode contacts", async () => {
     useUserSettingsMock.mockReturnValue({
       bootstrap: {
         preferences: {
@@ -200,11 +252,14 @@ describe("DashboardPage", () => {
 
     render(<DashboardPage />);
 
+    await waitFor(() => {
+      expect(contactsTabPropsMock).toHaveBeenCalled();
+    });
     const props = contactsTabPropsMock.mock.calls.at(-1)?.[0];
     expect(props.showInviteEmptyState).toBe(false);
   });
 
-  it("passes public pay-link query params and pending intents into send", () => {
+  it("passes public pay-link query params and pending intents into send", async () => {
     useUserSettingsMock.mockReturnValue({
       bootstrap: {
         preferences: {
@@ -236,15 +291,17 @@ describe("DashboardPage", () => {
 
     render(<DashboardPage />);
 
-    expect(sendTabPropsMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        paymentLinkToken: "opaque-token",
-        resumePendingPayment: true,
-        pendingPaymentIntent: expect.objectContaining({
-          recipientUserId: 42,
-          sourceToken: "opaque-token",
-        }),
-      })
-    );
+    await waitFor(() => {
+      expect(sendTabPropsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paymentLinkToken: "opaque-token",
+          resumePendingPayment: true,
+          pendingPaymentIntent: expect.objectContaining({
+            recipientUserId: 42,
+            sourceToken: "opaque-token",
+          }),
+        })
+      );
+    });
   });
 });

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Input } from "@shared/components/ui/Input";
@@ -511,11 +512,15 @@ function SendCard({
             </button>
             <div className="flex items-center">
               {toSendData.profile_image_url ? (
-                <img
-                  src={toSendData.profile_image_url}
-                  alt={toSendData.full_name}
-                  className="w-16 h-16 rounded-full"
-                />
+                <Avatar className="h-16 w-16">
+                  <AvatarImage
+                    src={toSendData.profile_image_url}
+                    alt={toSendData.full_name}
+                  />
+                  <AvatarFallback>
+                    {toSendData.full_name ? toSendData.full_name.charAt(0) : "?"}
+                  </AvatarFallback>
+                </Avatar>
               ) : (
                 <div className="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center">
                   <span className="text-2xl font-bold text-white">
@@ -1066,14 +1071,13 @@ export function MobileWalletDashboardComponent({
       setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
     }, 2000);
     return () => clearInterval(interval);
-  }, [user_id, tcoinAmount]);
+  }, [nano_id, user_id]);
 
   function extractAndDecodeBase64(url: string) {
     try {
       const urlObj = new URL(url);
       const base64Data = urlObj.searchParams.get("pay");
       if (!base64Data) throw new Error("No Base64 data found in URL.");
-      console.log({ base64Data })
       // Decode Base64 data
       const decodedData = decodeURIComponent(escape(atob(base64Data)));
       return JSON.parse(decodedData); // Assuming the data is in JSON format
@@ -1086,7 +1090,6 @@ export function MobileWalletDashboardComponent({
 
   const handleScan = useCallback(async (data: any) => {
     const { ...rest } = extractAndDecodeBase64(data)
-    console.log({ rest })
     toast.success("Scanned User Successfully")
     if (rest?.nano_id) {
       const lookup = await lookupWalletUserByIdentifier(
@@ -1115,11 +1118,11 @@ export function MobileWalletDashboardComponent({
       }
     }
 
-  }, [exchangeRate]);
+  }, [exchangeRate, setToSendData]);
 
   useEffect(() => {
-    handleScan(window.location.href)
-  }, [])
+    void handleScan(window.location.href)
+  }, [handleScan])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -1230,8 +1233,6 @@ export function MobileWalletDashboardComponent({
     receiverId: toSendData?.id ?? null,
   });
 
-  console.log({ senderWallet, user_id })
-
   const { balance: userBalance } = useTokenBalance(senderWallet)
 
   const dynamicQrData = qrTcoinAmount ? JSON.stringify({ ...JSON.parse(qrCodeData), qrTcoinAmount }) : qrCodeData;
@@ -1242,7 +1243,6 @@ export function MobileWalletDashboardComponent({
 
   const qrData = `https://tcoin.me?pay=${base64Encode(dynamicQrData)}`;
 
-  // Debug logging.
   return (
     <div className="container mx-auto p-4 space-y-8">
       {/* --- Mobile View (Single Card with Tab Navigation) --- */}

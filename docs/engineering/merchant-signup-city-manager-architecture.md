@@ -117,7 +117,7 @@ Uniqueness enforcement:
 - `supabase/migrations/20260313161000_v0.99_merchant_signup_city_manager.sql`
 
 2. Environment knobs:
-- `NEXT_PUBLIC_MERCHANT_SIGNUP_V1`
+- `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP`
 - `NOMINATIM_USER_AGENT`
 
 3. Compatibility:

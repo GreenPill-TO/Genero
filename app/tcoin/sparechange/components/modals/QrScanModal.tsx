@@ -67,7 +67,6 @@ export const QrScanModal: React.FC<QrScanModalProps> = ({
   // Called whenever a QR code is successfully scanned.
   const handleScan = useCallback(async (data: any) => {
     const { nano_id, ...rest } = extractAndDecodeBase64(data?.[0]?.rawValue);
-    console.log({ rest });
     toast.success("Scanned User Successfully");
     if (nano_id) {
       const lookup = await lookupWalletUserByIdentifier({ identifier: nano_id });

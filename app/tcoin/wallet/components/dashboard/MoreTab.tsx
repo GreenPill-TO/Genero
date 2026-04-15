@@ -4,18 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avata
 import { useModal } from "@shared/contexts/ModalContext";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useUserSettings } from "@shared/hooks/useUserSettings";
-import { useSendMoney } from "@shared/hooks/useSendMoney";
+import { useCurrentWalletAddress } from "@shared/hooks/useCurrentWalletAddress";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
-import {
-  OffRampModal,
-  CharitySelectModal,
-  CharityContributionsModal,
-  ThemeSelectModal,
-  BiaPreferencesModal,
-  VoucherRoutingPreferencesModal,
-  FutureAppFeaturesModal,
-} from "@tcoin/wallet/components/modals";
-import { UserProfileModal } from "@tcoin/wallet/components/modals/UserProfileModal";
 import {
   LuArrowUpRight,
   LuBuilding2,
@@ -132,9 +122,8 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
   const { openModal, closeModal } = useModal();
   const { userData, authData } = useAuth();
   const { bootstrap } = useUserSettings();
-  const { senderWallet } = useSendMoney({
-    senderId: userData?.cubidData?.id ?? 0,
-    receiverId: null,
+  const { walletAddress: senderWallet } = useCurrentWalletAddress({
+    enabled: Boolean(userData?.cubidData?.id),
   });
   const { balance: rawBalance } = useTokenBalance(senderWallet ?? null);
   const userBalance = Number.parseFloat(rawBalance) || 0;
@@ -197,7 +186,8 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     }
   };
 
-  const openOffRampModal = () => {
+  const openOffRampModal = async () => {
+    const { OffRampModal } = await import("@tcoin/wallet/components/modals/OffRampModal");
     openModal({
       content: <OffRampModal closeModal={closeModal} userBalance={userBalance} />,
       title: "Convert and Off-ramp",
@@ -205,7 +195,8 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     });
   };
 
-  const openCharitySelectModal = () => {
+  const openCharitySelectModal = async () => {
+    const { CharitySelectModal } = await import("@tcoin/wallet/components/modals/CharitySelectModal");
     openModal({
       content: <CharitySelectModal closeModal={closeModal} />,
       title: "Change Default Charity",
@@ -213,7 +204,8 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     });
   };
 
-  const openCharityContributionsModal = () => {
+  const openCharityContributionsModal = async () => {
+    const { CharityContributionsModal } = await import("@tcoin/wallet/components/modals/CharityContributionsModal");
     openModal({
       content: (
         <CharityContributionsModal
@@ -228,7 +220,8 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     });
   };
 
-  const openProfileModal = () => {
+  const openProfileModal = async () => {
+    const { UserProfileModal } = await import("@tcoin/wallet/components/modals/UserProfileModal");
     openModal({
       content: <UserProfileModal closeModal={closeModal} />,
       isResponsive: true,
@@ -238,7 +231,8 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     });
   };
 
-  const openThemeModal = () => {
+  const openThemeModal = async () => {
+    const { ThemeSelectModal } = await import("@tcoin/wallet/components/modals/ThemeSelectModal");
     openModal({
       content: <ThemeSelectModal closeModal={closeModal} />,
       title: "Select Theme",
@@ -246,7 +240,8 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     });
   };
 
-  const openBiaPreferencesModal = () => {
+  const openBiaPreferencesModal = async () => {
+    const { BiaPreferencesModal } = await import("@tcoin/wallet/components/modals/BiaPreferencesModal");
     openModal({
       content: <BiaPreferencesModal closeModal={closeModal} />,
       title: "BIA Preferences",
@@ -254,7 +249,10 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     });
   };
 
-  const openVoucherRoutingPreferencesModal = () => {
+  const openVoucherRoutingPreferencesModal = async () => {
+    const { VoucherRoutingPreferencesModal } = await import(
+      "@tcoin/wallet/components/modals/VoucherRoutingPreferencesModal"
+    );
     openModal({
       content: (
         <VoucherRoutingPreferencesModal
@@ -270,7 +268,8 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
     });
   };
 
-  const openFutureAppFeaturesModal = () => {
+  const openFutureAppFeaturesModal = async () => {
+    const { FutureAppFeaturesModal } = await import("@tcoin/wallet/components/modals/FutureAppFeaturesModal");
     openModal({
       content: <FutureAppFeaturesModal />,
       title: "Future app features",

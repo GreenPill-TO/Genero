@@ -10,39 +10,26 @@ export function isLocalOrDevelopmentEnvironment(): boolean {
 async function resolveBypassUserRow(serviceRole: ReturnType<typeof createServiceRoleClient>) {
   const configuredUserId = Number.parseInt(process.env.AUTH_BYPASS_USER_ID ?? "", 10);
 
-  if (Number.isFinite(configuredUserId) && configuredUserId > 0) {
-    const { data: configuredRow, error: configuredError } = await serviceRole
-      .from("users")
-      .select("id,email,auth_user_id,is_admin")
-      .eq("id", configuredUserId)
-      .limit(1)
-      .maybeSingle();
-
-    if (configuredError) {
-      throw new Error(`Failed to resolve AUTH_BYPASS_USER_ID=${configuredUserId}: ${configuredError.message}`);
-    }
-
-    if (configuredRow) {
-      return configuredRow;
-    }
+  if (!Number.isFinite(configuredUserId) || configuredUserId <= 0) {
+    throw new Error("AUTH_BYPASS_USER_ID must be set to a positive public.users.id in local or development.");
   }
 
-  const { data: fallbackRow, error: fallbackError } = await serviceRole
+  const { data: configuredRow, error: configuredError } = await serviceRole
     .from("users")
     .select("id,email,auth_user_id,is_admin")
-    .order("id", { ascending: true })
+    .eq("id", configuredUserId)
     .limit(1)
     .maybeSingle();
 
-  if (fallbackError) {
-    throw new Error(`Failed to resolve bypass user row: ${fallbackError.message}`);
+  if (configuredError) {
+    throw new Error(`Failed to resolve AUTH_BYPASS_USER_ID=${configuredUserId}: ${configuredError.message}`);
   }
 
-  if (!fallbackRow) {
-    throw new Error("Unable to resolve bypass user row.");
+  if (!configuredRow) {
+    throw new Error(`AUTH_BYPASS_USER_ID=${configuredUserId} did not match any public.users row.`);
   }
 
-  return fallbackRow;
+  return configuredRow;
 }
 
 export async function resolveApiAuthContext() {

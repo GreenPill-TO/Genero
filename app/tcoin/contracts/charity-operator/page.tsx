@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { orchestratorV2Abi } from "@shared/lib/contracts/management/abis";
-import { getCityContext, writeCityContractWithCubid } from "@shared/lib/contracts/management/clients";
+import { getCityContext } from "@shared/lib/contracts/management/clients";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 
 export default function CharityOperatorPage() {
@@ -23,6 +23,7 @@ export default function CharityOperatorPage() {
 
     try {
       const context = await getCityContext();
+      const { writeCityContractWithCubid } = await import("@shared/lib/contracts/management/writes");
       const tx = await writeCityContractWithCubid({
         userId,
         address: context.contracts.ORCHESTRATOR,

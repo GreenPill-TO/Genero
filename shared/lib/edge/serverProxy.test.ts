@@ -18,7 +18,7 @@ describe("proxyEdgeRequest", () => {
     vi.clearAllMocks();
     vi.stubGlobal("fetch", fetchMock);
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY = "pk_test";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "pk_test";
   });
 
   it("omits Authorization for public proxy calls without a session", async () => {

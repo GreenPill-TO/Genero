@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const openModal = vi.fn();
@@ -147,8 +147,8 @@ vi.mock("@shared/hooks/useUserSettings", () => ({
   useUserSettings: () => useUserSettingsMock(),
 }));
 
-vi.mock("@shared/hooks/useSendMoney", () => ({
-  useSendMoney: () => ({ senderWallet: "0xabc1234567890def1234567890abcdef1234567" }),
+vi.mock("@shared/hooks/useCurrentWalletAddress", () => ({
+  useCurrentWalletAddress: () => ({ walletAddress: "0xabc1234567890def1234567890abcdef1234567" }),
 }));
 
 vi.mock("@shared/hooks/useTokenBalance", () => ({
@@ -197,6 +197,42 @@ vi.mock("@tcoin/wallet/components/modals", () => ({
 
 vi.mock("@tcoin/wallet/components/modals/UserProfileModal", () => ({
   UserProfileModal: () => <div data-testid="profile-modal" />,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/OffRampModal", () => ({
+  OffRampModal: ({ closeModal }: any) => (
+    <button data-testid="offramp-modal" onClick={closeModal}>
+      offramp
+    </button>
+  ),
+}));
+
+vi.mock("@tcoin/wallet/components/modals/CharitySelectModal", () => ({
+  CharitySelectModal: () => <button data-testid="charity-select">select</button>,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/CharityContributionsModal", () => ({
+  CharityContributionsModal: ({ onChangeCharity }: any) => (
+    <button data-testid="charity-summary" onClick={onChangeCharity}>
+      change
+    </button>
+  ),
+}));
+
+vi.mock("@tcoin/wallet/components/modals/ThemeSelectModal", () => ({
+  ThemeSelectModal: () => <div data-testid="theme-modal" />,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/BiaPreferencesModal", () => ({
+  BiaPreferencesModal: () => <div data-testid="bia-preferences-modal" />,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/VoucherRoutingPreferencesModal", () => ({
+  VoucherRoutingPreferencesModal: () => <div data-testid="voucher-routing-preferences-modal" />,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/FutureAppFeaturesModal", () => ({
+  FutureAppFeaturesModal: () => <div data-testid="future-features-modal" />,
 }));
 
 import { MoreTab } from "./MoreTab";
@@ -303,66 +339,82 @@ describe("MoreTab", () => {
     expect(screen.getByText(/"verified": true/i).className).toContain("whitespace-pre-wrap");
   });
 
-  it("opens the off-ramp modal", () => {
+  it("opens the off-ramp modal", async () => {
     render(<MoreTab />);
     fireEvent.click(
       screen.getByRole("button", { name: /Convert to CAD and Cash Out/i })
     );
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Convert and Off-ramp");
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("Convert and Off-ramp");
+    });
   });
 
-  it("opens the charity summary and allows changing the default charity", () => {
+  it("opens the charity summary and allows changing the default charity", async () => {
     render(<MoreTab />);
     fireEvent.click(
       screen.getByRole("button", { name: /Charity Contributions/i })
     );
-    expect(openModal).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+    });
     const modalArgs = openModal.mock.calls[0][0];
     expect(modalArgs.title).toBe("Charitable Contributions");
 
     const modal = render(modalArgs.content as React.ReactElement);
     fireEvent.click(modal.getByTestId("charity-summary"));
-    expect(openModal).toHaveBeenCalledTimes(2);
-    expect(openModal.mock.calls[1][0].title).toBe("Change Default Charity");
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalledTimes(2);
+      expect(openModal.mock.calls[1][0].title).toBe("Change Default Charity");
+    });
     modal.unmount();
   });
 
-  it("opens the profile modal", () => {
+  it("opens the profile modal", async () => {
     render(<MoreTab />);
     fireEvent.click(screen.getAllByRole("button", { name: /Edit Profile/i })[0]);
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Edit Profile");
-    expect(openModal.mock.calls[0][0].elSize).toBe("5xl");
-    expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("Edit Profile");
+      expect(openModal.mock.calls[0][0].elSize).toBe("5xl");
+      expect(openModal.mock.calls[0][0].isResponsive).toBe(true);
+    });
   });
 
-  it("opens the theme selector", () => {
+  it("opens the theme selector", async () => {
     render(<MoreTab />);
     fireEvent.click(screen.getByRole("button", { name: /Select Theme/i }));
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Select Theme");
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("Select Theme");
+    });
   });
 
-  it("opens BIA Preferences in a dedicated modal", () => {
+  it("opens BIA Preferences in a dedicated modal", async () => {
     render(<MoreTab />);
     fireEvent.click(screen.getByRole("button", { name: /BIA Preferences/i }));
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("BIA Preferences");
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("BIA Preferences");
+    });
   });
 
-  it("opens Voucher Routing Preferences in a dedicated modal", () => {
+  it("opens Voucher Routing Preferences in a dedicated modal", async () => {
     render(<MoreTab />);
     fireEvent.click(screen.getByRole("button", { name: /Voucher Routing Preferences/i }));
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Voucher Routing Preferences");
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("Voucher Routing Preferences");
+    });
   });
 
-  it("opens Future app features in a dedicated modal", () => {
+  it("opens Future app features in a dedicated modal", async () => {
     render(<MoreTab />);
     fireEvent.click(screen.getByRole("button", { name: /Future app features/i }));
-    expect(openModal).toHaveBeenCalled();
-    expect(openModal.mock.calls[0][0].title).toBe("Future app features");
+    await waitFor(() => {
+      expect(openModal).toHaveBeenCalled();
+      expect(openModal.mock.calls[0][0].title).toBe("Future app features");
+    });
   });
 
   it("does not render admin controls for non-admin users", () => {

@@ -45,6 +45,7 @@ import {
 } from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import type { UserSettingsExperienceMode } from "@shared/lib/userSettings/types";
 import { resolveCubidRuntimeUserId } from "@shared/types/cubid";
+import WalletOnboardingRuntime from "./WalletOnboardingRuntime";
 
 const WalletComponent = dynamic(() => import("cubid-wallet").then((mod) => mod.WalletComponent), { ssr: false });
 const CubidWidget = dynamic(() => import("cubid-sdk").then((mod) => mod.CubidWidget), { ssr: false });
@@ -751,6 +752,7 @@ export default function WelcomePage() {
     : null;
 
   return (
+    <WalletOnboardingRuntime>
     <div className={mainClass} data-testid="welcome-page-shell">
       {!showWizard && (bootstrap.signup.state === "none" || showResetIntro) ? (
         <section className={`${walletPanelClass} mx-auto w-full max-w-3xl space-y-6`} data-testid="welcome-primary-panel">
@@ -1331,5 +1333,6 @@ export default function WelcomePage() {
         </section>
       ) : null}
     </div>
+    </WalletOnboardingRuntime>
   );
 }

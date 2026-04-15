@@ -13,6 +13,14 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Digital wallet for holding, sending, and receiving CityCoins.
 - Modal windows close when the Escape key is pressed, and zero-value requests prompt for confirmation before sending.
 - Sign-in flow presents six single-digit inputs that auto-focus, advance and accept pasted codes.
+- Wallet and sparechange off-ramp OTP routes now reject malformed phone numbers and passcodes before they hit Twilio, and they surface Twilio verification failures through one consistent API contract.
+- Wallet go-live and rollback expectations now live in a dedicated engineering runbook, covering env readiness, smoke coverage, pay-link retention verification, and operator/indexer health checks for release day.
+- Wallet release checks now also include a CLI preflight that fails early on missing public wallet host/origin env, incomplete Buy TCOIN or Twilio setup, unreachable pay-link storage, and Supabase indexer-schema exposure problems, so launch blockers surface before manual smoke begins.
+- The checked-in Next app env template now lives in one stable root file, `.env.example`, so local `.env.local` setup can mirror the app/runtime contract without hunting through duplicate examples or missing newer release variables.
+- Repo-owned env templates are now split by runtime: `.env.example` covers the Next app and local scripts, while `supabase/functions/.env.example` covers the Supabase Edge Function runtime and the shared values that must stay aligned with the app.
+- The wallet runtime now expects one Supabase public key env name, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, instead of the earlier dual-key compatibility setup.
+- During rollout, the app may still accept the older publishable-key env names as a temporary fallback so CI and preview environments keep building until their runtime config is updated to the canonical key.
+- The wallet runtime now also expects one app-environment key, `NEXT_PUBLIC_APP_ENVIRONMENT`; the older `NEXT_PUBLIC_DEPLOY_ENV` and `NEXT_PUBLIC_ENV` aliases no longer change runtime behaviour.
 - The sign-in modal’s email step now exposes standard browser email semantics (`type`, `name`, and autofill hints) so password managers, mobile keyboards, and browser autofill recognize it as an email field.
 - In the public auth modal, the pre-OTP email field now uses a brighter light-mode input surface with stronger border and placeholder contrast so the “Enter your email” control remains clearly distinguishable from the modal background.
 - In dark mode, the auth modal’s email field and six OTP inputs now switch to a very light grey fill with dark text, replacing the older dark-grey input treatment.
@@ -20,7 +28,15 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Auth-backed wallet and sparechange users may now legitimately have no persisted Cubid identity yet. In that state the apps should keep onboarding and preferences usable without silently writing the Supabase auth UUID into `users.cubid_id`.
 - A single Supabase auth user may only bind to one wallet `users` row. If a duplicate local race tries to create another row for the same `auth_user_id`, the app should reconcile back to the canonical account instead of creating a second active user record.
 - Local Supabase OTP testing now has a dedicated startup helper, `pnpm supabase:start:local`, which keeps the Colima-backed GoTrue container quiet during OTP email sends and gateway-auth checks by patching the missing local mailer-host allow-list after startup.
-- After OTP sign-in, wallet auth state must stay consistent across the outer wallet shell and the inner runtime providers, so the authenticated provider stack mounts from the same resolved session instead of leaving one layer on stale unauthenticated state.
+- The local seeded wallet admin account keyed to `hubert.cormac@gmail.com` is now named consistently in the seed data, so local bypass and seeded-role workflows no longer present that email as `Alice Merchant`.
+- Local or development auth bypass now requires an explicitly configured `AUTH_BYPASS_USER_ID`; if the env is unset, bypassed server flows must fail clearly instead of silently binding themselves to the first seeded user.
+- Local app development now supports one shared base env file plus two Supabase target profile files, so switching between local app plus local Supabase and local app plus remote Supabase does not require rewriting the whole local env contract each time.
+- Those Supabase profile overlays now ignore trailing whitespace after quoted values are parsed, which makes copy-pasted local overrides less fragile.
+- Merchant signup now uses one clearer feature flag name, `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP`, across runtime checks and release docs.
+- Buy TCOIN checkout now uses one clearer feature flag name, `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT`, across runtime checks and release docs.
+- The documented Buy TCOIN env contract now excludes the deprecated router, adapter, swap-data, and raw-USDC address knobs, and TorontoCoin operator flows now use `DEPLOYER_KEY` instead of the older generic `PRIVATE_KEY` name.
+- Repository CI secret scanning now runs against a pinned published TruffleHog action release, so security checks stay reproducible across pull requests and scheduled scans.
+- After OTP sign-in, wallet auth state must stay consistent across the shared wallet shell and the route-local Cubid onboarding runtime, so `/welcome` can mount its verification widgets against the resolved session while the authenticated dashboard stays free of the Cubid provider stack.
 - Interface includes balance display, QR payment flow, and transaction history.
 - Homepage uses mission-driven copy with Thinking Machines layout.
 - Closing line states "build up - not extract from - our communities" with space-dash-space style.
@@ -54,11 +70,16 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Dashboard's public status is verified by a Vitest unit test covering the unauthenticated path list.
 - Once authenticated, wallet users move into a separate bank-inspired shell with calmer neutrals, a single teal action colour, compact chrome, and summary-first layouts; the public landing/resources/contact styling stays unchanged.
 - Authenticated wallet home now prioritises the balance summary, quick money actions, recent people, and charity context before secondary settings, so novice users can orient themselves without crypto-specific terminology.
+- The current performance pass keeps wallet Home eager, loads non-home dashboard workspaces and modal-heavy settings/tools on demand, and now also limits Cubid/WebAuthn/scanner code to onboarding or action-time execution. The signed-in dashboard is down from its earlier `1.55 MB` first-load baseline to roughly `267 kB`, while preserving the same tabs, send/receive flows, and welcome onboarding path.
+- That lighter signed-in wallet shell must still keep the shared no-refetch-on-focus query behaviour, so returning browser focus does not cause avoidable auth, settings, balance, or contact reload churn.
+- Wallet dashboard modal behaviour remains the product contract under test; CI should verify that the dashboard opens the expected modal with the right title/flow, not the incidental timing of the lazy import itself.
 - The authenticated home tab no longer embeds the `Make a payment / Send To` composer; home now orients the user and hands actual payment entry off to the dedicated Send tab.
 - Authenticated send and receive tabs now use the full shared dashboard workspace width on large screens instead of narrower nested content columns, so money-movement tasks align with the rest of the signed-in shell.
 - The authenticated send tab no longer applies the old large-screen `25vw` side padding, so the payment workspace and action controls sit on the same width rhythm as the rest of the dashboard instead of collapsing into a narrow centre column.
 - The authenticated Receive tab now waits for the signed-in wallet profile to resolve before minting public pay links, and if local setup is incomplete it explains the specific blockage instead of collapsing every failure into the same generic pay-link error.
 - On the authenticated Receive tab, short-lived QR codes now visibly rotate every 3 seconds while remaining valid for 60 seconds, and the QR card now uses simpler relative-expiry language (`Expires within 60 seconds` / `Expires in X days`) plus the shorter one-time notice `This QR code will work only once.`
+- SpareChange dashboard now opens through a lighter route shell and hydrates the heavy wallet dashboard module after the shell is present, preserving the same user-visible flow while materially reducing the initial route payload.
+- Contracts management screens now behave like read-first operator tools: viewing governance, registry, treasury, token-admin, steward, and charity state should stay fast, while write-capable transaction helpers load only once an operator actually starts a proposal, vote, execute, mint, or registry action.
 - The rotating Receive QR helper line now explains the user-facing sharing behaviour directly: `This QR code can be shown to multiple people.`
 - On large authenticated screens, the Receive tab now places the QR/input stack beside the request-management panels rather than below them, reducing the need to scroll vertically to use the full receive workflow.
 - On those large Receive layouts, the TCOIN/CAD amount fields now sit with the request-action controls in the right-hand workflow column, making the side-by-side arrangement more stable and leaving the left column centred on the QR card.
@@ -273,3 +294,5 @@ Internal engineering notes and architecture artefacts may be accompanied by Merm
 - Local charities & service workers
 - Visitors looking for an ethical spending alternative
 - Resending a wallet or sparechange OTP must clear the previously entered six-digit code before the next attempt so repeat sign-in cannot auto-submit a mixed old/new code.
+- Repository CI now includes secret scanning on pull-request diffs plus a nightly full scan, so production-readiness checks cover committed credential leaks as well as app behaviour.
+- Repository-owned lint and unit-test output is now intentionally low-noise, so operators and engineers can treat new warnings during wallet work as actionable signals instead of background clutter.

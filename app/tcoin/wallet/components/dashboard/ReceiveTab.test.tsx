@@ -87,6 +87,8 @@ vi.mock("./ReceiveCard", () => ({
 import { ReceiveTab } from "./ReceiveTab";
 
 describe("ReceiveTab", () => {
+  const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
   beforeEach(() => {
     vi.useFakeTimers();
     receiveCardProps = undefined;
@@ -108,6 +110,7 @@ describe("ReceiveTab", () => {
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockClear();
     vi.useRealTimers();
     receiveCardProps = undefined;
   });

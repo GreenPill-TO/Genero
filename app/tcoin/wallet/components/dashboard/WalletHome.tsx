@@ -3,13 +3,12 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { useModal } from "@shared/contexts/ModalContext";
-import { useSendMoney } from "@shared/hooks/useSendMoney";
+import { useCurrentWalletAddress } from "@shared/hooks/useCurrentWalletAddress";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
 import { getRecentPaymentRequestParticipants } from "@shared/lib/edge/paymentRequestsClient";
 import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
 import { getWalletRecents } from "@shared/lib/edge/walletOperationsClient";
-import { BuyTcoinModal, TopUpModal } from "@tcoin/wallet/components/modals";
 import { ContributionsCard } from "./ContributionsCard";
 import { AccountCard } from "./AccountCard";
 import {
@@ -43,7 +42,7 @@ export function WalletHome({
   const [recentInteractions, setRecentInteractions] = useState<RecentInteraction[]>([]);
 
   const buyCheckoutEnabled =
-    (process.env.NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1 ?? "false").trim().toLowerCase() === "true";
+    (process.env.NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT ?? "false").trim().toLowerCase() === "true";
 
   useEffect(() => {
     const defaultCharity = activeProfile?.charityPreferences?.charity;
@@ -59,9 +58,8 @@ export function WalletHome({
   });
 
   const user_id = userData?.cubidData.id;
-  const { senderWallet } = useSendMoney({
-    senderId: user_id ?? 0,
-    receiverId: null,
+  const { walletAddress: senderWallet } = useCurrentWalletAddress({
+    enabled: Boolean(user_id),
   });
 
   const { balance: rawBalance } = useTokenBalance(senderWallet);
@@ -179,7 +177,8 @@ export function WalletHome({
     };
   }, [user_id]);
 
-  const openBuyTcoinModal = () => {
+  const openBuyTcoinModal = async () => {
+    const { BuyTcoinModal } = await import("@tcoin/wallet/components/modals/BuyTcoinModal");
     openModal({
       content: <BuyTcoinModal closeModal={closeModal} />,
       title: "Buy TCOIN",
@@ -187,7 +186,8 @@ export function WalletHome({
     });
   };
 
-  const openTopUpModal = () => {
+  const openTopUpModal = async () => {
+    const { TopUpModal } = await import("@tcoin/wallet/components/modals/TopUpModal");
     openModal({
       content: <TopUpModal closeModal={closeModal} tokenLabel={tokenLabel} />,
       title: "Top Up with Interac eTransfer",

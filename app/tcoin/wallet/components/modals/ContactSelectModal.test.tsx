@@ -1,8 +1,7 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi, afterEach } from "vitest";
 import React from "react";
-import { createRoot } from "react-dom/client";
-import { act } from "react-dom/test-utils";
+import { act, fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ContactSelectModal } from "./ContactSelectModal";
 
@@ -30,30 +29,31 @@ vi.mock("@shared/api/services/supabaseService", () => ({
 }));
 
 describe("ContactSelectModal", () => {
+  const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
   beforeEach(() => {
     fetchContactsForOwnerMock.mockReset();
     fetchContactsForOwnerMock.mockResolvedValue(mockContacts);
   });
 
+  afterEach(() => {
+    cleanup();
+    consoleErrorSpy.mockClear();
+  });
+
   it("calls closeModal on Escape key press", () => {
     const closeModal = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
     const queryClient = new QueryClient();
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <ContactSelectModal
-            closeModal={closeModal}
-            amount="10"
-            method="Send"
-            setToSendData={vi.fn()}
-          />
-        </QueryClientProvider>
-      );
-    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ContactSelectModal
+          closeModal={closeModal}
+          amount="10"
+          method="Send"
+          setToSendData={vi.fn()}
+        />
+      </QueryClientProvider>
+    );
 
     act(() => {
       const event = new KeyboardEvent("keydown", { key: "Escape" });
@@ -61,225 +61,115 @@ describe("ContactSelectModal", () => {
     });
 
     expect(closeModal).toHaveBeenCalled();
-
-    act(() => {
-      root.unmount();
-    });
-    document.body.removeChild(container);
   });
 
   it("passes full contact object to setToSendData", async () => {
     const closeModal = vi.fn();
     const setToSendData = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
     const queryClient = new QueryClient();
-    act(() => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <ContactSelectModal
-            closeModal={closeModal}
-            amount="5"
-            method="Send"
-            setToSendData={setToSendData}
-          />
-        </QueryClientProvider>
-      );
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ContactSelectModal
+          closeModal={closeModal}
+          amount="5"
+          method="Send"
+          setToSendData={setToSendData}
+        />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Send 5" })).toBeTruthy();
     });
 
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    const sendButton = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Send 5"
-    ) as HTMLButtonElement;
-    act(() => {
-      sendButton.click();
-    });
-
-    await act(async () => {
-      await Promise.resolve();
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Send 5" }));
 
     expect(setToSendData).toHaveBeenCalledWith(
       expect.objectContaining({ id: 2, full_name: "Alice" })
     );
-
-    act(() => {
-      root.unmount();
-    });
-    document.body.removeChild(container);
   });
 
   it("selects the provided default contact id", async () => {
     const closeModal = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
     const queryClient = new QueryClient();
-    await act(async () => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <ContactSelectModal
-            closeModal={closeModal}
-            amount="5"
-            method="Send"
-            defaultContactId={2}
-            setToSendData={vi.fn()}
-          />
-        </QueryClientProvider>
-      );
-    });
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    const selectedRadio = container.querySelector<HTMLInputElement>(
-      "input[id='contact-2']"
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ContactSelectModal
+          closeModal={closeModal}
+          amount="5"
+          method="Send"
+          defaultContactId={2}
+          setToSendData={vi.fn()}
+        />
+      </QueryClientProvider>
     );
-    expect(selectedRadio?.checked).toBe(true);
 
-    act(() => {
-      root.unmount();
-    });
-    document.body.removeChild(container);
+    const selectedRadio = await screen.findByRole("radio", { name: "Alice (@alice)" }) as HTMLInputElement;
+    expect(selectedRadio?.checked).toBe(true);
   });
 
   it("defers request creation and simply selects the contact", async () => {
     const closeModal = vi.fn();
     const onSelectContact = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
     const queryClient = new QueryClient();
-    await act(async () => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <ContactSelectModal
-            closeModal={closeModal}
-            amount="$5"
-            method="Request"
-            onSelectContact={onSelectContact}
-          />
-        </QueryClientProvider>
-      );
-    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ContactSelectModal
+          closeModal={closeModal}
+          amount="$5"
+          method="Request"
+          onSelectContact={onSelectContact}
+        />
+      </QueryClientProvider>
+    );
 
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    const requestButton = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Request $5"
-    ) as HTMLButtonElement;
-
-    act(() => {
-      requestButton.click();
-    });
-
-    await act(async () => {
-      await Promise.resolve();
-    });
+    fireEvent.click(await screen.findByRole("button", { name: "Request $5" }));
 
     expect(onSelectContact).toHaveBeenCalledWith(
       expect.objectContaining({ id: 2, full_name: "Alice" })
     );
     expect(closeModal).toHaveBeenCalled();
-
-    act(() => {
-      root.unmount();
-    });
-    document.body.removeChild(container);
   });
 
   it("invokes onSelectContact when a selection is made", async () => {
     const closeModal = vi.fn();
     const onSelectContact = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
     const queryClient = new QueryClient();
-    await act(async () => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <ContactSelectModal
-            closeModal={closeModal}
-            amount="5"
-            method="Send"
-            setToSendData={vi.fn()}
-            onSelectContact={onSelectContact}
-          />
-        </QueryClientProvider>
-      );
-    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ContactSelectModal
+          closeModal={closeModal}
+          amount="5"
+          method="Send"
+          setToSendData={vi.fn()}
+          onSelectContact={onSelectContact}
+        />
+      </QueryClientProvider>
+    );
 
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    const sendButton = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Send 5"
-    ) as HTMLButtonElement;
-
-    act(() => {
-      sendButton.click();
-    });
-
-    await act(async () => {
-      await Promise.resolve();
-    });
+    fireEvent.click(await screen.findByRole("button", { name: "Send 5" }));
 
     expect(onSelectContact).toHaveBeenCalledWith(
       expect.objectContaining({ id: 2, full_name: "Alice" })
     );
-
-    act(() => {
-      root.unmount();
-    });
-    document.body.removeChild(container);
   });
 
   it("falls back to prefetched contacts when fetching fails", async () => {
     fetchContactsForOwnerMock.mockRejectedValueOnce(new Error("nope"));
     const closeModal = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
     const queryClient = new QueryClient();
-    await act(async () => {
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <ContactSelectModal
-            closeModal={closeModal}
-            amount="5"
-            method="Send"
-            prefetchedContacts={mockContacts}
-            setToSendData={vi.fn()}
-          />
-        </QueryClientProvider>
-      );
-    });
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    const option = container.querySelector<HTMLInputElement>(
-      "input[id='contact-2']"
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ContactSelectModal
+          closeModal={closeModal}
+          amount="5"
+          method="Send"
+          prefetchedContacts={mockContacts}
+          setToSendData={vi.fn()}
+        />
+      </QueryClientProvider>
     );
-    expect(option).not.toBeNull();
 
-    act(() => {
-      root.unmount();
-    });
-    document.body.removeChild(container);
+    expect(await screen.findByRole("radio", { name: "Alice (@alice)" })).toBeTruthy();
   });
 });

@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SendCard, calculateResponsiveFontSize } from "./SendCard";
 
@@ -20,6 +20,9 @@ const openModalMock = vi.fn();
 vi.mock("@shared/contexts/ModalContext", () => ({
   useModal: () => ({ openModal: openModalMock, closeModal: vi.fn() }),
 }));
+vi.mock("@tcoin/wallet/components/modals/ContactSelectModal", () => ({
+  ContactSelectModal: () => <div data-testid="contact-select-modal" />,
+}));
 vi.mock("@shared/lib/supabase/client", () => ({
   createClient: () => ({
     from: () => ({
@@ -32,8 +35,14 @@ vi.mock("@shared/lib/supabase/client", () => ({
   }),
 }));
 const insertSuccessNotificationMock = vi.hoisted(() => vi.fn());
+const getWalletContactDetailMock = vi.hoisted(() => vi.fn().mockResolvedValue({ contact: null }));
+const updateWalletContactStateMock = vi.hoisted(() => vi.fn().mockResolvedValue({ contact: null }));
 vi.mock("@shared/utils/insertNotification", () => ({
   insertSuccessNotification: insertSuccessNotificationMock,
+}));
+vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
+  getWalletContactDetail: getWalletContactDetailMock,
+  updateWalletContactState: updateWalletContactStateMock,
 }));
 
 const createProps = () => ({
@@ -59,11 +68,18 @@ const renderSendCard = (overrides: Partial<ReturnType<typeof createProps>> = {})
 };
 
 describe("SendCard", () => {
+  const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
   beforeEach(() => {
     openModalMock.mockReset();
+    getWalletContactDetailMock.mockReset();
+    getWalletContactDetailMock.mockResolvedValue({ contact: null });
+    updateWalletContactStateMock.mockReset();
+    updateWalletContactStateMock.mockResolvedValue({ contact: null });
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockClear();
     cleanup();
     insertSuccessNotificationMock.mockReset();
     Object.values(toastMock).forEach((fn) => fn.mockReset());
@@ -99,6 +115,21 @@ describe("SendCard", () => {
     renderSendCard();
     const selectButtons = screen.getAllByRole("button", { name: /Select Contact/i });
     expect(selectButtons.length).toBeGreaterThan(0);
+  });
+
+  it("opens the contact selector through the on-demand modal import", async () => {
+    renderSendCard();
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: /Select Contact/i })[0]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(openModalMock).toHaveBeenCalled();
+      expect(openModalMock.mock.calls[0][0].title).toBe("Select Contact");
+    });
   });
 
   it("focuses the amount input on mount", () => {
@@ -257,11 +288,16 @@ describe("SendCard", () => {
     expect(setToSendData).toHaveBeenCalledWith(null);
   });
 
-  it("opens the contact selector modal when Select Contact is clicked", () => {
+  it("opens the contact selector modal when Select Contact is clicked", async () => {
     renderSendCard();
-    const buttons = screen.getAllByRole("button", { name: /Select Contact/i });
-    fireEvent.click(buttons[0]);
-    expect(openModalMock).toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: /Select Contact/i })[0]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(openModalMock).toHaveBeenCalled();
+    });
   });
 
   it("does not render the clear recipient button when locked", () => {

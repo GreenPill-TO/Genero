@@ -20,6 +20,8 @@ function hostnameFromUrl(value) {
 const supabaseImageHostnames = Array.from(
   new Set(
     [
+      "https://images.unsplash.com",
+      "https://plus.unsplash.com",
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL,
       process.env.NEXT_PUBLIC_TCOIN_BANNER_DARK_URL,

@@ -26,6 +26,12 @@ The script prints:
 - reserve-route health, including reserve activation, Mento route configuration, and router/controller pointer checks
 - a JSON payload suitable for automation
 
+Operational notes:
+
+- `pnpm ops:torontocoin` auto-loads `.env.local` through Next's env loader.
+- It requires `NEXT_PUBLIC_SUPABASE_URL` plus `SUPABASE_SERVICE_ROLE_KEY` for the indexer-backed checks.
+- If it reports `Invalid schema: indexer` or `Invalid schema: chain_data`, the target Supabase Data API is not exposing the required indexer schemas.
+
 Run the focused compatibility matrix:
 
 ```bash
@@ -39,7 +45,7 @@ That script emits a concise pass/fail summary per registered Sarafu pool for:
 - limiter health
 - quoter health
 - scenario-preview readiness
-- indexer visibility when Supabase env is available locally
+- indexer visibility when the local env points at a Supabase project that exposes the `indexer` schema
 
 Run bounded previews or an optional live acceptance buy:
 
@@ -51,7 +57,7 @@ Optional env for that script:
 
 - `TORONTOCOIN_ACCEPTANCE_POOL_IDS=0x...[,0x...]` to target specific pool ids
 - `TORONTOCOIN_LIVE_BUY_ENABLED=true` to execute one real buy instead of preview-only
-- `PRIVATE_KEY=...` required only when live buy is enabled
+- `DEPLOYER_KEY=...` required only when live buy is enabled
 
 ## Manual spot checks
 

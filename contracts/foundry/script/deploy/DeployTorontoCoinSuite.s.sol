@@ -70,7 +70,7 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
     error ConfigAmountExceedsGeneroTokenLimit(string key, uint256 amount, uint256 maxAmount);
 
     function run() external returns (DeploymentArtifacts memory artifacts) {
-        uint256 privateKey = vm.envUint("PRIVATE_KEY");
+        uint256 privateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(privateKey);
         ChainSelection memory selection = _assertDeployTargetChain();
 

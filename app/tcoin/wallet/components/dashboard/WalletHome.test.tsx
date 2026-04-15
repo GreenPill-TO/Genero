@@ -44,8 +44,8 @@ vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
   useControlVariables: () => ({ exchangeRate: 1, state: "ready", loading: false, error: null }),
 }));
 
-vi.mock("@shared/hooks/useSendMoney", () => ({
-  useSendMoney: () => ({ senderWallet: "0xabc", sendMoney: vi.fn() }),
+vi.mock("@shared/hooks/useCurrentWalletAddress", () => ({
+  useCurrentWalletAddress: () => ({ walletAddress: "0xabc" }),
 }));
 
 const tokenBalanceMock = vi.hoisted(() => vi.fn(() => ({ balance: "0" })));
@@ -72,10 +72,6 @@ vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
 const pushMock = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
-}));
-
-vi.mock("@tcoin/wallet/components/modals", () => ({
-  QrScanModal: () => <div>qr-modal</div>,
 }));
 
 vi.mock("./ContributionsCard", () => ({

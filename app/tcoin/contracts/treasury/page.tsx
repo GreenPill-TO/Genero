@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { orchestratorV2Abi } from "@shared/lib/contracts/management/abis";
-import { getCityContext, writeCityContractWithCubid } from "@shared/lib/contracts/management/clients";
+import { getCityContext } from "@shared/lib/contracts/management/clients";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 
 type TreasuryWriteFunction =
@@ -43,6 +43,7 @@ export default function TreasuryPage() {
 
     try {
       const context = await getCityContext();
+      const { writeCityContractWithCubid } = await import("@shared/lib/contracts/management/writes");
       const tx = await writeCityContractWithCubid({
         userId,
         address: context.contracts.ORCHESTRATOR,

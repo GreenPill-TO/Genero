@@ -114,7 +114,7 @@ contract RunTorontoCoinScenarioB is DeployChainConfig {
         try vm.envUint("SCENARIO_B_PRIVATE_KEY") returns (uint256 scenarioKey) {
             return scenarioKey;
         } catch {
-            return vm.envUint("PRIVATE_KEY");
+            return vm.envUint("DEPLOYER_KEY");
         }
     }
 }

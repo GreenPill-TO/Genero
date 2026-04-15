@@ -11,7 +11,7 @@ The project integrates Supabase for storage, Cubid for identity and wallet manag
 
 ## Setup
 
-1. Copy `.env.local.example` to `.env.local` and populate the variables. The sample file lists the expected values and explains what each is for.
+1. Copy `.env.example` to `.env.local` and populate the Next app variables. If you also deploy Supabase Edge Functions from this repo, use `supabase/functions/.env.example` as the companion edge-runtime template.
 2. Install dependencies:
    ```bash
    pnpm install
@@ -20,6 +20,18 @@ The project integrates Supabase for storage, Cubid for identity and wallet manag
    ```bash
    pnpm dev
    ```
+
+If you want separate local-dev Supabase target profiles, keep shared values in `/.env.local` and run one of:
+
+```bash
+pnpm dev:supabase-local
+pnpm dev:supabase-remote
+```
+
+Those commands layer one of these ignored local-only files on top of the shared base env:
+
+- `/.env.local-supabase-local`
+- `/.env.local-supabase-remote`
 
 For local Supabase work under Colima, start the trimmed local stack with:
 ```bash
@@ -32,6 +44,8 @@ Open `http://localhost:3000` in your browser. Next.js will serve the app configu
 ## Scripts
 
 - `pnpm dev` – run the development server
+- `pnpm dev:supabase-local` – run the development server with the local-Supabase env profile layered on top of `/.env.local`
+- `pnpm dev:supabase-remote` – run the development server with the remote-Supabase env profile layered on top of `/.env.local`
 - `pnpm build` – create a production build
 - `pnpm start` – start the production server
 - `pnpm supabase:start:local` – start the local Supabase stack for this repo and patch local GoTrue mailer host handling
@@ -66,7 +80,7 @@ TorontoCoin retail runtime now uses the fresh Celo mainnet suite surfaced throug
 
 ## Environment Variables
 
-Credentials for Supabase, Cubid and Twilio are required. They are referenced throughout the hooks in `shared/` and the API routes. Refer to `.env.local.example` for full details.
+Credentials for Supabase, Cubid and Twilio are required. The Next app template lives at `.env.example`, and the Supabase Edge Functions template lives at `supabase/functions/.env.example`.
 
 Notably, use variables NEXT_PUBLIC_CITYCOIN= to determin which city and citycoin to deploy, and NEXT_PUBLIC_APP_NAME= to pich which app to deploy to serve your citycoin.
 

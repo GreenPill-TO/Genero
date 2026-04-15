@@ -1,7 +1,7 @@
 # Buy TCOIN Checkout Orchestrator Architecture
 
 ## Status
-- Implemented in `v1.18` for `app/tcoin/wallet` with feature flag: `NEXT_PUBLIC_BUY_TCOIN_CHECKOUT_V1`.
+- Implemented in `v1.18` for `app/tcoin/wallet` with feature flag: `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT`.
 - Provider v1: Transak only.
 - Network/asset v1: Celo mainnet + USDC input, final asset TCOIN.
 
@@ -205,7 +205,7 @@ Provider `completed/success` is mapped to `crypto_sent` (not `mint_complete`).
 5. Concurrent webhook/touch/retry -> lock prevents duplicate mint execution.
 
 ## Configuration
-Required runtime keys are in `.env.local.example` under Buy TCOIN section, including:
+Required runtime keys are split across the Next app template (`.env.example`) and the edge template (`supabase/functions/.env.example`), including:
 - provider keys/secrets (`ONRAMP_TRANSAK_*`)
 - chain/router/token addresses
 - HD seed/derivation path
