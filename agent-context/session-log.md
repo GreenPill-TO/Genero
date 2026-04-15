@@ -1,3 +1,21 @@
+## v1.214
+### Timestamp
+- 2026-04-15 14:36 EDT
+
+### Objective
+- Fix the GitHub Actions regression on PR #64 after the Codex review follow-up push.
+
+### What Changed
+- Stabilized `SendCard`'s on-demand contact-selector test by mocking `@tcoin/wallet/components/modals/ContactSelectModal` directly, matching the pattern already used by the comparable Receive-card modal tests.
+- Kept the runtime behaviour unchanged; this follow-up only removes CI timing sensitivity around the dynamic modal import.
+
+### Verification
+- Pending local validation before push
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+
 ## v1.213
 ### Timestamp
 - 2026-04-14 10:11 EDT

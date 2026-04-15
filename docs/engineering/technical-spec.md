@@ -15,6 +15,7 @@
   - The current P2 performance pass is covered by focused dashboard/contracts tests plus full `pnpm test`; route-size verification is tracked from `pnpm build` output, with the current measured result now at roughly `234–242 kB` for `/tcoin/contracts*`, `164 kB` for `/tcoin/sparechange/dashboard`, `267 kB` for `/tcoin/wallet/dashboard`, and `252 kB` for `/tcoin/wallet/dashboard/contacts/[id]`.
   - Contract-management write helpers should stay typechecked even when they dispatch ABI methods by string name; narrow local casts are acceptable, but file-wide `ts-nocheck` markers are not.
   - Wallet-shell performance refactors must preserve the shared React Query defaults from `shared/providers/react-query-provider.tsx`, especially `refetchOnWindowFocus: false`, so focus changes do not re-fire authenticated wallet queries unexpectedly.
+  - Tests covering on-demand wallet dashboard modals should mock the lazily imported modal modules directly when the assertion target is `openModal(...)`, so CI does not depend on dynamic import timing.
 - **Documentation tooling**: Internal engineering notes may include Mermaid diagrams generated through the shared local `mermaid-chart` Codex skill, which keeps Mermaid source editable and uses local HTML previews plus browser screenshots for visual checks and image exports
 - **Authentication**: Twilio SMS OTP via API routes
   - `/api/send_otp` and `/api/verify_otp` now share one server-side Twilio Verify helper that validates E.164 phone numbers plus digit-only passcodes before any upstream request is made.

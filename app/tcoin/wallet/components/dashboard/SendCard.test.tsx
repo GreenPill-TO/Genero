@@ -20,6 +20,9 @@ const openModalMock = vi.fn();
 vi.mock("@shared/contexts/ModalContext", () => ({
   useModal: () => ({ openModal: openModalMock, closeModal: vi.fn() }),
 }));
+vi.mock("@tcoin/wallet/components/modals/ContactSelectModal", () => ({
+  ContactSelectModal: () => <div data-testid="contact-select-modal" />,
+}));
 vi.mock("@shared/lib/supabase/client", () => ({
   createClient: () => ({
     from: () => ({
