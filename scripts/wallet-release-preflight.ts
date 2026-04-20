@@ -25,7 +25,8 @@ type WalletReleaseHealth = {
     jobPresent?: boolean;
     active?: boolean;
     schedule?: string | null;
-    command?: string | null;
+    scheduleMatchesExpected?: boolean;
+    commandMatchesExpected?: boolean;
     recentStatus?: string | null;
     recentStartedAt?: string | null;
     recentFinishedAt?: string | null;
@@ -83,6 +84,24 @@ function stripWrappingQuotes(value: string) {
   return value;
 }
 
+function stripInlineComment(value: string) {
+  let quote: "\"" | "'" | null = null;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if ((char === "\"" || char === "'") && (index === 0 || value[index - 1] !== "\\")) {
+      quote = quote === char ? null : quote ?? char;
+      continue;
+    }
+
+    if (char === "#" && quote === null && (index === 0 || /\s/.test(value[index - 1]))) {
+      return value.slice(0, index).trimEnd();
+    }
+  }
+
+  return value;
+}
+
 function loadProfileEnv(profilePath: string) {
   const profileContents = readFileSync(profilePath, "utf8");
 
@@ -98,7 +117,7 @@ function loadProfileEnv(profilePath: string) {
     }
 
     const key = rawLine.slice(0, separatorIndex).trim();
-    const value = stripWrappingQuotes(rawLine.slice(separatorIndex + 1)).trim();
+    const value = stripWrappingQuotes(stripInlineComment(rawLine.slice(separatorIndex + 1).trim())).trim();
     process.env[key] = value;
   }
 }
@@ -121,11 +140,11 @@ function parseProfile(): PreflightProfile | null {
 }
 
 function loadProfile(profile: PreflightProfile) {
-  loadRepoEnv();
-
   if (profile === "deployment") {
     return;
   }
+
+  loadRepoEnv();
 
   const profileFile = PROFILE_FILES[profile];
   const profilePath = resolve(process.cwd(), profileFile);
@@ -207,18 +226,18 @@ function addHealthFindings(findings: Finding[], health: WalletReleaseHealth) {
   if (cron?.jobPresent && !cron.active) {
     addFinding(findings, "blocker", "Cron job wallet-payment-request-links-cleanup is not active.");
   }
-  if (cron?.jobPresent && cron.schedule !== "15 6 * * *") {
+  if (cron?.jobPresent && !cron.scheduleMatchesExpected) {
     addFinding(
       findings,
       "blocker",
       `Cron job wallet-payment-request-links-cleanup has schedule "${cron?.schedule ?? "null"}"; expected "15 6 * * *".`
     );
   }
-  if (cron?.jobPresent && cron.command !== "select public.cleanup_payment_request_links();") {
+  if (cron?.jobPresent && !cron.commandMatchesExpected) {
     addFinding(
       findings,
       "blocker",
-      `Cron job wallet-payment-request-links-cleanup has unexpected command "${cron?.command ?? "null"}".`
+      "Cron job wallet-payment-request-links-cleanup does not run the expected cleanup function."
     );
   }
   if (cron?.jobPresent && !cron.recentStatus) {
@@ -276,6 +295,7 @@ async function main() {
   const requiredEnv = [
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
     "NEXT_PUBLIC_CITYCOIN",
     "NEXT_PUBLIC_APP_NAME",
     "NEXT_PUBLIC_APP_ENVIRONMENT",

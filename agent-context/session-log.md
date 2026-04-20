@@ -1,3 +1,41 @@
+## v1.221
+### Timestamp
+- 2026-04-20 16:43 EDT
+
+### Objective
+- Address PR #66 Copilot and Codex review feedback before continuing the yeet flow.
+
+### What Changed
+- Hardened wallet preflight profile parsing so local/remote overlay values trim before quote removal and ignore unquoted inline comments.
+- Made the deployment preflight profile use only the process environment instead of auto-loading repo `.env*` files.
+- Trimmed Supabase URL/key values before constructing ops and release-health clients.
+- Redacted the public wallet release health RPC cron command output by returning boolean schedule/command match flags, with normalized comparison for cron drift checks.
+- Restored `SUPABASE_SERVICE_ROLE_KEY` as a required wallet release env blocker until remaining runtime stats, indexer touch, and TorontoCoin ops paths are migrated away from broad service-role reliance.
+
+### Verification
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260420174500_v1.16_wallet_release_health_rpc.sql`
+- `pnpm ops:wallet:preflight:supabase-local`
+  - Result: no blockers; cron health returned `scheduleMatchesExpected=true` and `commandMatchesExpected=true`
+- `pnpm ops:wallet:preflight`
+  - Result: expected explicit-profile blocker
+- `pnpm ops:wallet:preflight:deployment`
+  - Result: expected missing process-env blockers, confirming the deployment profile does not auto-load repo `.env*` files
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `scripts/load-repo-env.ts`
+- `scripts/wallet-release-preflight.ts`
+- `supabase/migrations/20260420174500_v1.16_wallet_release_health_rpc.sql`
+
 ## v1.220
 ### Timestamp
 - 2026-04-20 16:16 EDT

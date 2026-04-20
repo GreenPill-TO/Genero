@@ -21,6 +21,8 @@ DECLARE
   cleanup_job_active boolean := false;
   cleanup_job_schedule text := NULL;
   cleanup_job_command text := NULL;
+  cleanup_job_schedule_matches boolean := false;
+  cleanup_job_command_matches boolean := false;
   cleanup_recent_status text := NULL;
   cleanup_recent_started_at timestamptz := NULL;
   cleanup_recent_finished_at timestamptz := NULL;
@@ -74,6 +76,11 @@ BEGIN
 
     cleanup_job_present := COALESCE(cleanup_job_present, false);
     cleanup_job_active := COALESCE(cleanup_job_active, false);
+    cleanup_job_schedule_matches :=
+      regexp_replace(trim(COALESCE(cleanup_job_schedule, '')), '\s+', ' ', 'g') = '15 6 * * *';
+    cleanup_job_command_matches :=
+      lower(regexp_replace(trim(COALESCE(cleanup_job_command, '')), '\s+', ' ', 'g')) =
+      'select public.cleanup_payment_request_links();';
   END IF;
 
   IF cron_extension_installed AND to_regclass('cron.job_run_details') IS NOT NULL THEN
@@ -178,7 +185,8 @@ BEGIN
       'jobPresent', cleanup_job_present,
       'active', cleanup_job_active,
       'schedule', cleanup_job_schedule,
-      'command', cleanup_job_command,
+      'scheduleMatchesExpected', cleanup_job_schedule_matches,
+      'commandMatchesExpected', cleanup_job_command_matches,
       'recentStatus', cleanup_recent_status,
       'recentStartedAt', cleanup_recent_started_at,
       'recentFinishedAt', cleanup_recent_finished_at

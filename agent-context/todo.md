@@ -21,7 +21,7 @@
 - [x] `P1` Profile-aware wallet preflight:
   The base wallet preflight command now exits with explicit profile guidance, while `pnpm ops:wallet:preflight:supabase-local`, `pnpm ops:wallet:preflight:supabase-remote`, and `pnpm ops:wallet:preflight:deployment` target the intended environment source.
 - [ ] `P1` Reduce production service-role dependency:
-  Partially closed: wallet release preflight now uses the publishable-key `public.wallet_release_health_v1(...)` RPC for routine pay-link cleanup, cron, and indexer health reads instead of broad service-role table access. Remaining work: move wallet stats aggregation, write-capable indexer touch, and TorontoCoin ops scripts behind narrower RPCs, scoped edge functions, or dedicated read models where possible.
+  Partially closed: wallet release preflight now uses the publishable-key `public.wallet_release_health_v1(...)` RPC for routine pay-link cleanup, cron, and indexer health reads instead of broad service-role table access. The preflight still blocks on missing `SUPABASE_SERVICE_ROLE_KEY` because signed-in stats aggregation, write-capable indexer touch, and TorontoCoin ops scripts remain release-critical server paths until their own hardening pass moves them behind narrower RPCs, scoped edge functions, or dedicated read models where possible.
 - [x] `P2` Performance pass:
   The authenticated wallet dashboard shell, send/off-ramp runtime, and modal/scanner boundaries have now been trimmed successfully. Current `pnpm build` output is roughly `234–242 kB` for `/tcoin/contracts*`, `164 kB` for `/tcoin/sparechange/dashboard`, `267 kB` for `/tcoin/wallet/dashboard`, and `252 kB` for `/tcoin/wallet/dashboard/contacts/[id]`.
 

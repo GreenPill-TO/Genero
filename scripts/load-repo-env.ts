@@ -33,9 +33,12 @@ export function createOpsSupabaseClient() {
     "TorontoCoin ops checks"
   );
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
+
   return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    supabaseUrl,
+    serviceRoleKey,
     {
       auth: {
         autoRefreshToken: false,
@@ -51,9 +54,12 @@ export function createReleaseHealthSupabaseClient() {
     "wallet release health preflight"
   );
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!.trim();
+
   return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    supabaseUrl,
+    publishableKey,
     {
       auth: {
         autoRefreshToken: false,

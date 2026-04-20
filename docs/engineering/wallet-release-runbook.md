@@ -73,7 +73,7 @@ pnpm ops:torontocoin:acceptance
 
 Expected outcome:
 
-- The selected `pnpm ops:wallet:preflight:*` profile confirms the required wallet env is present, `public.payment_request_links` and `public.cleanup_payment_request_links()` are present, the pay-link cleanup cron is configured, and tcoin indexer health aggregates are readable through `public.wallet_release_health_v1(...)`.
+- The selected `pnpm ops:wallet:preflight:*` profile confirms the required wallet env is present, including `SUPABASE_SERVICE_ROLE_KEY` while runtime indexer/stats paths still need it. The same check confirms `public.payment_request_links` and `public.cleanup_payment_request_links()` are present, the pay-link cleanup cron schedule and command match the expected cleanup job, and tcoin indexer health aggregates are readable through `public.wallet_release_health_v1(...)`.
 - `lint`, `test`, and `build` all pass.
 - `pnpm ops:torontocoin` shows healthy ownership, reserve-route, pool summaries, and a non-null indexer payload.
 - `pnpm ops:torontocoin:pools` reports the tracked pools as healthy and visible.
@@ -83,7 +83,7 @@ Operational note:
 
 - `pnpm ops:wallet:preflight` without a profile intentionally exits with profile guidance; do not treat the base command as a target-environment dry run.
 - `pnpm ops:torontocoin`, `pnpm ops:torontocoin:pools`, and `pnpm ops:torontocoin:acceptance` auto-load `.env.local` through Next's env loader.
-- `pnpm ops:torontocoin` and `pnpm ops:torontocoin:pools` still use the server-side Supabase key and fail fast if `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY` is missing, because a partial chain-only pass is not production-ready.
+- `pnpm ops:wallet:preflight:*`, `pnpm ops:torontocoin`, and `pnpm ops:torontocoin:pools` still treat `SUPABASE_SERVICE_ROLE_KEY` as required release env because signed-in stats, indexer touch, and broader ops paths have not all been migrated to narrower RPCs yet. The wallet preflight health read itself uses the publishable-key RPC, but a partial health-only pass is not production-ready.
 - If wallet preflight reports that `public.wallet_release_health_v1(...)` is missing from the target schema cache, apply the corresponding migration to that Supabase project and reload PostgREST before repeating the profile check.
 - If any command reports `Invalid schema: indexer` or `Invalid schema: chain_data`, the target Supabase Data API is missing required exposed schemas for the wallet's indexer features.
 - Treat any reported `releaseBlockers` output as a hard stop for go-live.
@@ -187,6 +187,8 @@ Expected outcome:
 - `schedule = '15 6 * * *'`
 - `command = 'select public.cleanup_payment_request_links();'`
 - `active = true`
+
+The wallet preflight reports boolean schedule/command match results from `public.wallet_release_health_v1(...)` rather than exposing the raw cron command through the public RPC.
 
 ### Verify recent executions
 
