@@ -45,7 +45,9 @@ vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
   updateWalletContactState: updateWalletContactStateMock,
 }));
 
-const createProps = () => ({
+type SendCardTestProps = React.ComponentProps<typeof SendCard>;
+
+const createProps = (): SendCardTestProps => ({
   toSendData: null as any,
   setToSendData: vi.fn(),
   tcoinAmount: "",
@@ -62,9 +64,9 @@ const createProps = () => ({
   contacts: [],
 });
 
-const renderSendCard = (overrides: Partial<ReturnType<typeof createProps>> = {}) => {
+const renderSendCard = (overrides: Partial<SendCardTestProps> = {}) => {
   const props = { ...createProps(), ...overrides };
-  return render(<SendCard {...(props as any)} />);
+  return render(<SendCard {...props} />);
 };
 
 describe("SendCard", () => {
@@ -187,13 +189,13 @@ describe("SendCard", () => {
     vi.useFakeTimers();
     const baseProps = createProps();
 
-    const { rerender } = render(<SendCard {...(baseProps as any)} />);
+    const { rerender } = render(<SendCard {...baseProps} />);
 
     vi.runAllTimers();
 
     rerender(
       <SendCard
-        {...(baseProps as any)}
+        {...baseProps}
         toSendData={{ id: 4, full_name: "Recipient" } as any}
         tcoinAmount="0"
         cadAmount=""
@@ -211,13 +213,13 @@ describe("SendCard", () => {
     vi.useFakeTimers();
     const baseProps = createProps();
 
-    const { rerender } = render(<SendCard {...(baseProps as any)} />);
+    const { rerender } = render(<SendCard {...baseProps} />);
 
     vi.runAllTimers();
 
     rerender(
       <SendCard
-        {...(baseProps as any)}
+        {...baseProps}
         toSendData={{ id: 5, full_name: "Recipient" } as any}
         tcoinAmount="10"
         cadAmount=""

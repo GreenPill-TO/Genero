@@ -1,3 +1,125 @@
+## v1.221
+### Timestamp
+- 2026-04-20 16:43 EDT
+
+### Objective
+- Address PR #66 Copilot and Codex review feedback before continuing the yeet flow.
+
+### What Changed
+- Hardened wallet preflight profile parsing so local/remote overlay values trim before quote removal and ignore unquoted inline comments.
+- Made the deployment preflight profile use only the process environment instead of auto-loading repo `.env*` files.
+- Trimmed Supabase URL/key values before constructing ops and release-health clients.
+- Redacted the public wallet release health RPC cron command output by returning boolean schedule/command match flags, with normalized comparison for cron drift checks.
+- Restored `SUPABASE_SERVICE_ROLE_KEY` as a required wallet release env blocker until remaining runtime stats, indexer touch, and TorontoCoin ops paths are migrated away from broad service-role reliance.
+
+### Verification
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260420174500_v1.16_wallet_release_health_rpc.sql`
+- `pnpm ops:wallet:preflight:supabase-local`
+  - Result: no blockers; cron health returned `scheduleMatchesExpected=true` and `commandMatchesExpected=true`
+- `pnpm ops:wallet:preflight`
+  - Result: expected explicit-profile blocker
+- `pnpm ops:wallet:preflight:deployment`
+  - Result: expected missing process-env blockers, confirming the deployment profile does not auto-load repo `.env*` files
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `scripts/load-repo-env.ts`
+- `scripts/wallet-release-preflight.ts`
+- `supabase/migrations/20260420174500_v1.16_wallet_release_health_rpc.sql`
+
+## v1.220
+### Timestamp
+- 2026-04-20 16:16 EDT
+
+### Objective
+- Clear the existing repo-wide TypeScript noise so `tsc --noEmit` can be used as a reliable production-readiness signal.
+
+### What Changed
+- Aligned TypeScript config with the repository's runtime assumptions by enabling ES2020 targets for bigint literals and allowing `.ts` imports in no-emit script checks.
+- Added a local declaration for `@next/env`, typed Vitest virtual module mocks, and widened WebAuthn share serialisation helpers to accept `ArrayBufferLike` values returned by typed arrays.
+- Fixed wallet component/test type mismatches by preserving user email in the Supabase contact lookup shape, typing wallet card props from the real components, carrying voucher merchant availability through the home surface, and correcting the transaction-history app-scope call.
+
+### Verification
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/wallet/components/dashboard/OtherCard.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/ReceiveCard.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.test.tsx`
+- `app/tcoin/wallet/components/dashboard/SendCard.tsx`
+- `app/tcoin/wallet/components/dashboard/TransactionHistoryTab.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.test.tsx`
+- `app/tcoin/wallet/components/dashboard/WalletHome.tsx`
+- `app/tcoin/wallet/components/footer/Footer.test.tsx`
+- `app/tcoin/wallet/components/modals/SignInModal.test.tsx`
+- `app/tcoin/wallet/dashboard/page.tsx`
+- `shared/api/services/supabaseService.ts`
+- `tsconfig.json`
+- `types/next-env-module.d.ts`
+- `vitest.setup.ts`
+
+## v1.219
+### Timestamp
+- 2026-04-20 13:48 EDT
+
+### Objective
+- Remove the temporary Supabase publishable-key fallback, narrow wallet release health reads away from service-role table access, and make wallet preflight target explicit env profiles.
+
+### What Changed
+- Added `public.wallet_release_health_v1(...)`, a SECURITY DEFINER read-only RPC that returns release-safe pay-link table/function presence, cleanup cron status, and indexer aggregate health without exposing raw wallet, pay-link, or indexer rows.
+- Refactored wallet preflight so the base command requires an explicit profile, the local/remote/deployment profile commands use canonical Supabase URL plus publishable key, and health checks call the new RPC instead of reading with `SUPABASE_SERVICE_ROLE_KEY`.
+- Removed the active runtime fallback to `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`, updated CI to use `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and reconciled release docs/todos around the new env contract.
+
+### Verification
+- `pnpm supabase:start:local`
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260420174500_v1.16_wallet_release_health_rpc.sql`
+- REST call to `public.wallet_release_health_v1(...)` using `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+  - Result: pay-link table/function present, cron active on `15 6 * * *`, command `select public.cleanup_payment_request_links();`, recent run succeeded, and indexer aggregate fields populated
+- `pnpm ops:wallet:preflight`
+  - Result: expected blocker requiring `--profile=supabase-local`, `--profile=supabase-remote`, or `--profile=deployment`
+- `pnpm ops:wallet:preflight:supabase-local`
+  - Result: no blockers; expected local/development warnings plus local seed warning that the active token set does not include the current runtime cplTCOIN address
+- `pnpm ops:wallet:preflight:supabase-remote`
+  - Result: expected blocker that remote Supabase is missing `public.wallet_release_health_v1(...)` until the migration is applied and PostgREST schema cache is reloaded
+- `rg -n "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY|NEXT_PUBLIC_SUPABASE_ANON_KEY" .github app shared scripts docs supabase --glob '!agent-context/session-log.md'`
+  - Result: no active references
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+- `git diff --check`
+
+### Files Edited
+- `.github/copilot-instructions.md`
+- `.github/workflows/ci-frontend.yml`
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `package.json`
+- `scripts/load-repo-env.ts`
+- `scripts/wallet-release-preflight.ts`
+- `shared/lib/supabase/client.ts`
+- `shared/lib/supabase/env.ts`
+- `shared/lib/supabase/middleware.ts`
+- `shared/lib/supabase/server.ts`
+- `supabase/migrations/20260420174500_v1.16_wallet_release_health_rpc.sql`
+
 ## v1.218
 ### Timestamp
 - 2026-04-20 03:39 EDT

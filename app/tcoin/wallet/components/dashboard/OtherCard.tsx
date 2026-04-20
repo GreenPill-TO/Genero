@@ -6,10 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/
 export function OtherCard({
   openModal,
   closeModal,
+  userBalance = 0,
   tokenLabel = "Tcoin",
 }: {
   openModal: any;
   closeModal: any;
+  userBalance?: number;
   tokenLabel?: string;
 }) {
   return (
@@ -37,7 +39,7 @@ export function OtherCard({
             onClick={async () => {
               const { OffRampModal } = await import("@tcoin/wallet/components/modals/OffRampModal");
               openModal({
-                content: <OffRampModal closeModal={closeModal} />,
+                content: <OffRampModal closeModal={closeModal} userBalance={userBalance} />,
                 title: "Convert and Off-ramp",
                 description: "Convert your TCOIN to CAD and transfer to your bank account.",
               });

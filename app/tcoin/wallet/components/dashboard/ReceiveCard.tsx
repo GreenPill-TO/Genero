@@ -12,34 +12,7 @@ import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { PaymentRequestLinkMode } from "@shared/lib/edge/paymentRequestLinks";
 import { walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
 
-export function ReceiveCard({
-  qrCodeData,
-  qrTcoinAmount,
-  qrCadAmount,
-  qrLinkMode = "rotating_multi_use",
-  qrLinkExpiresAt = null,
-  isGeneratingQrCode = false,
-  onSwitchQrLinkMode,
-  handleQrTcoinChange,
-  handleQrCadChange,
-  senderWallet,
-  handleQrTcoinBlur,
-  handleQrCadBlur,
-  qrBgColor,
-  qrFgColor,
-  qrWrapperClassName,
-  qrUnavailableReason = null,
-  tokenLabel = "Tcoin",
-  requestContact = null,
-  onClearRequestContact,
-  contacts,
-  onSelectRequestContact,
-  openRequests = [],
-  onCreateShareableRequest,
-  onCreateTargetedRequest,
-  onDeleteRequest,
-  showQrCode = true,
-}: {
+export type ReceiveCardProps = {
   qrCodeData: string;
   qrTcoinAmount: string;
   qrCadAmount: string;
@@ -70,7 +43,36 @@ export function ReceiveCard({
   ) => Promise<InvoicePayRequest | null>;
   onDeleteRequest?: (requestId: number) => Promise<void>;
   showQrCode?: boolean;
-}) {
+};
+
+export function ReceiveCard({
+  qrCodeData,
+  qrTcoinAmount,
+  qrCadAmount,
+  qrLinkMode = "rotating_multi_use",
+  qrLinkExpiresAt = null,
+  isGeneratingQrCode = false,
+  onSwitchQrLinkMode,
+  handleQrTcoinChange,
+  handleQrCadChange,
+  senderWallet,
+  handleQrTcoinBlur,
+  handleQrCadBlur,
+  qrBgColor,
+  qrFgColor,
+  qrWrapperClassName,
+  qrUnavailableReason = null,
+  tokenLabel = "Tcoin",
+  requestContact = null,
+  onClearRequestContact,
+  contacts,
+  onSelectRequestContact,
+  openRequests = [],
+  onCreateShareableRequest,
+  onCreateTargetedRequest,
+  onDeleteRequest,
+  showQrCode = true,
+}: ReceiveCardProps) {
   const { openModal, closeModal } = useModal();
   void senderWallet;
 

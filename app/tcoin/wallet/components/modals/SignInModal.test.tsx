@@ -4,7 +4,7 @@ import React from "react";
 import { act, render, cleanup } from "@testing-library/react";
 import SignInModal from "./SignInModal";
 
-let verifySuccess: (() => void) | null = null;
+let verifySuccess: ((session?: { access_token?: string } | null) => Promise<void> | void) | null = null;
 vi.mock("@shared/api/mutations/usePasscode", () => ({
   useSendPasscodeMutation: () => ({ mutate: vi.fn(), isPending: false }),
   useVerifyPasscodeMutation: (args: any) => {

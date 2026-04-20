@@ -10,12 +10,12 @@ type CookieStore = {
   setAll?: (cookiesToSet: StoredCookie[]) => void;
 };
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabasePublishableKey = resolveSupabasePublishableKey();
-
 let browserClient: SupabaseClient<any, any, any> | null = null;
 
 export function createClient(): SupabaseClient<any, any, any> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabasePublishableKey = resolveSupabasePublishableKey();
+
   if (typeof window === "undefined") {
     let cookieStore: CookieStore | null = null;
 

@@ -7,7 +7,20 @@ import { Footer } from "./Footer";
 vi.mock("next/link", () => ({ default: (props: any) => <a {...props} /> }));
 const mockMutateAsync = vi.fn();
 const mockSetThemeOverride = vi.fn();
-const mockUseDarkMode = vi.fn(() => ({ isDarkMode: false, setThemeOverride: mockSetThemeOverride }));
+type DarkModeMockValue = {
+  isDarkMode: boolean;
+  isFollowingSystem: boolean;
+  themeMode: "dark" | "light" | "system";
+  setThemeOverride: typeof mockSetThemeOverride;
+};
+const createDarkModeMockValue = (overrides: Partial<DarkModeMockValue> = {}): DarkModeMockValue => ({
+  isDarkMode: false,
+  isFollowingSystem: false,
+  themeMode: "light",
+  setThemeOverride: mockSetThemeOverride,
+  ...overrides,
+});
+const mockUseDarkMode = vi.fn(() => createDarkModeMockValue());
 vi.mock("@shared/hooks/useDarkMode", () => ({ default: () => mockUseDarkMode() }));
 vi.mock("@shared/hooks/useUserSettings", () => ({
   useUserSettings: () => ({
@@ -27,7 +40,7 @@ describe("Footer", () => {
     mockSetThemeOverride.mockReset();
     mockMutateAsync.mockReset();
     mockUseDarkMode.mockReset();
-    mockUseDarkMode.mockReturnValue({ isDarkMode: false, setThemeOverride: mockSetThemeOverride });
+    mockUseDarkMode.mockReturnValue(createDarkModeMockValue());
   });
   it("includes ecosystem link", () => {
     const { getByText } = render(<Footer />);
@@ -62,18 +75,17 @@ describe("Footer", () => {
   });
 
   it("shows light mode switch text when theme is dark", () => {
-    mockUseDarkMode.mockReturnValue({ isDarkMode: true, setThemeOverride: mockSetThemeOverride });
+    mockUseDarkMode.mockReturnValue(createDarkModeMockValue({ isDarkMode: true, themeMode: "dark" }));
     render(<Footer />);
     expect(screen.getByText("Light Mode")).toBeTruthy();
   });
 
   it("offers dark mode when the resolved system-following state is currently light", () => {
-    mockUseDarkMode.mockReturnValue({
+    mockUseDarkMode.mockReturnValue(createDarkModeMockValue({
       isDarkMode: false,
       isFollowingSystem: true,
       themeMode: "system",
-      setThemeOverride: mockSetThemeOverride,
-    });
+    }));
     render(<Footer />);
     expect(screen.getByText("Dark Mode")).toBeTruthy();
   });

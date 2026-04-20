@@ -64,7 +64,19 @@ const getRecentPaymentRequestParticipantsMock = vi.hoisted(() =>
 vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
   getRecentPaymentRequestParticipants: getRecentPaymentRequestParticipantsMock,
 }));
-const getWalletRecentsMock = vi.hoisted(() => vi.fn(async () => ({ participants: [] })));
+type WalletRecentParticipant = {
+  id: number;
+  fullName: string | null;
+  username: string | null;
+  profileImageUrl: string | null;
+  walletAddress: string | null;
+  state: string | null;
+  lastInteractionAt: string | null;
+};
+
+const getWalletRecentsMock = vi.hoisted(() =>
+  vi.fn(async (): Promise<{ participants: WalletRecentParticipant[] }> => ({ participants: [] }))
+);
 vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
   getWalletRecents: getWalletRecentsMock,
 }));

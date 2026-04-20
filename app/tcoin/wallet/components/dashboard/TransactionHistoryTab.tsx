@@ -72,7 +72,7 @@ export function TransactionHistoryTab({
       setErrorMessage(null);
 
       try {
-        const response = await getWalletTransactionHistory({ appContext: { citySlug: "tcoin" } });
+        const response = await getWalletTransactionHistory({ citySlug: "tcoin" });
         const sourceRows = Array.isArray(response.transactions) ? response.transactions : [];
 
         if (sourceRows.length === 0) {

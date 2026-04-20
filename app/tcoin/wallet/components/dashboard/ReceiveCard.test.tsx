@@ -38,7 +38,9 @@ vi.mock("@tcoin/wallet/components/modals/ShareQrModal", () => ({
   ShareQrModal: () => <div data-testid="share-qr-modal" />,
 }));
 
-const createProps = () => ({
+type ReceiveCardTestProps = React.ComponentProps<typeof ReceiveCard>;
+
+const createProps = (): ReceiveCardTestProps => ({
   qrCodeData: "payload",
   qrTcoinAmount: "",
   qrCadAmount: "",
@@ -59,9 +61,9 @@ const createProps = () => ({
   showQrCode: true,
 });
 
-const renderReceiveCard = (overrides: Partial<ReturnType<typeof createProps>> = {}) => {
+const renderReceiveCard = (overrides: Partial<ReceiveCardTestProps> = {}) => {
   const props = { ...createProps(), ...overrides };
-  return render(<ReceiveCard {...(props as any)} />);
+  return render(<ReceiveCard {...props} />);
 };
 
 
@@ -404,7 +406,7 @@ describe("ReceiveCard", () => {
 
     const { rerender } = render(
       <ReceiveCard
-        {...(createProps() as any)}
+        {...createProps()}
         qrLinkMode="rotating_multi_use"
         qrLinkExpiresAt="2026-04-02T20:01:00.000Z"
       />
@@ -415,7 +417,7 @@ describe("ReceiveCard", () => {
 
     rerender(
       <ReceiveCard
-        {...(createProps() as any)}
+        {...createProps()}
         qrLinkMode="single_use"
         qrLinkExpiresAt="2026-04-05T20:00:00.000Z"
       />

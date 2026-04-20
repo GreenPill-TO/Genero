@@ -42,7 +42,7 @@ export interface DeviceInfoPayload {
   label?: string | null;
 }
 
-const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+const arrayBufferToBase64 = (buffer: ArrayBufferLike): string => {
   const bytes = new Uint8Array(buffer);
   let binary = "";
   bytes.forEach((byte) => {
@@ -51,7 +51,7 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   return btoa(binary);
 };
 
-const arrayBufferToHex = (buffer: ArrayBuffer): string => {
+const arrayBufferToHex = (buffer: ArrayBufferLike): string => {
   const bytes = new Uint8Array(buffer);
   return Array.from(bytes)
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -67,14 +67,14 @@ export const normaliseCredentialId = (value: unknown): string | null => {
 };
 
 export const serialiseUserShare = (userShare: {
-  encryptedAesKey: ArrayBuffer;
-  encryptedData: ArrayBuffer;
+  encryptedAesKey: ArrayBufferLike;
+  encryptedData: ArrayBufferLike;
   encryptionMethod: string;
   id: string;
-  iv: ArrayBuffer;
+  iv: ArrayBufferLike;
   ivForKeyEncryption: string;
   salt: string;
-  credentialId: ArrayBuffer;
+  credentialId: ArrayBufferLike;
 }): SerialisedUserShare => {
   const encodedCredentialId = arrayBufferToBase64(userShare.credentialId);
 
@@ -125,6 +125,7 @@ export const fetchUserByContact = async (authMethod: "phone" | "email" | string,
             id: result.user.id,
             cubid_id: result.user.cubid_id,
             auth_user_id: result.user.auth_user_id,
+            email: result.user.email,
             has_completed_intro: result.user.has_completed_intro,
             is_admin: result.user.is_admin,
           }
