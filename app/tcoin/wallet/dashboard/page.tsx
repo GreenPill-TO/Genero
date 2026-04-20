@@ -241,11 +241,11 @@ export default function Dashboard() {
           showInviteEmptyState={experienceMode !== "simple"}
           initialContacts={cachedContacts ?? undefined}
           onContactsResolved={handleContactsResolved}
-          onSend={(contact) => {
+          onSend={(contact: ContactRecord) => {
             setSendRecipient({ ...contact });
             handleTabChange("send");
           }}
-          onRequest={(contact) => {
+          onRequest={(contact: ContactRecord) => {
             setRequestRecipient({ ...contact });
             handleTabChange("receive", { showReceiveQr: false });
           }}

@@ -1,18 +1,60 @@
-import { getIndexerScopeStatus } from "../services/indexer/src/index.ts";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
-  createOpsSupabaseClient,
+  createReleaseHealthSupabaseClient,
   describeSupabaseAccessError,
   getMissingEnv,
   loadRepoEnv,
 } from "./load-repo-env.ts";
-
-loadRepoEnv();
 
 type Severity = "blocker" | "warning";
 type Finding = {
   severity: Severity;
   message: string;
 };
+
+type PreflightProfile = "supabase-local" | "supabase-remote" | "deployment";
+
+type WalletReleaseHealth = {
+  paymentRequestLinks?: {
+    tablePresent?: boolean;
+    cleanupFunctionPresent?: boolean;
+  };
+  cleanupCron?: {
+    extensionInstalled?: boolean;
+    jobPresent?: boolean;
+    active?: boolean;
+    schedule?: string | null;
+    command?: string | null;
+    recentStatus?: string | null;
+    recentStartedAt?: string | null;
+    recentFinishedAt?: string | null;
+  };
+  indexer?: {
+    scopeKey?: string;
+    lastStartedAt?: string | null;
+    lastCompletedAt?: string | null;
+    lastStatus?: string | null;
+    updatedAt?: string | null;
+    activePoolCount?: number;
+    activeTokenCount?: number;
+    cplTcoinTracked?: boolean;
+    requiredTokenTracked?: boolean | null;
+    voucherSummary?: {
+      trackedVoucherTokens?: number;
+      walletsWithVoucherBalances?: number;
+      merchantCreditRows?: number;
+      lastVoucherBlock?: number | null;
+    };
+  };
+};
+
+const PROFILE_FILES: Record<Exclude<PreflightProfile, "deployment">, string> = {
+  "supabase-local": ".env.local-supabase-local",
+  "supabase-remote": ".env.local-supabase-remote",
+};
+
+const VALID_PROFILES: PreflightProfile[] = ["supabase-local", "supabase-remote", "deployment"];
 
 function addFinding(findings: Finding[], severity: Severity, message: string) {
   findings.push({ severity, message });
@@ -29,13 +71,211 @@ function hasAnyEnv(names: string[]) {
   });
 }
 
+function stripWrappingQuotes(value: string) {
+  if (value.length >= 2) {
+    const first = value[0];
+    const last = value[value.length - 1];
+    if ((first === "\"" && last === "\"") || (first === "'" && last === "'")) {
+      return value.slice(1, -1);
+    }
+  }
+
+  return value;
+}
+
+function loadProfileEnv(profilePath: string) {
+  const profileContents = readFileSync(profilePath, "utf8");
+
+  for (const rawLine of profileContents.split(/\r?\n/)) {
+    const trimmed = rawLine.trim();
+    if (trimmed === "" || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = rawLine.indexOf("=");
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = rawLine.slice(0, separatorIndex).trim();
+    const value = stripWrappingQuotes(rawLine.slice(separatorIndex + 1)).trim();
+    process.env[key] = value;
+  }
+}
+
+function parseProfile(): PreflightProfile | null {
+  const args = process.argv.slice(2);
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--profile") {
+      const value = args[index + 1] as PreflightProfile | undefined;
+      return value && VALID_PROFILES.includes(value) ? value : null;
+    }
+    if (arg.startsWith("--profile=")) {
+      const value = arg.slice("--profile=".length) as PreflightProfile;
+      return VALID_PROFILES.includes(value) ? value : null;
+    }
+  }
+
+  return null;
+}
+
+function loadProfile(profile: PreflightProfile) {
+  loadRepoEnv();
+
+  if (profile === "deployment") {
+    return;
+  }
+
+  const profileFile = PROFILE_FILES[profile];
+  const profilePath = resolve(process.cwd(), profileFile);
+  if (!existsSync(profilePath)) {
+    throw new Error(`Env profile not found: ${profileFile}`);
+  }
+
+  loadProfileEnv(profilePath);
+}
+
+function summarizeEnv(cubidEnv: string[], twilioEnv: string[]) {
+  return {
+    citycoin: process.env.NEXT_PUBLIC_CITYCOIN ?? null,
+    appName: process.env.NEXT_PUBLIC_APP_NAME ?? null,
+    appEnvironment: process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? null,
+    walletPublicBaseUrlConfigured: Boolean(process.env.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL?.trim()),
+    siteUrlConfigured: Boolean(process.env.NEXT_PUBLIC_SITE_URL?.trim()),
+    explorerUrlConfigured: Boolean(process.env.NEXT_PUBLIC_EXPLORER_URL?.trim()),
+    allowedOriginsConfigured: Boolean(process.env.USER_SETTINGS_ALLOWED_ORIGINS?.trim()),
+    cubidConfigured: cubidEnv.every((name) => Boolean(process.env[name]?.trim())),
+    twilioConfigured: twilioEnv.every((name) => Boolean(process.env[name]?.trim())),
+  };
+}
+
+function printResult(options: {
+  profile: PreflightProfile | null;
+  findings: Finding[];
+  env: ReturnType<typeof summarizeEnv>;
+  paymentRequestLinksReachable?: boolean;
+  cleanupCron?: WalletReleaseHealth["cleanupCron"] | null;
+  indexerSummary?: Record<string, unknown> | null;
+}) {
+  const blockers = options.findings
+    .filter((finding) => finding.severity === "blocker")
+    .map((finding) => finding.message);
+  const warnings = options.findings
+    .filter((finding) => finding.severity === "warning")
+    .map((finding) => finding.message);
+
+  console.log(
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        profile: options.profile,
+        validProfiles: VALID_PROFILES,
+        blockers,
+        warnings,
+        env: options.env,
+        paymentRequestLinksReachable: options.paymentRequestLinksReachable ?? false,
+        cleanupCron: options.cleanupCron ?? null,
+        indexerSummary: options.indexerSummary ?? null,
+      },
+      null,
+      2
+    )
+  );
+
+  if (blockers.length > 0) {
+    process.exitCode = 1;
+  }
+}
+
+function addHealthFindings(findings: Finding[], health: WalletReleaseHealth) {
+  const payLinks = health.paymentRequestLinks;
+  if (!payLinks?.tablePresent) {
+    addFinding(findings, "blocker", "public.payment_request_links is not present in the target Supabase project.");
+  }
+  if (!payLinks?.cleanupFunctionPresent) {
+    addFinding(findings, "blocker", "public.cleanup_payment_request_links() is not present in the target Supabase project.");
+  }
+
+  const cron = health.cleanupCron;
+  if (!cron?.extensionInstalled) {
+    addFinding(findings, "blocker", "pg_cron is not installed in the target Supabase project.");
+  }
+  if (!cron?.jobPresent) {
+    addFinding(findings, "blocker", "Cron job wallet-payment-request-links-cleanup is not configured.");
+  }
+  if (cron?.jobPresent && !cron.active) {
+    addFinding(findings, "blocker", "Cron job wallet-payment-request-links-cleanup is not active.");
+  }
+  if (cron?.jobPresent && cron.schedule !== "15 6 * * *") {
+    addFinding(
+      findings,
+      "blocker",
+      `Cron job wallet-payment-request-links-cleanup has schedule "${cron?.schedule ?? "null"}"; expected "15 6 * * *".`
+    );
+  }
+  if (cron?.jobPresent && cron.command !== "select public.cleanup_payment_request_links();") {
+    addFinding(
+      findings,
+      "blocker",
+      `Cron job wallet-payment-request-links-cleanup has unexpected command "${cron?.command ?? "null"}".`
+    );
+  }
+  if (cron?.jobPresent && !cron.recentStatus) {
+    addFinding(
+      findings,
+      "warning",
+      "Cron job wallet-payment-request-links-cleanup has no recent run details in cron.job_run_details."
+    );
+  }
+
+  const indexer = health.indexer;
+  if (indexer?.lastStatus === "error") {
+    addFinding(findings, "blocker", "Indexer run control reports the latest run status as error.");
+  }
+  if (!indexer?.lastCompletedAt) {
+    addFinding(findings, "blocker", "Indexer run control has no successful completion timestamp.");
+  }
+  if ((indexer?.activePoolCount ?? 0) <= 0) {
+    addFinding(findings, "blocker", "Indexer reports zero active tracked pools for tcoin.");
+  }
+  if (!indexer?.cplTcoinTracked) {
+    addFinding(findings, "blocker", "Indexer does not report cplTCOIN as tracked.");
+  }
+  if (indexer?.requiredTokenTracked === false) {
+    addFinding(
+      findings,
+      "warning",
+      "Indexer active token set does not include the current runtime cplTCOIN address. Confirm seeded local data or remote indexer registration before launch."
+    );
+  }
+}
+
 async function main() {
+  const profile = parseProfile();
   const findings: Finding[] = [];
+  const cubidEnv = ["NEXT_PUBLIC_CUBID_API_KEY", "NEXT_PUBLIC_CUBID_APP_ID"];
+  const twilioEnv = ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID"];
+
+  if (!profile) {
+    addFinding(
+      findings,
+      "blocker",
+      "Wallet release preflight requires an explicit profile. Use --profile=supabase-local, --profile=supabase-remote, or --profile=deployment."
+    );
+    printResult({
+      profile,
+      findings,
+      env: summarizeEnv(cubidEnv, twilioEnv),
+    });
+    return;
+  }
+
+  loadProfile(profile);
 
   const requiredEnv = [
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
     "NEXT_PUBLIC_CITYCOIN",
     "NEXT_PUBLIC_APP_NAME",
     "NEXT_PUBLIC_APP_ENVIRONMENT",
@@ -50,7 +290,7 @@ async function main() {
     addFinding(
       findings,
       "blocker",
-      `Missing required wallet release env: ${missingRequiredEnv.join(", ")}.`
+      `Missing required wallet release env for profile "${profile}": ${missingRequiredEnv.join(", ")}.`
     );
   }
 
@@ -73,7 +313,6 @@ async function main() {
     );
   }
 
-  const cubidEnv = ["NEXT_PUBLIC_CUBID_API_KEY", "NEXT_PUBLIC_CUBID_APP_ID"];
   const missingCubidEnv = getMissingEnv(cubidEnv);
   if (missingCubidEnv.length > 0 && missingCubidEnv.length < cubidEnv.length) {
     addFinding(
@@ -83,7 +322,6 @@ async function main() {
     );
   }
 
-  const twilioEnv = ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID"];
   const missingTwilioEnv = getMissingEnv(twilioEnv);
   if (missingTwilioEnv.length > 0 && missingTwilioEnv.length < twilioEnv.length) {
     addFinding(
@@ -147,58 +385,45 @@ async function main() {
   }
 
   let paymentRequestLinksReachable = false;
+  let cleanupCron: WalletReleaseHealth["cleanupCron"] | null = null;
   let indexerSummary: Record<string, unknown> | null = null;
 
-  if (getMissingEnv(["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]).length === 0) {
+  if (getMissingEnv(["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]).length === 0) {
     try {
-      const supabase = createOpsSupabaseClient();
+      const [{ REQUIRED_TCOIN_TOKEN, resolveIndexerConfig }, supabase] = await Promise.all([
+        import("../services/indexer/src/config.ts"),
+        Promise.resolve(createReleaseHealthSupabaseClient()),
+      ]);
+      const indexerConfig = resolveIndexerConfig();
+      const { data, error } = await supabase.rpc("wallet_release_health_v1", {
+        p_city_slug: "tcoin",
+        p_chain_id: indexerConfig.chainId,
+        p_required_token_address: REQUIRED_TCOIN_TOKEN,
+      });
 
-      const { error: payLinkError } = await supabase
-        .from("payment_request_links")
-        .select("id", { count: "exact", head: true });
-
-      if (payLinkError) {
+      if (error) {
         addFinding(
           findings,
           "blocker",
-          `Failed to read public.payment_request_links: ${describeSupabaseAccessError(payLinkError)}`
+          `Wallet release health RPC failed: ${describeSupabaseAccessError(error)}`
         );
       } else {
-        paymentRequestLinksReachable = true;
-      }
+        const health = data as WalletReleaseHealth;
+        addHealthFindings(findings, health);
 
-      try {
-        const status = await getIndexerScopeStatus({
-          supabase,
-          citySlug: "tcoin",
-        });
-
-        indexerSummary = {
-          lastStatus: status.runControl?.lastStatus ?? null,
-          lastCompletedAt: status.runControl?.lastCompletedAt ?? null,
-          activePoolCount: status.activePoolCount,
-          activeTokenCount: status.activeTokenCount,
-          cplTcoinTracked: status.torontoCoinTracking?.cplTcoinTracked ?? false,
-        };
-
-        if (status.runControl?.lastStatus === "error") {
-          addFinding(findings, "blocker", "Indexer run control reports the latest run status as error.");
-        }
-        if (!status.runControl?.lastCompletedAt) {
-          addFinding(findings, "blocker", "Indexer run control has no successful completion timestamp.");
-        }
-        if ((status.activePoolCount ?? 0) <= 0) {
-          addFinding(findings, "blocker", "Indexer reports zero active tracked pools for tcoin.");
-        }
-        if (!status.torontoCoinTracking?.cplTcoinTracked) {
-          addFinding(findings, "blocker", "Indexer does not report cplTCOIN as tracked.");
-        }
-      } catch (error) {
-        addFinding(
-          findings,
-          "blocker",
-          `Indexer status preflight failed: ${describeSupabaseAccessError(error)}`
+        paymentRequestLinksReachable = Boolean(
+          health.paymentRequestLinks?.tablePresent && health.paymentRequestLinks?.cleanupFunctionPresent
         );
+        cleanupCron = health.cleanupCron ?? null;
+        indexerSummary = {
+          lastStatus: health.indexer?.lastStatus ?? null,
+          lastCompletedAt: health.indexer?.lastCompletedAt ?? null,
+          activePoolCount: health.indexer?.activePoolCount ?? 0,
+          activeTokenCount: health.indexer?.activeTokenCount ?? 0,
+          cplTcoinTracked: health.indexer?.cplTcoinTracked ?? false,
+          requiredTokenTracked: health.indexer?.requiredTokenTracked ?? null,
+          voucherSummary: health.indexer?.voucherSummary ?? null,
+        };
       }
     } catch (error) {
       addFinding(
@@ -209,43 +434,14 @@ async function main() {
     }
   }
 
-  addFinding(
+  printResult({
+    profile,
     findings,
-    "warning",
-    "Pay-link cleanup cron still needs the manual SQL verification from the release runbook because pg_cron metadata is not exposed through this CLI preflight."
-  );
-
-  const blockers = findings.filter((finding) => finding.severity === "blocker").map((finding) => finding.message);
-  const warnings = findings.filter((finding) => finding.severity === "warning").map((finding) => finding.message);
-
-  console.log(
-    JSON.stringify(
-      {
-        generatedAt: new Date().toISOString(),
-        blockers,
-        warnings,
-        env: {
-          citycoin: process.env.NEXT_PUBLIC_CITYCOIN ?? null,
-          appName: process.env.NEXT_PUBLIC_APP_NAME ?? null,
-          appEnvironment: process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? null,
-          walletPublicBaseUrlConfigured: Boolean(process.env.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL?.trim()),
-          siteUrlConfigured: Boolean(process.env.NEXT_PUBLIC_SITE_URL?.trim()),
-          explorerUrlConfigured: Boolean(process.env.NEXT_PUBLIC_EXPLORER_URL?.trim()),
-          allowedOriginsConfigured: Boolean(process.env.USER_SETTINGS_ALLOWED_ORIGINS?.trim()),
-          cubidConfigured: cubidEnv.every((name) => Boolean(process.env[name]?.trim())),
-          twilioConfigured: twilioEnv.every((name) => Boolean(process.env[name]?.trim())),
-        },
-        paymentRequestLinksReachable,
-        indexerSummary,
-      },
-      null,
-      2
-    )
-  );
-
-  if (blockers.length > 0) {
-    process.exitCode = 1;
-  }
+    env: summarizeEnv(cubidEnv, twilioEnv),
+    paymentRequestLinksReachable,
+    cleanupCron,
+    indexerSummary,
+  });
 }
 
 main().catch((error) => {

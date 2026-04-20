@@ -73,7 +73,7 @@ public/                  # Static assets
 2. Required environment variables:
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=<supabase-project-url>
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase-anon-key>
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<supabase-publishable-key>
    NEXT_PUBLIC_CUBID_API_KEY=<cubid-api-key>
    NEXT_PUBLIC_CUBID_APP_ID=<cubid-app-id>
    NEXT_PUBLIC_CITYCOIN=tcoin           # City identifier

@@ -22,7 +22,7 @@ env:
   NEXT_TELEMETRY_DISABLED: 1
   CI: true
   NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY: test-publishable-key
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
 
 jobs:
   build-and-test:

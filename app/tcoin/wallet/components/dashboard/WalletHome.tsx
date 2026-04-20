@@ -9,6 +9,7 @@ import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
 import { getRecentPaymentRequestParticipants } from "@shared/lib/edge/paymentRequestsClient";
 import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
 import { getWalletRecents } from "@shared/lib/edge/walletOperationsClient";
+import type { VoucherMerchantLiquidity } from "@shared/lib/edge/vouchers";
 import { ContributionsCard } from "./ContributionsCard";
 import { AccountCard } from "./AccountCard";
 import {
@@ -65,9 +66,7 @@ export function WalletHome({
   const { balance: rawBalance } = useTokenBalance(senderWallet);
   const userBalance = parseFloat(rawBalance) || 0;
   const { portfolio } = useVoucherPortfolio({ enabled: Boolean(senderWallet) });
-  const [myPoolMerchants, setMyPoolMerchants] = useState<
-    Array<{ merchantStoreId: number; displayName?: string; tokenSymbol?: string }>
-  >([]);
+  const [myPoolMerchants, setMyPoolMerchants] = useState<VoucherMerchantLiquidity[]>([]);
 
   useEffect(() => {
     if (!senderWallet) return;
@@ -83,6 +82,7 @@ export function WalletHome({
           .filter((row: any) => row && typeof row === "object" && row.available === true)
           .map((row: any) => ({
             merchantStoreId: Number(row.merchantStoreId),
+            available: true,
             displayName: typeof row.displayName === "string" ? row.displayName : undefined,
             tokenSymbol: typeof row.tokenSymbol === "string" ? row.tokenSymbol : undefined,
           }))

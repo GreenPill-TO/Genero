@@ -8,14 +8,12 @@ type SupabaseCookie = {
   options?: Record<string, unknown>;
 };
 
-const supabasePublishableKey = resolveSupabasePublishableKey();
-
 export function createClient() {
   const cookieStore = cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    supabasePublishableKey,
+    resolveSupabasePublishableKey(),
     {
     cookies: {
       getAll() {

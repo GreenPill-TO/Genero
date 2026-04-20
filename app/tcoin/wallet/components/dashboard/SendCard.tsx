@@ -81,7 +81,7 @@ export interface PaymentCompletionDetails {
   transferRecord?: unknown;
 }
 
-interface SendCardProps {
+export interface SendCardProps {
   sendMoney: (amount: string) => Promise<string>;
   toSendData: Hypodata | null;
   setToSendData: (data: Hypodata | null) => void;
