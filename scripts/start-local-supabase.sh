@@ -3,7 +3,27 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
-project_name="Genero"
+config_path="$project_root/supabase/config.toml"
+project_name="$(python3 - <<'PY' "$config_path"
+import re
+import sys
+
+config_path = sys.argv[1]
+project_id = "Genero"
+
+try:
+    with open(config_path, encoding="utf-8") as config_file:
+        for line in config_file:
+            match = re.match(r'\s*project_id\s*=\s*"([^"]+)"\s*$', line)
+            if match:
+                project_id = match.group(1)
+                break
+except FileNotFoundError:
+    pass
+
+print(project_id)
+PY
+)"
 auth_container="supabase_auth_${project_name}"
 network_name="supabase_network_${project_name}"
 default_excludes=(-x storage-api,imgproxy,logflare,vector,studio)
@@ -68,9 +88,9 @@ parts = [
     "--user",
     "supabase",
     "--label",
-    "com.docker.compose.project=Genero",
+    f"com.docker.compose.project={network_name.removeprefix('supabase_network_')}",
     "--label",
-    "com.supabase.cli.project=Genero",
+    f"com.supabase.cli.project={network_name.removeprefix('supabase_network_')}",
 ]
 
 for env in envs:

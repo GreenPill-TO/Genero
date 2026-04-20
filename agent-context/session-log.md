@@ -1,3 +1,28 @@
+## v1.217
+### Timestamp
+- 2026-04-20 03:16 EDT
+
+### Objective
+- Address Copilot review comments on PR #65 without changing the local release-alignment outcome.
+
+### What Changed
+- Updated `scripts/start-local-supabase.sh` to read `project_id` from `supabase/config.toml` before deriving the Supabase auth container and network names, removing the hidden coupling Copilot flagged between the script and local config.
+- Clarified the new migration's `-- DOWN` section as manual rollback SQL that remains commented because Supabase CLI applies migrations forward-only and would otherwise immediately revoke the grants it just added.
+- Updated the technical spec to note that the local Supabase startup helper derives container naming from `supabase/config.toml`.
+
+### Verification
+- `zsh -n scripts/start-local-supabase.sh`
+- `pnpm supabase:start:local`
+- `pnpm ops:wallet:preflight:supabase-local`
+- `pnpm lint`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `scripts/start-local-supabase.sh`
+- `supabase/migrations/20260420015000_v1.15_service_role_indexer_read_access.sql`
+
 ## v1.216
 ### Timestamp
 - 2026-04-19 21:49 EDT

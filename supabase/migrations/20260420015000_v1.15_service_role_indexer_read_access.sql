@@ -18,7 +18,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data GRANT USAGE, SELECT ON SEQUENCES T
 
 COMMIT;
 
--- DOWN
+-- DOWN (manual rollback SQL; keep commented so Supabase forward migrations do not immediately revoke the grants above)
 -- BEGIN;
 -- ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data REVOKE USAGE, SELECT ON SEQUENCES FROM service_role;
 -- ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data REVOKE SELECT ON TABLES FROM service_role;
