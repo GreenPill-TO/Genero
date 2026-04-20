@@ -1,3 +1,24 @@
+## v1.218
+### Timestamp
+- 2026-04-20 03:39 EDT
+
+### Objective
+- Address Codex review feedback on PR #65 while keeping the local Supabase release-alignment flow unchanged.
+
+### What Changed
+- Updated `scripts/start-local-supabase.sh` so the Docker Compose/Supabase project labels use the already-derived `project_name` value instead of Python `str.removeprefix`, preserving compatibility with Python 3.8 environments.
+
+### Verification
+- `zsh -n scripts/start-local-supabase.sh`
+- `pnpm supabase:start:local`
+- `pnpm ops:wallet:preflight:supabase-local`
+- `pnpm lint`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `scripts/start-local-supabase.sh`
+
 ## v1.217
 ### Timestamp
 - 2026-04-20 03:16 EDT

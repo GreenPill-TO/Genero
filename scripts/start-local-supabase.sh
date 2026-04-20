@@ -58,12 +58,12 @@ trap cleanup EXIT
 
 docker inspect "$auth_container" --format '{{json .Config.Env}}' > "$tmp_env_json"
 
-python3 - <<'PY' "$tmp_env_json" "$tmp_recreate_script" "$auth_container" "$network_name"
+python3 - <<'PY' "$tmp_env_json" "$tmp_recreate_script" "$auth_container" "$network_name" "$project_name"
 import json
 import shlex
 import sys
 
-env_json_path, script_path, auth_container, network_name = sys.argv[1:5]
+env_json_path, script_path, auth_container, network_name, project_name = sys.argv[1:6]
 
 with open(env_json_path) as env_file:
     envs = json.load(env_file)
@@ -88,9 +88,9 @@ parts = [
     "--user",
     "supabase",
     "--label",
-    f"com.docker.compose.project={network_name.removeprefix('supabase_network_')}",
+    f"com.docker.compose.project={project_name}",
     "--label",
-    f"com.supabase.cli.project={network_name.removeprefix('supabase_network_')}",
+    f"com.supabase.cli.project={project_name}",
 ]
 
 for env in envs:
