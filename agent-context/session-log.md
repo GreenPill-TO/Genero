@@ -1,3 +1,102 @@
+## v1.218
+### Timestamp
+- 2026-04-20 03:39 EDT
+
+### Objective
+- Address Codex review feedback on PR #65 while keeping the local Supabase release-alignment flow unchanged.
+
+### What Changed
+- Updated `scripts/start-local-supabase.sh` so the Docker Compose/Supabase project labels use the already-derived `project_name` value instead of Python `str.removeprefix`, preserving compatibility with Python 3.8 environments.
+
+### Verification
+- `zsh -n scripts/start-local-supabase.sh`
+- `pnpm supabase:start:local`
+- `pnpm ops:wallet:preflight:supabase-local`
+- `pnpm lint`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `scripts/start-local-supabase.sh`
+
+## v1.217
+### Timestamp
+- 2026-04-20 03:16 EDT
+
+### Objective
+- Address Copilot review comments on PR #65 without changing the local release-alignment outcome.
+
+### What Changed
+- Updated `scripts/start-local-supabase.sh` to read `project_id` from `supabase/config.toml` before deriving the Supabase auth container and network names, removing the hidden coupling Copilot flagged between the script and local config.
+- Clarified the new migration's `-- DOWN` section as manual rollback SQL that remains commented because Supabase CLI applies migrations forward-only and would otherwise immediately revoke the grants it just added.
+- Updated the technical spec to note that the local Supabase startup helper derives container naming from `supabase/config.toml`.
+
+### Verification
+- `zsh -n scripts/start-local-supabase.sh`
+- `pnpm supabase:start:local`
+- `pnpm ops:wallet:preflight:supabase-local`
+- `pnpm lint`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `scripts/start-local-supabase.sh`
+- `supabase/migrations/20260420015000_v1.15_service_role_indexer_read_access.sql`
+
+## v1.216
+### Timestamp
+- 2026-04-19 21:49 EDT
+
+### Objective
+- Close the P1 release environment alignment item for the local Supabase target without touching any linked remote Supabase project.
+
+### What Changed
+- Added a narrow local `supabase/config.toml` so Genero uses non-conflicting local ports and exposes `public`, `storage`, `graphql_public`, `indexer`, and `chain_data` through the local Data API.
+- Started the local Supabase stack, populated the ignored `.env.local-supabase-local` profile with the local API URL, publishable key, JWT service-role key, `NEXT_PUBLIC_APP_ENVIRONMENT=local`, and `AUTH_BYPASS_USER_ID=1001`, and set the ignored `.env.local` Buy TCOIN flag to `false`.
+- Added migration `20260420015000_v1.15_service_role_indexer_read_access.sql` so service-role release preflight reads can use the `indexer` and `chain_data` schemas without broadening authenticated-user write access.
+- Marked the local release environment alignment todo complete and split the remaining remote Supabase / Vercel launch alignment into its own open P1 item.
+
+### Verification
+- `pnpm supabase:start:local`
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260420015000_v1.15_service_role_indexer_read_access.sql`
+- `pnpm ops:wallet:preflight:supabase-local`
+  - Result: no blockers
+  - Expected warnings: local app environment, dormant onramp secrets while Buy TCOIN is disabled, and manual cron verification reminder
+- Read-only local SQL verified `public.payment_request_links`, `public.cleanup_payment_request_links()`, installed `pg_cron`, active job `wallet-payment-request-links-cleanup`, schedule `15 6 * * *`, command `select public.cleanup_payment_request_links();`, and three recent succeeded local runs.
+- No linked or remote Supabase write command was run.
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `.gitignore`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/functional-spec.md`
+- `supabase/config.toml`
+- `supabase/migrations/20260420015000_v1.15_service_role_indexer_read_access.sql`
+
+## v1.215
+### Timestamp
+- 2026-04-17 20:14 EDT
+
+### Objective
+- Reconcile the production-readiness todo list with the recent env-contract cleanup, PR #64 follow-ups, and the current wallet preflight state.
+
+### What Changed
+- Reviewed the current `agent-context/todo.md`, the latest session-log entries, and the recent merge history on `dev`.
+- Kept the release environment alignment item open, but updated it to show the partially closed work: canonical env templates, local/remote Supabase profiles, feature-flag renames, deployer-key rename, and local auth-bypass hardening are done, while launch env population, remote indexer schema exposure, and manual `pg_cron` verification remain open.
+- Added production-readiness follow-ups for removing the temporary Supabase publishable-key alias fallback after all environments set `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and for reducing broad production service-role dependency on routine wallet/indexer/pay-link health reads.
+- Added a future idea to make `pnpm ops:wallet:preflight` profile-aware now that scenario-dependent Supabase values intentionally live outside the base `.env.local`.
+
+### Verification
+- `pnpm ops:wallet:preflight` fails because the base env no longer contains scenario-dependent Supabase URL/key/service-role/app-environment values.
+- `pnpm ops:wallet:preflight:supabase-local` fails because the local Supabase profile is still missing its Supabase URL/key/service-role values.
+- `pnpm ops:wallet:preflight:supabase-remote` reaches `public.payment_request_links` but fails because the remote Supabase Data API is not exposing the `indexer` schema; manual `pg_cron` verification remains required by the runbook.
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+
 ## v1.214
 ### Timestamp
 - 2026-04-15 14:36 EDT

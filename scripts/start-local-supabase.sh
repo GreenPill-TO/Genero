@@ -3,7 +3,27 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
-project_name="Genero"
+config_path="$project_root/supabase/config.toml"
+project_name="$(python3 - <<'PY' "$config_path"
+import re
+import sys
+
+config_path = sys.argv[1]
+project_id = "Genero"
+
+try:
+    with open(config_path, encoding="utf-8") as config_file:
+        for line in config_file:
+            match = re.match(r'\s*project_id\s*=\s*"([^"]+)"\s*$', line)
+            if match:
+                project_id = match.group(1)
+                break
+except FileNotFoundError:
+    pass
+
+print(project_id)
+PY
+)"
 auth_container="supabase_auth_${project_name}"
 network_name="supabase_network_${project_name}"
 default_excludes=(-x storage-api,imgproxy,logflare,vector,studio)
@@ -38,12 +58,12 @@ trap cleanup EXIT
 
 docker inspect "$auth_container" --format '{{json .Config.Env}}' > "$tmp_env_json"
 
-python3 - <<'PY' "$tmp_env_json" "$tmp_recreate_script" "$auth_container" "$network_name"
+python3 - <<'PY' "$tmp_env_json" "$tmp_recreate_script" "$auth_container" "$network_name" "$project_name"
 import json
 import shlex
 import sys
 
-env_json_path, script_path, auth_container, network_name = sys.argv[1:5]
+env_json_path, script_path, auth_container, network_name, project_name = sys.argv[1:6]
 
 with open(env_json_path) as env_file:
     envs = json.load(env_file)
@@ -68,9 +88,9 @@ parts = [
     "--user",
     "supabase",
     "--label",
-    "com.docker.compose.project=Genero",
+    f"com.docker.compose.project={project_name}",
     "--label",
-    "com.supabase.cli.project=Genero",
+    f"com.supabase.cli.project={project_name}",
 ]
 
 for env in envs:

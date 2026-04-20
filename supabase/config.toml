@@ -1,0 +1,33 @@
+# Local Supabase configuration for the Genero workspace.
+# Keep linked remote database changes human-operated; this file only controls local dev.
+project_id = "Genero"
+
+[api]
+enabled = true
+port = 55421
+schemas = ["public", "storage", "graphql_public", "indexer", "chain_data"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 55422
+shadow_port = 55420
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[inbucket]
+enabled = true
+port = 55424
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
+]
+enable_signup = true
