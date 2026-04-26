@@ -1,11 +1,9 @@
 import "server-only";
 
-import type { PostgrestError } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { type TorontoCoinOpsCoreStatus } from "@shared/lib/contracts/torontocoinOps";
 import { TORONTOCOIN_RUNTIME } from "@shared/lib/contracts/torontocoinRuntime";
-import { getIndexerScopeStatus } from "@services/indexer/src";
 import type { IndexerScopeStatus } from "@shared/lib/indexer/types";
-import { createServiceRoleClient } from "@shared/lib/supabase/serviceRole";
 import type {
   WalletStatsAssetBalanceRow,
   WalletStatsBiaRow,
@@ -16,14 +14,10 @@ import type {
   WalletStatsTimeseriesPoint,
   WalletStatsTransactionCategoryRow,
 } from "./types";
-import { getTorontoCoinOpsStatus } from "@shared/lib/contracts/torontocoinOps";
 
 const CITY_SLUG = "tcoin";
 const CHAIN_ID = TORONTOCOIN_RUNTIME.chainId;
-const INDEXER_SCOPE_KEY = `${CITY_SLUG}:${CHAIN_ID}`;
-const PAGE_SIZE = 1000;
 const DAILY_WINDOW_DAYS = 30;
-const EXCHANGE_RATE_HISTORY_LIMIT = 14;
 
 type TransactionRow = {
   created_at: string | null;
@@ -416,211 +410,17 @@ export function buildWalletStatsSummary(
   };
 }
 
-async function assertNoError<T>(
-  result: { data: T | null; error: PostgrestError | null },
-  context: string
-) {
-  if (result.error) {
-    throw new Error(`${context}: ${result.error.message}`);
-  }
-  return result.data;
-}
-
-async function fetchExactCount(
-  promise: PromiseLike<{ count: number | null; error: PostgrestError | null }>
-): Promise<number> {
-  const { count, error } = await promise;
-  if (error) {
-    throw new Error(error.message);
-  }
-  return count ?? 0;
-}
-
-async function fetchAllPages<T>(
-  fetchPage: (
-    from: number,
-    to: number
-  ) => PromiseLike<{ data: T[] | null; error: PostgrestError | null }>
-): Promise<T[]> {
-  const rows: T[] = [];
-
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const to = from + PAGE_SIZE - 1;
-    const { data, error } = await fetchPage(from, to);
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    const batch = data ?? [];
-    rows.push(...batch);
-
-    if (batch.length < PAGE_SIZE) {
-      return rows;
-    }
-  }
-}
-
-export async function getWalletStatsSummary(): Promise<WalletStatsSummary> {
-  const supabase = createServiceRoleClient();
-  const generatedAt = new Date().toISOString();
-
-  const currentRateRowPromise = supabase
-    .from("v_citycoin_exchange_rates_current_v1")
-    .select("citycoin_id, rate, source, observed_at, freshness_seconds, is_stale, used_fallback")
-    .eq("city_slug", CITY_SLUG)
-    .maybeSingle();
-
-  const [
-    userCount,
-    walletCount,
-    transactionRows,
-    paymentRequestRows,
-    currentRateData,
-    biaActivityRows,
-    biaHealthRows,
-    walletTcoinBalanceRows,
-    walletVoucherBalanceRows,
-    merchantCreditRows,
-    indexerStatus,
-    torontoCoinOpsStatus,
-  ] = await Promise.all([
-    fetchExactCount(
-      Promise.resolve(
-        supabase.from("users").select("id", {
-          count: "exact",
-          head: true,
-        })
-      )
-    ).catch(() => 0),
-    fetchExactCount(
-      Promise.resolve(
-        supabase
-          .from("v_wallet_identities_v1")
-          .select("wallet_row_id", {
-            count: "exact",
-            head: true,
-          })
-          .eq("namespace", "EVM")
-          .eq("wallet_ready", true)
-      )
-    ).catch(() => 0),
-    fetchAllPages<TransactionRow>((from, to) =>
-      Promise.resolve(
-        supabase
-          .from("act_transactions")
-          .select("created_at, amount, transaction_category, currency")
-          .order("created_at", { ascending: true })
-          .range(from, to)
-      )
-    ).catch(() => []),
-    fetchAllPages<PaymentRequestRow>((from, to) =>
-      Promise.resolve(
-        supabase
-          .from("v_payment_requests_v1")
-          .select("created_at, paid_at, status")
-          .eq("city_slug", CITY_SLUG)
-          .order("created_at", { ascending: true })
-          .range(from, to)
-      )
-    ).catch(() => []),
-    assertNoError<CurrentExchangeRateRow | null>(await currentRateRowPromise, "Failed to load current rate").catch(
-      () => null
-    ),
-    fetchAllPages<BiaActivityRow>((from, to) =>
-      Promise.resolve(
-        supabase
-          .from("v_bia_activity_summary")
-          .select("bia_id, code, name, active_users, active_stores, indexed_event_count, last_indexed_block")
-          .eq("city_slug", CITY_SLUG)
-          .order("indexed_event_count", { ascending: false })
-          .range(from, to)
-      )
-    ).catch(() => []),
-    fetchAllPages<BiaHealthRow>((from, to) =>
-      Promise.resolve(
-        supabase
-          .from("v_bia_pool_health")
-          .select(
-            "bia_id, code, name, purchase_count, purchased_token_volume, pending_redemption_count, pending_redemption_volume, indexed_events, redemption_pressure, stress_level, last_indexed_block"
-          )
-          .eq("city_slug", CITY_SLUG)
-          .order("indexed_events", { ascending: false })
-          .range(from, to)
-      )
-    ).catch(() => []),
-    fetchAllPages<BalanceRow>((from, to) =>
-      Promise.resolve(
-        supabase
-          .schema("indexer")
-          .from("wallet_tcoin_balances")
-          .select("balance")
-          .eq("scope_key", INDEXER_SCOPE_KEY)
-          .eq("chain_id", CHAIN_ID)
-          .order("wallet_address", { ascending: true })
-          .range(from, to)
-      )
-    ).catch(() => []),
-    fetchAllPages<BalanceRow>((from, to) =>
-      Promise.resolve(
-        supabase
-          .schema("indexer")
-          .from("wallet_voucher_balances")
-          .select("balance")
-          .eq("scope_key", INDEXER_SCOPE_KEY)
-          .eq("chain_id", CHAIN_ID)
-          .order("wallet_address", { ascending: true })
-          .range(from, to)
-      )
-    ).catch(() => []),
-    fetchAllPages<MerchantCreditRow>((from, to) =>
-      Promise.resolve(
-        supabase
-          .schema("indexer")
-          .from("merchant_credit_state")
-          .select("credit_issued, required_liquidity_absolute")
-          .eq("scope_key", INDEXER_SCOPE_KEY)
-          .eq("chain_id", CHAIN_ID)
-          .order("merchant_wallet", { ascending: true })
-          .range(from, to)
-      )
-    ).catch(() => []),
-    getIndexerScopeStatus({
-      supabase,
-      citySlug: CITY_SLUG,
-    }).catch(() => null),
-    getTorontoCoinOpsStatus().catch(() => null),
-  ]);
-
-  const currentRateRow = currentRateData;
-  const citycoinId = currentRateRow?.citycoin_id == null ? null : toNumber(currentRateRow.citycoin_id);
-  const exchangeRateHistoryRows =
-    citycoinId == null
-      ? []
-      : ((await assertNoError<ExchangeRateHistoryRow[]>(
-          await supabase
-            .from("citycoin_exchange_rates")
-            .select("observed_at, rate, source, used_fallback")
-            .eq("citycoin_id", citycoinId)
-            .order("observed_at", { ascending: false })
-            .range(0, EXCHANGE_RATE_HISTORY_LIMIT - 1),
-          "Failed to load exchange rate history"
-        ).catch(() => [])) ?? []);
-
-  return buildWalletStatsSummary({
-    generatedAt,
-    userCount,
-    walletCount,
-    transactionRows,
-    paymentRequestRows,
-    currentRateRow,
-    exchangeRateHistoryRows,
-    biaActivityRows,
-    biaHealthRows,
-    walletTcoinBalanceRows,
-    walletVoucherBalanceRows,
-    merchantCreditRows,
-    indexerStatus,
-    torontoCoinOpsStatus,
+export async function getWalletStatsSummary(
+  supabase: SupabaseClient
+): Promise<WalletStatsSummary> {
+  const { data, error } = await supabase.rpc("wallet_stats_summary_v1", {
+    p_city_slug: CITY_SLUG,
+    p_chain_id: CHAIN_ID,
   });
+
+  if (error) {
+    throw new Error(`Failed to load wallet stats summary: ${error.message}`);
+  }
+
+  return data as WalletStatsSummary;
 }

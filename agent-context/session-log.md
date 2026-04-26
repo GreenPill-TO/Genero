@@ -1,3 +1,198 @@
+## v1.227
+### Timestamp
+- 2026-04-26 05:31 EDT
+
+### Objective
+- Address the first round of Copilot and Codex PR review feedback on the release-readiness branch.
+
+### What Changed
+- Updated `wallet_stats_summary_v1(...)` to return `generatedAt` as the raw `timestamptz` value instead of a Postgres text cast, so downstream clients receive a consistent ISO-8601 timestamp string.
+- Fixed `POST /api/indexer/touch` so an omitted `citySlug` now defaults to the configured runtime city rather than a hardcoded `"tcoin"` fallback.
+- Fixed `getIndexerScopeStatusReadModel(...)` so omitted `citySlug` and `chainId` default from `NEXT_PUBLIC_CITYCOIN` and `INDEXER_CHAIN_ID` before falling back to the TorontoCoin runtime constants.
+- Added focused regression coverage for the indexer touch default-city path and the indexer status read-model env-default path.
+
+### Verification
+- `pnpm test app/api/indexer/touch/route.test.ts shared/lib/indexer/statusReadModel.test.ts`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/api/indexer/touch/route.test.ts`
+- `app/api/indexer/touch/route.ts`
+- `shared/lib/indexer/statusReadModel.test.ts`
+- `shared/lib/indexer/statusReadModel.ts`
+- `supabase/migrations/20260420213000_v1.17_release_read_rpcs.sql`
+
+## v1.226
+### Timestamp
+- 2026-04-26 05:18 EDT
+
+### Objective
+- Clear the draft PR CI failure in the new TCOIN Supabase deploy workflow without dropping the requested Preview/Production environment gating.
+
+### What Changed
+- Updated `.github/workflows/supabase-deploy-tcoin.yml` so the new canonical TCOIN secret names remain first-class, but the workflow can temporarily fall back to the repo’s currently populated legacy secrets during the transition.
+- Kept the branch-targeted environment gates (`Preview – tcoin` and `Production – tcoin`) unchanged; only the secret resolution path changed.
+- Left the explicit missing-secret guard in place, but widened its message so failures now point to either the new canonical secret names or the currently supported legacy fallback names.
+
+### Verification
+- `gh pr checks 67`
+  - Result before patch: `Preview TCOIN migrations` failed because `SUPABASE_SESSION_POOLER_TCOIN_PREVIEW` and `SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW` were not configured in GitHub, while the repo still only had the older `SUPABASE_SESSION_POOLER_DEV/PROD` and shared `SUPABASE_ACCESS_TOKEN` secrets.
+- `ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/supabase-deploy-tcoin.yml\"); puts \"ok\"'`
+
+### Files Edited
+- `.github/workflows/supabase-deploy-tcoin.yml`
+- `agent-context/session-log.md`
+
+## v1.225
+### Timestamp
+- 2026-04-26 05:09 EDT
+
+### Objective
+- Add dedicated profile-backed `build` and `start` scripts so local Supabase production checks do not rely on remembering the env-profile wrapper command by hand.
+
+### What Changed
+- Added `build:supabase-local` and `start:supabase-local` to run `pnpm build` / `pnpm start` through `.env.local-supabase-local`.
+- Added matching `build:supabase-remote` and `start:supabase-remote` scripts for the remote profile so local/remote Supabase workflows stay symmetrical.
+- Kept the underlying split-profile env model unchanged; this is a developer-ergonomics improvement that makes the intended invocation path explicit.
+
+### Verification
+- Validation pending at commit time; requested next steps are `pnpm lint`, `pnpm test`, `pnpm build:supabase-local`, and a local production smoke test using `pnpm start:supabase-local`.
+
+### Files Edited
+- `agent-context/session-log.md`
+- `package.json`
+
+## v1.224
+### Timestamp
+- 2026-04-26 05:05 EDT
+
+### Objective
+- Fix the broken local production smoke routes for the wallet and contracts apps, install `sharp`, and verify whether the local Supabase profile file itself needed changes.
+
+### What Changed
+- Added `app/tcoin/wallet/pathname.ts` to normalise direct `/tcoin/wallet/...` paths back to the wallet app’s root-style route model so the shared shell can correctly identify public routes and preview-friendly unauthenticated routes.
+- Narrowed the wallet shell redirect in `app/tcoin/wallet/ContentLayout.tsx` so unauthenticated `/dashboard` and `/welcome` can render their intended preview/sign-in states instead of being forced back to `/`.
+- Updated the wallet navbar and nav-link components to compare normalised pathnames, keeping direct `/tcoin/wallet/...` visits consistent with the existing root-style route aliases.
+- Fixed the contracts layout/home/proposal links to target `/tcoin/contracts/...` explicitly, removing the broken relative navigation that had been generating `404` requests for `/governance`, `/registry`, and related pages.
+- Installed `sharp` as a dependency and confirmed it resolves locally, eliminating the production warning that recommended the package.
+- Confirmed the issue with the local Supabase profile was not missing variables in `.env.local-supabase-local`; the important operational detail is that local production build/start must run through the env-profile wrapper so the split profile variables are present.
+
+### Verification
+- `pnpm add sharp`
+- `node -e "require('sharp'); console.log('sharp-ok')"`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm build`
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm exec next start -p 3100`
+- Playwright smoke against `http://localhost:3100`
+  - `/tcoin/wallet` stayed on the wallet landing page and rendered the expected hero/content.
+  - `/tcoin/wallet/dashboard` rendered the unauthenticated dashboard preview instead of redirecting to `/`.
+  - `/tcoin/wallet/welcome` rendered the unauthenticated welcome/sign-in screen instead of redirecting to `/`.
+  - `/tcoin/contracts` rendered links targeting `/tcoin/contracts/...` rather than the broken top-level `/governance`-style paths.
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/contracts/layout.tsx`
+- `app/tcoin/contracts/page.tsx`
+- `app/tcoin/contracts/proposals/[id]/page.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/components/navbar/NavLink.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/wallet/pathname.ts`
+- `package.json`
+- `pnpm-lock.yaml`
+
+## v1.223
+### Timestamp
+- 2026-04-21 03:22 EDT
+
+### Objective
+- Consolidate Supabase migration validation and deployment into one dedicated TCOIN workflow with branch-targeted Preview and Production database gates.
+
+### What Changed
+- Added `.github/workflows/supabase-deploy-tcoin.yml`, which dry-runs Supabase migrations for PRs into `dev` / `main`, deploys migrations after pushes to `dev` / `main`, and supports manual dry-run/deploy dispatch for Preview or Production.
+- Replaced the old split migration deploy/validation workflows by deleting `db-push-dev.yml`, `db-push-prod.yml`, and `pr-migrations.yml`.
+- Gated migration jobs behind GitHub Environments `Preview – tcoin` and `Production – tcoin`, with serialized target-specific concurrency and explicit missing-secret checks for the new TCOIN session-pooler/access-token secret pairs.
+- Aligned the manual drift-pull workflow with the new Preview/Production session-pooler secret names while keeping it manual-only.
+- Updated Copilot instructions, the technical spec, and the database workflow note so repository guidance no longer references the retired project-ref deploy workflows.
+
+### Verification
+- `ruby -e 'require "yaml"; Dir[".github/workflows/*.yml"].each { |f| YAML.load_file(f); puts "ok #{f}" }'`
+- `rg -n "db-push-dev|db-push-prod|pr-migrations|SUPABASE_PROJECT_REF|SUPABASE_SESSION_POOLER_DEV|SUPABASE_SESSION_POOLER_PROD|DEV Supabase|PROD Supabase" .github docs agent-context/db-workflow.md README.md`
+  - Result: no active references.
+- `git diff --check`
+- `pnpm lint`
+
+### Files Edited
+- `.github/copilot-instructions.md`
+- `.github/workflows/db-pull-env.yml`
+- `.github/workflows/supabase-deploy-tcoin.yml`
+- `agent-context/db-workflow.md`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+
+## v1.222
+### Timestamp
+- 2026-04-20 17:18 EDT
+
+### Objective
+- Start remote release alignment hardening by preparing the remote-safe read RPCs locally and reducing routine service-role reliance in wallet stats, indexer status, and TorontoCoin ops checks.
+
+### What Changed
+- Added `public.indexer_scope_status_v1(...)` and `public.wallet_stats_summary_v1(...)` as SECURITY DEFINER aggregate read RPCs that avoid raw wallet addresses, user IDs, pay-link tokens, service secrets, and raw indexer rows.
+- Refactored signed-in wallet stats to call `wallet_stats_summary_v1(...)` with the authenticated request-scoped Supabase client instead of constructing a service-role client.
+- Refactored `/api/indexer/status`, `/api/tcoin/ops/status`, `pnpm ops:torontocoin`, and `pnpm ops:torontocoin:pools` to use the narrow `indexer_scope_status_v1(...)` read model.
+- Narrowed `POST /api/indexer/touch` so the remaining Next-side service-role indexer path is limited to the configured city scope, requires an authenticated user outside local/development, preserves the service-role boundary inside the route, and redacts service-role configuration errors.
+- Updated release docs and todos to distinguish local validation from human/operator remote Supabase migration, PostgREST reload, Vercel env confirmation, and deployment smoke.
+
+### Verification
+- `pnpm supabase:start:local`
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260420213000_v1.17_release_read_rpcs.sql`
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"`
+- REST call to `public.indexer_scope_status_v1(...)` using `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+  - Result: RPC resolved through local PostgREST and returned aggregate indexer fields; local seeded runtime data still warns that the current live cplTCOIN address is not tracked.
+- `pnpm ops:wallet:preflight:supabase-local`
+  - Result: no blockers; expected local/development/onramp warnings plus the local seed warning for the current runtime cplTCOIN address.
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm ops:torontocoin`
+  - Result: command reached the new publishable-key indexer RPC, but exited with expected local seed blockers because the checked live TorontoCoin pools are not currently visible in the local seeded indexer rows.
+- `pnpm ops:wallet:preflight:supabase-remote`
+  - Result: expected blocker that the remote dev target is still missing `public.wallet_release_health_v1(...)` until a human/operator applies the v1.16 migration and reloads PostgREST.
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin`
+  - Result: expected blocker that the remote dev target is still missing `public.indexer_scope_status_v1(...)` until a human/operator applies the v1.17 migration and reloads PostgREST.
+- `pnpm ops:wallet:preflight:deployment`
+  - Result: expected missing process-env blockers because this local shell does not export the actual deployment env.
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm test app/api/indexer/status/route.test.ts app/api/indexer/touch/route.test.ts app/api/tcoin/ops/status/route.test.ts app/api/tcoin/stats/summary/route.test.ts shared/lib/indexer/statusReadModel.test.ts shared/lib/walletStats/server.test.ts`
+- `pnpm test`
+- `pnpm lint`
+- `pnpm build`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `app/api/indexer/status/route.test.ts`
+- `app/api/indexer/status/route.ts`
+- `app/api/indexer/touch/route.test.ts`
+- `app/api/indexer/touch/route.ts`
+- `app/api/tcoin/ops/status/route.test.ts`
+- `app/api/tcoin/ops/status/route.ts`
+- `app/api/tcoin/stats/summary/route.test.ts`
+- `app/api/tcoin/stats/summary/route.ts`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `scripts/load-repo-env.ts`
+- `scripts/torontocoin-ops-check.ts`
+- `scripts/torontocoin-pool-compatibility-check.ts`
+- `scripts/wallet-release-preflight.ts`
+- `shared/lib/indexer/statusReadModel.test.ts`
+- `shared/lib/indexer/statusReadModel.ts`
+- `shared/lib/walletStats/server.ts`
+- `supabase/migrations/20260420213000_v1.17_release_read_rpcs.sql`
+
 ## v1.221
 ### Timestamp
 - 2026-04-20 16:43 EDT

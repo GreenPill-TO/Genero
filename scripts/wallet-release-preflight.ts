@@ -295,7 +295,6 @@ async function main() {
   const requiredEnv = [
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
     "NEXT_PUBLIC_CITYCOIN",
     "NEXT_PUBLIC_APP_NAME",
     "NEXT_PUBLIC_APP_ENVIRONMENT",
@@ -305,12 +304,24 @@ async function main() {
     "USER_SETTINGS_ALLOWED_ORIGINS",
   ];
 
+  if (profile === "deployment") {
+    requiredEnv.push("SUPABASE_SERVICE_ROLE_KEY");
+  }
+
   const missingRequiredEnv = getMissingEnv(requiredEnv);
   if (missingRequiredEnv.length > 0) {
     addFinding(
       findings,
       "blocker",
       `Missing required wallet release env for profile "${profile}": ${missingRequiredEnv.join(", ")}.`
+    );
+  }
+
+  if (profile !== "deployment" && getMissingEnv(["SUPABASE_SERVICE_ROLE_KEY"]).length > 0) {
+    addFinding(
+      findings,
+      "warning",
+      "SUPABASE_SERVICE_ROLE_KEY is not required for this read-only preflight profile, but the deployed Next.js runtime still needs it for POST /api/indexer/touch until that write path moves to a worker or scheduler."
     );
   }
 

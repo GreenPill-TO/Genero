@@ -2,16 +2,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
+  mockSupabaseClient: {
+    auth: {
+      getUser: vi.fn(),
+    },
+  },
   mockGetUser: vi.fn(),
   mockGetWalletStatsSummary: vi.fn(),
 }));
 
 vi.mock("@shared/lib/supabase/server", () => ({
-  createClient: () => ({
-    auth: {
-      getUser: h.mockGetUser,
-    },
-  }),
+  createClient: () => h.mockSupabaseClient,
 }));
 
 vi.mock("@shared/lib/walletStats/server", () => ({
@@ -24,6 +25,7 @@ describe("GET /api/tcoin/stats/summary", () => {
   beforeEach(() => {
     h.mockGetUser.mockReset();
     h.mockGetWalletStatsSummary.mockReset();
+    h.mockSupabaseClient.auth.getUser = h.mockGetUser;
   });
 
   it("returns the aggregated stats summary for any authenticated user", async () => {
@@ -45,6 +47,7 @@ describe("GET /api/tcoin/stats/summary", () => {
     await expect(response.json()).resolves.toMatchObject({
       overview: { walletCount: 8 },
     });
+    expect(h.mockGetWalletStatsSummary).toHaveBeenCalledWith(h.mockSupabaseClient);
   });
 
   it("returns 401 when there is no authenticated user", async () => {

@@ -4,6 +4,7 @@
 import React from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useIndexerTrigger } from "@shared/hooks/useIndexerTrigger";
+import { isPublicWalletPath, isWalletPreviewPath } from "@tcoin/wallet/pathname";
 import { cn } from "@shared/utils/classnames";
 import Navbar from "@tcoin/wallet/components/navbar";
 import { useRouter, usePathname } from "next/navigation";
@@ -11,27 +12,13 @@ import { useEffect } from "react";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export const publicPaths = ["/", "/resources", "/contact", "/ecosystem", "/merchants"];
-
-export function isPublicWalletPath(pathname: string | null | undefined) {
-  if (!pathname) {
-    return false;
-  }
-
-  return publicPaths.includes(pathname) || pathname.startsWith("/pay/");
-}
-
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useAuth();
   useIndexerTrigger({ enabled: !isLoading && isAuthenticated });
   const router = useRouter();
   const pathname = usePathname();
   const isPublic = isPublicWalletPath(pathname);
-  const bypassAuthInLocalDev =
-    process.env.NODE_ENV !== "production" &&
-    ["local", "development"].includes(
-      (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase()
-    );
+  const allowsUnauthenticatedPreview = isWalletPreviewPath(pathname);
 
   const bodyClass = cn(
     "min-h-screen",
@@ -43,12 +30,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   );
 
   useEffect(() => {
-    // Replace this with your actual authentication logic
-
-    if (!isLoading && !isAuthenticated && !isPublic && !bypassAuthInLocalDev) {
+    if (!isLoading && !isAuthenticated && !isPublic && !allowsUnauthenticatedPreview) {
       router.push("/");
     }
-  }, [bypassAuthInLocalDev, isAuthenticated, isLoading, isPublic, router]);
+  }, [allowsUnauthenticatedPreview, isAuthenticated, isLoading, isPublic, router]);
 
   if (isLoading) {
     return (

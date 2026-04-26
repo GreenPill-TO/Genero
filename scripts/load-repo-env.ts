@@ -27,27 +27,6 @@ export function requireEnv(names: string[], context: string) {
   }
 }
 
-export function createOpsSupabaseClient() {
-  requireEnv(
-    ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
-    "TorontoCoin ops checks"
-  );
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!.trim();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!.trim();
-
-  return createSupabaseClient(
-    supabaseUrl,
-    serviceRoleKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
-}
-
 export function createReleaseHealthSupabaseClient() {
   requireEnv(
     ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"],
@@ -87,6 +66,14 @@ export function describeSupabaseAccessError(error: unknown) {
 
   if (message.includes("wallet_release_health_v1") && message.includes("schema cache")) {
     return `${message}. Apply the wallet release health RPC migration to the target Supabase project, then reload the PostgREST schema cache before rerunning preflight.`;
+  }
+
+  if (message.includes("indexer_scope_status_v1") && message.includes("schema cache")) {
+    return `${message}. Apply the release read RPC migration to the target Supabase project, then reload the PostgREST schema cache before rerunning the TorontoCoin ops check.`;
+  }
+
+  if (message.includes("wallet_stats_summary_v1") && message.includes("schema cache")) {
+    return `${message}. Apply the release read RPC migration to the target Supabase project, then reload the PostgREST schema cache before rerunning wallet stats checks.`;
   }
 
   return message;

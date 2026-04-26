@@ -17,7 +17,7 @@ export async function GET() {
     // This endpoint is intentionally available to any authenticated wallet user.
     // The stats page is a read-only product surface, and this payload is limited to
     // aggregate counts, trends, and coarse health flags rather than secrets or per-user data.
-    const summary = await getWalletStatsSummary();
+    const summary = await getWalletStatsSummary(supabase);
     return NextResponse.json(summary);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected wallet stats error";

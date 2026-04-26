@@ -6,6 +6,8 @@ import { ModalProvider } from "@shared/contexts/ModalContext";
 import Link from "next/link";
 import "@tcoin/contracts/styles/app.scss";
 
+const contractsBasePath = "/tcoin/contracts";
+
 export default function ContractsLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -17,14 +19,14 @@ export default function ContractsLayout({ children }: { children: React.ReactNod
                 <header className="contracts-header">
                   <div className="brand">TCOIN Contract Management</div>
                   <nav>
-                    <Link href="/">Home</Link>
-                    <Link href="/governance">Governance</Link>
-                    <Link href="/city-manager">City Manager</Link>
-                    <Link href="/stewards">Stewards</Link>
-                    <Link href="/charity-operator">Charity</Link>
-                    <Link href="/treasury">Treasury</Link>
-                    <Link href="/token-admin">Token Admin</Link>
-                    <Link href="/registry">Registry</Link>
+                    <Link href={contractsBasePath}>Home</Link>
+                    <Link href={`${contractsBasePath}/governance`}>Governance</Link>
+                    <Link href={`${contractsBasePath}/city-manager`}>City Manager</Link>
+                    <Link href={`${contractsBasePath}/stewards`}>Stewards</Link>
+                    <Link href={`${contractsBasePath}/charity-operator`}>Charity</Link>
+                    <Link href={`${contractsBasePath}/treasury`}>Treasury</Link>
+                    <Link href={`${contractsBasePath}/token-admin`}>Token Admin</Link>
+                    <Link href={`${contractsBasePath}/registry`}>Registry</Link>
                   </nav>
                 </header>
                 <main className="contracts-main">{children}</main>

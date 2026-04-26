@@ -7,6 +7,8 @@ import { useCallback, useEffect, useState } from "react";
 import { getProposal } from "@shared/lib/contracts/management/proposals";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 
+const governancePath = "/tcoin/contracts/governance";
+
 export default function ProposalDetailPage() {
   const params = useParams();
   const proposalId = Number(params?.id || 0);
@@ -71,7 +73,7 @@ export default function ProposalDetailPage() {
       <section className="contract-card">
         <h1>Proposal #{proposalId}</h1>
         <p className="contract-muted">
-          <Link href="/governance">Back to governance</Link>
+          <Link href={governancePath}>Back to governance</Link>
         </p>
         {loading ? <p>Loading proposal...</p> : null}
         {message ? <p>{message}</p> : null}

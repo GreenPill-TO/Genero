@@ -98,4 +98,38 @@ describe("ContentLayout", () => {
     expect(screen.getByTestId("wallet-layout-root").className).toContain("wallet-public-shell");
     expect(screen.queryByTestId("wallet-navbar")).toBeNull();
   });
+
+  it("treats the prefixed wallet landing route as public", () => {
+    usePathnameMock.mockReturnValue("/tcoin/wallet");
+    useAuthMock.mockReturnValue({
+      isLoading: false,
+      isAuthenticated: false,
+    });
+
+    render(
+      <ContentLayout>
+        <div>prefixed public</div>
+      </ContentLayout>
+    );
+
+    expect(screen.getByTestId("wallet-layout-root").className).toContain("wallet-public-shell");
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("allows unauthenticated dashboard preview routes to render without redirecting home", () => {
+    usePathnameMock.mockReturnValue("/tcoin/wallet/dashboard");
+    useAuthMock.mockReturnValue({
+      isLoading: false,
+      isAuthenticated: false,
+    });
+
+    render(
+      <ContentLayout>
+        <div>dashboard preview</div>
+      </ContentLayout>
+    );
+
+    expect(screen.getByTestId("wallet-layout-root").className).toContain("wallet-auth-frame");
+    expect(pushMock).not.toHaveBeenCalled();
+  });
 });

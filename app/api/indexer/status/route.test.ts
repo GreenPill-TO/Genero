@@ -14,8 +14,8 @@ vi.mock("@shared/lib/supabase/server", () => ({
   }),
 }));
 
-vi.mock("@services/indexer/src", () => ({
-  getIndexerScopeStatus: h.mockGetIndexerScopeStatus,
+vi.mock("@shared/lib/indexer/statusReadModel", () => ({
+  getIndexerScopeStatusReadModel: h.mockGetIndexerScopeStatus,
 }));
 
 import { GET } from "./route";
