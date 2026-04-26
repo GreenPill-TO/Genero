@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
 import { isLocalOrDevelopmentEnvironment } from "@shared/lib/bia/apiAuth";
 import { getTorontoCoinOpsStatus } from "@shared/lib/contracts/torontocoinOps";
-import { getIndexerScopeStatus } from "@services/indexer/src";
+import { getIndexerScopeStatusReadModel } from "@shared/lib/indexer/statusReadModel";
 
 export async function GET() {
   try {
@@ -16,13 +16,13 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [status, indexerStatus] = await Promise.all([
-      getTorontoCoinOpsStatus(),
-      getIndexerScopeStatus({
-        supabase,
-        citySlug: "tcoin",
-      }),
-    ]);
+    const status = await getTorontoCoinOpsStatus();
+    const indexerStatus = await getIndexerScopeStatusReadModel({
+      supabase,
+      citySlug: "tcoin",
+      chainId: status.addresses.chainId,
+      requiredTokenAddress: status.addresses.cplTcoin,
+    });
 
     return NextResponse.json({
       ...status,

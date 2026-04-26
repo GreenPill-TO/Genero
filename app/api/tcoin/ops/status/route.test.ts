@@ -19,8 +19,8 @@ vi.mock("@shared/lib/contracts/torontocoinOps", () => ({
   getTorontoCoinOpsStatus: h.mockGetTorontoCoinOpsStatus,
 }));
 
-vi.mock("@services/indexer/src", () => ({
-  getIndexerScopeStatus: h.mockGetIndexerScopeStatus,
+vi.mock("@shared/lib/indexer/statusReadModel", () => ({
+  getIndexerScopeStatusReadModel: h.mockGetIndexerScopeStatus,
 }));
 
 import { GET } from "./route";
@@ -38,7 +38,7 @@ describe("GET /api/tcoin/ops/status", () => {
       error: null,
     });
     h.mockGetTorontoCoinOpsStatus.mockResolvedValue({
-      addresses: { liquidityRouter: "0xrouter" },
+      addresses: { liquidityRouter: "0xrouter", chainId: 42220, cplTcoin: "0xtoken" },
       ownership: {},
       pools: [],
       reserveRouteHealth: {},
@@ -57,6 +57,13 @@ describe("GET /api/tcoin/ops/status", () => {
     const body = await response.json();
     expect(body.addresses.liquidityRouter).toBe("0xrouter");
     expect(body.indexer.requiredTokenAddress).toBe("0xtoken");
+    expect(h.mockGetIndexerScopeStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        citySlug: "tcoin",
+        chainId: 42220,
+        requiredTokenAddress: "0xtoken",
+      })
+    );
   });
 
   it("returns 401 when auth user is missing", async () => {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
 import { isLocalOrDevelopmentEnvironment } from "@shared/lib/bia/apiAuth";
-import { getIndexerScopeStatus } from "@services/indexer/src";
+import { getIndexerScopeStatusReadModel } from "@shared/lib/indexer/statusReadModel";
 
 export async function GET(req: Request) {
   try {
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const citySlug = searchParams.get("citySlug") ?? undefined;
 
-    const status = await getIndexerScopeStatus({
+    const status = await getIndexerScopeStatusReadModel({
       supabase,
       citySlug,
     });

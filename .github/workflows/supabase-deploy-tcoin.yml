@@ -1,0 +1,143 @@
+name: Supabase Deploy (TCOIN)
+
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - "supabase/migrations/**"
+  push:
+    branches: [dev, main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        description: Which TCOIN database target should this run against?
+        required: true
+        default: preview
+        options:
+          - preview
+          - production
+      mode:
+        type: choice
+        description: Dry-run only, or apply migrations?
+        required: true
+        default: dry-run
+        options:
+          - dry-run
+          - deploy
+
+jobs:
+  preview:
+    name: Preview TCOIN migrations
+    if: >-
+      (github.event_name == 'pull_request' && github.base_ref == 'dev') ||
+      (github.event_name == 'push' && github.ref_name == 'dev') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'preview')
+    runs-on: ubuntu-latest
+    environment:
+      name: Preview – tcoin
+    concurrency:
+      group: supabase-tcoin-preview
+      cancel-in-progress: false
+    env:
+      TARGET_LABEL: Preview – tcoin
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_TCOIN_PREVIEW }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW }}
+      RUN_MODE: ${{ github.event_name == 'pull_request' && 'dry-run' || github.event_name == 'push' && 'deploy' || github.event.inputs.mode }}
+      DB_URL_SECRET_NAME: SUPABASE_SESSION_POOLER_TCOIN_PREVIEW
+      ACCESS_TOKEN_SECRET_NAME: SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+
+      - name: Check required secrets
+        run: |
+          set -euo pipefail
+          missing=0
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::Missing GitHub secret ${DB_URL_SECRET_NAME} for ${TARGET_LABEL}."
+            missing=1
+          fi
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::error::Missing GitHub secret ${ACCESS_TOKEN_SECRET_NAME} for ${TARGET_LABEL}."
+            missing=1
+          fi
+          exit "$missing"
+
+      - name: Run Supabase migration command
+        run: |
+          set -euo pipefail
+          case "$RUN_MODE" in
+            dry-run)
+              echo "Dry-running Supabase migrations for ${TARGET_LABEL}."
+              args=(--dns-resolver https db push --dry-run --db-url "$SUPABASE_DB_URL")
+              ;;
+            deploy)
+              echo "Deploying Supabase migrations for ${TARGET_LABEL}."
+              args=(--dns-resolver https db push --db-url "$SUPABASE_DB_URL")
+              ;;
+            *)
+              echo "::error::Unsupported run mode: ${RUN_MODE}"
+              exit 1
+              ;;
+          esac
+          supabase "${args[@]}"
+
+  production:
+    name: Production TCOIN migrations
+    if: >-
+      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
+      (github.event_name == 'push' && github.ref_name == 'main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'production')
+    runs-on: ubuntu-latest
+    environment:
+      name: Production – tcoin
+    concurrency:
+      group: supabase-tcoin-production
+      cancel-in-progress: false
+    env:
+      TARGET_LABEL: Production – tcoin
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_TCOIN_PRODUCTION }}
+      RUN_MODE: ${{ github.event_name == 'pull_request' && 'dry-run' || github.event_name == 'push' && 'deploy' || github.event.inputs.mode }}
+      DB_URL_SECRET_NAME: SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION
+      ACCESS_TOKEN_SECRET_NAME: SUPABASE_ACCESS_TOKEN_TCOIN_PRODUCTION
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+
+      - name: Check required secrets
+        run: |
+          set -euo pipefail
+          missing=0
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::Missing GitHub secret ${DB_URL_SECRET_NAME} for ${TARGET_LABEL}."
+            missing=1
+          fi
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::error::Missing GitHub secret ${ACCESS_TOKEN_SECRET_NAME} for ${TARGET_LABEL}."
+            missing=1
+          fi
+          exit "$missing"
+
+      - name: Run Supabase migration command
+        run: |
+          set -euo pipefail
+          case "$RUN_MODE" in
+            dry-run)
+              echo "Dry-running Supabase migrations for ${TARGET_LABEL}."
+              args=(--dns-resolver https db push --dry-run --db-url "$SUPABASE_DB_URL")
+              ;;
+            deploy)
+              echo "Deploying Supabase migrations for ${TARGET_LABEL}."
+              args=(--dns-resolver https db push --db-url "$SUPABASE_DB_URL")
+              ;;
+            *)
+              echo "::error::Unsupported run mode: ${RUN_MODE}"
+              exit 1
+              ;;
+          esac
+          supabase "${args[@]}"

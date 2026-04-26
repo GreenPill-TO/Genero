@@ -1,7 +1,7 @@
-import { getIndexerScopeStatus } from "../services/indexer/src/index.ts";
 import { getTorontoCoinOpsStatus } from "../shared/lib/contracts/torontocoinOps.ts";
+import { getIndexerScopeStatusReadModel } from "../shared/lib/indexer/statusReadModel.ts";
 import {
-  createOpsSupabaseClient,
+  createReleaseHealthSupabaseClient,
   describeSupabaseAccessError,
   loadRepoEnv,
 } from "./load-repo-env.ts";
@@ -10,10 +10,12 @@ loadRepoEnv();
 
 async function main() {
   const status = await getTorontoCoinOpsStatus();
-  const supabase = createOpsSupabaseClient();
-  const indexerStatus = await getIndexerScopeStatus({
+  const supabase = createReleaseHealthSupabaseClient();
+  const indexerStatus = await getIndexerScopeStatusReadModel({
     supabase,
     citySlug: "tcoin",
+    chainId: status.addresses.chainId,
+    requiredTokenAddress: status.addresses.cplTcoin,
   });
 
   const poolSummaries = status.pools.map((pool) => {

@@ -1,3 +1,92 @@
+## v1.223
+### Timestamp
+- 2026-04-21 03:22 EDT
+
+### Objective
+- Consolidate Supabase migration validation and deployment into one dedicated TCOIN workflow with branch-targeted Preview and Production database gates.
+
+### What Changed
+- Added `.github/workflows/supabase-deploy-tcoin.yml`, which dry-runs Supabase migrations for PRs into `dev` / `main`, deploys migrations after pushes to `dev` / `main`, and supports manual dry-run/deploy dispatch for Preview or Production.
+- Replaced the old split migration deploy/validation workflows by deleting `db-push-dev.yml`, `db-push-prod.yml`, and `pr-migrations.yml`.
+- Gated migration jobs behind GitHub Environments `Preview – tcoin` and `Production – tcoin`, with serialized target-specific concurrency and explicit missing-secret checks for the new TCOIN session-pooler/access-token secret pairs.
+- Aligned the manual drift-pull workflow with the new Preview/Production session-pooler secret names while keeping it manual-only.
+- Updated Copilot instructions, the technical spec, and the database workflow note so repository guidance no longer references the retired project-ref deploy workflows.
+
+### Verification
+- `ruby -e 'require "yaml"; Dir[".github/workflows/*.yml"].each { |f| YAML.load_file(f); puts "ok #{f}" }'`
+- `rg -n "db-push-dev|db-push-prod|pr-migrations|SUPABASE_PROJECT_REF|SUPABASE_SESSION_POOLER_DEV|SUPABASE_SESSION_POOLER_PROD|DEV Supabase|PROD Supabase" .github docs agent-context/db-workflow.md README.md`
+  - Result: no active references.
+- `git diff --check`
+- `pnpm lint`
+
+### Files Edited
+- `.github/copilot-instructions.md`
+- `.github/workflows/db-pull-env.yml`
+- `.github/workflows/supabase-deploy-tcoin.yml`
+- `agent-context/db-workflow.md`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+
+## v1.222
+### Timestamp
+- 2026-04-20 17:18 EDT
+
+### Objective
+- Start remote release alignment hardening by preparing the remote-safe read RPCs locally and reducing routine service-role reliance in wallet stats, indexer status, and TorontoCoin ops checks.
+
+### What Changed
+- Added `public.indexer_scope_status_v1(...)` and `public.wallet_stats_summary_v1(...)` as SECURITY DEFINER aggregate read RPCs that avoid raw wallet addresses, user IDs, pay-link tokens, service secrets, and raw indexer rows.
+- Refactored signed-in wallet stats to call `wallet_stats_summary_v1(...)` with the authenticated request-scoped Supabase client instead of constructing a service-role client.
+- Refactored `/api/indexer/status`, `/api/tcoin/ops/status`, `pnpm ops:torontocoin`, and `pnpm ops:torontocoin:pools` to use the narrow `indexer_scope_status_v1(...)` read model.
+- Narrowed `POST /api/indexer/touch` so the remaining Next-side service-role indexer path is limited to the configured city scope, requires an authenticated user outside local/development, preserves the service-role boundary inside the route, and redacts service-role configuration errors.
+- Updated release docs and todos to distinguish local validation from human/operator remote Supabase migration, PostgREST reload, Vercel env confirmation, and deployment smoke.
+
+### Verification
+- `pnpm supabase:start:local`
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260420213000_v1.17_release_read_rpcs.sql`
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"`
+- REST call to `public.indexer_scope_status_v1(...)` using `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+  - Result: RPC resolved through local PostgREST and returned aggregate indexer fields; local seeded runtime data still warns that the current live cplTCOIN address is not tracked.
+- `pnpm ops:wallet:preflight:supabase-local`
+  - Result: no blockers; expected local/development/onramp warnings plus the local seed warning for the current runtime cplTCOIN address.
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm ops:torontocoin`
+  - Result: command reached the new publishable-key indexer RPC, but exited with expected local seed blockers because the checked live TorontoCoin pools are not currently visible in the local seeded indexer rows.
+- `pnpm ops:wallet:preflight:supabase-remote`
+  - Result: expected blocker that the remote dev target is still missing `public.wallet_release_health_v1(...)` until a human/operator applies the v1.16 migration and reloads PostgREST.
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin`
+  - Result: expected blocker that the remote dev target is still missing `public.indexer_scope_status_v1(...)` until a human/operator applies the v1.17 migration and reloads PostgREST.
+- `pnpm ops:wallet:preflight:deployment`
+  - Result: expected missing process-env blockers because this local shell does not export the actual deployment env.
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm test app/api/indexer/status/route.test.ts app/api/indexer/touch/route.test.ts app/api/tcoin/ops/status/route.test.ts app/api/tcoin/stats/summary/route.test.ts shared/lib/indexer/statusReadModel.test.ts shared/lib/walletStats/server.test.ts`
+- `pnpm test`
+- `pnpm lint`
+- `pnpm build`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `app/api/indexer/status/route.test.ts`
+- `app/api/indexer/status/route.ts`
+- `app/api/indexer/touch/route.test.ts`
+- `app/api/indexer/touch/route.ts`
+- `app/api/tcoin/ops/status/route.test.ts`
+- `app/api/tcoin/ops/status/route.ts`
+- `app/api/tcoin/stats/summary/route.test.ts`
+- `app/api/tcoin/stats/summary/route.ts`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `scripts/load-repo-env.ts`
+- `scripts/torontocoin-ops-check.ts`
+- `scripts/torontocoin-pool-compatibility-check.ts`
+- `scripts/wallet-release-preflight.ts`
+- `shared/lib/indexer/statusReadModel.test.ts`
+- `shared/lib/indexer/statusReadModel.ts`
+- `shared/lib/walletStats/server.ts`
+- `supabase/migrations/20260420213000_v1.17_release_read_rpcs.sql`
+
 ## v1.221
 ### Timestamp
 - 2026-04-20 16:43 EDT

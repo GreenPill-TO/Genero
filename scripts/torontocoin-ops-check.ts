@@ -1,7 +1,7 @@
-import { getIndexerScopeStatus } from "../services/indexer/src/index.ts";
 import { getTorontoCoinOpsStatus } from "../shared/lib/contracts/torontocoinOps.ts";
+import { getIndexerScopeStatusReadModel } from "../shared/lib/indexer/statusReadModel.ts";
 import {
-  createOpsSupabaseClient,
+  createReleaseHealthSupabaseClient,
   describeSupabaseAccessError,
   loadRepoEnv,
 } from "./load-repo-env.ts";
@@ -10,7 +10,7 @@ loadRepoEnv();
 
 function collectReleaseBlockers(options: {
   opsStatus: Awaited<ReturnType<typeof getTorontoCoinOpsStatus>>;
-  indexerStatus: Awaited<ReturnType<typeof getIndexerScopeStatus>>;
+  indexerStatus: Awaited<ReturnType<typeof getIndexerScopeStatusReadModel>>;
 }) {
   const blockers: string[] = [];
   const tracking = options.indexerStatus.torontoCoinTracking;
@@ -43,10 +43,12 @@ function collectReleaseBlockers(options: {
 
 async function main() {
   const opsStatus = await getTorontoCoinOpsStatus();
-  const supabase = createOpsSupabaseClient();
-  const indexerStatus = await getIndexerScopeStatus({
+  const supabase = createReleaseHealthSupabaseClient();
+  const indexerStatus = await getIndexerScopeStatusReadModel({
     supabase,
     citySlug: "tcoin",
+    chainId: opsStatus.addresses.chainId,
+    requiredTokenAddress: opsStatus.addresses.cplTcoin,
   });
   const blockers = collectReleaseBlockers({
     opsStatus,

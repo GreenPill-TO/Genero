@@ -207,9 +207,12 @@ ALTER TABLE users DROP COLUMN IF EXISTS phone_verified;
 ```
 
 ### Database Workflows
-- `db-push-dev.yml` - Push migrations to dev environment
-- `db-push-prod.yml` - Push migrations to production
-- `pr-migrations.yml` - Validate migrations on PRs
+- `supabase-deploy-tcoin.yml` - Dry-run migrations on PRs to `dev`/`main`, and deploy migrations after merges to those branches.
+- `db-pull-env.yml` - Manually generate drift migrations from the selected TCOIN Supabase environment.
+
+TCOIN Supabase deploys use GitHub Environments `Preview – tcoin` and `Production – tcoin`, plus these secrets:
+`SUPABASE_SESSION_POOLER_TCOIN_PREVIEW`, `SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW`,
+`SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION`, and `SUPABASE_ACCESS_TOKEN_TCOIN_PRODUCTION`.
 
 Refer to `agent-context/db-workflow.md` for detailed CI/CD process.
 
@@ -250,10 +253,8 @@ Runs on all PRs and pushes to `main` or `dev` (except changes to `supabase/**` o
 **Note:** CI uses pnpm 8 for stability, while local development can use pnpm 10.2.1+ (both versions work with current dependencies).
 
 ### Database Workflows
-- `db-pull-env.yml` - Sync schema from Supabase
-- `db-push-dev.yml` - Deploy migrations to dev
-- `db-push-prod.yml` - Deploy migrations to production
-- `pr-migrations.yml` - Validate SQL syntax on PRs
+- `supabase-deploy-tcoin.yml` - Validate and deploy TCOIN Supabase migrations using branch-targeted Preview/Production databases.
+- `db-pull-env.yml` - Manually sync schema drift from the selected TCOIN Supabase database into a migration PR.
 
 ## Pull Request Guidelines
 
