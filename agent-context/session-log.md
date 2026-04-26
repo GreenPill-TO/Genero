@@ -1,3 +1,64 @@
+## v1.225
+### Timestamp
+- 2026-04-26 05:09 EDT
+
+### Objective
+- Add dedicated profile-backed `build` and `start` scripts so local Supabase production checks do not rely on remembering the env-profile wrapper command by hand.
+
+### What Changed
+- Added `build:supabase-local` and `start:supabase-local` to run `pnpm build` / `pnpm start` through `.env.local-supabase-local`.
+- Added matching `build:supabase-remote` and `start:supabase-remote` scripts for the remote profile so local/remote Supabase workflows stay symmetrical.
+- Kept the underlying split-profile env model unchanged; this is a developer-ergonomics improvement that makes the intended invocation path explicit.
+
+### Verification
+- Validation pending at commit time; requested next steps are `pnpm lint`, `pnpm test`, `pnpm build:supabase-local`, and a local production smoke test using `pnpm start:supabase-local`.
+
+### Files Edited
+- `agent-context/session-log.md`
+- `package.json`
+
+## v1.224
+### Timestamp
+- 2026-04-26 05:05 EDT
+
+### Objective
+- Fix the broken local production smoke routes for the wallet and contracts apps, install `sharp`, and verify whether the local Supabase profile file itself needed changes.
+
+### What Changed
+- Added `app/tcoin/wallet/pathname.ts` to normalise direct `/tcoin/wallet/...` paths back to the wallet app’s root-style route model so the shared shell can correctly identify public routes and preview-friendly unauthenticated routes.
+- Narrowed the wallet shell redirect in `app/tcoin/wallet/ContentLayout.tsx` so unauthenticated `/dashboard` and `/welcome` can render their intended preview/sign-in states instead of being forced back to `/`.
+- Updated the wallet navbar and nav-link components to compare normalised pathnames, keeping direct `/tcoin/wallet/...` visits consistent with the existing root-style route aliases.
+- Fixed the contracts layout/home/proposal links to target `/tcoin/contracts/...` explicitly, removing the broken relative navigation that had been generating `404` requests for `/governance`, `/registry`, and related pages.
+- Installed `sharp` as a dependency and confirmed it resolves locally, eliminating the production warning that recommended the package.
+- Confirmed the issue with the local Supabase profile was not missing variables in `.env.local-supabase-local`; the important operational detail is that local production build/start must run through the env-profile wrapper so the split profile variables are present.
+
+### Verification
+- `pnpm add sharp`
+- `node -e "require('sharp'); console.log('sharp-ok')"`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm build`
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm exec next start -p 3100`
+- Playwright smoke against `http://localhost:3100`
+  - `/tcoin/wallet` stayed on the wallet landing page and rendered the expected hero/content.
+  - `/tcoin/wallet/dashboard` rendered the unauthenticated dashboard preview instead of redirecting to `/`.
+  - `/tcoin/wallet/welcome` rendered the unauthenticated welcome/sign-in screen instead of redirecting to `/`.
+  - `/tcoin/contracts` rendered links targeting `/tcoin/contracts/...` rather than the broken top-level `/governance`-style paths.
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/contracts/layout.tsx`
+- `app/tcoin/contracts/page.tsx`
+- `app/tcoin/contracts/proposals/[id]/page.tsx`
+- `app/tcoin/wallet/ContentLayout.test.tsx`
+- `app/tcoin/wallet/ContentLayout.tsx`
+- `app/tcoin/wallet/components/navbar/NavLink.tsx`
+- `app/tcoin/wallet/components/navbar/Navbar.tsx`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/wallet/pathname.ts`
+- `package.json`
+- `pnpm-lock.yaml`
+
 ## v1.223
 ### Timestamp
 - 2026-04-21 03:22 EDT

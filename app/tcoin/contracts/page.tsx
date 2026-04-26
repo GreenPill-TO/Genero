@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useManagementContext } from "@tcoin/contracts/hooks/useManagementContext";
 import { isManagementWritesEnabled } from "@shared/lib/contracts/management/clients";
 
+const contractsBasePath = "/tcoin/contracts";
+
 export default function ContractsHomePage() {
   const { walletAddress, roles, flags, context, loading, error } = useManagementContext();
 
@@ -45,25 +47,25 @@ export default function ContractsHomePage() {
         <h2>Interface Map</h2>
         <ul>
           <li>
-            <Link href="/governance">Governance</Link> — peg proposals, charity/reserve proposals, voting, execution.
+            <Link href={`${contractsBasePath}/governance`}>Governance</Link> — peg proposals, charity/reserve proposals, voting, execution.
           </li>
           <li>
-            <Link href="/city-manager">City Manager</Link> — metadata-backed charity proposal creation.
+            <Link href={`${contractsBasePath}/city-manager`}>City Manager</Link> — metadata-backed charity proposal creation.
           </li>
           <li>
-            <Link href="/stewards">Stewards</Link> — steward nomination and verification.
+            <Link href={`${contractsBasePath}/stewards`}>Stewards</Link> — steward nomination and verification.
           </li>
           <li>
-            <Link href="/charity-operator">Charity Operator</Link> — mint accrued charity TCOIN allocation.
+            <Link href={`${contractsBasePath}/charity-operator`}>Charity Operator</Link> — mint accrued charity TCOIN allocation.
           </li>
           <li>
-            <Link href="/treasury">Treasury</Link> — rebase and governance value application.
+            <Link href={`${contractsBasePath}/treasury`}>Treasury</Link> — rebase and governance value application.
           </li>
           <li>
-            <Link href="/token-admin">Token Admin</Link> — TTC/CAD AccessControl ops and pause controls.
+            <Link href={`${contractsBasePath}/token-admin`}>Token Admin</Link> — TTC/CAD AccessControl ops and pause controls.
           </li>
           <li>
-            <Link href="/registry">Registry</Link> — version registration/promotion/rollback.
+            <Link href={`${contractsBasePath}/registry`}>Registry</Link> — version registration/promotion/rollback.
           </li>
         </ul>
       </section>

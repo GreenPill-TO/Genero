@@ -13,6 +13,7 @@ import {
 import { useModal } from "@shared/contexts/ModalContext";
 import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
 import { useUserSettings } from "@shared/hooks/useUserSettings";
+import { normalizeWalletPathname } from "@tcoin/wallet/pathname";
 import { cn } from "@shared/utils/classnames";
 import { usePathname } from "next/navigation";
 import { LuCamera, LuChevronDown, LuUser } from "react-icons/lu";
@@ -32,6 +33,7 @@ export default function Navbar({ title }: { title?: string }) {
   const lastScrollY = useRef(0);
 
   const pathname = usePathname();
+  const normalizedPathname = normalizeWalletPathname(pathname);
   const appEnvironment = (process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase();
   const showDeleteProfile = NON_PRODUCTION_ENVIRONMENTS.has(appEnvironment);
   const experienceMode = bootstrap?.preferences?.experienceMode ?? "simple";
@@ -241,7 +243,7 @@ export default function Navbar({ title }: { title?: string }) {
   };
 
   const homePageLinks = useMemo(() => {
-    if (pathname === "/")
+    if (normalizedPathname === "/")
       return (
         <>
           <a href="#features" onClick={(e) => handleSmoothScroll(e, "features")} className="hover:text-blue-500">
@@ -264,7 +266,7 @@ export default function Navbar({ title }: { title?: string }) {
         </>
       );
     return null;
-  }, [pathname]);
+  }, [normalizedPathname]);
 
   return (
     <nav
@@ -315,7 +317,7 @@ export default function Navbar({ title }: { title?: string }) {
                 <span className="hidden text-sm font-medium sm:inline">Scan</span>
               </Button>
             )}
-            {isAuthenticated && pathname !== "/dashboard" ? (
+            {isAuthenticated && normalizedPathname !== "/dashboard" ? (
               <NavLink
                 link="/dashboard"
                 title="Wallet"
