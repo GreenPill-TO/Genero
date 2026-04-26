@@ -1,3 +1,24 @@
+## v1.226
+### Timestamp
+- 2026-04-26 05:18 EDT
+
+### Objective
+- Clear the draft PR CI failure in the new TCOIN Supabase deploy workflow without dropping the requested Preview/Production environment gating.
+
+### What Changed
+- Updated `.github/workflows/supabase-deploy-tcoin.yml` so the new canonical TCOIN secret names remain first-class, but the workflow can temporarily fall back to the repo’s currently populated legacy secrets during the transition.
+- Kept the branch-targeted environment gates (`Preview – tcoin` and `Production – tcoin`) unchanged; only the secret resolution path changed.
+- Left the explicit missing-secret guard in place, but widened its message so failures now point to either the new canonical secret names or the currently supported legacy fallback names.
+
+### Verification
+- `gh pr checks 67`
+  - Result before patch: `Preview TCOIN migrations` failed because `SUPABASE_SESSION_POOLER_TCOIN_PREVIEW` and `SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW` were not configured in GitHub, while the repo still only had the older `SUPABASE_SESSION_POOLER_DEV/PROD` and shared `SUPABASE_ACCESS_TOKEN` secrets.
+- `ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/supabase-deploy-tcoin.yml\"); puts \"ok\"'`
+
+### Files Edited
+- `.github/workflows/supabase-deploy-tcoin.yml`
+- `agent-context/session-log.md`
+
 ## v1.225
 ### Timestamp
 - 2026-04-26 05:09 EDT
