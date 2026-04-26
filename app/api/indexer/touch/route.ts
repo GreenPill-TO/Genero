@@ -7,11 +7,16 @@ import { runIndexerTouch } from "@services/indexer/src";
 const DEFAULT_CITY_SLUG = "tcoin";
 
 function normaliseCitySlug(value?: string | null) {
-  return value?.trim().toLowerCase() || DEFAULT_CITY_SLUG;
+  const trimmed = value?.trim().toLowerCase();
+  if (!trimmed || trimmed === "undefined") {
+    return "";
+  }
+
+  return trimmed;
 }
 
 function getConfiguredCitySlug() {
-  return normaliseCitySlug(process.env.NEXT_PUBLIC_CITYCOIN);
+  return normaliseCitySlug(process.env.NEXT_PUBLIC_CITYCOIN) || DEFAULT_CITY_SLUG;
 }
 
 function getSafeIndexerTouchError(error: unknown) {
@@ -45,7 +50,7 @@ export async function POST(req: Request) {
     }
 
     const configuredCitySlug = getConfiguredCitySlug();
-    const requestedCitySlug = normaliseCitySlug(body.citySlug);
+    const requestedCitySlug = normaliseCitySlug(body.citySlug) || configuredCitySlug;
     if (requestedCitySlug !== configuredCitySlug) {
       return NextResponse.json(
         {

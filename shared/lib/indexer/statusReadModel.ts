@@ -22,6 +22,26 @@ type IndexerScopeStatusReadOptions = {
   requiredTokenAddress?: string | null;
 };
 
+function normaliseCitySlug(value?: string | null) {
+  const trimmed = value?.trim().toLowerCase();
+  if (!trimmed || trimmed === "undefined") {
+    return "";
+  }
+
+  return trimmed;
+}
+
+function getConfiguredCitySlug() {
+  return normaliseCitySlug(process.env.NEXT_PUBLIC_CITYCOIN) || TORONTOCOIN_RUNTIME.citySlug;
+}
+
+function getConfiguredChainId() {
+  const configuredChainId = Number(process.env.INDEXER_CHAIN_ID ?? "");
+  return Number.isFinite(configuredChainId) && configuredChainId > 0
+    ? configuredChainId
+    : TORONTOCOIN_RUNTIME.chainId;
+}
+
 function normaliseAddress(value?: string | null) {
   return value?.trim().toLowerCase() ?? "";
 }
@@ -74,8 +94,8 @@ function enrichTorontoCoinTracking(status: RpcIndexerScopeStatus): IndexerScopeS
 export async function getIndexerScopeStatusReadModel(
   options: IndexerScopeStatusReadOptions
 ): Promise<IndexerScopeStatus> {
-  const citySlug = options.citySlug?.trim().toLowerCase() || TORONTOCOIN_RUNTIME.citySlug;
-  const chainId = options.chainId ?? TORONTOCOIN_RUNTIME.chainId;
+  const citySlug = normaliseCitySlug(options.citySlug) || getConfiguredCitySlug();
+  const chainId = options.chainId ?? getConfiguredChainId();
   const requiredTokenAddress =
     options.requiredTokenAddress ??
     getTorontoCoinWalletToken({ citySlug, chainId })?.address ??

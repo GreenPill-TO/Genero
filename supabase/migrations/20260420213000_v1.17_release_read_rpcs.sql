@@ -268,7 +268,6 @@ DECLARE
   normalized_city_slug text := lower(trim(p_city_slug));
   target_scope_key text;
   generated_at timestamptz := timezone('utc', now());
-  generated_at_text text := generated_at::text;
   user_count integer := 0;
   wallet_count integer := 0;
   transaction_count integer := 0;
@@ -529,7 +528,7 @@ BEGIN
   indexer_status := public.indexer_scope_status_v1(normalized_city_slug, p_chain_id, NULL);
 
   RETURN jsonb_build_object(
-    'generatedAt', generated_at_text,
+    'generatedAt', generated_at,
     'overview', jsonb_build_object(
       'userCount', COALESCE(user_count, 0),
       'walletCount', COALESCE(wallet_count, 0),

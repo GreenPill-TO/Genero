@@ -1,3 +1,27 @@
+## v1.227
+### Timestamp
+- 2026-04-26 05:31 EDT
+
+### Objective
+- Address the first round of Copilot and Codex PR review feedback on the release-readiness branch.
+
+### What Changed
+- Updated `wallet_stats_summary_v1(...)` to return `generatedAt` as the raw `timestamptz` value instead of a Postgres text cast, so downstream clients receive a consistent ISO-8601 timestamp string.
+- Fixed `POST /api/indexer/touch` so an omitted `citySlug` now defaults to the configured runtime city rather than a hardcoded `"tcoin"` fallback.
+- Fixed `getIndexerScopeStatusReadModel(...)` so omitted `citySlug` and `chainId` default from `NEXT_PUBLIC_CITYCOIN` and `INDEXER_CHAIN_ID` before falling back to the TorontoCoin runtime constants.
+- Added focused regression coverage for the indexer touch default-city path and the indexer status read-model env-default path.
+
+### Verification
+- `pnpm test app/api/indexer/touch/route.test.ts shared/lib/indexer/statusReadModel.test.ts`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/api/indexer/touch/route.test.ts`
+- `app/api/indexer/touch/route.ts`
+- `shared/lib/indexer/statusReadModel.test.ts`
+- `shared/lib/indexer/statusReadModel.ts`
+- `supabase/migrations/20260420213000_v1.17_release_read_rpcs.sql`
+
 ## v1.226
 ### Timestamp
 - 2026-04-26 05:18 EDT

@@ -100,6 +100,26 @@ describe("POST /api/indexer/touch", () => {
     });
   });
 
+  it("defaults an omitted city scope to the configured city", async () => {
+    process.env.NEXT_PUBLIC_CITYCOIN = "othercoin";
+    h.mockIsLocalOrDevelopmentEnvironment.mockReturnValue(false);
+    h.mockGetUser.mockResolvedValue({ data: { user: { id: "auth-user-1" } }, error: null });
+    h.mockRunIndexerTouch.mockResolvedValue({
+      scopeKey: "othercoin:12345",
+      started: true,
+      skipped: false,
+      runStatus: "success",
+    });
+
+    const response = await POST(new Request("http://localhost/api/indexer/touch", { method: "POST" }));
+
+    expect(response.status).toBe(200);
+    expect(h.mockRunIndexerTouch).toHaveBeenCalledWith({
+      supabase: h.serviceRoleClient,
+      citySlug: "othercoin",
+    });
+  });
+
   it("redacts service-role configuration errors", async () => {
     h.mockIsLocalOrDevelopmentEnvironment.mockReturnValue(true);
     h.mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
