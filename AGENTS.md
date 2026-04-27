@@ -15,7 +15,7 @@ alwaysApply: true
 | **Design, then develop** | Every session both amends the design specs and implements the changes into code. |
 | **Canadian English** | House style for all prose and code. |
 | **Security first** | No plaintext secrets; use environment variables referenced by pattern in `.env.example`. |
-| **Test a lot** | Configure solidity-coverage and integration tests to catch bugs early. Use CI workflows to run tests on every pull request. Foundry’s forge coverage is wired via scripts/forge-coverage.sh; keep ≥ 90 % line coverage. |
+| **Test a lot** | Use the repo's real checks before release: frontend lint/type/build/test CI, Supabase migration validation, secret scanning, wallet preflight, and Foundry checks when touching contracts. |
 
 ---
 
@@ -37,12 +37,14 @@ docs/
 app/                     # app router
 └─ tcoin/                # This project is first going live in Toronto with TCOIN (Toronto Coin)
   ├─ sparechange         # One of the two TCOIN apps in this repo: For tipping to panhandlers
-  └─ wallet              # One of the two TCOIN apps in this repo: For general transfers
+  ├─ wallet              # One of the two TCOIN apps in this repo: For general transfers
+  └─ contracts           # TorontoCoin contract-management pages
 components/              # shared components
 hooks/                   # custom React hooks
 lib/
 public/                  # static assets to be served
 scripts/                 # helper scripts for env:sync, lint, etc
+services/                # Node service modules and worker entrypoints for indexer/onramp logic
 styles/                  # global styles
 supabase/
 ├─ sql-schema.sql        # latest sql schema (github action runs db pull on PR)
@@ -50,7 +52,6 @@ supabase/
 └─ functions/            # Supabase Edge Functions and shared Deno-safe helpers
    ├─ _shared/           # Shared auth, app scoping, RBAC, validation and domain helpers
    └─ */                 # Domain edge functions (for example user-settings, bia-service, store-operations)
-test/
 README.md                # intro to the project and this repo
 AGENTS.md                # this file
 ```
@@ -62,16 +63,18 @@ AGENTS.md                # this file
 ## 2 Coding Conventions
 
 * **Framework & Versions**
-  * Nextjs v15.3
-  * Nodejs v24
-  * Foundry (forge + cast) & Hardhat for coverage; Solidity ^0.8.30
+  * Next.js 14.2.x (App Router)
+  * Node.js 20+; CI currently runs on Node 20
+  * pnpm 10.x, as pinned in `package.json`
+  * Foundry (forge + cast) for TorontoCoin contracts; Solidity ^0.8.30
 * **Structure**
   * Add or modify files within the structure above if possible.
   * If you need to add folders then also update both AGENTS.md (this file) and README.md folder diagrams.
 * **Lint / Format**  
   * **TypeScript** → ESLint + Prettier  
   * **Solidity**   → `solhint` (or `solidity-lint`) + Prettier plugin  
-  * `pnpm lint` runs **both** (`pnpm lint:ts && pnpm lint:sol`)
+  * `pnpm lint` runs Next.js lint plus the app-facing Supabase boundary guard.
+  * Run Foundry/Solidity checks separately when touching `contracts/foundry`.
 * **Tabs / Indent**
   * Four spaces in solidity, two spaces in typescript (no hard tabs)  
 * **Env handling**
@@ -83,12 +86,12 @@ AGENTS.md                # this file
   * Run trufflehog on diff in CI workflow and full scan in nightly workflow
 * **Testing**
   * If any new logic →  Always add or modify unit tests accordingly.  
-  * Jest / Vitest for JavaScript units
+  * Vitest for JavaScript/TypeScript units
   * Foundry for Solidity (if present)
-  * Cypress for front-end e2e (if present).
+  * Browser smoke is run manually or through targeted Playwright checks when needed; there is not yet a checked-in Cypress/Playwright acceptance suite.
 * **Pull Requests**
-  * Keep pull request descriptions short, following [conventionalcommits](https://www.conventionalcommits.org/en/v1.0.0/)
-  * If any related issues are known, mention them in PR (e.g. "Isses: #10, #11")
+  * Keep pull request descriptions concise and reviewer-focused.
+  * If any related issues are known, mention them in PR (e.g. "Issues: #10, #11")
 * **Session version tags**
   * Follow SemVer (v2.0.0-alpha)
   * Major IDs ("v1.0", "v2.0") mirror new feature branches
@@ -103,7 +106,7 @@ AGENTS.md                # this file
 | **Every session** | `workflow.md` | Mandatory checklist (log, spec update(s), code, summary). |
 | **Current product specs** | `docs/engineering/*.md` | Maintain the latest technical and functional specs plus related architecture notes here. |
 | **Artefact maintenance** | Scripts inside `scripts/` | `env-sync.ts`, `spec-lint.ts`, etc. |
-| **CI Triggers** | Pushes to main and all PRs run forge test, forge coverage, pnpm lint, and hardhat size-contracts. |
+| **CI Triggers** | Frontend CI runs lint/typecheck/build/test on PRs and pushes except ignored docs/Supabase-only paths; secret scan runs on PRs and schedules; Supabase migrations dry-run on PRs and deploy on pushes to `dev`/`main` through environment gates. |
 
 Agents **must** first read and follow [agent-setup.md](https://raw.githubusercontent.com/KazanderDad/agent-context-seed-files/refs/heads/main/agent-setup.md) if mandatory artefacts are missing.
 Agents **must** read and follow `workflow.md` each time.
@@ -112,9 +115,11 @@ Agents **must** read and follow `workflow.md` each time.
 
 ## 4 Guard-rails
 
-* SQL migrations must be **idempotent & reversible** (include -- DOWN section which must revert exactly to previous schema; each DROP/ALTER should be preceded by IF EXISTS/IF NOT EXISTS..).
+* SQL migrations must be **idempotent & reversible** where practical (include rollback notes or a `-- DOWN` section; each DROP/ALTER should be preceded by IF EXISTS/IF NOT EXISTS where supported).
 * Pre-commit hook **warns** (not blocks) if ESLint and similar (e.g. in Foundry) cannot start.
 * Session log must bump version +1 for each session
 * All new external calls must use SafeERC20 / Address.functionCall and be covered in tests.
 * Agents must **never** directly modify the linked Supabase database. Only a human may run commands that target the linked database and change its state.
 * Agents must always stop and ask for explicit human permission before proposing or running any Supabase command that could change the linked database, including `supabase db push`, `supabase migration up`, `supabase db reset --linked`, `supabase link`, or any `supabase --linked` write operation.
+* This repo qualifies for the stricter multi-frontend Supabase boundary rule: app-facing wallet/sparechange flows should use typed Edge Functions, narrow RPCs, or documented server boundaries rather than broad direct browser/client table access. Existing direct-access compatibility paths should be treated as cleanup candidates unless a current engineering note explicitly allows them.
+* Deployed Next.js/Vercel runtime should not require `SUPABASE_SERVICE_ROLE_KEY`. That key belongs only in privileged Supabase Edge Functions and the external indexer/onramp worker/runtime paths that intentionally need service-role access.

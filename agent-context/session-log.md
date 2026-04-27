@@ -1,3 +1,31 @@
+## v1.230
+### Timestamp
+- 2026-04-27 15:10 EDT
+
+### Objective
+- Clean up the repo contract docs after the production-readiness work so README, AGENTS, engineering notes, and durable repo-status tracking reflect the current scripts, CI, env profiles, Supabase boundaries, and licence posture.
+
+### What Changed
+- Updated `README.md` to describe the actual Next.js/Supabase/TorontoCoin repo shape, Node/pnpm requirements, local/remote Supabase profile scripts, production build/start profile scripts, wallet/operator preflight commands, CI/database delivery flow, and deployed Next.js service-role boundary.
+- Updated `AGENTS.md` to match the real Next.js 14.2.x / Node 20 CI contract, current `pnpm lint` behaviour, Supabase migration workflow, multi-frontend Supabase boundary expectation, and service-role runtime split.
+- Added the missing MIT `LICENSE` file and updated the repo status snapshot to mark README, AGENTS, licence, CI, env/script, and artefact hygiene cleanup as closed for this pass.
+- Updated `docs/engineering/technical-spec.md` with the current framework/runtime and CI/release-check contract.
+- Removed stray local `.DS_Store` artefacts from the checkout.
+
+### Verification
+- `find . -maxdepth 3 -name '.DS_Store' -print -delete`
+- `rg -n "Preview - tcoin|Production - tcoin|Nextjs v15|Nodejs v24|Future Improvements|pnpm lint runs|forge coverage|hardhat size-contracts|Isses" README.md AGENTS.md docs/engineering agent-context/repo-status.md`
+- `git diff --check`
+- `pnpm lint`
+
+### Files Edited
+- `AGENTS.md`
+- `LICENSE`
+- `README.md`
+- `agent-context/repo-status.md`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+
 ## v1.229
 ### Timestamp
 - 2026-04-27 10:38 EDT

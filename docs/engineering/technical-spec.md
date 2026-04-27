@@ -2,9 +2,9 @@
 
 ## Stack
 
-- **Framework**: Next.js (App Router, ISR ready)
+- **Framework**: Next.js 14.2.x (App Router, ISR ready)
 - **Language**: TypeScript
-- **Package Manager**: pnpm
+- **Runtime / Package Manager**: Node.js 20+ and pnpm 10.x
 - **Styling**: TailwindCSS + Radix UI
   - Tailwind preset centralizes theme and plugins; wallet and sparechange supply app-specific configs with custom content globs.
   - Slide animations use built-in fractional distances to avoid ambiguous utility classes during builds.
@@ -16,6 +16,9 @@
   - Contract-management write helpers should stay typechecked even when they dispatch ABI methods by string name; narrow local casts are acceptable, but file-wide `ts-nocheck` markers are not.
   - Wallet-shell performance refactors must preserve the shared React Query defaults from `shared/providers/react-query-provider.tsx`, especially `refetchOnWindowFocus: false`, so focus changes do not re-fire authenticated wallet queries unexpectedly.
   - Tests covering on-demand wallet dashboard modals should mock the lazily imported modal modules directly when the assertion target is `openModal(...)`, so CI does not depend on dynamic import timing.
+- **CI / release checks**: GitHub Actions run frontend lint/typecheck/build/test, pull-request and scheduled TruffleHog scans, and branch-targeted Supabase migration dry-runs/deploys for `Preview – tcoin` and `Production – tcoin`.
+  - The dedicated Supabase workflow dry-runs migrations on PRs to `dev`/`main`, then deploys migrations on pushes to the matching branch through GitHub Environment gates.
+  - The Next.js/Vercel runtime should use publishable/authenticated Supabase clients and narrow RPCs/Edge Functions. `SUPABASE_SERVICE_ROLE_KEY` belongs in privileged Supabase Edge Functions and external worker runtimes, not the deployed Next.js shell.
 - **Documentation tooling**: Internal engineering notes may include Mermaid diagrams generated through the shared local `mermaid-chart` Codex skill, which keeps Mermaid source editable and uses local HTML previews plus browser screenshots for visual checks and image exports
 - **Authentication**: Twilio SMS OTP via API routes
   - `/api/send_otp` and `/api/verify_otp` now share one server-side Twilio Verify helper that validates E.164 phone numbers plus digit-only passcodes before any upstream request is made.
