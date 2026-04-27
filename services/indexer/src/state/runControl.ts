@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { INDEXER_COOLDOWN_SECONDS } from "../config";
 import { buildBiaScopeSummary } from "../bia";
-import type { IndexerScopeStatus, IndexerSource } from "../types";
+import type { IndexerCompletedRequestStatus, IndexerScopeStatus, IndexerSource } from "../types";
 
 export function normaliseCitySlug(citySlug: string): string {
   const value = citySlug.trim().toLowerCase();
@@ -139,7 +139,10 @@ export async function getScopeStatus(options: {
 }): Promise<IndexerScopeStatus> {
   const { supabase, scopeKey, citySlug, chainId } = options;
 
-  const [{ data: runControl, error: runControlError }, { data: checkpoints, error: checkpointsError }] =
+  const [
+    { data: runControl, error: runControlError },
+    { data: checkpoints, error: checkpointsError },
+  ] =
     await Promise.all([
       supabase
         .schema("indexer")
@@ -199,6 +202,10 @@ export async function getScopeStatus(options: {
     { data: voucherTokenRows, error: voucherTokenError },
     { data: voucherWalletRows, error: voucherWalletError },
     { data: merchantCreditRows, error: merchantCreditError },
+    { count: pendingQueueCount, error: pendingQueueCountError },
+    { data: oldestPendingQueueRows, error: oldestPendingQueueError },
+    { data: completedQueueRows, error: completedQueueError },
+    { data: runningQueueRows, error: runningQueueError },
   ] = await Promise.all([
     supabase
       .schema("indexer")
@@ -219,6 +226,35 @@ export async function getScopeStatus(options: {
       .select("merchant_wallet")
       .eq("scope_key", scopeKey)
       .eq("chain_id", chainId),
+    supabase
+      .schema("indexer")
+      .from("touch_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("scope_key", scopeKey)
+      .eq("status", "queued"),
+    supabase
+      .schema("indexer")
+      .from("touch_requests")
+      .select("requested_at")
+      .eq("scope_key", scopeKey)
+      .eq("status", "queued")
+      .order("requested_at", { ascending: true })
+      .limit(1),
+    supabase
+      .schema("indexer")
+      .from("touch_requests")
+      .select("completed_at,last_run_status,status")
+      .eq("scope_key", scopeKey)
+      .in("status", ["completed", "failed"])
+      .order("completed_at", { ascending: false })
+      .limit(1),
+    supabase
+      .schema("indexer")
+      .from("touch_requests")
+      .select("id")
+      .eq("scope_key", scopeKey)
+      .eq("status", "running")
+      .limit(1),
   ]);
 
   if (voucherTokenError) {
@@ -229,6 +265,18 @@ export async function getScopeStatus(options: {
   }
   if (merchantCreditError) {
     throw new Error(`Failed to read merchant credit summary: ${merchantCreditError.message}`);
+  }
+  if (pendingQueueCountError) {
+    throw new Error(`Failed to count queued touch requests: ${pendingQueueCountError.message}`);
+  }
+  if (oldestPendingQueueError) {
+    throw new Error(`Failed to read queued touch requests: ${oldestPendingQueueError.message}`);
+  }
+  if (completedQueueError) {
+    throw new Error(`Failed to read completed touch requests: ${completedQueueError.message}`);
+  }
+  if (runningQueueError) {
+    throw new Error(`Failed to read running touch requests: ${runningQueueError.message}`);
   }
 
   const lastVoucherBlock = (voucherWalletRows ?? []).reduce<number | null>((max, row) => {
@@ -248,6 +296,24 @@ export async function getScopeStatus(options: {
     chainId,
   });
 
+  const oldestPendingRequestedAt = oldestPendingQueueRows?.[0]?.requested_at ?? null;
+  const lastCompletedRequest = completedQueueRows?.[0];
+  const lastCompletedRequestStatus: IndexerCompletedRequestStatus | null =
+    lastCompletedRequest?.last_run_status === "success" ||
+    lastCompletedRequest?.last_run_status === "error" ||
+    lastCompletedRequest?.last_run_status === "skipped"
+      ? lastCompletedRequest.last_run_status
+      : lastCompletedRequest?.status === "failed"
+        ? "error"
+        : null;
+  const queueStale =
+    typeof oldestPendingRequestedAt === "string" &&
+    Date.parse(oldestPendingRequestedAt) <= Date.now() - 15 * 60 * 1000;
+  const queueBlocked =
+    queueStale &&
+    (runningQueueRows?.length ?? 0) === 0 &&
+    runControl?.last_status !== "running";
+
   return {
     scopeKey,
     citySlug,
@@ -263,6 +329,14 @@ export async function getScopeStatus(options: {
           updatedAt: runControl.updated_at,
         }
       : null,
+    queue: {
+      pendingRequestCount: pendingQueueCount ?? 0,
+      oldestPendingRequestedAt,
+      lastCompletedRequestAt: lastCompletedRequest?.completed_at ?? null,
+      lastCompletedRequestStatus,
+      blocked: queueBlocked,
+      stale: queueStale,
+    },
     checkpoints: (checkpoints ?? []).map((checkpoint) => ({
       source: checkpoint.source,
       lastBlock: Number(checkpoint.last_block ?? 0),

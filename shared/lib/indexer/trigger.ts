@@ -59,6 +59,7 @@ export async function triggerIndexerTouch(options?: {
     return {
       scopeKey: citySlug,
       started: false,
+      queued: false,
       skipped: true,
       reason: "client_cooldown",
     };
@@ -81,7 +82,12 @@ export async function triggerIndexerTouch(options?: {
 
   markLocalTouch(citySlug);
 
-  return body as IndexerTouchResponse;
+  const payload = body as IndexerTouchResponse;
+  return {
+    ...payload,
+    started: Boolean(payload.started ?? payload.queued),
+    queued: Boolean(payload.queued),
+  };
 }
 
 export async function fetchIndexerStatus(citySlug?: string): Promise<IndexerScopeStatus> {

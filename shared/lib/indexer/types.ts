@@ -1,4 +1,5 @@
-export type IndexerRunStatus = "idle" | "running" | "success" | "error" | "skipped";
+export type IndexerRunStatus = "idle" | "queued" | "running" | "success" | "error" | "skipped";
+export type IndexerCompletedRequestStatus = Extract<IndexerRunStatus, "success" | "error" | "skipped">;
 
 export type BiaScopeSummary = {
   activeBias: number;
@@ -25,7 +26,10 @@ export type VoucherSummary = {
 export type IndexerTouchResponse = {
   scopeKey: string;
   started: boolean;
+  queued?: boolean;
   skipped: boolean;
+  requestId?: number;
+  requestedAt?: string;
   reason?: string;
   nextEligibleAt?: string;
   runStatus?: IndexerRunStatus;
@@ -66,6 +70,14 @@ export type IndexerScopeStatus = {
     nextEligibleCompleteAt: string | null;
     updatedAt: string;
   } | null;
+  queue: {
+    pendingRequestCount: number;
+    oldestPendingRequestedAt: string | null;
+    lastCompletedRequestAt: string | null;
+    lastCompletedRequestStatus: IndexerCompletedRequestStatus | null;
+    blocked: boolean;
+    stale: boolean;
+  };
   checkpoints: Array<{
     source: "tracker" | "rpc";
     lastBlock: number;

@@ -105,7 +105,7 @@ function listFiles() {
   ];
 }
 
-const matcher = /\bsupabase\s*\.\s*(from|rpc)\s*\(/g;
+const matcher = /\bsupabase(?:\s*\.\s*schema\s*\([^)]*\))?\s*\.\s*from\s*\(/g;
 const violations = [];
 
 for (const file of listFiles()) {
@@ -122,7 +122,7 @@ for (const file of listFiles()) {
 }
 
 if (violations.length > 0) {
-  console.error("Direct Supabase DB access is not allowed in app-facing code:");
+  console.error("Direct Supabase table access is not allowed in app-facing code:");
   violations.forEach((entry) => console.error(`- ${entry}`));
   process.exit(1);
 }

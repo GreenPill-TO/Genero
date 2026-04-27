@@ -45,6 +45,14 @@ describe("GET /api/tcoin/ops/status", () => {
       artifactTimestamps: {},
     });
     h.mockGetIndexerScopeStatus.mockResolvedValue({
+      queue: {
+        pendingRequestCount: 0,
+        oldestPendingRequestedAt: null,
+        lastCompletedRequestAt: null,
+        lastCompletedRequestStatus: null,
+        blocked: false,
+        stale: false,
+      },
       torontoCoinTracking: {
         requiredTokenAddress: "0xtoken",
         cplTcoinTracked: true,

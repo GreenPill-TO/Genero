@@ -22,7 +22,7 @@ Env template references:
 | Area | Env vars | Why it matters |
 | --- | --- | --- |
 | Core Supabase runtime | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Required by browser auth, edge-function proxying, and the publishable-key wallet release health preflight. |
-| Privileged server runtime | `SUPABASE_SERVICE_ROLE_KEY` | Still required by the deployed write-capable `POST /api/indexer/touch` path and Supabase Edge Functions that mutate privileged data. Routine wallet release health, stats, indexer status, and TorontoCoin ops reads use narrower RPCs. |
+| Worker and privileged function runtime | `SUPABASE_SERVICE_ROLE_KEY` | No longer required by the deployed Next.js wallet runtime. It remains required by the external indexer touch worker (`pnpm ops:indexer:drain-touch-queue`) and Supabase Edge Functions that intentionally mutate privileged data. |
 | App scoping | `NEXT_PUBLIC_CITYCOIN=tcoin`, `NEXT_PUBLIC_APP_NAME=wallet`, `NEXT_PUBLIC_APP_ENVIRONMENT=staging|production` | Controls app-instance scoping, auth bootstrap behaviour, and production-versus-local auth rules. |
 | Public wallet URLing | `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `USER_SETTINGS_ALLOWED_ORIGINS` | Required for pay-link generation, edge CORS, and public callback/origin checks. |
 | Wallet user experience | `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL`, `NEXT_PUBLIC_TCOIN_BANNER_DARK_URL` | Keeps public landing and authenticated wallet flows coherent when exchange-rate or explorer data is needed. |
@@ -84,7 +84,7 @@ pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm
 
 Expected outcome:
 
-- The selected `pnpm ops:wallet:preflight:*` profile confirms the required wallet env is present. The deployment profile still requires `SUPABASE_SERVICE_ROLE_KEY` while the deployed write-capable indexer touch path remains in Next.js. The same check confirms `public.payment_request_links` and `public.cleanup_payment_request_links()` are present, the pay-link cleanup cron schedule and command match the expected cleanup job, and tcoin indexer health aggregates are readable through `public.wallet_release_health_v1(...)`.
+- The selected `pnpm ops:wallet:preflight:*` profile confirms the required wallet env is present without requiring `SUPABASE_SERVICE_ROLE_KEY` in the deployed Next.js shell. The same check confirms `public.payment_request_links` and `public.cleanup_payment_request_links()` are present, the pay-link cleanup cron schedule and command match the expected cleanup job, and tcoin indexer health aggregates are readable through `public.wallet_release_health_v1(...)`, including queue health for async indexer touches.
 - `lint`, `test`, and `build` all pass.
 - `pnpm ops:torontocoin` shows healthy ownership, reserve-route, pool summaries, and a non-null indexer payload.
 - `pnpm ops:torontocoin:pools` reports the tracked pools as healthy and visible.
@@ -96,10 +96,11 @@ Operational note:
 - `pnpm ops:torontocoin`, `pnpm ops:torontocoin:pools`, and `pnpm ops:torontocoin:acceptance` auto-load `.env.local` through Next's env loader.
 - `pnpm ops:torontocoin` and `pnpm ops:torontocoin:pools` use the publishable-key `public.indexer_scope_status_v1(...)` RPC for indexer visibility rather than direct service-role table reads.
 - `/api/tcoin/stats/summary` uses authenticated request-scoped access to `public.wallet_stats_summary_v1(...)` rather than a service-role aggregation query.
-- `POST /api/indexer/touch` is the remaining deployed Next.js service-role indexer path. It is scoped to the configured city, requires an authenticated user outside local/development, preserves the global cooldown, and should be replaced by a worker, scheduler, or narrower approved mutation boundary before removing `SUPABASE_SERVICE_ROLE_KEY` from deployment preflight.
+- `POST /api/indexer/touch` now queues async work through `public.request_indexer_touch_v1(...)` and returns `202` for accepted queue inserts or `200` for cooldown/dedupe skips. The actual indexer execution now lives behind `pnpm ops:indexer:drain-touch-queue`, which is the remaining Node worker runtime that still needs `SUPABASE_SERVICE_ROLE_KEY`.
 - If wallet preflight reports that `public.wallet_release_health_v1(...)` is missing from the target schema cache, apply the corresponding migration to that Supabase project and reload PostgREST before repeating the profile check.
 - If TorontoCoin ops checks report that `public.indexer_scope_status_v1(...)` is missing from the target schema cache, apply the release read RPC migration to that Supabase project and reload PostgREST before repeating the check.
 - If any command reports `Invalid schema: indexer` or `Invalid schema: chain_data`, the target Supabase Data API is missing required exposed schemas for the wallet's indexer features.
+- If queue-backed indexer health reports `blocked` or `stale`, treat that as a release blocker until the worker or scheduler is running again and the pending queue drains.
 - Treat any reported `releaseBlockers` output as a hard stop for go-live.
 
 ### 3. Confirm the target database exposes the required wallet contracts

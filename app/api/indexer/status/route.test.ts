@@ -45,6 +45,14 @@ describe("GET /api/indexer/status", () => {
         nextEligibleCompleteAt: "2026-03-10T12:06:00.000Z",
         updatedAt: "2026-03-10T12:01:00.000Z",
       },
+      queue: {
+        pendingRequestCount: 1,
+        oldestPendingRequestedAt: "2026-03-10T12:02:00.000Z",
+        lastCompletedRequestAt: "2026-03-10T12:01:00.000Z",
+        lastCompletedRequestStatus: "success",
+        blocked: false,
+        stale: false,
+      },
       checkpoints: [{ source: "rpc", lastBlock: 123, lastTxHash: null, updatedAt: "2026-03-10T12:01:00.000Z" }],
       activePoolCount: 2,
       activeTokenCount: 3,
@@ -80,6 +88,7 @@ describe("GET /api/indexer/status", () => {
     expect(body.biaSummary.unmappedPools).toBe(1);
     expect(body.biaSummary.lastActivityByBia).toHaveLength(1);
     expect(body.voucherSummary.trackedVoucherTokens).toBe(3);
+    expect(body.queue.pendingRequestCount).toBe(1);
     expect(h.mockGetIndexerScopeStatus).toHaveBeenCalledWith(
       expect.objectContaining({ citySlug: "tcoin" })
     );

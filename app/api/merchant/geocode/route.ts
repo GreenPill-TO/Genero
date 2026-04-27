@@ -1,10 +1,48 @@
 import { NextResponse } from "next/server";
-import { resolveMerchantSignupContext } from "@shared/lib/merchantSignup/server";
+import { isLocalOrDevelopmentEnvironment } from "@shared/lib/bia/apiAuth";
+import { resolveCitySlug } from "@shared/lib/bia/server";
+import { createClient } from "@shared/lib/supabase/server";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 
+function getSafeGeocodeError(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unexpected geocoding error";
+
+  if (message === "Unauthorized") {
+    return {
+      status: 401,
+      error: "Unauthorized",
+    };
+  }
+
+  if (
+    message.includes("NEXT_PUBLIC_SUPABASE_URL") ||
+    message.includes("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+  ) {
+    return {
+      status: 500,
+      error: "Merchant geocoding is not configured for this environment.",
+    };
+  }
+
+  return {
+    status: 500,
+    error: "Unexpected geocoding error",
+  };
+}
+
 export async function POST(req: Request) {
   try {
+    const supabase = createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if ((userError || !user) && !isLocalOrDevelopmentEnvironment()) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await req.json().catch(() => ({}))) as {
       address?: string;
       citySlug?: string;
@@ -16,7 +54,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "address is required." }, { status: 400 });
     }
 
-    const { citySlug } = await resolveMerchantSignupContext(body.citySlug);
+    const citySlug = resolveCitySlug(body.citySlug);
 
     const countryCode = (body.countryCode ?? "ca").trim().toLowerCase();
     const params = new URLSearchParams({
@@ -65,8 +103,7 @@ export async function POST(req: Request) {
       placeId: typeof first.place_id === "number" ? first.place_id : null,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected geocoding error";
-    const status = message === "Unauthorized" ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    const safeError = getSafeGeocodeError(error);
+    return NextResponse.json({ error: safeError.error }, { status: safeError.status });
   }
 }
