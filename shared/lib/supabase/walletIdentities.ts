@@ -3,12 +3,17 @@ import { createClient } from "@shared/lib/supabase/client";
 type SupabaseClientLike = ReturnType<typeof createClient>;
 
 export type WalletIdentityRecord = {
+  wallet_row_id: number | null;
   user_id: number;
+  namespace: string | null;
   public_key: string;
   wallet_key_id: string | null;
   wallet_ready: boolean;
   has_encrypted_share: boolean;
 };
+
+const WALLET_IDENTITY_SELECT =
+  "wallet_row_id,user_id,namespace,public_key,wallet_key_id,wallet_ready,has_encrypted_share";
 
 function getClient(client?: SupabaseClientLike) {
   return client ?? createClient();
@@ -39,7 +44,9 @@ function normaliseWalletRow(row: Record<string, unknown>): WalletIdentityRecord 
   }
 
   return {
+    wallet_row_id: normaliseUserId(row.wallet_row_id),
     user_id: userId,
+    namespace: typeof row.namespace === "string" ? row.namespace : null,
     public_key: publicKey,
     wallet_key_id: typeof row.wallet_key_id === "string" ? row.wallet_key_id : null,
     wallet_ready: row.wallet_ready === true,
@@ -54,8 +61,9 @@ export async function listWalletIdentitiesForUser(
   const supabase = getClient(client);
   const { data, error } = await supabase
     .from("v_wallet_identities_v1")
-    .select("user_id,public_key,wallet_key_id,wallet_ready,has_encrypted_share")
-    .eq("user_id", userId);
+    .select(WALLET_IDENTITY_SELECT)
+    .eq("user_id", userId)
+    .order("wallet_row_id", { ascending: false });
 
   if (error) {
     throw error;
@@ -64,6 +72,27 @@ export async function listWalletIdentitiesForUser(
   return (data ?? [])
     .map((row) => normaliseWalletRow(row as Record<string, unknown>))
     .filter((row): row is WalletIdentityRecord => row != null);
+}
+
+export async function getPrimaryEvmWalletIdentityForUser(
+  userId: number,
+  client?: SupabaseClientLike
+): Promise<WalletIdentityRecord | null> {
+  const supabase = getClient(client);
+  const { data, error } = await supabase
+    .from("v_wallet_identities_v1")
+    .select(WALLET_IDENTITY_SELECT)
+    .eq("user_id", userId)
+    .eq("namespace", "EVM")
+    .order("wallet_row_id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return normaliseWalletRow((data ?? {}) as Record<string, unknown>);
 }
 
 export async function listWalletPublicKeysForUser(
@@ -85,7 +114,7 @@ export async function mapPrimaryWalletsByUserIds(
   const supabase = getClient(client);
   const { data, error } = await supabase
     .from("v_wallet_identities_v1")
-    .select("user_id,public_key,wallet_key_id,wallet_ready,has_encrypted_share")
+    .select(WALLET_IDENTITY_SELECT)
     .in("user_id", userIds);
 
   if (error) {
@@ -129,7 +158,7 @@ export async function mapUserIdsByWallets(
   const supabase = getClient(client);
   const { data, error } = await supabase
     .from("v_wallet_identities_v1")
-    .select("user_id,public_key,wallet_key_id,wallet_ready,has_encrypted_share")
+    .select(WALLET_IDENTITY_SELECT)
     .in("public_key", normalisedWallets);
 
   if (error) {

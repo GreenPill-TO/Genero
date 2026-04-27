@@ -1,3 +1,35 @@
+# v1.232
+### Timestamp
+- 2026-04-27 16:49 EDT
+
+### Objective
+- Tighten the Supabase boundary by reducing the clearest browser-side direct table read and documenting the remaining app/shared exceptions.
+
+### What Changed
+- Added `docs/engineering/supabase-boundary-contract.md` to define preferred Supabase access patterns, storage treatment, documented exceptions, and future cleanup directions.
+- Expanded `scripts/check-no-direct-supabase-db.mjs` so the lint boundary guard scans shared runtime helpers and uses reasoned exception entries instead of a bare path allowlist.
+- Updated the contracts management context hook to resolve the current wallet through `v_wallet_identities_v1` via `listWalletIdentitiesForUser(...)` instead of reading `wallet_list` directly from browser page code.
+- Updated README, AGENTS, technical spec, repo status, and todo tracking to reflect the boundary contract and remaining direct-access cleanup candidates.
+
+### Verification
+- `node scripts/check-no-direct-supabase-db.mjs`
+- Repo-wide direct-access scan excluding documented exception paths
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build:supabase-local`
+- `pnpm smoke:e2e:supabase-local`
+
+### Files Edited
+- `AGENTS.md`
+- `README.md`
+- `agent-context/repo-status.md`
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `app/tcoin/contracts/hooks/useManagementContext.ts`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `scripts/check-no-direct-supabase-db.mjs`
+
 ## v1.231
 ### Timestamp
 - 2026-04-27 15:42 EDT

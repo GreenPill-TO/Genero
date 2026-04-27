@@ -119,7 +119,7 @@ Agents must never directly mutate a linked Supabase database. Remote schema chan
 
 ## Supabase Boundary
 
-Wallet and SpareChange app-facing data flows should prefer typed Supabase Edge Functions, narrow RPCs, or documented server boundaries instead of broad browser/client table access. Existing direct access paths are either compatibility surfaces or cleanup candidates; new app-facing direct table reads/writes need an explicit reason in the engineering docs.
+Wallet, SpareChange, and contracts app-facing data flows should prefer typed Supabase Edge Functions, narrow RPCs, read-model helpers, or documented server boundaries instead of broad browser/client table access. The detailed boundary contract and current exception list live in `docs/engineering/supabase-boundary-contract.md`; new app-facing direct table reads/writes need an explicit reason there and in the lint guard.
 
 ## Contribution
 
