@@ -1,3 +1,31 @@
+# v1.233
+### Timestamp
+- 2026-04-27 18:55 EDT
+
+### Objective
+- Address PR 69 Copilot review comments around deterministic wallet identity selection, local smoke ergonomics, and pnpm setup clarity.
+
+### What Changed
+- Added explicit `user_id`, `wallet_ready`, and `wallet_row_id` ordering to `mapPrimaryWalletsByUserIds(...)` so primary wallet selection is stable when users have multiple identities.
+- Added `scripts/run-smoke-e2e.mjs` so `pnpm smoke:e2e` builds automatically when it starts a local production server, while `SMOKE_BASE_URL` skips the local build and `SMOKE_SKIP_BUILD=1` lets profile scripts avoid a duplicate build.
+- Documented that frontend CI intentionally lets `pnpm/action-setup` read the pinned `packageManager` value from `package.json` instead of duplicating the version in workflow YAML.
+
+### Verification
+- YAML parse check for `.github/workflows/ci-frontend.yml`
+- `git diff --check`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm smoke:e2e:supabase-local`
+
+### Files Edited
+- `.github/workflows/ci-frontend.yml`
+- `README.md`
+- `agent-context/session-log.md`
+- `docs/engineering/testing-ci-contract.md`
+- `package.json`
+- `scripts/run-smoke-e2e.mjs`
+- `shared/lib/supabase/walletIdentities.ts`
+
 # v1.232
 ### Timestamp
 - 2026-04-27 16:49 EDT

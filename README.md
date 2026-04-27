@@ -55,7 +55,7 @@ Open `http://localhost:3000` in your browser. Next.js will serve the app configu
 - `pnpm start` – start the production server
 - `pnpm start:supabase-local` – start the production server with the local-Supabase profile loaded
 - `pnpm start:supabase-remote` – start the production server with the remote-Supabase profile loaded
-- `pnpm smoke:e2e` – run the Playwright smoke harness against `SMOKE_BASE_URL` or a local production server
+- `pnpm smoke:e2e` – run the Playwright smoke harness against `SMOKE_BASE_URL` or build and start a local production server
 - `pnpm smoke:e2e:supabase-local` – build with the local-Supabase profile and smoke stable public/preview-safe routes in Chromium
 - `pnpm supabase:start:local` – start the local Supabase stack for this repo and patch local GoTrue mailer host handling
 - `pnpm lint` – run Next.js lint plus the app-facing Supabase boundary guard

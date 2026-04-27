@@ -32,7 +32,7 @@ The base `pnpm ops:wallet:preflight` command intentionally exits with profile gu
 
 ## Browser smoke harness
 
-The checked-in Playwright smoke harness is local-first and validates stable unauthenticated or preview-safe production routes in Chromium. It is not a required PR gate yet.
+The checked-in Playwright smoke harness is local-first and validates stable unauthenticated or preview-safe production routes in Chromium. It is not a required PR gate yet. `pnpm smoke:e2e` targets `SMOKE_BASE_URL` when set; otherwise it builds and starts a local production server before running the route checks.
 
 First-time local setup:
 

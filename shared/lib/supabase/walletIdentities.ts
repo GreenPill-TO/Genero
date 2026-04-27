@@ -115,7 +115,10 @@ export async function mapPrimaryWalletsByUserIds(
   const { data, error } = await supabase
     .from("v_wallet_identities_v1")
     .select(WALLET_IDENTITY_SELECT)
-    .in("user_id", userIds);
+    .in("user_id", userIds)
+    .order("user_id", { ascending: true })
+    .order("wallet_ready", { ascending: false })
+    .order("wallet_row_id", { ascending: false, nullsFirst: false });
 
   if (error) {
     throw error;
