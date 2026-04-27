@@ -21,6 +21,7 @@
     "ops:wallet:preflight:supabase-local": "tsx scripts/wallet-release-preflight.ts --profile=supabase-local",
     "ops:wallet:preflight:supabase-remote": "tsx scripts/wallet-release-preflight.ts --profile=supabase-remote",
     "ops:wallet:preflight:deployment": "tsx scripts/wallet-release-preflight.ts --profile=deployment",
+    "ops:indexer:drain-touch-queue": "tsx scripts/indexer-touch-worker.ts",
     "ops:torontocoin": "tsx scripts/torontocoin-ops-check.ts",
     "ops:torontocoin:pools": "tsx scripts/torontocoin-pool-compatibility-check.ts",
     "ops:torontocoin:acceptance": "tsx scripts/torontocoin-pool-acceptance.ts",

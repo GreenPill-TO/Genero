@@ -29,7 +29,7 @@ The script prints:
 Operational notes:
 
 - `pnpm ops:torontocoin` auto-loads `.env.local` through Next's env loader.
-- It requires `NEXT_PUBLIC_SUPABASE_URL` plus `SUPABASE_SERVICE_ROLE_KEY` for the indexer-backed checks.
+- It requires `NEXT_PUBLIC_SUPABASE_URL` plus `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the indexer-backed checks.
 - If it reports `Invalid schema: indexer` or `Invalid schema: chain_data`, the target Supabase Data API is not exposing the required indexer schemas.
 
 Run the focused compatibility matrix:

@@ -1,6 +1,6 @@
 import type { Address } from "viem";
 
-export type IndexerRunStatus = "idle" | "running" | "success" | "error" | "skipped";
+export type IndexerRunStatus = "idle" | "queued" | "running" | "success" | "error" | "skipped";
 export type IndexerSource = "tracker" | "rpc";
 export type ContractKey =
   | "TCOIN"
@@ -115,6 +115,14 @@ export type IndexerScopeStatus = {
     nextEligibleCompleteAt: string | null;
     updatedAt: string;
   } | null;
+  queue: {
+    pendingRequestCount: number;
+    oldestPendingRequestedAt: string | null;
+    lastCompletedRequestAt: string | null;
+    lastCompletedRequestStatus: Exclude<IndexerRunStatus, "idle"> | null;
+    blocked: boolean;
+    stale: boolean;
+  };
   checkpoints: Array<{
     source: IndexerSource;
     lastBlock: number;
@@ -142,7 +150,10 @@ export type IndexerScopeStatus = {
 export type IndexerTouchResult = {
   scopeKey: string;
   started: boolean;
+  queued?: boolean;
   skipped: boolean;
+  requestId?: number;
+  requestedAt?: string;
   reason?: string;
   nextEligibleAt?: string;
   runStatus?: IndexerRunStatus;

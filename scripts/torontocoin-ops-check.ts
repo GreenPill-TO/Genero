@@ -20,6 +20,10 @@ function collectReleaseBlockers(options: {
     return blockers;
   }
 
+  if (options.indexerStatus.queue.blocked || options.indexerStatus.queue.stale) {
+    blockers.push("Indexer touch queue is stale or blocked for the tcoin scope.");
+  }
+
   if (!tracking.cplTcoinTracked) {
     blockers.push("Indexer is not tracking the required cplTCOIN token.");
   }
@@ -70,6 +74,8 @@ async function main() {
     `Indexer cplTCOIN tracked: ${String(
       indexerStatus.torontoCoinTracking?.cplTcoinTracked ?? false
     )}`,
+    `Indexer queue pending: ${indexerStatus.queue.pendingRequestCount}`,
+    `Indexer queue blocked: ${String(indexerStatus.queue.blocked)}`,
     ...opsStatus.pools.map((pool) => {
       const trackedPool = indexerStatus?.torontoCoinTracking?.trackedPools.find(
         (entry) => entry.poolId.toLowerCase() === pool.poolId.toLowerCase()

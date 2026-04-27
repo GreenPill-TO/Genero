@@ -1,3 +1,68 @@
+## v1.228
+### Timestamp
+- 2026-04-26 18:12 EDT
+
+### Objective
+- Remove the deployed Next.js dependency on `SUPABASE_SERVICE_ROLE_KEY`, move indexer touch onto an async queue plus one-shot worker boundary, and close the preflight/docs gap around the new runtime split.
+
+### What Changed
+- Added local-first Supabase migration `20260426143000_v1.18_indexer_touch_queue.sql`, which creates `indexer.touch_requests`, adds `public.request_indexer_touch_v1(...)`, `indexer.claim_touch_request_v1(...)`, and `indexer.complete_touch_request_v1(...)`, and extends `public.indexer_scope_status_v1(...)` plus `public.wallet_release_health_v1(...)` with queue-safe health fields.
+- Reworked `POST /api/indexer/touch` to authenticate with the request-scoped server client, enforce the configured city boundary, and queue work through the new public RPC instead of constructing a service-role client or running the indexer inline.
+- Added the Node-safe queue worker path `pnpm ops:indexer:drain-touch-queue`, including a schema-scoped claim/complete helper and a split service-role core helper so standalone scripts can still create a privileged client without weakening the existing `server-only` guard for Next code.
+- Updated the merchant geocode route to use request-scoped auth plus `resolveCitySlug(...)` directly, removing the last deployed Next route that depended on `resolveApiAuthContext()` and its service-role lookup path.
+- Updated wallet preflight, TorontoCoin ops scripts, and the release docs so the deployed Next.js shell no longer requires `SUPABASE_SERVICE_ROLE_KEY`, while the worker and privileged Edge Functions still do. Queue `blocked` or `stale` health now surfaces as an indexer-release blocker.
+- Added focused regression coverage for queue-backed indexer touch, the one-shot worker, the merchant geocode auth boundary, and the queued client trigger semantics.
+
+### Verification
+- `pnpm test app/api/indexer/touch/route.test.ts app/api/merchant/geocode/route.test.ts services/indexer/src/touchQueue.test.ts shared/lib/indexer/trigger.test.ts`
+- `pnpm test`
+- `pnpm lint`
+- `pnpm build:supabase-local`
+- `pnpm exec tsc --noEmit --pretty false`
+- `git diff --check`
+- `pnpm supabase:start:local`
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -v ON_ERROR_STOP=1 -f supabase/migrations/20260426143000_v1.18_indexer_touch_queue.sql`
+- `psql postgresql://postgres:postgres@127.0.0.1:55422/postgres -c "notify pgrst, 'reload schema';"`
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm ops:wallet:preflight:supabase-local`
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- env -u SUPABASE_SERVICE_ROLE_KEY pnpm ops:wallet:preflight:deployment`
+- Local queue-worker smoke:
+  - reset stale local `indexer.run_control` state
+  - `select public.request_indexer_touch_v1('tcoin', 42220, 'manual-validation');` returned a real queued request
+  - `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm ops:indexer:drain-touch-queue` claimed and completed request `1`
+  - local `indexer.touch_requests` shows `status=completed` with `last_run_status=skipped`
+- `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm ops:torontocoin`
+  - still reports expected local data/indexer blockers around missing tracked pools and `cplTCOIN` visibility; not caused by this refactor
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `app/api/indexer/status/route.test.ts`
+- `app/api/indexer/touch/route.test.ts`
+- `app/api/indexer/touch/route.ts`
+- `app/api/merchant/geocode/route.test.ts`
+- `app/api/merchant/geocode/route.ts`
+- `app/api/tcoin/ops/status/route.test.ts`
+- `docs/engineering/functional-spec.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/torontocoin-ops-runbook.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `package.json`
+- `scripts/check-no-direct-supabase-db.mjs`
+- `scripts/indexer-touch-worker.ts`
+- `scripts/torontocoin-ops-check.ts`
+- `scripts/torontocoin-pool-compatibility-check.ts`
+- `scripts/wallet-release-preflight.ts`
+- `services/indexer/src/state/runControl.ts`
+- `services/indexer/src/touchQueue.test.ts`
+- `services/indexer/src/touchQueue.ts`
+- `services/indexer/src/types.ts`
+- `shared/lib/indexer/trigger.test.ts`
+- `shared/lib/indexer/trigger.ts`
+- `shared/lib/indexer/types.ts`
+- `shared/lib/supabase/serviceRole.ts`
+- `shared/lib/supabase/serviceRoleCore.ts`
+- `supabase/migrations/20260426143000_v1.18_indexer_touch_queue.sql`
+
 ## v1.227
 ### Timestamp
 - 2026-04-26 05:31 EDT

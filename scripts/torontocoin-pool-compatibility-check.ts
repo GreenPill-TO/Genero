@@ -54,8 +54,13 @@ async function main() {
     return errors;
   });
 
+  if (indexerStatus.queue.blocked || indexerStatus.queue.stale) {
+    blockers.push("Indexer touch queue is stale or blocked for the tcoin scope.");
+  }
+
   const summary = [
     "TorontoCoin pool compatibility",
+    `Indexer queue pending=${indexerStatus.queue.pendingRequestCount} blocked=${indexerStatus.queue.blocked ? "yes" : "no"}`,
     ...poolSummaries.map(
       (pool) =>
         `${pool.name}: registered=${pool.registered ? "yes" : "no"} active=${pool.active ? "yes" : "no"} indexed=${pool.indexed ? "yes" : "no"} preview=${pool.previewHealthy ? "ok" : "fail"}`

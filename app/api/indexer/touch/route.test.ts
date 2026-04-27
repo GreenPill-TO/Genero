@@ -3,10 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
-  mockCreateServiceRoleClient: vi.fn(),
+  mockRpc: vi.fn(),
   mockIsLocalOrDevelopmentEnvironment: vi.fn(),
-  mockRunIndexerTouch: vi.fn(),
-  serviceRoleClient: { from: vi.fn() },
 }));
 
 vi.mock("@shared/lib/supabase/server", () => ({
@@ -14,19 +12,12 @@ vi.mock("@shared/lib/supabase/server", () => ({
     auth: {
       getUser: h.mockGetUser,
     },
+    rpc: h.mockRpc,
   }),
-}));
-
-vi.mock("@shared/lib/supabase/serviceRole", () => ({
-  createServiceRoleClient: h.mockCreateServiceRoleClient,
 }));
 
 vi.mock("@shared/lib/bia/apiAuth", () => ({
   isLocalOrDevelopmentEnvironment: h.mockIsLocalOrDevelopmentEnvironment,
-}));
-
-vi.mock("@services/indexer/src", () => ({
-  runIndexerTouch: h.mockRunIndexerTouch,
 }));
 
 import { POST } from "./route";
@@ -34,11 +25,10 @@ import { POST } from "./route";
 describe("POST /api/indexer/touch", () => {
   beforeEach(() => {
     h.mockGetUser.mockReset();
-    h.mockCreateServiceRoleClient.mockReset();
+    h.mockRpc.mockReset();
     h.mockIsLocalOrDevelopmentEnvironment.mockReset();
-    h.mockRunIndexerTouch.mockReset();
-    h.mockCreateServiceRoleClient.mockReturnValue(h.serviceRoleClient);
     process.env.NEXT_PUBLIC_CITYCOIN = "tcoin";
+    process.env.INDEXER_CHAIN_ID = "42220";
   });
 
   it("requires an authenticated user outside local/development environments", async () => {
@@ -49,8 +39,7 @@ describe("POST /api/indexer/touch", () => {
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({ error: "Unauthorized" });
-    expect(h.mockCreateServiceRoleClient).not.toHaveBeenCalled();
-    expect(h.mockRunIndexerTouch).not.toHaveBeenCalled();
+    expect(h.mockRpc).not.toHaveBeenCalled();
   });
 
   it("rejects city scopes other than the configured city", async () => {
@@ -68,18 +57,22 @@ describe("POST /api/indexer/touch", () => {
     await expect(response.json()).resolves.toMatchObject({
       error: 'Indexer touch only supports the configured city scope "tcoin".',
     });
-    expect(h.mockCreateServiceRoleClient).not.toHaveBeenCalled();
-    expect(h.mockRunIndexerTouch).not.toHaveBeenCalled();
+    expect(h.mockRpc).not.toHaveBeenCalled();
   });
 
-  it("runs the service-role touch only for the configured city scope", async () => {
+  it("queues an accepted request through the public RPC", async () => {
     h.mockIsLocalOrDevelopmentEnvironment.mockReturnValue(false);
     h.mockGetUser.mockResolvedValue({ data: { user: { id: "auth-user-1" } }, error: null });
-    h.mockRunIndexerTouch.mockResolvedValue({
-      scopeKey: "tcoin:42220",
-      started: true,
-      skipped: false,
-      runStatus: "success",
+    h.mockRpc.mockResolvedValue({
+      data: {
+        scopeKey: "tcoin:42220",
+        runStatus: "queued",
+        queued: true,
+        skipped: false,
+        requestId: 12,
+        requestedAt: "2026-04-26T12:00:00.000Z",
+      },
+      error: null,
     });
 
     const response = await POST(
@@ -89,43 +82,58 @@ describe("POST /api/indexer/touch", () => {
       })
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     await expect(response.json()).resolves.toMatchObject({
       scopeKey: "tcoin:42220",
-      runStatus: "success",
+      started: true,
+      queued: true,
+      skipped: false,
+      runStatus: "queued",
+      requestId: 12,
     });
-    expect(h.mockRunIndexerTouch).toHaveBeenCalledWith({
-      supabase: h.serviceRoleClient,
-      citySlug: "tcoin",
+    expect(h.mockRpc).toHaveBeenCalledWith("request_indexer_touch_v1", {
+      p_city_slug: "tcoin",
+      p_chain_id: 42220,
+      p_source: "next-api",
     });
   });
 
-  it("defaults an omitted city scope to the configured city", async () => {
-    process.env.NEXT_PUBLIC_CITYCOIN = "othercoin";
+  it("returns skipped queue metadata when a request is already queued", async () => {
     h.mockIsLocalOrDevelopmentEnvironment.mockReturnValue(false);
     h.mockGetUser.mockResolvedValue({ data: { user: { id: "auth-user-1" } }, error: null });
-    h.mockRunIndexerTouch.mockResolvedValue({
-      scopeKey: "othercoin:12345",
-      started: true,
-      skipped: false,
-      runStatus: "success",
+    h.mockRpc.mockResolvedValue({
+      data: {
+        scopeKey: "othercoin:12345",
+        runStatus: "queued",
+        queued: false,
+        skipped: true,
+        reason: "already_queued",
+        requestId: 42,
+        requestedAt: "2026-04-26T12:01:00.000Z",
+      },
+      error: null,
     });
+    process.env.NEXT_PUBLIC_CITYCOIN = "othercoin";
+    process.env.INDEXER_CHAIN_ID = "12345";
 
     const response = await POST(new Request("http://localhost/api/indexer/touch", { method: "POST" }));
 
     expect(response.status).toBe(200);
-    expect(h.mockRunIndexerTouch).toHaveBeenCalledWith({
-      supabase: h.serviceRoleClient,
-      citySlug: "othercoin",
+    await expect(response.json()).resolves.toMatchObject({
+      scopeKey: "othercoin:12345",
+      started: false,
+      queued: false,
+      skipped: true,
+      reason: "already_queued",
+      runStatus: "queued",
+      requestId: 42,
     });
   });
 
-  it("redacts service-role configuration errors", async () => {
+  it("redacts Supabase client configuration errors", async () => {
     h.mockIsLocalOrDevelopmentEnvironment.mockReturnValue(true);
     h.mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
-    h.mockCreateServiceRoleClient.mockImplementation(() => {
-      throw new Error("Missing required env var SUPABASE_SERVICE_ROLE_KEY");
-    });
+    h.mockRpc.mockRejectedValue(new Error("Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"));
 
     const response = await POST(new Request("http://localhost/api/indexer/touch", { method: "POST" }));
 

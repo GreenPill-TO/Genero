@@ -41,6 +41,14 @@ type WalletReleaseHealth = {
     activeTokenCount?: number;
     cplTcoinTracked?: boolean;
     requiredTokenTracked?: boolean | null;
+    queue?: {
+      pendingRequestCount?: number;
+      oldestPendingRequestedAt?: string | null;
+      lastCompletedRequestAt?: string | null;
+      lastCompletedRequestStatus?: string | null;
+      blocked?: boolean;
+      stale?: boolean;
+    };
     voucherSummary?: {
       trackedVoucherTokens?: number;
       walletsWithVoucherBalances?: number;
@@ -255,6 +263,12 @@ function addHealthFindings(findings: Finding[], health: WalletReleaseHealth) {
   if (!indexer?.lastCompletedAt) {
     addFinding(findings, "blocker", "Indexer run control has no successful completion timestamp.");
   }
+  if (indexer?.queue?.blocked) {
+    addFinding(findings, "blocker", "Indexer touch queue is blocked for the tcoin scope.");
+  }
+  if (indexer?.queue?.stale) {
+    addFinding(findings, "blocker", "Indexer touch queue is stale for the tcoin scope.");
+  }
   if ((indexer?.activePoolCount ?? 0) <= 0) {
     addFinding(findings, "blocker", "Indexer reports zero active tracked pools for tcoin.");
   }
@@ -304,24 +318,12 @@ async function main() {
     "USER_SETTINGS_ALLOWED_ORIGINS",
   ];
 
-  if (profile === "deployment") {
-    requiredEnv.push("SUPABASE_SERVICE_ROLE_KEY");
-  }
-
   const missingRequiredEnv = getMissingEnv(requiredEnv);
   if (missingRequiredEnv.length > 0) {
     addFinding(
       findings,
       "blocker",
       `Missing required wallet release env for profile "${profile}": ${missingRequiredEnv.join(", ")}.`
-    );
-  }
-
-  if (profile !== "deployment" && getMissingEnv(["SUPABASE_SERVICE_ROLE_KEY"]).length > 0) {
-    addFinding(
-      findings,
-      "warning",
-      "SUPABASE_SERVICE_ROLE_KEY is not required for this read-only preflight profile, but the deployed Next.js runtime still needs it for POST /api/indexer/touch until that write path moves to a worker or scheduler."
     );
   }
 
@@ -453,6 +455,7 @@ async function main() {
           activeTokenCount: health.indexer?.activeTokenCount ?? 0,
           cplTcoinTracked: health.indexer?.cplTcoinTracked ?? false,
           requiredTokenTracked: health.indexer?.requiredTokenTracked ?? null,
+          queue: health.indexer?.queue ?? null,
           voucherSummary: health.indexer?.voucherSummary ?? null,
         };
       }
