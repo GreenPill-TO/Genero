@@ -1,3 +1,129 @@
+# v1.233
+### Timestamp
+- 2026-04-27 18:55 EDT
+
+### Objective
+- Address PR 69 Copilot review comments around deterministic wallet identity selection, local smoke ergonomics, and pnpm setup clarity.
+
+### What Changed
+- Added explicit `user_id`, `wallet_ready`, and `wallet_row_id` ordering to `mapPrimaryWalletsByUserIds(...)` so primary wallet selection is stable when users have multiple identities.
+- Added `scripts/run-smoke-e2e.mjs` so `pnpm smoke:e2e` builds automatically when it starts a local production server, while `SMOKE_BASE_URL` skips the local build and `SMOKE_SKIP_BUILD=1` lets profile scripts avoid a duplicate build.
+- Documented that frontend CI intentionally lets `pnpm/action-setup` read the pinned `packageManager` value from `package.json` instead of duplicating the version in workflow YAML.
+
+### Verification
+- YAML parse check for `.github/workflows/ci-frontend.yml`
+- `git diff --check`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm smoke:e2e:supabase-local`
+
+### Files Edited
+- `.github/workflows/ci-frontend.yml`
+- `README.md`
+- `agent-context/session-log.md`
+- `docs/engineering/testing-ci-contract.md`
+- `package.json`
+- `scripts/run-smoke-e2e.mjs`
+- `shared/lib/supabase/walletIdentities.ts`
+
+# v1.232
+### Timestamp
+- 2026-04-27 16:49 EDT
+
+### Objective
+- Tighten the Supabase boundary by reducing the clearest browser-side direct table read and documenting the remaining app/shared exceptions.
+
+### What Changed
+- Added `docs/engineering/supabase-boundary-contract.md` to define preferred Supabase access patterns, storage treatment, documented exceptions, and future cleanup directions.
+- Expanded `scripts/check-no-direct-supabase-db.mjs` so the lint boundary guard scans shared runtime helpers and uses reasoned exception entries instead of a bare path allowlist.
+- Updated the contracts management context hook to resolve the current wallet through `v_wallet_identities_v1` via `listWalletIdentitiesForUser(...)` instead of reading `wallet_list` directly from browser page code.
+- Updated README, AGENTS, technical spec, repo status, and todo tracking to reflect the boundary contract and remaining direct-access cleanup candidates.
+
+### Verification
+- `node scripts/check-no-direct-supabase-db.mjs`
+- Repo-wide direct-access scan excluding documented exception paths
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build:supabase-local`
+- `pnpm smoke:e2e:supabase-local`
+
+### Files Edited
+- `AGENTS.md`
+- `README.md`
+- `agent-context/repo-status.md`
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `app/tcoin/contracts/hooks/useManagementContext.ts`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `scripts/check-no-direct-supabase-db.mjs`
+
+## v1.231
+### Timestamp
+- 2026-04-27 15:42 EDT
+
+### Objective
+- Add a local-first browser smoke/e2e harness and align the repo testing and CI contract docs with the actual GitHub workflow.
+
+### What Changed
+- Added `@playwright/test`, `playwright.smoke.config.ts`, and `e2e/wallet-smoke.spec.ts` so stable unauthenticated and preview-safe wallet/contracts routes can be checked in Chromium against a production build.
+- Added `pnpm smoke:e2e` for an existing `SMOKE_BASE_URL` or local production server, and `pnpm smoke:e2e:supabase-local` to build with `.env.local-supabase-local` before running the same smoke suite.
+- Added `docs/engineering/testing-ci-contract.md` to document local validation, browser smoke, release preflight, CI checks, and the current e2e gaps.
+- Tightened `.github/workflows/ci-frontend.yml` to use pnpm `10.2.1`, frozen lockfile installs, and one canonical Vitest command.
+- Updated README, AGENTS, technical spec, repo status, and `.gitignore` for the new smoke harness and testing contract.
+
+### Verification
+- `pnpm install --frozen-lockfile`
+- `pnpm exec playwright install chromium`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build:supabase-local`
+- `pnpm smoke:e2e:supabase-local`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/ci-frontend.yml`
+- `.gitignore`
+- `AGENTS.md`
+- `README.md`
+- `agent-context/repo-status.md`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/testing-ci-contract.md`
+- `e2e/wallet-smoke.spec.ts`
+- `package.json`
+- `playwright.smoke.config.ts`
+- `pnpm-lock.yaml`
+- `vitest.config.ts`
+
+## v1.230
+### Timestamp
+- 2026-04-27 15:10 EDT
+
+### Objective
+- Clean up the repo contract docs after the production-readiness work so README, AGENTS, engineering notes, and durable repo-status tracking reflect the current scripts, CI, env profiles, Supabase boundaries, and licence posture.
+
+### What Changed
+- Updated `README.md` to describe the actual Next.js/Supabase/TorontoCoin repo shape, Node/pnpm requirements, local/remote Supabase profile scripts, production build/start profile scripts, wallet/operator preflight commands, CI/database delivery flow, and deployed Next.js service-role boundary.
+- Updated `AGENTS.md` to match the real Next.js 14.2.x / Node 20 CI contract, current `pnpm lint` behaviour, Supabase migration workflow, multi-frontend Supabase boundary expectation, and service-role runtime split.
+- Added the missing MIT `LICENSE` file and updated the repo status snapshot to mark README, AGENTS, licence, CI, env/script, and artefact hygiene cleanup as closed for this pass.
+- Updated `docs/engineering/technical-spec.md` with the current framework/runtime and CI/release-check contract.
+- Removed stray local `.DS_Store` artefacts from the checkout.
+
+### Verification
+- `find . -maxdepth 3 -name '.DS_Store' -print -delete`
+- `rg -n "Preview - tcoin|Production - tcoin|Nextjs v15|Nodejs v24|Future Improvements|pnpm lint runs|forge coverage|hardhat size-contracts|Isses" README.md AGENTS.md docs/engineering agent-context/repo-status.md`
+- `git diff --check`
+- `pnpm lint`
+
+### Files Edited
+- `AGENTS.md`
+- `LICENSE`
+- `README.md`
+- `agent-context/repo-status.md`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+
 ## v1.229
 ### Timestamp
 - 2026-04-27 10:38 EDT

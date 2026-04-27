@@ -4,8 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useIndexerTrigger } from "@shared/hooks/useIndexerTrigger";
-import { createClient } from "@shared/lib/supabase/client";
 import { resolveManagementRoles } from "@shared/lib/contracts/management/roles";
+import { getPrimaryEvmWalletIdentityForUser } from "@shared/lib/supabase/walletIdentities";
 
 export function useManagementContext(citySlug?: string) {
   const { userData, isLoading: isAuthLoading } = useAuth();
@@ -43,24 +43,13 @@ export function useManagementContext(citySlug?: string) {
       setError(null);
 
       try {
-        const supabase = createClient();
-        const { data, error: walletError } = await supabase
-          .from("wallet_list")
-          .select("public_key")
-          .match({ user_id: userId, namespace: "EVM" })
-          .order("id", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const identity = await getPrimaryEvmWalletIdentityForUser(userId);
 
-        if (walletError) {
-          throw new Error(walletError.message);
-        }
-
-        if (!data?.public_key) {
+        if (!identity?.public_key) {
           throw new Error("No Cubid EVM wallet found for current user.");
         }
 
-        const address = data.public_key as `0x${string}`;
+        const address = identity.public_key as `0x${string}`;
         const roleData = await resolveManagementRoles({ walletAddress: address, citySlug });
 
         if (!cancelled) {

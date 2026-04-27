@@ -33,9 +33,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+        # pnpm/action-setup reads the pinned packageManager field from package.json.
+        # Do not duplicate a version here; v4 fails when both sources are present.
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -44,7 +44,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
@@ -63,6 +63,4 @@ jobs:
         run: pnpm build
 
       - name: Test (Vitest)
-        run: |
-          # Your script is "vitest run"
-          pnpm test -- --reporter=default --run || pnpm test
+        run: pnpm test -- --reporter=default

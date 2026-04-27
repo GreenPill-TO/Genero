@@ -1,13 +1,16 @@
 # Genero
 
-Genero is a Next.js monorepo for applications that implements local **"citycoins"**, built on new monetary principles. The first implementation is **T-Coin**, a Toronto-focused digital currency. The repository contains two main app variants: `wallet` for payments and `sparechange` for micro‑donations. These apps live under `app/[CITYCOIN]/[APP_NAME]` where the values are provided via environment variables.
+Genero is a Next.js monorepo for applications that implement local **"citycoins"**, built on new monetary principles. The first implementation is **T-Coin**, a Toronto-focused digital currency. The repository contains the wallet, sparechange, contracts, Supabase Edge Functions, and operator scripts needed to run the TorontoCoin app family.
 
-The project integrates Supabase for storage, Cubid for identity and wallet management and Twilio for SMS based verification. UI components are built with React, TailwindCSS and Radix.
+The project integrates Supabase for storage and auth, Cubid for onboarding and wallet-management surfaces, Twilio Verify for SMS OTP, and Celo/TorontoCoin contracts for the live token runtime. UI components are built with React, Tailwind CSS, Radix, and the local shared component/hook libraries.
 
 ## Requirements
 
 - Node.js 20+
- - pnpm
+- pnpm 10.x, matching the `packageManager` field in `package.json`
+- Docker/Colima for local Supabase work
+- Supabase CLI for local or remote migration validation
+- Foundry for TorontoCoin contract/deployment work under `contracts/foundry`
 
 ## Setup
 
@@ -16,7 +19,7 @@ The project integrates Supabase for storage, Cubid for identity and wallet manag
    ```bash
    pnpm install
    ```
-3. Start the development server:
+3. Start the default development server:
    ```bash
    pnpm dev
    ```
@@ -47,29 +50,45 @@ Open `http://localhost:3000` in your browser. Next.js will serve the app configu
 - `pnpm dev:supabase-local` – run the development server with the local-Supabase env profile layered on top of `/.env.local`
 - `pnpm dev:supabase-remote` – run the development server with the remote-Supabase env profile layered on top of `/.env.local`
 - `pnpm build` – create a production build
+- `pnpm build:supabase-local` – create a production build with the local-Supabase profile loaded
+- `pnpm build:supabase-remote` – create a production build with the remote-Supabase profile loaded
 - `pnpm start` – start the production server
+- `pnpm start:supabase-local` – start the production server with the local-Supabase profile loaded
+- `pnpm start:supabase-remote` – start the production server with the remote-Supabase profile loaded
+- `pnpm smoke:e2e` – run the Playwright smoke harness against `SMOKE_BASE_URL` or build and start a local production server
+- `pnpm smoke:e2e:supabase-local` – build with the local-Supabase profile and smoke stable public/preview-safe routes in Chromium
 - `pnpm supabase:start:local` – start the local Supabase stack for this repo and patch local GoTrue mailer host handling
-- `pnpm lint` – run ESLint
+- `pnpm lint` – run Next.js lint plus the app-facing Supabase boundary guard
+- `pnpm test` – run the Vitest suite
+- `pnpm ops:wallet:preflight:supabase-local` – run the wallet release preflight against the local Supabase profile
+- `pnpm ops:wallet:preflight:supabase-remote` – run the wallet release preflight against the remote Supabase profile
+- `pnpm ops:wallet:preflight:deployment` – run the wallet release preflight against process env only
+- `pnpm ops:indexer:drain-touch-queue` – drain one queued async indexer touch request from the worker runtime
+- `pnpm ops:torontocoin`, `pnpm ops:torontocoin:pools`, `pnpm ops:torontocoin:acceptance` – run TorontoCoin operator health checks
 
 ## Project Structure
 
 ```
+.github/workflows/       # Frontend CI, Supabase migration deploy/dry-run, and secret scanning
+agent-context/           # Session workflow, logs, app context, and agent operating notes
 app/
-  [citycoins]/     # Starting with Toronto's TCOIN, this monorepo allows for multiple cities, each with their own local currency
-    [citycoin apps]/  # Each citycoin will have one or more dedicated apps, aka wallets.
-agent-context/     # Session workflow, logs, app context, and agent operating notes
+  tcoin/                 # TorontoCoin apps and contract-management surfaces
+    wallet/              # General-purpose TorontoCoin wallet
+    sparechange/         # SpareChange app
+    contracts/           # Contract-management UI
 contracts/
-  foundry/         # TorontoCoin Solidity workspace, deployment artefacts, and runtime manifests
+  foundry/               # TorontoCoin Solidity workspace, deployment artefacts, and runtime manifests
 docs/
-  engineering/     # Engineering specs and root-level architecture notes
-scripts/           # Repository helper scripts, including TorontoCoin operator health checks
-shared/            # Reusable hooks, components and utilities
-  lib/contracts/   # Runtime contract bridges and operator status helpers
-  lib/edge/        # Typed browser clients and app-scope helpers for Supabase Edge Functions
+  engineering/           # Current specs, architecture notes, and release runbooks
+scripts/                 # Repository helper scripts, env/profile loaders, and operator checks
+services/                # Node service modules for indexer/onramp workers and shared runtime logic
+shared/                  # Reusable hooks, components, clients, and utilities
+  lib/contracts/         # Runtime contract bridges and operator status helpers
+  lib/edge/              # Typed browser clients and app-scope helpers for Supabase Edge Functions
 supabase/
-  migrations/      # Versioned SQL migrations synced with Supabase
-  functions/       # Supabase Edge Functions plus shared Deno helpers
-    _shared/       # Shared auth, scoping, RBAC, validation, and domain helpers
+  migrations/            # Versioned SQL migrations synced with Supabase
+  functions/             # Supabase Edge Functions plus shared Deno helpers
+    _shared/             # Shared auth, scoping, RBAC, validation, and domain helpers
 ```
 
 API routes for Twilio OTP verification and temporary compatibility shims are located under `app/api`.
@@ -82,17 +101,30 @@ TorontoCoin retail runtime now uses the fresh Celo mainnet suite surfaced throug
 
 Credentials for Supabase, Cubid and Twilio are required. The Next app template lives at `.env.example`, and the Supabase Edge Functions template lives at `supabase/functions/.env.example`.
 
-Notably, use variables NEXT_PUBLIC_CITYCOIN= to determin which city and citycoin to deploy, and NEXT_PUBLIC_APP_NAME= to pich which app to deploy to serve your citycoin.
+Use `NEXT_PUBLIC_CITYCOIN` to choose the city/currency scope and `NEXT_PUBLIC_APP_NAME` to choose the deployed app surface. For TorontoCoin wallet release work, the canonical public Supabase key is `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; retired aliases are not active runtime inputs.
 
-## Future Improvements
+Local development can use one shared base env plus target-specific overlays:
 
-- Add automated tests for API routes
-- Introduce a CI workflow to run `pnpm lint` and builds
+- `/.env.local` for shared local values
+- `/.env.local-supabase-local` for local app plus local Supabase
+- `/.env.local-supabase-remote` for local app plus remote Supabase
+
+Do not put real secrets in checked-in files. Keep `SUPABASE_SERVICE_ROLE_KEY` out of deployed Next.js/Vercel envs; it belongs in the external indexer worker runtime and privileged Supabase Edge Function runtime when those surfaces intentionally need it.
+
+## CI And Database Delivery
+
+Pull requests run frontend CI, secret scanning, and Supabase migration validation when relevant. The dedicated TCOIN Supabase workflow dry-runs migrations for PRs into `dev` against `Preview – tcoin` and PRs into `main` against `Production – tcoin`; pushes to those branches deploy migrations to the matching database after the GitHub Environment gate.
+
+Agents must never directly mutate a linked Supabase database. Remote schema changes should flow through reviewed migrations and the guarded GitHub workflow, or through an explicit human/operator action described in the relevant runbook.
+
+## Supabase Boundary
+
+Wallet, SpareChange, and contracts app-facing data flows should prefer typed Supabase Edge Functions, narrow RPCs, read-model helpers, or documented server boundaries instead of broad browser/client table access. The detailed boundary contract and current exception list live in `docs/engineering/supabase-boundary-contract.md`; new app-facing direct table reads/writes need an explicit reason there and in the lint guard.
 
 ## Contribution
 
-Use 2 spaces for indentation and run `pnpm lint` before committing changes.
+Use 2 spaces for TypeScript indentation, keep Solidity at 4 spaces, and run the relevant checks before committing. For ordinary app/runtime changes, start with `pnpm lint` and `pnpm test`; for release work, also run the profile-specific preflight and smoke checks in `docs/engineering/wallet-release-runbook.md`. The current testing contract lives in `docs/engineering/testing-ci-contract.md`.
 
 ## License
 
-MIT
+MIT. See [LICENSE](./LICENSE).

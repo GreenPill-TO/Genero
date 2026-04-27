@@ -6,6 +6,6 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
-    exclude: [...configDefaults.exclude, "contracts/foundry/lib/**"],
+    exclude: [...configDefaults.exclude, "contracts/foundry/lib/**", "e2e/**"],
   },
 });
