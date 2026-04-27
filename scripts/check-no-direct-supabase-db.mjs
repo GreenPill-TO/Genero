@@ -105,7 +105,7 @@ function listFiles() {
   ];
 }
 
-const matcher = /\bsupabase\s*\.\s*from\s*\(/g;
+const matcher = /\bsupabase(?:\s*\.\s*schema\s*\([^)]*\))?\s*\.\s*from\s*\(/g;
 const violations = [];
 
 for (const file of listFiles()) {

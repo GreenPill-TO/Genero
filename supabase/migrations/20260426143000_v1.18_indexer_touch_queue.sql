@@ -220,13 +220,24 @@ SECURITY DEFINER
 SET search_path = public, indexer
 AS $$
 DECLARE
+  normalized_scope_key text := NULLIF(trim(p_scope_key), '');
   claim_row indexer.touch_requests%ROWTYPE;
 BEGIN
+  UPDATE indexer.touch_requests tr
+  SET
+    status = 'queued',
+    claimed_at = NULL,
+    updated_at = timezone('utc', now()),
+    last_error = 'reclaimed stale running touch request after worker timeout'
+  WHERE tr.status = 'running'
+    AND (normalized_scope_key IS NULL OR tr.scope_key = normalized_scope_key)
+    AND COALESCE(tr.claimed_at, tr.updated_at, tr.requested_at) <= timezone('utc', now()) - interval '15 minutes';
+
   WITH candidate AS (
     SELECT tr.id
     FROM indexer.touch_requests tr
     WHERE tr.status = 'queued'
-      AND (p_scope_key IS NULL OR tr.scope_key = trim(p_scope_key))
+      AND (normalized_scope_key IS NULL OR tr.scope_key = normalized_scope_key)
     ORDER BY tr.requested_at ASC, tr.id ASC
     LIMIT 1
     FOR UPDATE SKIP LOCKED

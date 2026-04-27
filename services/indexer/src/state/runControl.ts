@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { INDEXER_COOLDOWN_SECONDS } from "../config";
 import { buildBiaScopeSummary } from "../bia";
-import type { IndexerScopeStatus, IndexerSource } from "../types";
+import type { IndexerCompletedRequestStatus, IndexerScopeStatus, IndexerSource } from "../types";
 
 export function normaliseCitySlug(citySlug: string): string {
   const value = citySlug.trim().toLowerCase();
@@ -202,7 +202,8 @@ export async function getScopeStatus(options: {
     { data: voucherTokenRows, error: voucherTokenError },
     { data: voucherWalletRows, error: voucherWalletError },
     { data: merchantCreditRows, error: merchantCreditError },
-    { data: pendingQueueRows, error: pendingQueueError },
+    { count: pendingQueueCount, error: pendingQueueCountError },
+    { data: oldestPendingQueueRows, error: oldestPendingQueueError },
     { data: completedQueueRows, error: completedQueueError },
     { data: runningQueueRows, error: runningQueueError },
   ] = await Promise.all([
@@ -228,10 +229,17 @@ export async function getScopeStatus(options: {
     supabase
       .schema("indexer")
       .from("touch_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("scope_key", scopeKey)
+      .eq("status", "queued"),
+    supabase
+      .schema("indexer")
+      .from("touch_requests")
       .select("requested_at")
       .eq("scope_key", scopeKey)
       .eq("status", "queued")
-      .order("requested_at", { ascending: true }),
+      .order("requested_at", { ascending: true })
+      .limit(1),
     supabase
       .schema("indexer")
       .from("touch_requests")
@@ -258,8 +266,11 @@ export async function getScopeStatus(options: {
   if (merchantCreditError) {
     throw new Error(`Failed to read merchant credit summary: ${merchantCreditError.message}`);
   }
-  if (pendingQueueError) {
-    throw new Error(`Failed to read queued touch requests: ${pendingQueueError.message}`);
+  if (pendingQueueCountError) {
+    throw new Error(`Failed to count queued touch requests: ${pendingQueueCountError.message}`);
+  }
+  if (oldestPendingQueueError) {
+    throw new Error(`Failed to read queued touch requests: ${oldestPendingQueueError.message}`);
   }
   if (completedQueueError) {
     throw new Error(`Failed to read completed touch requests: ${completedQueueError.message}`);
@@ -285,8 +296,16 @@ export async function getScopeStatus(options: {
     chainId,
   });
 
-  const oldestPendingRequestedAt = pendingQueueRows?.[0]?.requested_at ?? null;
+  const oldestPendingRequestedAt = oldestPendingQueueRows?.[0]?.requested_at ?? null;
   const lastCompletedRequest = completedQueueRows?.[0];
+  const lastCompletedRequestStatus: IndexerCompletedRequestStatus | null =
+    lastCompletedRequest?.last_run_status === "success" ||
+    lastCompletedRequest?.last_run_status === "error" ||
+    lastCompletedRequest?.last_run_status === "skipped"
+      ? lastCompletedRequest.last_run_status
+      : lastCompletedRequest?.status === "failed"
+        ? "error"
+        : null;
   const queueStale =
     typeof oldestPendingRequestedAt === "string" &&
     Date.parse(oldestPendingRequestedAt) <= Date.now() - 15 * 60 * 1000;
@@ -311,12 +330,10 @@ export async function getScopeStatus(options: {
         }
       : null,
     queue: {
-      pendingRequestCount: pendingQueueRows?.length ?? 0,
+      pendingRequestCount: pendingQueueCount ?? 0,
       oldestPendingRequestedAt,
       lastCompletedRequestAt: lastCompletedRequest?.completed_at ?? null,
-      lastCompletedRequestStatus:
-        lastCompletedRequest?.last_run_status ??
-        (lastCompletedRequest?.status === "failed" ? "error" : null),
+      lastCompletedRequestStatus,
       blocked: queueBlocked,
       stale: queueStale,
     },

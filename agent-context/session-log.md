@@ -1,3 +1,34 @@
+## v1.229
+### Timestamp
+- 2026-04-27 10:38 EDT
+
+### Objective
+- Address the new PR 68 review threads by tightening async touch queue recovery, restoring the intended local-development auth behaviour for touch requests, and cleaning up the smaller safety/performance findings.
+
+### What Changed
+- Updated `indexer.claim_touch_request_v1(...)` in `20260426143000_v1.18_indexer_touch_queue.sql` so stale `running` touch requests are reclaimed back to `queued` after the worker timeout window before the worker claims the next request, preventing a crashed worker from deadlocking a scope indefinitely.
+- Restored the local/development unauthenticated touch path in `POST /api/indexer/touch` by using the local-only service-role fallback when there is no signed-in user, while keeping production and preview traffic on the request-scoped authenticated RPC path.
+- Redacted merchant geocode configuration/auth bootstrap errors instead of returning raw exception messages, and expanded the no-direct-Supabase guard so it also catches `supabase.schema(...).from(...)` app-facing reads.
+- Tightened queue status handling to count queued requests without loading every queued row, and narrowed `lastCompletedRequestStatus` to completed statuses only (`success`, `error`, `skipped`) in both shared and indexer runtime types.
+- Added focused regression coverage for the local-development indexer touch fallback and the merchant geocode config-redaction path.
+
+### Verification
+- `pnpm test app/api/indexer/touch/route.test.ts app/api/merchant/geocode/route.test.ts`
+- `pnpm lint`
+- `pnpm test`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/api/indexer/touch/route.test.ts`
+- `app/api/indexer/touch/route.ts`
+- `app/api/merchant/geocode/route.test.ts`
+- `app/api/merchant/geocode/route.ts`
+- `scripts/check-no-direct-supabase-db.mjs`
+- `services/indexer/src/state/runControl.ts`
+- `services/indexer/src/types.ts`
+- `shared/lib/indexer/types.ts`
+- `supabase/migrations/20260426143000_v1.18_indexer_touch_queue.sql`
+
 ## v1.228
 ### Timestamp
 - 2026-04-26 18:12 EDT

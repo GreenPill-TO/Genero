@@ -76,4 +76,21 @@ describe("POST /api/merchant/geocode", () => {
       placeId: 1234,
     });
   });
+
+  it("redacts Supabase client configuration errors", async () => {
+    h.mockIsLocalOrDevelopmentEnvironment.mockReturnValue(true);
+    h.mockGetUser.mockRejectedValue(new Error("Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"));
+
+    const response = await POST(
+      new Request("http://localhost/api/merchant/geocode", {
+        method: "POST",
+        body: JSON.stringify({ address: "Toronto" }),
+      })
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Merchant geocoding is not configured for this environment.",
+    });
+  });
 });

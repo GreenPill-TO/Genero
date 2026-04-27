@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
 import { isLocalOrDevelopmentEnvironment } from "@shared/lib/bia/apiAuth";
+import { createServiceRoleClientCore } from "@shared/lib/supabase/serviceRoleCore";
 
 const DEFAULT_CITY_SLUG = "tcoin";
 const DEFAULT_CHAIN_ID = 42220;
@@ -25,7 +26,11 @@ function getConfiguredChainId() {
 
 function getSafeIndexerTouchError(error: unknown) {
   const message = error instanceof Error ? error.message : "Unexpected indexer touch error";
-  if (message.includes("NEXT_PUBLIC_SUPABASE_URL") || message.includes("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")) {
+  if (
+    message.includes("NEXT_PUBLIC_SUPABASE_URL") ||
+    message.includes("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") ||
+    message.includes("SUPABASE_SERVICE_ROLE_KEY")
+  ) {
     return "Indexer touch is not configured for this environment.";
   }
   return "Unexpected indexer touch error";
@@ -34,12 +39,13 @@ function getSafeIndexerTouchError(error: unknown) {
 export async function POST(req: Request) {
   try {
     const supabase = createClient();
+    const isLocalOrDevelopment = isLocalOrDevelopmentEnvironment();
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
 
-    if ((userError || !user) && !isLocalOrDevelopmentEnvironment()) {
+    if ((userError || !user) && !isLocalOrDevelopment) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -61,7 +67,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data, error } = await supabase.rpc("request_indexer_touch_v1", {
+    const rpcClient = user || !isLocalOrDevelopment ? supabase : createServiceRoleClientCore();
+
+    const { data, error } = await rpcClient.rpc("request_indexer_touch_v1", {
       p_city_slug: requestedCitySlug,
       p_chain_id: getConfiguredChainId(),
       p_source: "next-api",

@@ -5,6 +5,32 @@ import { createClient } from "@shared/lib/supabase/server";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 
+function getSafeGeocodeError(error: unknown) {
+  const message = error instanceof Error ? error.message : "Unexpected geocoding error";
+
+  if (message === "Unauthorized") {
+    return {
+      status: 401,
+      error: "Unauthorized",
+    };
+  }
+
+  if (
+    message.includes("NEXT_PUBLIC_SUPABASE_URL") ||
+    message.includes("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+  ) {
+    return {
+      status: 500,
+      error: "Merchant geocoding is not configured for this environment.",
+    };
+  }
+
+  return {
+    status: 500,
+    error: "Unexpected geocoding error",
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const supabase = createClient();
@@ -77,8 +103,7 @@ export async function POST(req: Request) {
       placeId: typeof first.place_id === "number" ? first.place_id : null,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected geocoding error";
-    const status = message === "Unauthorized" ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    const safeError = getSafeGeocodeError(error);
+    return NextResponse.json({ error: safeError.error }, { status: safeError.status });
   }
 }

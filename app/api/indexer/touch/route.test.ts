@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockRpc: vi.fn(),
+  mockServiceRoleRpc: vi.fn(),
   mockIsLocalOrDevelopmentEnvironment: vi.fn(),
 }));
 
@@ -13,6 +14,12 @@ vi.mock("@shared/lib/supabase/server", () => ({
       getUser: h.mockGetUser,
     },
     rpc: h.mockRpc,
+  }),
+}));
+
+vi.mock("@shared/lib/supabase/serviceRoleCore", () => ({
+  createServiceRoleClientCore: () => ({
+    rpc: h.mockServiceRoleRpc,
   }),
 }));
 
@@ -26,6 +33,7 @@ describe("POST /api/indexer/touch", () => {
   beforeEach(() => {
     h.mockGetUser.mockReset();
     h.mockRpc.mockReset();
+    h.mockServiceRoleRpc.mockReset();
     h.mockIsLocalOrDevelopmentEnvironment.mockReset();
     process.env.NEXT_PUBLIC_CITYCOIN = "tcoin";
     process.env.INDEXER_CHAIN_ID = "42220";
@@ -96,6 +104,7 @@ describe("POST /api/indexer/touch", () => {
       p_chain_id: 42220,
       p_source: "next-api",
     });
+    expect(h.mockServiceRoleRpc).not.toHaveBeenCalled();
   });
 
   it("returns skipped queue metadata when a request is already queued", async () => {
@@ -130,10 +139,44 @@ describe("POST /api/indexer/touch", () => {
     });
   });
 
+  it("uses the local-only service-role fallback when no user is present in local/development", async () => {
+    h.mockIsLocalOrDevelopmentEnvironment.mockReturnValue(true);
+    h.mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
+    h.mockServiceRoleRpc.mockResolvedValue({
+      data: {
+        scopeKey: "tcoin:42220",
+        runStatus: "queued",
+        queued: true,
+        skipped: false,
+        requestId: 15,
+        requestedAt: "2026-04-27T01:00:00.000Z",
+      },
+      error: null,
+    });
+
+    const response = await POST(new Request("http://localhost/api/indexer/touch", { method: "POST" }));
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toMatchObject({
+      scopeKey: "tcoin:42220",
+      started: true,
+      queued: true,
+      skipped: false,
+      requestId: 15,
+      runStatus: "queued",
+    });
+    expect(h.mockRpc).not.toHaveBeenCalled();
+    expect(h.mockServiceRoleRpc).toHaveBeenCalledWith("request_indexer_touch_v1", {
+      p_city_slug: "tcoin",
+      p_chain_id: 42220,
+      p_source: "next-api",
+    });
+  });
+
   it("redacts Supabase client configuration errors", async () => {
     h.mockIsLocalOrDevelopmentEnvironment.mockReturnValue(true);
     h.mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
-    h.mockRpc.mockRejectedValue(new Error("Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"));
+    h.mockServiceRoleRpc.mockRejectedValue(new Error("Missing SUPABASE_SERVICE_ROLE_KEY"));
 
     const response = await POST(new Request("http://localhost/api/indexer/touch", { method: "POST" }));
 

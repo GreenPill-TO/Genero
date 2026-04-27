@@ -1,4 +1,5 @@
 export type IndexerRunStatus = "idle" | "queued" | "running" | "success" | "error" | "skipped";
+export type IndexerCompletedRequestStatus = Extract<IndexerRunStatus, "success" | "error" | "skipped">;
 
 export type BiaScopeSummary = {
   activeBias: number;
@@ -73,7 +74,7 @@ export type IndexerScopeStatus = {
     pendingRequestCount: number;
     oldestPendingRequestedAt: string | null;
     lastCompletedRequestAt: string | null;
-    lastCompletedRequestStatus: Exclude<IndexerRunStatus, "idle"> | null;
+    lastCompletedRequestStatus: IndexerCompletedRequestStatus | null;
     blocked: boolean;
     stale: boolean;
   };
