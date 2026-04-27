@@ -16,6 +16,7 @@
   - Contract-management write helpers should stay typechecked even when they dispatch ABI methods by string name; narrow local casts are acceptable, but file-wide `ts-nocheck` markers are not.
   - Wallet-shell performance refactors must preserve the shared React Query defaults from `shared/providers/react-query-provider.tsx`, especially `refetchOnWindowFocus: false`, so focus changes do not re-fire authenticated wallet queries unexpectedly.
   - Tests covering on-demand wallet dashboard modals should mock the lazily imported modal modules directly when the assertion target is `openModal(...)`, so CI does not depend on dynamic import timing.
+  - A local-first Playwright smoke harness now covers stable unauthenticated and preview-safe production routes through `pnpm smoke:e2e:supabase-local` or `SMOKE_BASE_URL=... pnpm smoke:e2e`. It is intentionally not a required PR gate until authenticated browser fixtures and stable worker deployment primitives are in place.
 - **CI / release checks**: GitHub Actions run frontend lint/typecheck/build/test, pull-request and scheduled TruffleHog scans, and branch-targeted Supabase migration dry-runs/deploys for `Preview – tcoin` and `Production – tcoin`.
   - The dedicated Supabase workflow dry-runs migrations on PRs to `dev`/`main`, then deploys migrations on pushes to the matching branch through GitHub Environment gates.
   - The Next.js/Vercel runtime should use publishable/authenticated Supabase clients and narrow RPCs/Edge Functions. `SUPABASE_SERVICE_ROLE_KEY` belongs in privileged Supabase Edge Functions and external worker runtimes, not the deployed Next.js shell.
@@ -76,7 +77,7 @@
   - The `v1.04` operational-read-model migration is intentionally self-sufficient on older linked environments: it creates `wallet_list.public_key` if absent before building `v_wallet_identities_v1`, and its rollback instructions are kept as a non-executed `-- DOWN` section so `supabase db push` applies only the forward schema changes.
   - Agents may prepare migrations and inspect local schema files, but linked-database mutation commands remain human-only and require explicit approval before any `supabase --linked` or equivalent write operation is attempted.
 - **Wallet/Identity**: Cubid (web3 login + wallet abstraction)
-- **CI**: GitHub workflow installs dependencies with `pnpm install --no-frozen-lockfile`
+- **CI**: GitHub workflow installs dependencies with `pnpm install --frozen-lockfile`
   - Secret scanning now matches the repo guard-rails: `secret-scan.yml` runs TruffleHog on pull-request diffs and runs a scheduled full-repo scan nightly.
   - The current repo-owned lint and test baseline is clean. Vitest setup now installs its storage stub via property descriptors instead of reading Node's built-in `localStorage` getter first, so local runs no longer surface the older `--localstorage-file` warning from the surrounding runtime.
   - The local Supabase smoke helper is intentionally launched with `zsh scripts/start-local-supabase.sh`, matching the script shebang and array-based shell syntax instead of assuming bash compatibility.

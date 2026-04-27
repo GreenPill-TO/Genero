@@ -12,6 +12,8 @@
     "start": "next start",
     "start:supabase-local": "tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm start",
     "start:supabase-remote": "tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm start",
+    "smoke:e2e": "playwright test -c playwright.smoke.config.ts",
+    "smoke:e2e:supabase-local": "pnpm build:supabase-local && tsx scripts/run-with-env-profile.ts .env.local-supabase-local -- pnpm smoke:e2e",
     "supabase:start:local": "zsh scripts/start-local-supabase.sh",
     "lint": "pnpm lint:next && pnpm lint:edge-boundary",
     "lint:next": "next lint",
@@ -114,6 +116,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@testing-library/react": "^16.0.0",
     "@types/node": "^20",
     "@types/react": "^18",

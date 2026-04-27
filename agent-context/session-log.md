@@ -1,3 +1,41 @@
+## v1.231
+### Timestamp
+- 2026-04-27 15:42 EDT
+
+### Objective
+- Add a local-first browser smoke/e2e harness and align the repo testing and CI contract docs with the actual GitHub workflow.
+
+### What Changed
+- Added `@playwright/test`, `playwright.smoke.config.ts`, and `e2e/wallet-smoke.spec.ts` so stable unauthenticated and preview-safe wallet/contracts routes can be checked in Chromium against a production build.
+- Added `pnpm smoke:e2e` for an existing `SMOKE_BASE_URL` or local production server, and `pnpm smoke:e2e:supabase-local` to build with `.env.local-supabase-local` before running the same smoke suite.
+- Added `docs/engineering/testing-ci-contract.md` to document local validation, browser smoke, release preflight, CI checks, and the current e2e gaps.
+- Tightened `.github/workflows/ci-frontend.yml` to use pnpm `10.2.1`, frozen lockfile installs, and one canonical Vitest command.
+- Updated README, AGENTS, technical spec, repo status, and `.gitignore` for the new smoke harness and testing contract.
+
+### Verification
+- `pnpm install --frozen-lockfile`
+- `pnpm exec playwright install chromium`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build:supabase-local`
+- `pnpm smoke:e2e:supabase-local`
+- `git diff --check`
+
+### Files Edited
+- `.github/workflows/ci-frontend.yml`
+- `.gitignore`
+- `AGENTS.md`
+- `README.md`
+- `agent-context/repo-status.md`
+- `agent-context/session-log.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/testing-ci-contract.md`
+- `e2e/wallet-smoke.spec.ts`
+- `package.json`
+- `playwright.smoke.config.ts`
+- `pnpm-lock.yaml`
+- `vitest.config.ts`
+
 ## v1.230
 ### Timestamp
 - 2026-04-27 15:10 EDT

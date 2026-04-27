@@ -88,7 +88,7 @@ AGENTS.md                # this file
   * If any new logic →  Always add or modify unit tests accordingly.  
   * Vitest for JavaScript/TypeScript units
   * Foundry for Solidity (if present)
-  * Browser smoke is run manually or through targeted Playwright checks when needed; there is not yet a checked-in Cypress/Playwright acceptance suite.
+  * Playwright smoke for local production route acceptance (`pnpm smoke:e2e:supabase-local`), currently local-first rather than a required PR gate.
 * **Pull Requests**
   * Keep pull request descriptions concise and reviewer-focused.
   * If any related issues are known, mention them in PR (e.g. "Issues: #10, #11")
@@ -105,6 +105,7 @@ AGENTS.md                # this file
 |-------|------|--------|
 | **Every session** | `workflow.md` | Mandatory checklist (log, spec update(s), code, summary). |
 | **Current product specs** | `docs/engineering/*.md` | Maintain the latest technical and functional specs plus related architecture notes here. |
+| **Testing contract** | `docs/engineering/testing-ci-contract.md` | Current local, smoke, release-preflight, and CI validation expectations. |
 | **Artefact maintenance** | Scripts inside `scripts/` | `env-sync.ts`, `spec-lint.ts`, etc. |
 | **CI Triggers** | Frontend CI runs lint/typecheck/build/test on PRs and pushes except ignored docs/Supabase-only paths; secret scan runs on PRs and schedules; Supabase migrations dry-run on PRs and deploy on pushes to `dev`/`main` through environment gates. |
 
