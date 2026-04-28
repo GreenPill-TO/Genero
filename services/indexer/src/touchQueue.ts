@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createServiceRoleClientCore } from "@shared/lib/supabase/serviceRoleCore";
 import { runIndexerTouch } from "./index";
 import type { IndexerTouchResult } from "./types";
 
@@ -52,11 +51,15 @@ function parseClaimedRequest(data: unknown): ClaimedIndexerTouchRequest | null {
   };
 }
 
-export async function claimIndexerTouchRequest(options?: {
-  supabase?: SupabaseClient<any, any, any>;
+export async function claimIndexerTouchRequest(options: {
+  supabase: SupabaseClient<any, any, any>;
   scopeKey?: string | null;
 }): Promise<ClaimedIndexerTouchRequest | null> {
-  const supabase = options?.supabase ?? createServiceRoleClientCore();
+  const supabase = options?.supabase;
+  if (!supabase) {
+    throw new Error("A scoped service-role Supabase client is required to claim indexer touch requests.");
+  }
+
   const { data, error } = await supabase.schema("indexer").rpc("claim_touch_request_v1", {
     p_scope_key: options?.scopeKey ?? null,
   });
@@ -69,13 +72,17 @@ export async function claimIndexerTouchRequest(options?: {
 }
 
 export async function completeIndexerTouchRequest(options: {
-  supabase?: SupabaseClient<any, any, any>;
+  supabase: SupabaseClient<any, any, any>;
   requestId: number;
   status: "completed" | "failed";
   runStatus?: "success" | "error" | "skipped";
   error?: string;
 }) {
-  const supabase = options.supabase ?? createServiceRoleClientCore();
+  const supabase = options?.supabase;
+  if (!supabase) {
+    throw new Error("A scoped service-role Supabase client is required to complete indexer touch requests.");
+  }
+
   const { error } = await supabase.schema("indexer").rpc("complete_touch_request_v1", {
     p_request_id: options.requestId,
     p_status: options.status,
@@ -88,14 +95,18 @@ export async function completeIndexerTouchRequest(options: {
   }
 }
 
-export async function drainIndexerTouchQueueOnce(options?: {
-  supabase?: SupabaseClient<any, any, any>;
+export async function drainIndexerTouchQueueOnce(options: {
+  supabase: SupabaseClient<any, any, any>;
   scopeKey?: string | null;
 }): Promise<DrainIndexerTouchQueueResult> {
-  const supabase = options?.supabase ?? createServiceRoleClientCore();
+  const supabase = options?.supabase;
+  if (!supabase) {
+    throw new Error("A scoped service-role Supabase client is required to drain indexer touch requests.");
+  }
+
   const request = await claimIndexerTouchRequest({
     supabase,
-    scopeKey: options?.scopeKey,
+    scopeKey: options.scopeKey,
   });
 
   if (!request) {

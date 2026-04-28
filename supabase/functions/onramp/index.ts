@@ -73,7 +73,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await ingestTransakWebhook({
-          supabase: createServiceRoleClient(),
+          supabase: createServiceRoleClient({ purpose: "Transak webhook ingestion" }),
           event: {
             providerEventId: typeof body?.providerEventId === "string" ? body.providerEventId : null,
             providerOrderId: typeof body?.providerOrderId === "string" ? body.providerOrderId : null,

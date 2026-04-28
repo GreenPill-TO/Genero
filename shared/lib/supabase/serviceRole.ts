@@ -1,6 +1,6 @@
 import "server-only";
 import { createServiceRoleClientCore } from "./serviceRoleCore";
 
-export function createServiceRoleClient() {
-  return createServiceRoleClientCore();
+export function createServiceRoleClient(options?: { context?: string }) {
+  return createServiceRoleClientCore(options);
 }

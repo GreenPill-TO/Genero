@@ -39,7 +39,9 @@ export async function resolveApiAuthContext() {
     error: userError,
   } = await serverClient.auth.getUser();
 
-  const serviceRole = createServiceRoleClient();
+  const serviceRole = createServiceRoleClient({
+    context: "local/development AUTH_BYPASS_USER_ID resolution",
+  });
 
   if (userError || !user) {
     if (!isLocalOrDevelopmentEnvironment()) {

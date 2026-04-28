@@ -61,7 +61,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await resolvePaymentRequestLink({
-          supabase: createServiceRoleClient(),
+          supabase: createServiceRoleClient({ purpose: "public payment link resolution" }),
           token,
         })
       );

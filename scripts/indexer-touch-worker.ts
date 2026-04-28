@@ -1,10 +1,14 @@
 import { loadRepoEnv } from "./load-repo-env.ts";
+import { createServiceRoleClientCore } from "../shared/lib/supabase/serviceRoleCore.ts";
 import { drainIndexerTouchQueueOnce } from "../services/indexer/src/touchQueue.ts";
 
 loadRepoEnv();
 
 async function main() {
-  const result = await drainIndexerTouchQueueOnce();
+  const supabase = createServiceRoleClientCore({
+    context: "indexer touch worker",
+  });
+  const result = await drainIndexerTouchQueueOnce({ supabase });
 
   console.log(
     JSON.stringify(

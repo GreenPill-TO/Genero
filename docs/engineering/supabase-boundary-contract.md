@@ -17,11 +17,16 @@ The lint guard in `scripts/check-no-direct-supabase-db.mjs` allows only named ex
 | --- | --- | --- |
 | `shared/lib/supabase/walletIdentities.ts` | Stable read-only helper over `v_wallet_identities_v1`; used so browser surfaces do not query custody tables directly. | Keep as the canonical wallet identity read model unless replaced by a typed Edge Function. |
 | `shared/lib/supabase/appInstance.ts` | Shared resolver for active app/city/environment context. | Prefer app context from bootstrap/Edge contracts over time. |
-| `shared/api/services/contractManagementService.ts` | Compatibility surface for contract proposal metadata and links. | Move metadata writes behind a contracts Edge Function or narrow RPC before broader contracts launch. |
 | `shared/lib/contracts/management/cubidSigner.ts` | Action-time Cubid signer boundary that reads wallet shares only when a signed contract write is invoked. | Keep isolated from eager page loads; revisit with Cubid custody/signing architecture. |
 | `shared/lib/bia/apiAuth.ts` and `shared/lib/bia/server.ts` | Server-side BIA auth, app-scope, and local/development bypass helpers. | Keep production bypass disabled; move route compatibility shims to typed Edge/SQL boundaries as flows stabilise. |
 | `shared/lib/merchantSignup/**` | Server-side merchant onboarding compatibility helpers. | Prefer existing Supabase merchant Edge Function contracts for new work. |
 | `shared/lib/vouchers/routing.ts` and `shared/lib/sarafu/**` | Server/worker voucher and Sarafu routing helpers used by settlement/runtime paths. | Continue moving app-facing voucher reads to stable SQL read models, Edge Functions, or scoped RPCs. |
+
+## Recently Closed Exceptions
+
+| Path | Closure |
+| --- | --- |
+| `shared/api/services/contractManagementService.ts` | Proposal metadata and proposal-link table access now goes through `create_contract_mgmt_proposal_metadata_v1`, `link_contract_mgmt_proposal_v1`, `get_contract_mgmt_proposal_metadata_v1`, and `list_contract_mgmt_proposal_metadata_v1`. The remaining service method only performs documented `contract-management` storage bucket uploads. |
 
 ## Guardrail
 

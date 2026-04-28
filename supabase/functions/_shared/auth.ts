@@ -29,13 +29,37 @@ function requireFirstEnv(names: string[]): string {
   throw new Error(`${names.join(" or ")} is required.`);
 }
 
-export function createServiceRoleClient() {
+export function createServiceRoleClient(options?: { purpose?: string }) {
+  const purpose = options?.purpose?.trim();
+  if (!purpose) {
+    throw new Error("A service-role purpose is required for privileged edge access.");
+  }
+
   return createClient(requireFirstEnv(["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"]), requireEnv("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   });
+}
+
+export async function resolveAuthenticatedSupabaseUser(req: Request, purpose: string) {
+  const serviceRole = createServiceRoleClient({ purpose });
+  const token = resolveBearerToken(req);
+
+  const {
+    data: { user: authUser },
+    error: authError,
+  } = await serviceRole.auth.getUser(token);
+
+  if (authError || !authUser) {
+    throw new Error("Unauthorized");
+  }
+
+  return {
+    serviceRole,
+    authUser,
+  };
 }
 
 function resolveBearerToken(req: Request): string {
@@ -79,17 +103,7 @@ function isMissingTableError(message: string | undefined): boolean {
 }
 
 export async function resolveAuthenticatedUser(req: Request) {
-  const serviceRole = createServiceRoleClient();
-  const token = resolveBearerToken(req);
-
-  const {
-    data: { user: authUser },
-    error: authError,
-  } = await serviceRole.auth.getUser(token);
-
-  if (authError || !authUser) {
-    throw new Error("Unauthorized");
-  }
+  const { serviceRole, authUser } = await resolveAuthenticatedSupabaseUser(req, "authenticated edge request");
 
   const { data: authUserRow, error: authRowError } = await serviceRole
     .from("users")
