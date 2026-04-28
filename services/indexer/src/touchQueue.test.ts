@@ -35,6 +35,12 @@ describe("drainIndexerTouchQueueOnce", () => {
     expect(rpc).toHaveBeenCalledTimes(1);
   });
 
+  it("requires the worker boundary to pass a scoped service-role client", async () => {
+    await expect(
+      drainIndexerTouchQueueOnce(undefined as unknown as Parameters<typeof drainIndexerTouchQueueOnce>[0])
+    ).rejects.toThrow("A scoped service-role Supabase client is required to drain indexer touch requests.");
+  });
+
   it("claims a queued request, runs the indexer, and marks success", async () => {
     const rpc = vi
       .fn()

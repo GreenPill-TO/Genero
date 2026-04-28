@@ -24,10 +24,6 @@ const targetGlobs = [
 
 const allowedDirectAccess = new Map([
   [
-    "shared/api/services/contractManagementService.ts",
-    "temporary contract-management metadata compatibility surface; writes remain action-scoped and documented",
-  ],
-  [
     "shared/lib/bia/apiAuth.ts",
     "local/development auth bypass helper; guarded from production use",
   ],

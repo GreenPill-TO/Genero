@@ -1,3 +1,78 @@
+# v1.235
+### Timestamp
+- 2026-04-27 20:30 EDT
+
+### Objective
+- Continue direct Supabase table-access cleanup by closing the contract-management metadata exception behind a narrow RPC boundary.
+
+### What Changed
+- Added `v1.19` contract-management RPCs for creating proposal metadata, linking on-chain proposals, and reading metadata without exposing broad table access to app-facing code.
+- Refactored `shared/api/services/contractManagementService.ts` to call those RPCs and keep only documented `contract-management` storage bucket uploads in the browser service.
+- Removed the contract-management service from the direct table-access lint exception map and added focused service tests for the RPC boundary.
+- Updated the Supabase boundary contract, technical spec, repo status, and todo tracking to mark contract metadata closed while leaving merchant, voucher/Sarafu, and Cubid signer cleanup as remaining candidates.
+
+### Verification
+- `node scripts/check-no-direct-supabase-db.mjs`
+- `pnpm exec vitest run shared/api/services/contractManagementService.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+- `git diff --check`
+- `pnpm supabase:start:local`
+- `supabase migration up --local`
+- Local read-only RPC existence check for all four contract-management RPCs
+
+### Files Edited
+- `agent-context/repo-status.md`
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `scripts/check-no-direct-supabase-db.mjs`
+- `shared/api/services/contractManagementService.test.ts`
+- `shared/api/services/contractManagementService.ts`
+- `supabase/migrations/20260427203000_v1.19_contract_management_rpc_boundary.sql`
+
+# v1.234
+### Timestamp
+- 2026-04-27 19:34 EDT
+
+### Objective
+- Continue reducing production service-role dependency by narrowing privileged worker and Edge Function service-role boundaries.
+
+### What Changed
+- Removed hidden service-role client construction from the indexer touch queue library; the scheduler/worker wrapper now constructs the scoped service-role client once and passes it explicitly into queue claim/drain/complete operations.
+- Added service-role context/purpose labels to the shared Node and Edge service-role client helpers so privileged access sites are auditable and cannot be added anonymously in Edge code.
+- Reused a shared authenticated Supabase-user resolver for the user-settings `ensure-user` Edge path, removing its hand-rolled bearer-token and service-role auth bootstrap.
+- Updated the remaining public/special Edge service-role call sites for user-request creation, payment-link resolution, and Transak webhook ingestion to declare their privileged purpose explicitly.
+
+### Verification
+- `pnpm exec tsc --noEmit --pretty false`
+- Focused Vitest run for indexer queue, Edge user settings, user requests, payment requests, onramp, and local BIA auth
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+- Service-role no-argument call-site scan
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `scripts/indexer-touch-worker.ts`
+- `services/indexer/src/touchQueue.test.ts`
+- `services/indexer/src/touchQueue.ts`
+- `shared/lib/bia/apiAuth.ts`
+- `shared/lib/supabase/serviceRole.ts`
+- `shared/lib/supabase/serviceRoleCore.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/payment-links/index.ts`
+- `supabase/functions/user-requests/index.ts`
+- `supabase/functions/user-settings/index.ts`
+
 # v1.233
 ### Timestamp
 - 2026-04-27 18:55 EDT

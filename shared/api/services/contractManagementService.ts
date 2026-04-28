@@ -13,23 +13,15 @@ export type ProposalMetadataInput = {
 
 export async function createProposalMetadata(input: ProposalMetadataInput) {
   const supabase = createClient();
-  const now = new Date().toISOString();
-
-  const { data, error } = await supabase
-    .from("contract_mgmt_proposal_metadata")
-    .insert({
-      city_slug: input.citySlug,
-      proposal_type: input.proposalType,
-      title: input.title,
-      description: input.description,
-      image_url: input.imageUrl ?? null,
-      payload: input.payload ?? {},
-      created_by_user_id: input.createdByUserId,
-      created_at: now,
-      updated_at: now,
-    })
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("create_contract_mgmt_proposal_metadata_v1", {
+    p_city_slug: input.citySlug,
+    p_proposal_type: input.proposalType,
+    p_title: input.title,
+    p_description: input.description,
+    p_image_url: input.imageUrl ?? null,
+    p_payload: input.payload ?? {},
+    p_created_by_user_id: input.createdByUserId,
+  });
 
   if (error) {
     throw new Error(error.message);
@@ -50,17 +42,12 @@ export async function linkOnChainProposal({
   txHash: string;
 }) {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("contract_mgmt_proposal_links")
-    .insert({
-      proposal_id: proposalId,
-      city_slug: citySlug,
-      metadata_id: metadataId,
-      tx_hash: txHash,
-      created_at: new Date().toISOString(),
-    })
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("link_contract_mgmt_proposal_v1", {
+    p_proposal_id: proposalId,
+    p_city_slug: citySlug,
+    p_metadata_id: metadataId,
+    p_tx_hash: txHash,
+  });
 
   if (error) {
     throw new Error(error.message);
@@ -71,11 +58,9 @@ export async function linkOnChainProposal({
 
 export async function getProposalMetadataById(id: string) {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("contract_mgmt_proposal_metadata")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const { data, error } = await supabase.rpc("get_contract_mgmt_proposal_metadata_v1", {
+    p_id: id,
+  });
 
   if (error) {
     throw new Error(error.message);
@@ -86,11 +71,9 @@ export async function getProposalMetadataById(id: string) {
 
 export async function listProposalMetadataByCity(citySlug: string) {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("contract_mgmt_proposal_metadata")
-    .select("*")
-    .eq("city_slug", citySlug)
-    .order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("list_contract_mgmt_proposal_metadata_v1", {
+    p_city_slug: citySlug,
+  });
 
   if (error) {
     throw new Error(error.message);

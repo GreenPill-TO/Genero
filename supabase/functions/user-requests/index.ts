@@ -65,7 +65,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     const pathname = rawPathname.replace(/^\/functions\/v1\/user-requests/, "").replace(/^\/user-requests/, "") || "/";
 
     if (req.method === "POST" && pathname === "/create") {
-      const serviceRole = createServiceRoleClient();
+      const serviceRole = createServiceRoleClient({ purpose: "public user request creation" });
       const appContext = await resolveActiveAppContext({
         supabase: serviceRole,
         input: resolveAppContextInput(req, body),

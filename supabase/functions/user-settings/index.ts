@@ -1,4 +1,4 @@
-import { createServiceRoleClient, resolveAuthenticatedUser } from "../_shared/auth.ts";
+import { resolveAuthenticatedSupabaseUser, resolveAuthenticatedUser } from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
@@ -38,20 +38,6 @@ async function readRequestBody(req: Request) {
   }
 }
 
-function resolveBearerToken(req: Request): string {
-  const header = req.headers.get("authorization") ?? req.headers.get("Authorization");
-  if (!header?.toLowerCase().startsWith("bearer ")) {
-    throw new Error("Unauthorized");
-  }
-
-  const token = header.slice(7).trim();
-  if (!token) {
-    throw new Error("Unauthorized");
-  }
-
-  return token;
-}
-
 async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: resolveCorsHeaders(req) });
@@ -66,16 +52,7 @@ async function handleRequest(req: Request): Promise<Response> {
         .replace(/^\/user-settings/, "") || "/";
 
     if (req.method === "POST" && pathname === "/auth/ensure-user") {
-      const serviceRole = createServiceRoleClient();
-      const token = resolveBearerToken(req);
-      const {
-        data: { user: authUser },
-        error: authError,
-      } = await serviceRole.auth.getUser(token);
-
-      if (authError || !authUser) {
-        throw new Error("Unauthorized");
-      }
+      const { serviceRole, authUser } = await resolveAuthenticatedSupabaseUser(req, "user-settings ensure-user");
 
       const appContext = await resolveActiveAppContext({
         supabase: serviceRole,
