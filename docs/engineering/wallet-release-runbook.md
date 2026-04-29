@@ -22,7 +22,7 @@ Env template references:
 | Area | Env vars | Why it matters |
 | --- | --- | --- |
 | Core Supabase runtime | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Required by browser auth, edge-function proxying, and the publishable-key wallet release health preflight. |
-| Worker and privileged function runtime | `SUPABASE_SERVICE_ROLE_KEY` | No longer required by the deployed Next.js wallet runtime. It remains required by the external indexer touch worker (`pnpm ops:indexer:drain-touch-queue`) and Supabase Edge Functions that intentionally mutate privileged data. |
+| Worker and privileged function runtime | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | The deployed Next.js wallet runtime does not need the service-role key. Edge Functions need the publishable key for request-scoped self-service RPCs, while the service-role key remains required only for privileged Edge mutations and the external indexer touch worker (`pnpm ops:indexer:drain-touch-queue`). |
 | App scoping | `NEXT_PUBLIC_CITYCOIN=tcoin`, `NEXT_PUBLIC_APP_NAME=wallet`, `NEXT_PUBLIC_APP_ENVIRONMENT=staging|production` | Controls app-instance scoping, auth bootstrap behaviour, and production-versus-local auth rules. |
 | Public wallet URLing | `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `USER_SETTINGS_ALLOWED_ORIGINS` | Required for pay-link generation, edge CORS, and public callback/origin checks. |
 | Wallet user experience | `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL`, `NEXT_PUBLIC_TCOIN_BANNER_DARK_URL` | Keeps public landing and authenticated wallet flows coherent when exchange-rate or explorer data is needed. |

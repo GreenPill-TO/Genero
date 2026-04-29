@@ -92,7 +92,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const body = await readBody(req);
-    const auth = await resolveAuthenticatedUser(req);
+    const auth = await resolveAuthenticatedUser(req, "onramp authenticated session and settlement operations");
     const appContext = await resolveActiveAppContext({
       supabase: auth.serviceRole,
       input: resolveAppContextInput(req, body),

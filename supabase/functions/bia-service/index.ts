@@ -1,4 +1,4 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
+import { createAuthenticatedRequestClient, resolveAuthenticatedUser } from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { assertAdminOrOperator, userHasAnyRole } from "../_shared/rbac.ts";
@@ -40,6 +40,10 @@ function normalizeAddress(value: unknown): string | null {
   return normalized;
 }
 
+function isSetupRequiredRpcError(message: string | undefined): boolean {
+  return typeof message === "string" && isReadModelMissing(message);
+}
+
 async function readBody(req: Request) {
   if (req.method === "GET" || req.method === "OPTIONS") {
     return null;
@@ -52,192 +56,88 @@ async function readBody(req: Request) {
   }
 }
 
-async function handleRequest(req: Request): Promise<Response> {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: resolveCorsHeaders(req) });
   }
 
   try {
     const body = await readBody(req);
-    const auth = await resolveAuthenticatedUser(req);
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
-      input: resolveAppContextInput(req, body),
-    });
+    const appContextInput = resolveAppContextInput(req, body);
     const rawPathname = new URL(req.url).pathname;
     const pathname = rawPathname.replace(/^\/functions\/v1\/bia-service/, "").replace(/^\/bia-service/, "") || "/";
     const url = new URL(req.url);
 
     if (req.method === "GET" && pathname === "/list") {
       const includeMappings = url.searchParams.get("includeMappings") === "true";
-      const [biasResult, activeAffiliation, secondaryAffiliations, canAdminister] = await Promise.all([
-        auth.serviceRole
-          .from("bia_registry")
-          .select("*")
-          .eq("city_slug", appContext.citySlug)
-          .order("name", { ascending: true }),
-        auth.serviceRole
-          .from("user_bia_affiliations")
-          .select("id,bia_id,source,effective_from")
-          .eq("user_id", auth.userRow.id)
-          .eq("app_instance_id", appContext.appInstanceId)
-          .is("effective_to", null)
-          .limit(1)
-          .maybeSingle(),
-        auth.serviceRole
-          .from("user_bia_secondary_affiliations")
-          .select("id,bia_id,source,effective_from")
-          .eq("user_id", auth.userRow.id)
-          .eq("app_instance_id", appContext.appInstanceId)
-          .is("effective_to", null)
-          .order("effective_from", { ascending: true }),
-        userHasAnyRole({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appInstanceId: appContext.appInstanceId,
-          roles: ["admin", "operator"],
-        }),
-      ]);
-
-      if (biasResult.error) throw new Error(`Failed to load BIAs: ${biasResult.error.message}`);
-      if (activeAffiliation.error) throw new Error(`Failed to load active affiliation: ${activeAffiliation.error.message}`);
-      if (secondaryAffiliations.error) {
-        throw new Error(`Failed to load secondary affiliations: ${secondaryAffiliations.error.message}`);
-      }
-
-      let mappings: unknown[] = [];
-      let controls: unknown[] = [];
-      let mappingsState: "ready" | "empty" | "setup_required" = "empty";
-      let mappingsSetupMessage: string | null = null;
-      if (includeMappings && canAdminister) {
-        const [mappingResult, controlsResult] = await Promise.all([
-          auth.serviceRole
-            .from("v_bia_mappings_v1")
-            .select("*")
-            .eq("city_slug", appContext.citySlug)
-            .order("updated_at", { ascending: false }),
-          auth.serviceRole.from("bia_pool_controls").select("*"),
-        ]);
-        if (mappingResult.error) {
-          if (isReadModelMissing(mappingResult.error.message)) {
-            mappingsState = "setup_required";
-            mappingsSetupMessage = "BIA mapping read model is not available yet for this app instance.";
-          } else {
-            throw new Error(`Failed to load BIA pool mappings: ${mappingResult.error.message}`);
-          }
-        } else {
-          mappings = mappingResult.data ?? [];
-          mappingsState = mappings.length === 0 ? "empty" : "ready";
-        }
-        if (controlsResult.error) throw new Error(`Failed to load BIA controls: ${controlsResult.error.message}`);
-        controls = controlsResult.data ?? [];
-      }
-
-      return jsonResponse({
-        citySlug: appContext.citySlug,
-        appInstanceId: appContext.appInstanceId,
-        activeAffiliation: activeAffiliation.data
-          ? {
-              id: activeAffiliation.data.id,
-              biaId: activeAffiliation.data.bia_id,
-              source: activeAffiliation.data.source,
-              effectiveFrom: activeAffiliation.data.effective_from,
-            }
-          : null,
-        secondaryAffiliations: (secondaryAffiliations.data ?? []).map((row: any) => ({
-          id: row.id,
-          biaId: row.bia_id,
-          source: row.source,
-          effectiveFrom: row.effective_from,
-        })),
-        bias: biasResult.data ?? [],
-        mappingsState,
-        mappingsSetupMessage,
-        mappings,
-        controls,
-        canAdminister,
+      const scopedClient = createAuthenticatedRequestClient(req, {
+        purpose: "BIA catalogue and current-user affiliation read",
       });
+      const { data, error } = await scopedClient.rpc("edge_bia_list_v1", {
+        p_app_slug: appContextInput.appSlug,
+        p_city_slug: appContextInput.citySlug,
+        p_environment: appContextInput.environment || null,
+        p_include_mappings: includeMappings,
+      });
+
+      if (error) {
+        if (isSetupRequiredRpcError(error.message)) {
+          return jsonResponse(req, {
+            citySlug: appContextInput.citySlug ?? "tcoin",
+            appInstanceId: null,
+            activeAffiliation: null,
+            secondaryAffiliations: [],
+            bias: [],
+            mappingsState: "setup_required",
+            mappingsSetupMessage: "BIA mapping read model is not available yet for this app instance.",
+            mappings: [],
+            controls: [],
+            canAdminister: false,
+          });
+        }
+        throw new Error(`Failed to load BIAs: ${error.message}`);
+      }
+
+      return jsonResponse(req, data ?? {});
     }
 
     if (req.method === "GET" && pathname === "/mappings") {
       const chainId = Math.max(1, Math.trunc(toNumber(url.searchParams.get("chainId"), 42220)));
       const includeHealth = url.searchParams.get("includeHealth") !== "false";
-      const canAdminister = await userHasAnyRole({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
-        roles: ["admin", "operator"],
+      const scopedClient = createAuthenticatedRequestClient(req, {
+        purpose: "BIA mapping read model read",
+      });
+      const { data, error } = await scopedClient.rpc("edge_bia_mappings_v1", {
+        p_app_slug: appContextInput.appSlug,
+        p_city_slug: appContextInput.citySlug,
+        p_environment: appContextInput.environment || null,
+        p_chain_id: chainId,
+        p_include_health: includeHealth,
       });
 
-      const { data: mappings, error: mappingError } = await auth.serviceRole
-        .from("v_bia_mappings_v1")
-        .select("*")
-        .eq("city_slug", appContext.citySlug)
-        .eq("chain_id", chainId)
-        .order("updated_at", { ascending: false });
-
-      if (mappingError) {
-        if (isReadModelMissing(mappingError.message)) {
-          return jsonResponse({
-            citySlug: appContext.citySlug,
+      if (error) {
+        if (isSetupRequiredRpcError(error.message)) {
+          return jsonResponse(req, {
+            citySlug: appContextInput.citySlug ?? "tcoin",
             chainId,
             state: "setup_required",
             setupMessage: "BIA mapping read model is not available yet for this app instance.",
-            canAdminister,
+            canAdminister: false,
             mappings: [],
             health: null,
           });
         }
-        throw new Error(`Failed to load BIA mappings: ${mappingError.message}`);
+        throw new Error(`Failed to load BIA mappings: ${error.message}`);
       }
 
-      let health = null;
-      let state: "ready" | "empty" | "setup_required" = (mappings ?? []).length === 0 ? "empty" : "ready";
-      if (includeHealth) {
-        const { data: healthRow, error: healthError } = await auth.serviceRole
-          .from("v_bia_mapping_health_v1")
-          .select("*")
-          .eq("city_slug", appContext.citySlug)
-          .eq("chain_id", chainId)
-          .limit(1)
-          .maybeSingle();
-
-        if (healthError) {
-          if (isReadModelMissing(healthError.message)) {
-            state = "setup_required";
-          } else {
-            throw new Error(`Failed to load mapping health: ${healthError.message}`);
-          }
-        }
-
-        health = healthRow
-          ? {
-              mappedPools: Number((healthRow as Record<string, unknown>).mapped_pools ?? 0),
-              discoveredPools: Number((healthRow as Record<string, unknown>).discovered_pools ?? 0),
-              unmappedPools: Number((healthRow as Record<string, unknown>).unmapped_pools ?? 0),
-              staleMappings: Number((healthRow as Record<string, unknown>).stale_mappings ?? 0),
-            }
-          : {
-              mappedPools: 0,
-              discoveredPools: 0,
-              unmappedPools: 0,
-              staleMappings: 0,
-            };
-      }
-
-      return jsonResponse({
-        citySlug: appContext.citySlug,
-        chainId,
-        state,
-        setupMessage:
-          state === "setup_required"
-            ? "BIA mapping health read model is not available yet for this app instance."
-            : null,
-        canAdminister,
-        mappings: mappings ?? [],
-        health,
-      });
+      return jsonResponse(req, data ?? {});
     }
+
+    const auth = await resolveAuthenticatedUser(req, "BIA privileged mutation or non-RPC read");
+    const appContext = await resolveActiveAppContext({
+      supabase: auth.serviceRole,
+      input: appContextInput,
+    });
 
     if (req.method === "POST" && pathname === "/mappings") {
       await assertAdminOrOperator({
@@ -251,8 +151,8 @@ async function handleRequest(req: Request): Promise<Response> {
       const biaId = typeof body?.biaId === "string" ? body.biaId : "";
       const poolAddress = normalizeAddress(body?.poolAddress);
 
-      if (!biaId) return jsonResponse({ error: "biaId is required." }, { status: 400 });
-      if (!poolAddress) return jsonResponse({ error: "poolAddress must be a valid 0x address." }, { status: 400 });
+      if (!biaId) return jsonResponse(req, { error: "biaId is required." }, { status: 400 });
+      if (!poolAddress) return jsonResponse(req, { error: "poolAddress must be a valid 0x address." }, { status: 400 });
 
       const { data: biaRow, error: biaError } = await auth.serviceRole
         .from("bia_registry")
@@ -263,7 +163,7 @@ async function handleRequest(req: Request): Promise<Response> {
         .maybeSingle();
 
       if (biaError) throw new Error(`Failed to validate BIA: ${biaError.message}`);
-      if (!biaRow) return jsonResponse({ error: "BIA not found for selected city." }, { status: 400 });
+      if (!biaRow) return jsonResponse(req, { error: "BIA not found for selected city." }, { status: 400 });
 
       const nowIso = new Date().toISOString();
       if (mappingStatus === "active") {
@@ -307,7 +207,7 @@ async function handleRequest(req: Request): Promise<Response> {
         .single();
 
       if (insertError) throw new Error(`Failed to create BIA mapping: ${insertError.message}`);
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: appContext.citySlug,
         chainId,
         canAdminister: true,
@@ -331,7 +231,7 @@ async function handleRequest(req: Request): Promise<Response> {
         .order("updated_at", { ascending: false });
 
       if (error) throw new Error(`Failed to load BIA controls: ${error.message}`);
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: appContext.citySlug,
         canAdminister,
         controls: data ?? [],
@@ -346,7 +246,7 @@ async function handleRequest(req: Request): Promise<Response> {
       });
 
       const biaId = typeof body?.biaId === "string" ? body.biaId : "";
-      if (!biaId) return jsonResponse({ error: "biaId is required." }, { status: 400 });
+      if (!biaId) return jsonResponse(req, { error: "biaId is required." }, { status: 400 });
 
       const { data: biaRow, error: biaError } = await auth.serviceRole
         .from("bia_registry")
@@ -357,12 +257,13 @@ async function handleRequest(req: Request): Promise<Response> {
         .maybeSingle();
 
       if (biaError) throw new Error(`Failed to validate BIA control target: ${biaError.message}`);
-      if (!biaRow) return jsonResponse({ error: "BIA not found for selected city." }, { status: 400 });
+      if (!biaRow) return jsonResponse(req, { error: "BIA not found for selected city." }, { status: 400 });
 
       const maxDaily = body?.maxDailyRedemption == null ? null : toNumber(body.maxDailyRedemption, Number.NaN);
       const maxTx = body?.maxTxAmount == null ? null : toNumber(body.maxTxAmount, Number.NaN);
       if (Number.isNaN(maxDaily) || Number.isNaN(maxTx)) {
         return jsonResponse(
+          req,
           { error: "maxDailyRedemption/maxTxAmount must be numeric values when provided." },
           { status: 400 }
         );
@@ -403,7 +304,7 @@ async function handleRequest(req: Request): Promise<Response> {
         },
       });
 
-      return jsonResponse({ controls: updated });
+      return jsonResponse(req, { controls: updated });
     }
 
     if (req.method === "POST" && pathname === "/create") {
@@ -418,9 +319,9 @@ async function handleRequest(req: Request): Promise<Response> {
       const centerLat = toNumber(body?.centerLat, Number.NaN);
       const centerLng = toNumber(body?.centerLng, Number.NaN);
 
-      if (!code || !name) return jsonResponse({ error: "code and name are required." }, { status: 400 });
+      if (!code || !name) return jsonResponse(req, { error: "code and name are required." }, { status: 400 });
       if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng)) {
-        return jsonResponse({ error: "centerLat and centerLng are required numeric values." }, { status: 400 });
+        return jsonResponse(req, { error: "centerLat and centerLng are required numeric values." }, { status: 400 });
       }
 
       const nowIso = new Date().toISOString();
@@ -441,12 +342,12 @@ async function handleRequest(req: Request): Promise<Response> {
         .single();
 
       if (createError) throw new Error(`Failed to create BIA: ${createError.message}`);
-      return jsonResponse({ bia: created }, { status: 201 });
+      return jsonResponse(req, { bia: created }, { status: 201 });
     }
 
     if (req.method === "POST" && pathname === "/select") {
       const biaId = typeof body?.biaId === "string" ? body.biaId : "";
-      if (!biaId) return jsonResponse({ error: "biaId is required." }, { status: 400 });
+      if (!biaId) return jsonResponse(req, { error: "biaId is required." }, { status: 400 });
 
       const { data: biaRow, error: biaError } = await auth.serviceRole
         .from("bia_registry")
@@ -458,7 +359,7 @@ async function handleRequest(req: Request): Promise<Response> {
         .maybeSingle();
 
       if (biaError) throw new Error(`Failed to validate selected BIA: ${biaError.message}`);
-      if (!biaRow) return jsonResponse({ error: "Selected BIA is not active for this city." }, { status: 400 });
+      if (!biaRow) return jsonResponse(req, { error: "Selected BIA is not active for this city." }, { status: 400 });
 
       const requestedSecondaryBiaIds = Array.from(
         new Set(
@@ -480,7 +381,7 @@ async function handleRequest(req: Request): Promise<Response> {
         if (secondaryError) throw new Error(`Failed to validate secondary BIAs: ${secondaryError.message}`);
         validatedSecondaryBiaIds = (secondaryRows ?? []).map((row: any) => String(row.id));
         if (validatedSecondaryBiaIds.length !== requestedSecondaryBiaIds.length) {
-          return jsonResponse({ error: "One or more secondary BIAs are invalid or inactive for this city." }, { status: 400 });
+          return jsonResponse(req, { error: "One or more secondary BIAs are invalid or inactive for this city." }, { status: 400 });
         }
       }
 
@@ -537,7 +438,7 @@ async function handleRequest(req: Request): Promise<Response> {
         }
       }
 
-      return jsonResponse({
+      return jsonResponse(req, {
         affiliation: inserted,
         secondaryAffiliationCount: validatedSecondaryBiaIds.length,
       });
@@ -549,7 +450,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const limit = Math.max(1, Math.min(20, Math.trunc(toNumber(url.searchParams.get("limit"), 5))));
 
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        return jsonResponse({ error: "lat and lng query params are required numeric values." }, { status: 400 });
+        return jsonResponse(req, { error: "lat and lng query params are required numeric values." }, { status: 400 });
       }
 
       const { data, error } = await auth.serviceRole
@@ -568,7 +469,7 @@ async function handleRequest(req: Request): Promise<Response> {
         .sort((a: any, b: any) => a.distanceKm - b.distanceKm)
         .slice(0, limit);
 
-      return jsonResponse({
+      return jsonResponse(req, {
         citySlug: appContext.citySlug,
         lat,
         lng,
@@ -576,7 +477,7 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
 
-    return jsonResponse({ error: "Not found." }, { status: 404 });
+    return jsonResponse(req, { error: "Not found." }, { status: 404 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected bia-service error";
     const status =
@@ -585,7 +486,7 @@ async function handleRequest(req: Request): Promise<Response> {
         : message.startsWith("Forbidden")
           ? 403
           : 400;
-    return jsonResponse({ error: message }, { status });
+    return jsonResponse(req, { error: message }, { status });
   }
 }
 

@@ -1,3 +1,48 @@
+# v1.236
+### Timestamp
+- 2026-04-28 04:05 EDT
+
+### Objective
+- Continue P1 Edge Function service-role reduction by moving low-risk self-service Edge paths to request-scoped publishable-key RPC boundaries.
+
+### What Changed
+- Added a request-scoped Edge Supabase client helper that uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and forwards the caller bearer token instead of constructing service-role access.
+- Added `v1.20` scoped RPCs for current-user/app-context resolution, voucher preference list/upsert, and BIA list/mapping read payloads.
+- Refactored voucher preference self-service reads/writes and BIA list/mapping reads to call those RPCs before any service-role resolver is constructed.
+- Added purpose labels for remaining broad privileged Edge domains: user settings, onramp, merchant applications, store operations, voucher runtime, BIA privileged operations, and voucher compatibility/merchant reads.
+- Documented the Edge publishable-key env requirement and updated production-readiness tracking for the partially closed service-role dependency item.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/voucher-preferences/index.test.ts supabase/functions/bia-service/index.test.ts supabase/functions/_shared/auth.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+- `pnpm supabase:start:local`
+- `supabase migration up --local`
+- Local read-only RPC existence check for all seven `v1.20` scoped Edge RPCs
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `supabase/functions/.env.example`
+- `supabase/functions/_shared/auth.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/bia-service/index.test.ts`
+- `supabase/functions/bia-service/index.ts`
+- `supabase/functions/merchant-applications/index.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/store-operations/index.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/functions/voucher-preferences/index.test.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/functions/voucher-runtime/index.ts`
+- `supabase/migrations/20260428103000_v1.20_edge_scoped_read_rpcs.sql`
+
 # v1.235
 ### Timestamp
 - 2026-04-27 20:30 EDT
