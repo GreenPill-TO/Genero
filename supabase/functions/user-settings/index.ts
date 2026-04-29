@@ -72,7 +72,7 @@ async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
-    const auth = await resolveAuthenticatedUser(req);
+    const auth = await resolveAuthenticatedUser(req, "user-settings privileged profile, signup, and custody operations");
     const appContext = await resolveActiveAppContext({
       supabase: auth.serviceRole,
       input: resolveAppContextInput(req, body),

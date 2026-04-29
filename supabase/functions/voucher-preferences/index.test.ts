@@ -2,6 +2,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const resolveAuthenticatedUserMock = vi.hoisted(() => vi.fn());
+const requestScopedRpcMock = vi.hoisted(() => vi.fn());
+const createAuthenticatedRequestClientMock = vi.hoisted(() =>
+  vi.fn(() => ({
+    rpc: requestScopedRpcMock,
+  }))
+);
 const resolveActiveAppContextMock = vi.hoisted(() => vi.fn());
 const assertAdminOrOperatorMock = vi.hoisted(() => vi.fn());
 const voucherRoutingMocks = vi.hoisted(() => ({
@@ -17,6 +23,7 @@ vi.mock("npm:viem@2.23.3", () => ({
 
 vi.mock("../_shared/auth.ts", () => ({
   resolveAuthenticatedUser: resolveAuthenticatedUserMock,
+  createAuthenticatedRequestClient: createAuthenticatedRequestClientMock,
 }));
 
 vi.mock("../_shared/appContext.ts", () => ({
@@ -61,9 +68,105 @@ describe("voucher-preferences handleRequest", () => {
       appInstanceId: 7,
     });
     assertAdminOrOperatorMock.mockResolvedValue(undefined);
+    createAuthenticatedRequestClientMock.mockClear();
+    requestScopedRpcMock.mockReset();
     voucherRoutingMocks.getVoucherCompatibilityRules.mockReset();
     voucherRoutingMocks.listMerchantsForVoucherScope.mockReset();
     voucherRoutingMocks.resolveActiveUserBiaSet.mockReset();
+  });
+
+  it("loads self-service preferences through the request-scoped RPC boundary", async () => {
+    requestScopedRpcMock.mockResolvedValue({
+      data: {
+        citySlug: "tcoin",
+        appInstanceId: 7,
+        preferences: [{ id: 1, trust_status: "trusted" }],
+      },
+      error: null,
+    });
+
+    const res = await handleRequest(
+      new Request("http://localhost/functions/v1/voucher-preferences/preferences", {
+        method: "GET",
+        headers: { authorization: "Bearer user-token" },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(resolveAuthenticatedUserMock).not.toHaveBeenCalled();
+    expect(createAuthenticatedRequestClientMock).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.objectContaining({ purpose: "voucher preference self-service read" })
+    );
+    expect(requestScopedRpcMock).toHaveBeenCalledWith("edge_list_voucher_preferences_v1", {
+      p_app_slug: "wallet",
+      p_city_slug: "tcoin",
+      p_environment: "development",
+    });
+    await expect(res.json()).resolves.toMatchObject({
+      preferences: [{ id: 1, trust_status: "trusted" }],
+    });
+  });
+
+  it("updates self-service preferences through the request-scoped RPC boundary", async () => {
+    requestScopedRpcMock.mockResolvedValue({
+      data: { preference: { id: 1, trust_status: "blocked" } },
+      error: null,
+    });
+
+    const res = await handleRequest(
+      new Request("http://localhost/functions/v1/voucher-preferences/preferences", {
+        method: "PATCH",
+        headers: { authorization: "Bearer user-token", "content-type": "application/json" },
+        body: JSON.stringify({ trustStatus: "blocked", merchantStoreId: 9, tokenAddress: "0xabc" }),
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(resolveAuthenticatedUserMock).not.toHaveBeenCalled();
+    expect(requestScopedRpcMock).toHaveBeenCalledWith("edge_upsert_voucher_preference_v1", {
+      p_app_slug: "wallet",
+      p_city_slug: "tcoin",
+      p_environment: "development",
+      p_merchant_store_id: 9,
+      p_token_address: "0xabc",
+      p_trust_status: "blocked",
+    });
+  });
+
+  it("preserves unauthorized preference RPC failures as 401 responses", async () => {
+    requestScopedRpcMock.mockResolvedValue({
+      data: null,
+      error: { message: "Unauthorized", code: "42501" },
+    });
+
+    const res = await handleRequest(
+      new Request("http://localhost/functions/v1/voucher-preferences/preferences", {
+        method: "GET",
+        headers: { authorization: "Bearer user-token" },
+      })
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects empty preference RPC responses instead of returning partial payloads", async () => {
+    requestScopedRpcMock.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    const res = await handleRequest(
+      new Request("http://localhost/functions/v1/voucher-preferences/preferences", {
+        method: "GET",
+        headers: { authorization: "Bearer user-token" },
+      })
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: "Failed to load voucher preferences: empty response",
+    });
   });
 
   it("returns compatibility rules through the helper", async () => {
@@ -81,6 +184,10 @@ describe("voucher-preferences handleRequest", () => {
         citySlug: "tcoin",
         chainId: 42220,
       })
+    );
+    expect(resolveAuthenticatedUserMock).toHaveBeenCalledWith(
+      expect.any(Request),
+      "voucher-preferences privileged compatibility and merchant reads"
     );
   });
 

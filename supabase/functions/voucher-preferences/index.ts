@@ -1,4 +1,4 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
+import { createAuthenticatedRequestClient, resolveAuthenticatedUser } from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
@@ -35,26 +35,12 @@ function normalizeTrustStatus(value: unknown): "trusted" | "blocked" | "default"
   return null;
 }
 
-function buildPreferenceScopeQuery(options: {
-  query: any;
-  merchantStoreId: number | null;
-  tokenAddress: Address | null;
-}) {
-  let query = options.query;
-
-  if (options.merchantStoreId == null) {
-    query = query.is("merchant_store_id", null);
-  } else {
-    query = query.eq("merchant_store_id", options.merchantStoreId);
+function throwRpcError(prefix: string, error: { code?: string; message?: string }) {
+  const message = error.message ?? "Unknown RPC error";
+  if (message === "Unauthorized" || message.startsWith("Forbidden") || error.code === "42501") {
+    throw new Error(message);
   }
-
-  if (options.tokenAddress == null) {
-    query = query.is("token_address", null);
-  } else {
-    query = query.eq("token_address", options.tokenAddress);
-  }
-
-  return query;
+  throw new Error(`${prefix}: ${message}`);
 }
 
 async function readBody(req: Request) {
@@ -76,33 +62,29 @@ export async function handleRequest(req: Request): Promise<Response> {
 
   try {
     const body = await readBody(req);
-    const auth = await resolveAuthenticatedUser(req);
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
-      input: resolveAppContextInput(req, body),
-    });
+    const appContextInput = resolveAppContextInput(req, body);
     const rawPathname = new URL(req.url).pathname;
     const pathname =
       rawPathname.replace(/^\/functions\/v1\/voucher-preferences/, "").replace(/^\/voucher-preferences/, "") || "/";
 
     if (req.method === "GET" && pathname === "/preferences") {
-      const { data, error } = await auth.serviceRole
-        .from("user_voucher_preferences")
-        .select("id,city_slug,merchant_store_id,token_address,trust_status,created_at,updated_at")
-        .eq("user_id", auth.userRow.id)
-        .eq("app_instance_id", appContext.appInstanceId)
-        .eq("city_slug", appContext.citySlug)
-        .order("updated_at", { ascending: false });
+      const scopedClient = createAuthenticatedRequestClient(req, {
+        purpose: "voucher preference self-service read",
+      });
+      const { data, error } = await scopedClient.rpc("edge_list_voucher_preferences_v1", {
+        p_app_slug: appContextInput.appSlug,
+        p_city_slug: appContextInput.citySlug,
+        p_environment: appContextInput.environment || null,
+      });
 
       if (error) {
-        throw new Error(`Failed to load voucher preferences: ${error.message}`);
+        throwRpcError("Failed to load voucher preferences", error);
+      }
+      if (!data) {
+        throw new Error("Failed to load voucher preferences: empty response");
       }
 
-      return jsonResponse(req, {
-        citySlug: appContext.citySlug,
-        appInstanceId: appContext.appInstanceId,
-        preferences: data ?? [],
-      });
+      return jsonResponse(req, data);
     }
 
     if (req.method === "PATCH" && pathname === "/preferences") {
@@ -114,80 +96,33 @@ export async function handleRequest(req: Request): Promise<Response> {
       const merchantStoreIdRaw = toNumber(body?.merchantStoreId, 0);
       const merchantStoreId = merchantStoreIdRaw > 0 ? Math.trunc(merchantStoreIdRaw) : null;
       const tokenAddress = normalizeOptionalAddress(body?.tokenAddress);
-      const nowIso = new Date().toISOString();
-
-      const existingQuery = buildPreferenceScopeQuery({
-        query: auth.serviceRole
-          .from("user_voucher_preferences")
-          .select("id")
-          .eq("user_id", auth.userRow.id)
-          .eq("app_instance_id", appContext.appInstanceId)
-          .eq("city_slug", appContext.citySlug),
-        merchantStoreId,
-        tokenAddress,
+      const scopedClient = createAuthenticatedRequestClient(req, {
+        purpose: "voucher preference self-service write",
+      });
+      const { data, error } = await scopedClient.rpc("edge_upsert_voucher_preference_v1", {
+        p_app_slug: appContextInput.appSlug,
+        p_city_slug: appContextInput.citySlug,
+        p_environment: appContextInput.environment || null,
+        p_merchant_store_id: merchantStoreId,
+        p_token_address: tokenAddress,
+        p_trust_status: trustStatus,
       });
 
-      const { data: existing, error: existingError } = await existingQuery.limit(1).maybeSingle();
-      if (existingError) {
-        throw new Error(`Failed to find existing voucher preference: ${existingError.message}`);
+      if (error) {
+        throwRpcError("Failed to save voucher preference", error);
+      }
+      if (!data) {
+        throw new Error("Failed to save voucher preference: empty response");
       }
 
-      let preference: Record<string, unknown> | null = null;
-
-      if (existing?.id) {
-        const { data, error } = await auth.serviceRole
-          .from("user_voucher_preferences")
-          .update({
-            trust_status: trustStatus,
-            updated_at: nowIso,
-          })
-          .eq("id", existing.id)
-          .select("*")
-          .single();
-
-        if (error) {
-          throw new Error(`Failed to update voucher preference: ${error.message}`);
-        }
-
-        preference = data;
-      } else {
-        const { data, error } = await auth.serviceRole
-          .from("user_voucher_preferences")
-          .insert({
-            user_id: auth.userRow.id,
-            app_instance_id: appContext.appInstanceId,
-            city_slug: appContext.citySlug,
-            merchant_store_id: merchantStoreId,
-            token_address: tokenAddress,
-            trust_status: trustStatus,
-            created_at: nowIso,
-            updated_at: nowIso,
-          })
-          .select("*")
-          .single();
-
-        if (error) {
-          throw new Error(`Failed to create voucher preference: ${error.message}`);
-        }
-
-        preference = data;
-      }
-
-      await auth.serviceRole.from("governance_actions_log").insert({
-        action_type: "voucher_preference_updated",
-        city_slug: appContext.citySlug,
-        actor_user_id: auth.userRow.id,
-        reason: "User updated voucher routing preferences",
-        payload: {
-          appInstanceId: appContext.appInstanceId,
-          merchantStoreId,
-          tokenAddress,
-          trustStatus,
-        },
-      });
-
-      return jsonResponse(req, { preference });
+      return jsonResponse(req, data);
     }
+
+    const auth = await resolveAuthenticatedUser(req, "voucher-preferences privileged compatibility and merchant reads");
+    const appContext = await resolveActiveAppContext({
+      supabase: auth.serviceRole,
+      input: appContextInput,
+    });
 
     if (req.method === "GET" && pathname === "/compatibility") {
       const chainId = Math.max(1, Math.trunc(toNumber(new URL(req.url).searchParams.get("chainId"), 42220)));

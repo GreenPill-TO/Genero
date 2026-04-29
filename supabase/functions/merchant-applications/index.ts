@@ -36,7 +36,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
   try {
     const body = await readBody(req);
-    const auth = await resolveAuthenticatedUser(req);
+    const auth = await resolveAuthenticatedUser(req, "merchant application state operations");
     const appContext = await resolveActiveAppContext({
       supabase: auth.serviceRole,
       input: resolveAppContextInput(req, body),

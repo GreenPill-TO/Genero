@@ -43,6 +43,31 @@ export function createServiceRoleClient(options?: { purpose?: string }) {
   });
 }
 
+export function createAuthenticatedRequestClient(req: Request, options?: { purpose?: string }) {
+  const purpose = options?.purpose?.trim();
+  if (!purpose) {
+    throw new Error("A request-scoped purpose is required for authenticated edge access.");
+  }
+
+  const token = resolveBearerToken(req);
+
+  return createClient(
+    requireFirstEnv(["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"]),
+    requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    }
+  );
+}
+
 export async function resolveAuthenticatedSupabaseUser(req: Request, purpose: string) {
   const serviceRole = createServiceRoleClient({ purpose });
   const token = resolveBearerToken(req);
@@ -102,8 +127,8 @@ function isMissingTableError(message: string | undefined): boolean {
   return message.includes("does not exist") || message.includes("Could not find the table") || message.includes("schema cache");
 }
 
-export async function resolveAuthenticatedUser(req: Request) {
-  const { serviceRole, authUser } = await resolveAuthenticatedSupabaseUser(req, "authenticated edge request");
+export async function resolveAuthenticatedUser(req: Request, purpose = "authenticated edge request") {
+  const { serviceRole, authUser } = await resolveAuthenticatedSupabaseUser(req, purpose);
 
   const { data: authUserRow, error: authRowError } = await serviceRole
     .from("users")
