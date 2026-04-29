@@ -129,4 +129,39 @@ describe("bia-service handleRequest", () => {
       p_include_health: true,
     });
   });
+
+  it("preserves unauthorized BIA RPC failures as 401 responses", async () => {
+    requestScopedRpcMock.mockResolvedValue({
+      data: null,
+      error: { message: "Unauthorized", code: "42501" },
+    });
+
+    const res = await handleRequest(
+      new Request("http://localhost/functions/v1/bia-service/mappings?chainId=42220", {
+        method: "GET",
+        headers: { authorization: "Bearer user-token" },
+      })
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects empty BIA list RPC responses instead of returning partial payloads", async () => {
+    requestScopedRpcMock.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    const res = await handleRequest(
+      new Request("http://localhost/functions/v1/bia-service/list", {
+        method: "GET",
+        headers: { authorization: "Bearer user-token" },
+      })
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: "Failed to load BIAs: empty response",
+    });
+  });
 });

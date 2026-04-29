@@ -35,6 +35,14 @@ function normalizeTrustStatus(value: unknown): "trusted" | "blocked" | "default"
   return null;
 }
 
+function throwRpcError(prefix: string, error: { code?: string; message?: string }) {
+  const message = error.message ?? "Unknown RPC error";
+  if (message === "Unauthorized" || message.startsWith("Forbidden") || error.code === "42501") {
+    throw new Error(message);
+  }
+  throw new Error(`${prefix}: ${message}`);
+}
+
 async function readBody(req: Request) {
   if (req.method === "GET" || req.method === "OPTIONS") {
     return null;
@@ -70,10 +78,13 @@ export async function handleRequest(req: Request): Promise<Response> {
       });
 
       if (error) {
-        throw new Error(`Failed to load voucher preferences: ${error.message}`);
+        throwRpcError("Failed to load voucher preferences", error);
+      }
+      if (!data) {
+        throw new Error("Failed to load voucher preferences: empty response");
       }
 
-      return jsonResponse(req, data ?? { preferences: [] });
+      return jsonResponse(req, data);
     }
 
     if (req.method === "PATCH" && pathname === "/preferences") {
@@ -98,10 +109,13 @@ export async function handleRequest(req: Request): Promise<Response> {
       });
 
       if (error) {
-        throw new Error(`Failed to save voucher preference: ${error.message}`);
+        throwRpcError("Failed to save voucher preference", error);
+      }
+      if (!data) {
+        throw new Error("Failed to save voucher preference: empty response");
       }
 
-      return jsonResponse(req, data ?? { preference: null });
+      return jsonResponse(req, data);
     }
 
     const auth = await resolveAuthenticatedUser(req, "voucher-preferences privileged compatibility and merchant reads");

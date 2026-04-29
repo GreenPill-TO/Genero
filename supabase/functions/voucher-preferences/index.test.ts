@@ -134,6 +134,41 @@ describe("voucher-preferences handleRequest", () => {
     });
   });
 
+  it("preserves unauthorized preference RPC failures as 401 responses", async () => {
+    requestScopedRpcMock.mockResolvedValue({
+      data: null,
+      error: { message: "Unauthorized", code: "42501" },
+    });
+
+    const res = await handleRequest(
+      new Request("http://localhost/functions/v1/voucher-preferences/preferences", {
+        method: "GET",
+        headers: { authorization: "Bearer user-token" },
+      })
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects empty preference RPC responses instead of returning partial payloads", async () => {
+    requestScopedRpcMock.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    const res = await handleRequest(
+      new Request("http://localhost/functions/v1/voucher-preferences/preferences", {
+        method: "GET",
+        headers: { authorization: "Bearer user-token" },
+      })
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: "Failed to load voucher preferences: empty response",
+    });
+  });
+
   it("returns compatibility rules through the helper", async () => {
     voucherRoutingMocks.getVoucherCompatibilityRules.mockResolvedValue([{ id: "rule-1" }]);
 

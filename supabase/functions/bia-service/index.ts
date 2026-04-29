@@ -44,6 +44,14 @@ function isSetupRequiredRpcError(message: string | undefined): boolean {
   return typeof message === "string" && isReadModelMissing(message);
 }
 
+function throwRpcError(prefix: string, error: { code?: string; message?: string }) {
+  const message = error.message ?? "Unknown RPC error";
+  if (message === "Unauthorized" || message.startsWith("Forbidden") || error.code === "42501") {
+    throw new Error(message);
+  }
+  throw new Error(`${prefix}: ${message}`);
+}
+
 async function readBody(req: Request) {
   if (req.method === "GET" || req.method === "OPTIONS") {
     return null;
@@ -82,23 +90,15 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       if (error) {
         if (isSetupRequiredRpcError(error.message)) {
-          return jsonResponse(req, {
-            citySlug: appContextInput.citySlug ?? "tcoin",
-            appInstanceId: null,
-            activeAffiliation: null,
-            secondaryAffiliations: [],
-            bias: [],
-            mappingsState: "setup_required",
-            mappingsSetupMessage: "BIA mapping read model is not available yet for this app instance.",
-            mappings: [],
-            controls: [],
-            canAdminister: false,
-          });
+          throw new Error("BIA scoped read RPC is not available yet for this app instance.");
         }
-        throw new Error(`Failed to load BIAs: ${error.message}`);
+        throwRpcError("Failed to load BIAs", error);
+      }
+      if (!data) {
+        throw new Error("Failed to load BIAs: empty response");
       }
 
-      return jsonResponse(req, data ?? {});
+      return jsonResponse(req, data);
     }
 
     if (req.method === "GET" && pathname === "/mappings") {
@@ -117,20 +117,15 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       if (error) {
         if (isSetupRequiredRpcError(error.message)) {
-          return jsonResponse(req, {
-            citySlug: appContextInput.citySlug ?? "tcoin",
-            chainId,
-            state: "setup_required",
-            setupMessage: "BIA mapping read model is not available yet for this app instance.",
-            canAdminister: false,
-            mappings: [],
-            health: null,
-          });
+          throw new Error("BIA mapping read RPC is not available yet for this app instance.");
         }
-        throw new Error(`Failed to load BIA mappings: ${error.message}`);
+        throwRpcError("Failed to load BIA mappings", error);
+      }
+      if (!data) {
+        throw new Error("Failed to load BIA mappings: empty response");
       }
 
-      return jsonResponse(req, data ?? {});
+      return jsonResponse(req, data);
     }
 
     const auth = await resolveAuthenticatedUser(req, "BIA privileged mutation or non-RPC read");

@@ -1,3 +1,33 @@
+# v1.237
+### Timestamp
+- 2026-04-29 04:48 EDT
+
+### Objective
+- Address PR review feedback on the Edge Function service-role boundary hardening branch without broadening the release scope.
+
+### What Changed
+- Preserved `Unauthorized` and `Forbidden` RPC failures from voucher preference and BIA scoped reads so Edge responses keep the correct auth status instead of being wrapped as generic bad requests.
+- Rejected empty scoped RPC payloads instead of returning partial fallback shapes from voucher preference and BIA self-service paths.
+- Updated the BIA scoped RPC rollout fallback so optional mapping/health read-model gaps preserve catalogue, affiliation, and `canAdminister` data where available.
+- Added focused tests for auth-error preservation and empty-response rejection.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/voucher-preferences/index.test.ts supabase/functions/bia-service/index.test.ts supabase/functions/_shared/auth.test.ts`
+- Local-only replay of `supabase/migrations/20260428103000_v1.20_edge_scoped_read_rpcs.sql`
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `supabase/functions/bia-service/index.test.ts`
+- `supabase/functions/bia-service/index.ts`
+- `supabase/functions/voucher-preferences/index.test.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/migrations/20260428103000_v1.20_edge_scoped_read_rpcs.sql`
+
 # v1.236
 ### Timestamp
 - 2026-04-28 04:05 EDT

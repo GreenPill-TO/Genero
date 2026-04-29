@@ -410,16 +410,23 @@ BEGIN
   ) s;
 
   IF p_include_mappings AND v_can_administer THEN
-    SELECT COALESCE(jsonb_agg(to_jsonb(m) ORDER BY m.updated_at DESC), '[]'::jsonb)
-      INTO v_mappings
-    FROM public.v_bia_mappings_v1 m
-    WHERE m.city_slug = v_city_slug;
+    BEGIN
+      SELECT COALESCE(jsonb_agg(to_jsonb(m) ORDER BY m.updated_at DESC), '[]'::jsonb)
+        INTO v_mappings
+      FROM public.v_bia_mappings_v1 m
+      WHERE m.city_slug = v_city_slug;
 
-    SELECT COALESCE(jsonb_agg(to_jsonb(c)), '[]'::jsonb)
-      INTO v_controls
-    FROM public.bia_pool_controls c;
+      SELECT COALESCE(jsonb_agg(to_jsonb(c)), '[]'::jsonb)
+        INTO v_controls
+      FROM public.bia_pool_controls c;
 
-    v_mappings_state := CASE WHEN jsonb_array_length(v_mappings) = 0 THEN 'empty' ELSE 'ready' END;
+      v_mappings_state := CASE WHEN jsonb_array_length(v_mappings) = 0 THEN 'empty' ELSE 'ready' END;
+    EXCEPTION
+      WHEN undefined_table OR undefined_function THEN
+        v_mappings := '[]'::jsonb;
+        v_controls := '[]'::jsonb;
+        v_mappings_state := 'setup_required';
+    END;
   END IF;
 
   RETURN jsonb_build_object(
@@ -429,7 +436,11 @@ BEGIN
     'secondaryAffiliations', v_secondaries,
     'bias', v_bias,
     'mappingsState', v_mappings_state,
-    'mappingsSetupMessage', NULL,
+    'mappingsSetupMessage',
+      CASE
+        WHEN v_mappings_state = 'setup_required' THEN 'BIA mapping read model is not available yet for this app instance.'
+        ELSE NULL
+      END,
     'mappings', v_mappings,
     'controls', v_controls,
     'canAdminister', v_can_administer
@@ -472,35 +483,51 @@ BEGIN
   v_city_slug := v_context ->> 'citySlug';
   v_can_administer := public.edge_user_is_admin_or_operator_v1(v_app_instance_id);
 
-  SELECT COALESCE(jsonb_agg(to_jsonb(m) ORDER BY m.updated_at DESC), '[]'::jsonb)
-    INTO v_mappings
-  FROM public.v_bia_mappings_v1 m
-  WHERE m.city_slug = v_city_slug
-    AND m.chain_id = v_chain_id;
+  BEGIN
+    SELECT COALESCE(jsonb_agg(to_jsonb(m) ORDER BY m.updated_at DESC), '[]'::jsonb)
+      INTO v_mappings
+    FROM public.v_bia_mappings_v1 m
+    WHERE m.city_slug = v_city_slug
+      AND m.chain_id = v_chain_id;
 
-  v_state := CASE WHEN jsonb_array_length(v_mappings) = 0 THEN 'empty' ELSE 'ready' END;
+    v_state := CASE WHEN jsonb_array_length(v_mappings) = 0 THEN 'empty' ELSE 'ready' END;
+  EXCEPTION
+    WHEN undefined_table OR undefined_function THEN
+      v_mappings := '[]'::jsonb;
+      v_state := 'setup_required';
+  END;
 
-  IF p_include_health THEN
-    SELECT *
-      INTO v_health_row
-    FROM public.v_bia_mapping_health_v1 h
-    WHERE h.city_slug = v_city_slug
-      AND h.chain_id = v_chain_id
-    LIMIT 1;
+  IF p_include_health AND v_state <> 'setup_required' THEN
+    BEGIN
+      SELECT *
+        INTO v_health_row
+      FROM public.v_bia_mapping_health_v1 h
+      WHERE h.city_slug = v_city_slug
+        AND h.chain_id = v_chain_id
+      LIMIT 1;
 
-    v_health := jsonb_build_object(
-      'mappedPools', COALESCE(v_health_row.mapped_pools, 0),
-      'discoveredPools', COALESCE(v_health_row.discovered_pools, 0),
-      'unmappedPools', COALESCE(v_health_row.unmapped_pools, 0),
-      'staleMappings', COALESCE(v_health_row.stale_mappings, 0)
-    );
+      v_health := jsonb_build_object(
+        'mappedPools', COALESCE(v_health_row.mapped_pools, 0),
+        'discoveredPools', COALESCE(v_health_row.discovered_pools, 0),
+        'unmappedPools', COALESCE(v_health_row.unmapped_pools, 0),
+        'staleMappings', COALESCE(v_health_row.stale_mappings, 0)
+      );
+    EXCEPTION
+      WHEN undefined_table OR undefined_function THEN
+        v_state := 'setup_required';
+        v_health := NULL;
+    END;
   END IF;
 
   RETURN jsonb_build_object(
     'citySlug', v_city_slug,
     'chainId', v_chain_id,
     'state', v_state,
-    'setupMessage', NULL,
+    'setupMessage',
+      CASE
+        WHEN v_state = 'setup_required' THEN 'BIA mapping read model is not available yet for this app instance.'
+        ELSE NULL
+      END,
     'canAdminister', v_can_administer,
     'mappings', v_mappings,
     'health', v_health
