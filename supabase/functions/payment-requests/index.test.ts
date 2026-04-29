@@ -2,8 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const resolveAuthenticatedEdgeUserMock = vi.hoisted(() => vi.fn());
+const resolveEdgeAppContextMock = vi.hoisted(() => vi.fn());
 const createServiceRoleClientMock = vi.hoisted(() => vi.fn());
-const resolveActiveAppContextMock = vi.hoisted(() => vi.fn());
 const paymentRequestMocks = vi.hoisted(() => ({
   listIncomingPaymentRequests: vi.fn(),
   listOutgoingPaymentRequests: vi.fn(),
@@ -17,10 +17,10 @@ const paymentRequestMocks = vi.hoisted(() => ({
 vi.mock("../_shared/auth.ts", () => ({
   createServiceRoleClient: createServiceRoleClientMock,
   resolveAuthenticatedEdgeUser: resolveAuthenticatedEdgeUserMock,
+  resolveEdgeAppContext: resolveEdgeAppContextMock,
 }));
 
 vi.mock("../_shared/appContext.ts", () => ({
-  resolveActiveAppContext: resolveActiveAppContextMock,
   resolveAppContextInput: vi.fn((req: Request, body?: Record<string, unknown> | null) => ({
     appSlug:
       (typeof body?.appContext === "object" &&
@@ -63,7 +63,7 @@ describe("payment-requests handleRequest", () => {
       userRow: { id: 42 },
     });
 
-    resolveActiveAppContextMock.mockResolvedValue({
+    resolveEdgeAppContextMock.mockResolvedValue({
       appSlug: "wallet",
       citySlug: "tcoin",
       environment: "development",
@@ -123,6 +123,15 @@ describe("payment-requests handleRequest", () => {
     );
 
     expect(res.status).toBe(200);
+    expect(resolveEdgeAppContextMock).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        appSlug: "wallet",
+        citySlug: "tcoin",
+        environment: "development",
+      })
+    );
+    expect(createServiceRoleClientMock).toHaveBeenCalledWith({ purpose: "payment requests /create operation" });
     expect(paymentRequestMocks.createPaymentRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         requesterId: 42,
@@ -161,7 +170,7 @@ describe("payment-requests handleRequest", () => {
   });
 
   it("rejects mismatched citySlug and appContext", async () => {
-    resolveActiveAppContextMock.mockResolvedValueOnce({
+    resolveEdgeAppContextMock.mockResolvedValueOnce({
       appSlug: "wallet",
       citySlug: "othercoin",
       environment: "development",

@@ -1,3 +1,27 @@
+# v1.243
+### Timestamp
+- 2026-04-29 15:58 EDT
+
+### Objective
+- Address Copilot review feedback on PR #72 while preserving the request-scoped Edge boundary pattern.
+
+### What Changed
+- Updated `payment-requests` so app-context resolution uses `resolveEdgeAppContext(...)` through the request-scoped client before constructing the route-specific service-role client.
+- Kept the service-role client limited to the city lookup and payment-request operation boundary.
+- Updated payment-request Edge tests to assert the request-scoped app-context call and route-specific service-role purpose.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/payment-requests/index.test.ts supabase/functions/_shared/auth.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `git diff --check`
+- `pnpm test -- --reporter=default`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `supabase/functions/payment-requests/index.test.ts`
+- `supabase/functions/payment-requests/index.ts`
+
 # v1.242
 ### Timestamp
 - 2026-04-29 15:33 EDT
