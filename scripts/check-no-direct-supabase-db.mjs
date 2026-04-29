@@ -181,6 +181,10 @@ const forbiddenAppFacingImports = new Map([
     "Voucher routing table reads must stay behind voucher Edge/server/worker boundaries.",
   ],
   [
+    "@shared/lib/sarafu",
+    "Sarafu barrel imports expose routing and guard helpers; app-facing code must import narrower non-DB modules or use Edge/server/worker boundaries.",
+  ],
+  [
     "@shared/lib/sarafu/guards",
     "Sarafu guard table reads must stay behind Sarafu Edge/server/worker boundaries.",
   ],

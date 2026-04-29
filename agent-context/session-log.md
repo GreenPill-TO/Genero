@@ -1,3 +1,22 @@
+# v1.244
+### Timestamp
+- 2026-04-29 16:14 EDT
+
+### Objective
+- Address Codex review feedback on PR #72 for the direct Supabase boundary guard.
+
+### What Changed
+- Added the `@shared/lib/sarafu` barrel path to the forbidden app-facing import map so guarded code cannot bypass the Sarafu routing/guard restrictions through the barrel module.
+
+### Verification
+- `node scripts/check-no-direct-supabase-db.mjs`
+- `pnpm lint`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `scripts/check-no-direct-supabase-db.mjs`
+
 # v1.243
 ### Timestamp
 - 2026-04-29 15:58 EDT
