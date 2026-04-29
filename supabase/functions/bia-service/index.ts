@@ -1,5 +1,9 @@
-import { createAuthenticatedRequestClient, resolveAuthenticatedUser } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import {
+  createAuthenticatedRequestClient,
+  createServiceRoleClient,
+  resolveAuthenticatedEdgeContext,
+} from "../_shared/auth.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { assertAdminOrOperator, userHasAnyRole } from "../_shared/rbac.ts";
 import { jsonResponse } from "../_shared/responses.ts";
@@ -128,17 +132,17 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(req, data);
     }
 
-    const auth = await resolveAuthenticatedUser(req, "BIA privileged mutation or non-RPC read");
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
+    const scoped = await resolveAuthenticatedEdgeContext(req, {
+      purpose: "BIA privileged scoped identity and app context",
       input: appContextInput,
     });
+    const serviceRole = createServiceRoleClient({ purpose: `BIA ${pathname} operation` });
 
     if (req.method === "POST" && pathname === "/mappings") {
       await assertAdminOrOperator({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
       });
 
       const chainId = Math.max(1, Math.trunc(toNumber(body?.chainId, 42220)));
@@ -149,11 +153,11 @@ export async function handleRequest(req: Request): Promise<Response> {
       if (!biaId) return jsonResponse(req, { error: "biaId is required." }, { status: 400 });
       if (!poolAddress) return jsonResponse(req, { error: "poolAddress must be a valid 0x address." }, { status: 400 });
 
-      const { data: biaRow, error: biaError } = await auth.serviceRole
+      const { data: biaRow, error: biaError } = await serviceRole
         .from("bia_registry")
         .select("id,city_slug")
         .eq("id", biaId)
-        .eq("city_slug", appContext.citySlug)
+        .eq("city_slug", scoped.appContext.citySlug)
         .limit(1)
         .maybeSingle();
 
@@ -162,7 +166,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       const nowIso = new Date().toISOString();
       if (mappingStatus === "active") {
-        await auth.serviceRole
+        await serviceRole
           .from("bia_pool_mappings")
           .update({ mapping_status: "inactive", effective_to: nowIso, updated_at: nowIso })
           .eq("bia_id", biaId)
@@ -170,7 +174,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           .eq("mapping_status", "active")
           .is("effective_to", null);
 
-        await auth.serviceRole
+        await serviceRole
           .from("bia_pool_mappings")
           .update({ mapping_status: "inactive", effective_to: nowIso, updated_at: nowIso })
           .eq("chain_id", chainId)
@@ -179,7 +183,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           .is("effective_to", null);
       }
 
-      const { data: inserted, error: insertError } = await auth.serviceRole
+      const { data: inserted, error: insertError } = await serviceRole
         .from("bia_pool_mappings")
         .insert({
           bia_id: biaId,
@@ -194,7 +198,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           validation_notes: body?.validationNotes ?? null,
           effective_from: body?.effectiveFrom ?? nowIso,
           effective_to: mappingStatus === "active" ? null : nowIso,
-          created_by: auth.userRow.id,
+          created_by: scoped.userRow.id,
           created_at: nowIso,
           updated_at: nowIso,
         })
@@ -203,7 +207,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       if (insertError) throw new Error(`Failed to create BIA mapping: ${insertError.message}`);
       return jsonResponse(req, {
-        citySlug: appContext.citySlug,
+        citySlug: scoped.appContext.citySlug,
         chainId,
         canAdminister: true,
         mappings: [inserted],
@@ -213,21 +217,21 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "GET" && pathname === "/controls") {
       const canAdminister = await userHasAnyRole({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
         roles: ["admin", "operator"],
       });
 
-      const { data, error } = await auth.serviceRole
+      const { data, error } = await serviceRole
         .from("bia_pool_controls")
         .select("*, bia_registry!inner(city_slug,code,name)")
-        .eq("bia_registry.city_slug", appContext.citySlug)
+        .eq("bia_registry.city_slug", scoped.appContext.citySlug)
         .order("updated_at", { ascending: false });
 
       if (error) throw new Error(`Failed to load BIA controls: ${error.message}`);
       return jsonResponse(req, {
-        citySlug: appContext.citySlug,
+        citySlug: scoped.appContext.citySlug,
         canAdminister,
         controls: data ?? [],
       });
@@ -235,19 +239,19 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/controls") {
       await assertAdminOrOperator({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
       });
 
       const biaId = typeof body?.biaId === "string" ? body.biaId : "";
       if (!biaId) return jsonResponse(req, { error: "biaId is required." }, { status: 400 });
 
-      const { data: biaRow, error: biaError } = await auth.serviceRole
+      const { data: biaRow, error: biaError } = await serviceRole
         .from("bia_registry")
         .select("id")
         .eq("id", biaId)
-        .eq("city_slug", appContext.citySlug)
+        .eq("city_slug", scoped.appContext.citySlug)
         .limit(1)
         .maybeSingle();
 
@@ -265,7 +269,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
 
       const nowIso = new Date().toISOString();
-      const { data: updated, error: upsertError } = await auth.serviceRole
+      const { data: updated, error: upsertError } = await serviceRole
         .from("bia_pool_controls")
         .upsert(
           {
@@ -274,7 +278,7 @@ export async function handleRequest(req: Request): Promise<Response> {
             max_tx_amount: maxTx,
             queue_only_mode: body?.queueOnlyMode ?? false,
             is_frozen: body?.isFrozen ?? false,
-            updated_by: auth.userRow.id,
+            updated_by: scoped.userRow.id,
             updated_at: nowIso,
           },
           { onConflict: "bia_id" }
@@ -284,14 +288,14 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       if (upsertError) throw new Error(`Failed to update BIA controls: ${upsertError.message}`);
 
-      await auth.serviceRole.from("governance_actions_log").insert({
+      await serviceRole.from("governance_actions_log").insert({
         action_type: "bia_controls_updated",
-        city_slug: appContext.citySlug,
+        city_slug: scoped.appContext.citySlug,
         bia_id: biaId,
-        actor_user_id: auth.userRow.id,
+        actor_user_id: scoped.userRow.id,
         reason: typeof body?.reason === "string" ? body.reason : "BIA risk controls updated",
         payload: {
-          appInstanceId: appContext.appInstanceId,
+          appInstanceId: scoped.appContext.appInstanceId,
           maxDailyRedemption: maxDaily,
           maxTxAmount: maxTx,
           queueOnlyMode: body?.queueOnlyMode ?? false,
@@ -304,9 +308,9 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/create") {
       await assertAdminOrOperator({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
       });
 
       const code = String(body?.code ?? "").trim().toUpperCase();
@@ -320,10 +324,10 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
 
       const nowIso = new Date().toISOString();
-      const { data: created, error: createError } = await auth.serviceRole
+      const { data: created, error: createError } = await serviceRole
         .from("bia_registry")
         .insert({
-          city_slug: appContext.citySlug,
+          city_slug: scoped.appContext.citySlug,
           code,
           name,
           center_lat: centerLat,
@@ -344,11 +348,11 @@ export async function handleRequest(req: Request): Promise<Response> {
       const biaId = typeof body?.biaId === "string" ? body.biaId : "";
       if (!biaId) return jsonResponse(req, { error: "biaId is required." }, { status: 400 });
 
-      const { data: biaRow, error: biaError } = await auth.serviceRole
+      const { data: biaRow, error: biaError } = await serviceRole
         .from("bia_registry")
         .select("id,city_slug,status")
         .eq("id", biaId)
-        .eq("city_slug", appContext.citySlug)
+        .eq("city_slug", scoped.appContext.citySlug)
         .eq("status", "active")
         .limit(1)
         .maybeSingle();
@@ -366,10 +370,10 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       let validatedSecondaryBiaIds: string[] = [];
       if (requestedSecondaryBiaIds.length > 0) {
-        const { data: secondaryRows, error: secondaryError } = await auth.serviceRole
+        const { data: secondaryRows, error: secondaryError } = await serviceRole
           .from("bia_registry")
           .select("id")
-          .eq("city_slug", appContext.citySlug)
+          .eq("city_slug", scoped.appContext.citySlug)
           .eq("status", "active")
           .in("id", requestedSecondaryBiaIds);
 
@@ -381,24 +385,24 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
 
       const nowIso = new Date().toISOString();
-      await auth.serviceRole
+      await serviceRole
         .from("user_bia_affiliations")
         .update({ effective_to: nowIso, updated_at: nowIso })
-        .eq("user_id", auth.userRow.id)
-        .eq("app_instance_id", appContext.appInstanceId)
+        .eq("user_id", scoped.userRow.id)
+        .eq("app_instance_id", scoped.appContext.appInstanceId)
         .is("effective_to", null);
-      await auth.serviceRole
+      await serviceRole
         .from("user_bia_secondary_affiliations")
         .update({ effective_to: nowIso, updated_at: nowIso })
-        .eq("user_id", auth.userRow.id)
-        .eq("app_instance_id", appContext.appInstanceId)
+        .eq("user_id", scoped.userRow.id)
+        .eq("app_instance_id", scoped.appContext.appInstanceId)
         .is("effective_to", null);
 
-      const { data: inserted, error: insertError } = await auth.serviceRole
+      const { data: inserted, error: insertError } = await serviceRole
         .from("user_bia_affiliations")
         .insert({
-          user_id: auth.userRow.id,
-          app_instance_id: appContext.appInstanceId,
+          user_id: scoped.userRow.id,
+          app_instance_id: scoped.appContext.appInstanceId,
           bia_id: biaRow.id,
           source: body?.source ?? "user_selected",
           confidence: body?.confidence ?? null,
@@ -414,8 +418,8 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       if (validatedSecondaryBiaIds.length > 0) {
         const secondaryPayload = validatedSecondaryBiaIds.map((secondaryBiaId) => ({
-          user_id: auth.userRow.id,
-          app_instance_id: appContext.appInstanceId,
+          user_id: scoped.userRow.id,
+          app_instance_id: scoped.appContext.appInstanceId,
           bia_id: secondaryBiaId,
           source: body?.source ?? "user_selected",
           effective_from: nowIso,
@@ -424,7 +428,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           updated_at: nowIso,
         }));
 
-        const { error: secondaryInsertError } = await auth.serviceRole
+        const { error: secondaryInsertError } = await serviceRole
           .from("user_bia_secondary_affiliations")
           .insert(secondaryPayload);
 
@@ -448,10 +452,10 @@ export async function handleRequest(req: Request): Promise<Response> {
         return jsonResponse(req, { error: "lat and lng query params are required numeric values." }, { status: 400 });
       }
 
-      const { data, error } = await auth.serviceRole
+      const { data, error } = await serviceRole
         .from("bia_registry")
         .select("id,city_slug,code,name,center_lat,center_lng,status,metadata")
-        .eq("city_slug", appContext.citySlug)
+        .eq("city_slug", scoped.appContext.citySlug)
         .eq("status", "active");
 
       if (error) throw new Error(`Failed to load BIAs: ${error.message}`);
@@ -465,7 +469,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         .slice(0, limit);
 
       return jsonResponse(req, {
-        citySlug: appContext.citySlug,
+        citySlug: scoped.appContext.citySlug,
         lat,
         lng,
         suggestions,

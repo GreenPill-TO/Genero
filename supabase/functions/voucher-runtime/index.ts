@@ -1,5 +1,5 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import { createServiceRoleClient, resolveAuthenticatedEdgeContext } from "../_shared/auth.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import {
@@ -33,24 +33,24 @@ async function handleRequest(req: Request): Promise<Response> {
 
   try {
     const body = await readBody(req);
-    const auth = await resolveAuthenticatedUser(req, "voucher runtime portfolio, route, and payment-record operations");
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
-      input: resolveAppContextInput(req, body),
-    });
     const rawPathname = new URL(req.url).pathname;
     const pathname =
       rawPathname.replace(/^\/functions\/v1\/voucher-runtime/, "").replace(/^\/voucher-runtime/, "") || "/";
+    const scoped = await resolveAuthenticatedEdgeContext(req, {
+      purpose: "voucher runtime scoped identity and app context",
+      input: resolveAppContextInput(req, body),
+    });
+    const serviceRole = createServiceRoleClient({ purpose: `voucher runtime ${pathname} operation` });
     const url = new URL(req.url);
 
     if (req.method === "GET" && pathname === "/portfolio") {
       return jsonResponse(
         req,
         await getVoucherPortfolioRuntime({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          citySlug: appContext.citySlug,
-          appInstanceId: appContext.appInstanceId,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          citySlug: scoped.appContext.citySlug,
+          appInstanceId: scoped.appContext.appInstanceId,
           chainId: Number(url.searchParams.get("chainId") ?? 0),
           wallet: url.searchParams.get("wallet"),
         })
@@ -61,10 +61,10 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await getVoucherRouteRuntime({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          citySlug: appContext.citySlug,
-          appInstanceId: appContext.appInstanceId,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          citySlug: scoped.appContext.citySlug,
+          appInstanceId: scoped.appContext.appInstanceId,
           chainId: Number(url.searchParams.get("chainId") ?? 0),
           amount: Number(url.searchParams.get("amount") ?? 0),
           recipientWallet: url.searchParams.get("recipientWallet"),
@@ -77,9 +77,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await createVoucherPaymentRecordRuntime({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          citySlug: appContext.citySlug,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          citySlug: scoped.appContext.citySlug,
           chainId: Number(body?.chainId ?? 0),
           payload: body ?? {},
         })

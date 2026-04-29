@@ -1,5 +1,5 @@
-import { createServiceRoleClient, resolveAuthenticatedUser } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import { createServiceRoleClient, resolveAuthenticatedEdgeContext } from "../_shared/auth.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import {
@@ -67,19 +67,19 @@ export async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
-    const auth = await resolveAuthenticatedUser(req);
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
+    const scoped = await resolveAuthenticatedEdgeContext(req, {
+      purpose: "payment links scoped identity and app context",
       input: resolveAppContextInput(req, body),
     });
+    const serviceRole = createServiceRoleClient({ purpose: `payment links ${pathname} operation` });
 
     if (req.method === "POST" && pathname === "/create") {
       return jsonResponse(
         req,
         await createPaymentRequestLink({
-          supabase: auth.serviceRole,
-          appContext,
-          recipientUserId: Number(auth.userRow.id),
+          supabase: serviceRole,
+          appContext: scoped.appContext,
+          recipientUserId: Number(scoped.userRow.id),
           amountRequested: body?.amountRequested,
           mode: body?.mode,
         })
@@ -95,9 +95,9 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await consumePaymentRequestLink({
-          supabase: auth.serviceRole,
+          supabase: serviceRole,
           token,
-          consumingUserId: Number(auth.userRow.id),
+          consumingUserId: Number(scoped.userRow.id),
           transactionId: body?.transactionId,
         })
       );

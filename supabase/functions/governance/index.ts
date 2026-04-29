@@ -1,5 +1,5 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import { createServiceRoleClient, resolveAuthenticatedEdgeContext } from "../_shared/auth.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { toNumber } from "../_shared/validation.ts";
@@ -10,17 +10,17 @@ type DenoServe = {
 
 const DenoRuntime = (globalThis as typeof globalThis & { Deno?: DenoServe }).Deno;
 
-async function handleRequest(req: Request): Promise<Response> {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: resolveCorsHeaders(req) });
   }
 
   try {
-    const auth = await resolveAuthenticatedUser(req);
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
+    const scoped = await resolveAuthenticatedEdgeContext(req, {
+      purpose: "governance scoped identity and app context",
       input: resolveAppContextInput(req, null),
     });
+    const serviceRole = createServiceRoleClient({ purpose: "governance action feed read" });
 
     const rawPathname = new URL(req.url).pathname;
     const pathname = rawPathname.replace(/^\/functions\/v1\/governance/, "").replace(/^\/governance/, "") || "/";
@@ -31,10 +31,10 @@ async function handleRequest(req: Request): Promise<Response> {
       const storeId = toNumber(url.searchParams.get("storeId"), 0);
       const limit = Math.max(1, Math.min(200, Math.trunc(toNumber(url.searchParams.get("limit"), 100))));
 
-      let query = auth.serviceRole
+      let query = serviceRole
         .from("governance_actions_log")
         .select("*")
-        .eq("city_slug", appContext.citySlug)
+        .eq("city_slug", scoped.appContext.citySlug)
         .order("created_at", { ascending: false })
         .limit(limit);
 
@@ -51,8 +51,8 @@ async function handleRequest(req: Request): Promise<Response> {
       }
 
       return jsonResponse(req, {
-        citySlug: appContext.citySlug,
-        appInstanceId: appContext.appInstanceId,
+        citySlug: scoped.appContext.citySlug,
+        appInstanceId: scoped.appContext.appInstanceId,
         actions: data ?? [],
       });
     }

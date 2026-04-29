@@ -1,9 +1,8 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const resolveAuthenticatedUserMock = vi.hoisted(() => vi.fn());
+const resolveAuthenticatedEdgeContextMock = vi.hoisted(() => vi.fn());
 const createServiceRoleClientMock = vi.hoisted(() => vi.fn(() => ({ serviceRole: true })));
-const resolveActiveAppContextMock = vi.hoisted(() => vi.fn());
 const onrampMocks = vi.hoisted(() => ({
   createOnrampSession: vi.fn(),
   ingestTransakWebhook: vi.fn(),
@@ -16,12 +15,11 @@ const onrampMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../_shared/auth.ts", () => ({
-  resolveAuthenticatedUser: resolveAuthenticatedUserMock,
+  resolveAuthenticatedEdgeContext: resolveAuthenticatedEdgeContextMock,
   createServiceRoleClient: createServiceRoleClientMock,
 }));
 
 vi.mock("../_shared/appContext.ts", () => ({
-  resolveActiveAppContext: resolveActiveAppContextMock,
   resolveAppContextInput: vi.fn(() => ({
     appSlug: "wallet",
     citySlug: "tcoin",
@@ -35,15 +33,14 @@ import { handleRequest } from "./index";
 
 describe("onramp handleRequest", () => {
   beforeEach(() => {
-    resolveAuthenticatedUserMock.mockResolvedValue({
-      serviceRole: {},
+    resolveAuthenticatedEdgeContextMock.mockResolvedValue({
       userRow: { id: 21 },
-    });
-    resolveActiveAppContextMock.mockResolvedValue({
-      appSlug: "wallet",
-      citySlug: "tcoin",
-      environment: "development",
-      appInstanceId: 7,
+      appContext: {
+        appSlug: "wallet",
+        citySlug: "tcoin",
+        environment: "development",
+        appInstanceId: 7,
+      },
     });
     Object.values(onrampMocks).forEach((mockFn) => mockFn.mockReset());
     createServiceRoleClientMock.mockClear();

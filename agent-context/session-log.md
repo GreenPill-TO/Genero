@@ -1,3 +1,215 @@
+# v1.244
+### Timestamp
+- 2026-04-29 16:14 EDT
+
+### Objective
+- Address Codex review feedback on PR #72 for the direct Supabase boundary guard.
+
+### What Changed
+- Added the `@shared/lib/sarafu` barrel path to the forbidden app-facing import map so guarded code cannot bypass the Sarafu routing/guard restrictions through the barrel module.
+
+### Verification
+- `node scripts/check-no-direct-supabase-db.mjs`
+- `pnpm lint`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `scripts/check-no-direct-supabase-db.mjs`
+
+# v1.243
+### Timestamp
+- 2026-04-29 15:58 EDT
+
+### Objective
+- Address Copilot review feedback on PR #72 while preserving the request-scoped Edge boundary pattern.
+
+### What Changed
+- Updated `payment-requests` so app-context resolution uses `resolveEdgeAppContext(...)` through the request-scoped client before constructing the route-specific service-role client.
+- Kept the service-role client limited to the city lookup and payment-request operation boundary.
+- Updated payment-request Edge tests to assert the request-scoped app-context call and route-specific service-role purpose.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/payment-requests/index.test.ts supabase/functions/_shared/auth.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `git diff --check`
+- `pnpm test -- --reporter=default`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `supabase/functions/payment-requests/index.test.ts`
+- `supabase/functions/payment-requests/index.ts`
+
+# v1.242
+### Timestamp
+- 2026-04-29 15:33 EDT
+
+### Objective
+- Add CI-assisted remote/deployment release alignment after TCOIN Supabase migration deploys.
+
+### What Changed
+- Added `.github/workflows/release-alignment-tcoin.yml` with Preview and Production jobs gated by the `Preview – tcoin` and `Production – tcoin` GitHub Environments.
+- Wired the workflow to run automatically after successful `Supabase Deploy (TCOIN)` push deploys on `dev` and `main`, with manual dispatch support for Preview or Production.
+- Added target-env secret/var wiring for deployment-profile wallet preflight, PostgREST schema-cache reload via `notify pgrst, 'reload schema';`, TorontoCoin ops checks, and optional Playwright smoke when `SMOKE_BASE_URL` is configured.
+- Updated the testing/CI contract, wallet release runbook, technical spec, and todo tracking to explain what the workflow proves and what remains manual.
+
+### Verification
+- `ruby -e "require 'yaml'; YAML.load_file('.github/workflows/release-alignment-tcoin.yml'); puts 'yaml ok'"`
+- `git diff --check`
+- `pnpm lint`
+
+### Files Edited
+- `.github/workflows/release-alignment-tcoin.yml`
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/testing-ci-contract.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+
+# v1.241
+### Timestamp
+- 2026-04-29 15:19 EDT
+
+### Objective
+- Finish closing the P1 Supabase boundary hardening todos rather than leaving them in a stabilized-but-open state.
+
+### What Changed
+- Moved `user-settings /auth/ensure-user` off the service-role auth resolver by resolving the Supabase auth user through the request-scoped publishable-key client, then constructing service-role access only for the privileged user-row reconciliation write.
+- Removed the retired broad service-role auth resolver helpers from the Edge shared auth module so future Edge code cannot accidentally reintroduce that pattern.
+- Added focused tests proving request-scoped auth is used for `user-settings /auth/ensure-user` and that the request-scoped auth helper uses the caller bearer token.
+- Marked the P1 service-role and direct Supabase table-access todos complete for the production-readiness scope, with remaining deeper RPC/function splits captured as optional post-P1 hardening follow-up.
+- Updated the Supabase boundary contract, technical spec, and wallet release runbook to distinguish launch-blocking broad access from documented privileged Edge/worker/action-time exceptions.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/_shared/auth.test.ts supabase/functions/user-settings/index.test.ts supabase/functions/user-requests/index.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `rg "resolveAuthenticatedSupabaseUser|resolveAuthenticatedUser" supabase/functions app shared scripts docs -n`
+- `node scripts/check-no-direct-supabase-db.mjs`
+- `git diff --check`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `supabase/functions/_shared/auth.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/user-requests/index.test.ts`
+- `supabase/functions/user-settings/index.test.ts`
+- `supabase/functions/user-settings/index.ts`
+
+# v1.240
+### Timestamp
+- 2026-04-29 14:10 EDT
+
+### Objective
+- Complete the current P1 Supabase boundary hardening slice on `codex/edge-privileged-boundary-hardening` without merging or rebasing `dev`.
+
+### What Changed
+- Added a lightweight request-scoped Edge user resolver and kept full Edge app-context resolution on the publishable-key RPC boundary.
+- Refactored remaining lower-risk Edge entrypoints for control-plane, citycoin-market, payment-requests, payment-links, user-requests, governance, redemptions, wallet-operations, and privileged voucher-preference compatibility paths so caller identity/app context resolves before any route-specific service-role operation.
+- Kept intentionally privileged service-role work in place for custody, transfer bookkeeping, payment-link consume/resolve, settlement/admin, governance reads, voucher payment-records, merchant/admin, BIA/admin, and webhook/runtime paths, with purpose labels at the operation boundary.
+- Expanded the direct Supabase table-access guard to block app-facing runtime imports of documented exception helpers such as merchant-signup table helpers, voucher/Sarafu routing helpers, and the Cubid signer outside approved server/worker/action-time boundaries.
+- Updated the Supabase boundary contract, technical spec, wallet release runbook, and todo metadata to mark both P1 tracks as stabilized/in-progress rather than fully closed.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/_shared/auth.test.ts supabase/functions/control-plane/index.test.ts supabase/functions/citycoin-market/index.test.ts supabase/functions/payment-requests/index.test.ts supabase/functions/payment-links/index.test.ts supabase/functions/user-requests/index.test.ts supabase/functions/governance/index.test.ts supabase/functions/redemptions/index.test.ts supabase/functions/wallet-operations/index.test.ts supabase/functions/voucher-preferences/index.test.ts supabase/functions/bia-service/index.test.ts supabase/functions/onramp/index.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `node scripts/check-no-direct-supabase-db.mjs`
+- `git diff --check`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `scripts/check-no-direct-supabase-db.mjs`
+- `supabase/functions/_shared/auth.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/citycoin-market/index.test.ts`
+- `supabase/functions/citycoin-market/index.ts`
+- `supabase/functions/control-plane/index.test.ts`
+- `supabase/functions/control-plane/index.ts`
+- `supabase/functions/governance/index.test.ts`
+- `supabase/functions/governance/index.ts`
+- `supabase/functions/payment-links/index.test.ts`
+- `supabase/functions/payment-links/index.ts`
+- `supabase/functions/payment-requests/index.test.ts`
+- `supabase/functions/payment-requests/index.ts`
+- `supabase/functions/redemptions/index.test.ts`
+- `supabase/functions/redemptions/index.ts`
+- `supabase/functions/user-requests/index.ts`
+- `supabase/functions/voucher-preferences/index.test.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/functions/wallet-operations/index.test.ts`
+- `supabase/functions/wallet-operations/index.ts`
+
+# v1.239
+### Timestamp
+- 2026-04-29 13:35 EDT
+
+### Objective
+- Add structured metadata to production-readiness todos and backfill completed-item provenance from session logs and commit history where available.
+
+### What Changed
+- Added status, started/completed timestamps, feature branch, head commit, and session-log reference fields to every production-readiness todo item and the future auth-boundary idea.
+- Marked not-yet-started items with explicit `TBD` metadata, preserved partial/in-progress status for the service-role and direct-Supabase-boundary cleanup tracks, and populated completed-item metadata from session-log timestamps plus commit heads where evidence was available.
+- Left older feature branch fields as `TBD` when the branch name was not recoverable from current local history instead of guessing.
+
+### Verification
+- Session-log reference scan for newly referenced versions
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+
+# v1.238
+### Timestamp
+- 2026-04-29 12:46 EDT
+
+### Objective
+- Continue P1 service-role reduction for privileged Supabase Edge Function domains without rewriting settlement, custody, or admin state machines in one risky pass.
+
+### What Changed
+- Added a shared request-scoped Edge context resolver that uses the publishable-key client plus `edge_resolve_current_user_v1` and `edge_resolve_app_context_v1` RPCs to resolve caller identity and app context without constructing a service-role client.
+- Refactored user-settings, onramp, merchant application, store operation, voucher runtime, and BIA mutation entrypoints to use that scoped resolver before constructing route-specific service-role clients for the privileged operation itself.
+- Kept intentionally privileged service-role work in place for custody material, onramp settlement/webhooks, merchant/admin mutations, voucher payment records, and BIA admin/user-affiliation mutations.
+- Updated boundary documentation and production-readiness tracking to distinguish scoped identity/app-context resolution from the remaining privileged mutation boundaries.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/_shared/auth.test.ts supabase/functions/bia-service/index.test.ts supabase/functions/onramp/index.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `supabase/functions/_shared/auth.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/bia-service/index.test.ts`
+- `supabase/functions/bia-service/index.ts`
+- `supabase/functions/merchant-applications/index.ts`
+- `supabase/functions/onramp/index.test.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/store-operations/index.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/functions/voucher-runtime/index.ts`
+
 # v1.237
 ### Timestamp
 - 2026-04-29 04:48 EDT

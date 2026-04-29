@@ -1,14 +1,14 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const resolveAuthenticatedUserMock = vi.hoisted(() => vi.fn());
+const resolveAuthenticatedEdgeContextMock = vi.hoisted(() => vi.fn());
 const requestScopedRpcMock = vi.hoisted(() => vi.fn());
+const createServiceRoleClientMock = vi.hoisted(() => vi.fn());
 const createAuthenticatedRequestClientMock = vi.hoisted(() =>
   vi.fn(() => ({
     rpc: requestScopedRpcMock,
   }))
 );
-const resolveActiveAppContextMock = vi.hoisted(() => vi.fn());
 const assertAdminOrOperatorMock = vi.hoisted(() => vi.fn());
 const voucherRoutingMocks = vi.hoisted(() => ({
   getVoucherCompatibilityRules: vi.fn(),
@@ -22,12 +22,12 @@ vi.mock("npm:viem@2.23.3", () => ({
 }));
 
 vi.mock("../_shared/auth.ts", () => ({
-  resolveAuthenticatedUser: resolveAuthenticatedUserMock,
   createAuthenticatedRequestClient: createAuthenticatedRequestClientMock,
+  createServiceRoleClient: createServiceRoleClientMock,
+  resolveAuthenticatedEdgeContext: resolveAuthenticatedEdgeContextMock,
 }));
 
 vi.mock("../_shared/appContext.ts", () => ({
-  resolveActiveAppContext: resolveActiveAppContextMock,
   resolveAppContextInput: vi.fn(() => ({
     appSlug: "wallet",
     citySlug: "tcoin",
@@ -45,29 +45,33 @@ import { handleRequest } from "./index";
 
 describe("voucher-preferences handleRequest", () => {
   beforeEach(() => {
-    resolveAuthenticatedUserMock.mockResolvedValue({
-      serviceRole: {
-        from: () => ({
-          select: () => ({
+    const serviceRole = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
             eq: () => ({
               eq: () => ({
-                eq: () => ({
-                  order: async () => ({ data: [], error: null }),
-                }),
+                order: async () => ({ data: [], error: null }),
               }),
             }),
           }),
         }),
-      },
+      }),
+    };
+    createServiceRoleClientMock.mockReturnValue(serviceRole);
+    resolveAuthenticatedEdgeContextMock.mockResolvedValue({
+      scopedClient: {},
       userRow: { id: 3 },
-    });
-    resolveActiveAppContextMock.mockResolvedValue({
-      appSlug: "wallet",
-      citySlug: "tcoin",
-      environment: "development",
-      appInstanceId: 7,
+      appContext: {
+        appSlug: "wallet",
+        citySlug: "tcoin",
+        environment: "development",
+        appInstanceId: 7,
+      },
     });
     assertAdminOrOperatorMock.mockResolvedValue(undefined);
+    createServiceRoleClientMock.mockClear();
+    resolveAuthenticatedEdgeContextMock.mockClear();
     createAuthenticatedRequestClientMock.mockClear();
     requestScopedRpcMock.mockReset();
     voucherRoutingMocks.getVoucherCompatibilityRules.mockReset();
@@ -93,7 +97,7 @@ describe("voucher-preferences handleRequest", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(resolveAuthenticatedUserMock).not.toHaveBeenCalled();
+    expect(resolveAuthenticatedEdgeContextMock).not.toHaveBeenCalled();
     expect(createAuthenticatedRequestClientMock).toHaveBeenCalledWith(
       expect.any(Request),
       expect.objectContaining({ purpose: "voucher preference self-service read" })
@@ -123,7 +127,7 @@ describe("voucher-preferences handleRequest", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(resolveAuthenticatedUserMock).not.toHaveBeenCalled();
+    expect(resolveAuthenticatedEdgeContextMock).not.toHaveBeenCalled();
     expect(requestScopedRpcMock).toHaveBeenCalledWith("edge_upsert_voucher_preference_v1", {
       p_app_slug: "wallet",
       p_city_slug: "tcoin",
@@ -185,9 +189,9 @@ describe("voucher-preferences handleRequest", () => {
         chainId: 42220,
       })
     );
-    expect(resolveAuthenticatedUserMock).toHaveBeenCalledWith(
+    expect(resolveAuthenticatedEdgeContextMock).toHaveBeenCalledWith(
       expect.any(Request),
-      "voucher-preferences privileged compatibility and merchant reads"
+      expect.objectContaining({ purpose: "voucher preferences privileged scoped identity and app context" })
     );
   });
 

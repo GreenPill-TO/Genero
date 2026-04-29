@@ -1,4 +1,4 @@
-import { createServiceRoleClient, resolveAuthenticatedUser } from "../_shared/auth.ts";
+import { createServiceRoleClient, resolveAuthenticatedEdgeContext } from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
@@ -99,15 +99,15 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     if (req.method === "GET" && pathname === "/list") {
-      const auth = await resolveAuthenticatedUser(req);
-      const appContext = await resolveActiveAppContext({
-        supabase: auth.serviceRole,
+      const scoped = await resolveAuthenticatedEdgeContext(req, {
+        purpose: "user requests scoped identity and app context",
         input: resolveAppContextInput(req, body),
       });
+      const serviceRole = createServiceRoleClient({ purpose: "user requests admin list" });
       const isAdminOrOperator = await userHasAnyRole({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
         roles: ["admin", "operator"],
       });
 
@@ -115,10 +115,10 @@ export async function handleRequest(req: Request): Promise<Response> {
         throw new Error("Forbidden: admin/operator role required.");
       }
 
-      const { data, error } = await auth.serviceRole
+      const { data, error } = await serviceRole
         .from("user_requests")
         .select("*")
-        .eq("app_instance_id", appContext.appInstanceId)
+        .eq("app_instance_id", scoped.appContext.appInstanceId)
         .order("created_at", { ascending: false })
         .limit(100);
 
@@ -127,8 +127,8 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
 
       return jsonResponse(req, {
-        citySlug: appContext.citySlug,
-        appInstanceId: appContext.appInstanceId,
+        citySlug: scoped.appContext.citySlug,
+        appInstanceId: scoped.appContext.appInstanceId,
         requests: data ?? [],
       });
     }

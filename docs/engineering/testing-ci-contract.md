@@ -79,6 +79,8 @@ Secret scanning runs TruffleHog on pull-request diffs and on the scheduled full-
 
 The dedicated TCOIN Supabase workflow dry-runs migrations on PRs to `dev` and `main`, then deploys migrations after pushes to the matching branch through the `Preview – tcoin` and `Production – tcoin` GitHub Environment gates.
 
+After a successful migration deploy on `dev` or `main`, `.github/workflows/release-alignment-tcoin.yml` runs the matching environment-gated release alignment job. It reloads the PostgREST schema cache with `notify pgrst, 'reload schema';`, runs `pnpm ops:wallet:preflight:deployment`, runs `pnpm ops:torontocoin` and `pnpm ops:torontocoin:pools`, and runs the Playwright smoke harness when `SMOKE_BASE_URL` is configured. The same workflow can be launched manually for Preview or Production after Vercel env changes, Supabase dashboard schema exposure changes, or operator-side worker/scheduler changes.
+
 ## Not covered yet
 
-The local smoke harness does not cover signed-in e2e, OTP delivery, QR/pay-link creation, Buy TCOIN live checkout, live on-chain acceptance buys, or async indexer worker scheduling. Those remain manual release-runbook checks until stable seeded browser auth, test identities, and worker deployment primitives are available.
+The local and release-alignment smoke harnesses do not cover signed-in e2e, OTP delivery, QR/pay-link creation, Buy TCOIN live checkout, live on-chain acceptance buys, or async indexer worker scheduling. Those remain manual release-runbook checks until stable seeded browser auth, test identities, and worker deployment primitives are available.

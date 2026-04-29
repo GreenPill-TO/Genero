@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createServiceRoleClientMock = vi.hoisted(() => vi.fn());
-const resolveAuthenticatedUserMock = vi.hoisted(() => vi.fn());
+const resolveAuthenticatedEdgeContextMock = vi.hoisted(() => vi.fn());
 const resolveActiveAppContextMock = vi.hoisted(() => vi.fn());
 const insertMock = vi.hoisted(() => vi.fn());
 const orderMock = vi.hoisted(() => vi.fn(() => ({ limit: vi.fn() })));
@@ -23,7 +23,7 @@ const fromMock = vi.hoisted(() =>
 
 vi.mock("../_shared/auth.ts", () => ({
   createServiceRoleClient: createServiceRoleClientMock,
-  resolveAuthenticatedUser: resolveAuthenticatedUserMock,
+  resolveAuthenticatedEdgeContext: resolveAuthenticatedEdgeContextMock,
 }));
 
 vi.mock("../_shared/appContext.ts", () => ({
@@ -64,11 +64,15 @@ describe("user-requests handleRequest", () => {
       from: fromMock,
     });
 
-    resolveAuthenticatedUserMock.mockResolvedValue({
-      serviceRole: {
-        from: fromMock,
-      },
+    resolveAuthenticatedEdgeContextMock.mockResolvedValue({
+      scopedClient: {},
       userRow: { id: 1001 },
+      appContext: {
+        appSlug: "wallet",
+        citySlug: "tcoin",
+        environment: "development",
+        appInstanceId: 7,
+      },
     });
 
     resolveActiveAppContextMock.mockResolvedValue({

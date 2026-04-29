@@ -1,0 +1,244 @@
+name: Release Alignment (TCOIN)
+
+on:
+  workflow_run:
+    workflows: ["Supabase Deploy (TCOIN)"]
+    types: [completed]
+    branches: [dev, main]
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        description: Which TCOIN release target should be checked?
+        required: true
+        default: preview
+        options:
+          - preview
+          - production
+      smoke_base_url:
+        type: string
+        description: Optional deployed base URL for browser smoke.
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    name: Preview TCOIN release alignment
+    if: >-
+      (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'dev') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'preview')
+    runs-on: ubuntu-latest
+    environment:
+      name: Preview – tcoin
+    concurrency:
+      group: release-alignment-tcoin-preview
+      cancel-in-progress: false
+    env:
+      TARGET_LABEL: Preview – tcoin
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_TCOIN_PREVIEW || secrets.SUPABASE_SESSION_POOLER_DEV }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CITYCOIN: ${{ vars.NEXT_PUBLIC_CITYCOIN || 'tcoin' }}
+      NEXT_PUBLIC_APP_NAME: ${{ vars.NEXT_PUBLIC_APP_NAME || 'wallet' }}
+      NEXT_PUBLIC_APP_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_APP_ENVIRONMENT || 'staging' }}
+      NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL: ${{ vars.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL || secrets.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+      NEXT_PUBLIC_EXPLORER_URL: ${{ vars.NEXT_PUBLIC_EXPLORER_URL || secrets.NEXT_PUBLIC_EXPLORER_URL }}
+      USER_SETTINGS_ALLOWED_ORIGINS: ${{ vars.USER_SETTINGS_ALLOWED_ORIGINS || secrets.USER_SETTINGS_ALLOWED_ORIGINS }}
+      NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT: ${{ vars.NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT || 'false' }}
+      NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP: ${{ vars.NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP || 'false' }}
+      NOMINATIM_USER_AGENT: ${{ vars.NOMINATIM_USER_AGENT || secrets.NOMINATIM_USER_AGENT }}
+      NEXT_PUBLIC_CUBID_API_KEY: ${{ vars.NEXT_PUBLIC_CUBID_API_KEY || secrets.NEXT_PUBLIC_CUBID_API_KEY }}
+      NEXT_PUBLIC_CUBID_APP_ID: ${{ vars.NEXT_PUBLIC_CUBID_APP_ID || secrets.NEXT_PUBLIC_CUBID_APP_ID }}
+      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+      TWILIO_VERIFY_SERVICE_SID: ${{ secrets.TWILIO_VERIFY_SERVICE_SID }}
+      INDEXER_CHAIN_RPC_URL: ${{ vars.INDEXER_CHAIN_RPC_URL || secrets.INDEXER_CHAIN_RPC_URL }}
+      SMOKE_BASE_URL: ${{ github.event.inputs.smoke_base_url || vars.SMOKE_BASE_URL || secrets.SMOKE_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install PostgreSQL client
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Check release-alignment env
+        run: |
+          set -euo pipefail
+          missing=0
+          required=(
+            SUPABASE_DB_URL
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+            NEXT_PUBLIC_CITYCOIN
+            NEXT_PUBLIC_APP_NAME
+            NEXT_PUBLIC_APP_ENVIRONMENT
+            NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL
+            NEXT_PUBLIC_SITE_URL
+            NEXT_PUBLIC_EXPLORER_URL
+            USER_SETTINGS_ALLOWED_ORIGINS
+          )
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing ${name} for ${TARGET_LABEL} release alignment."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Reload PostgREST schema cache
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+          sleep 5
+
+      - name: Run wallet deployment preflight
+        run: pnpm ops:wallet:preflight:deployment
+
+      - name: Run TorontoCoin ops checks
+        run: |
+          set -euo pipefail
+          pnpm ops:torontocoin
+          pnpm ops:torontocoin:pools
+
+      - name: Optional browser smoke
+        run: |
+          set -euo pipefail
+          if [ -z "${SMOKE_BASE_URL:-}" ]; then
+            echo "SMOKE_BASE_URL is not configured for ${TARGET_LABEL}; skipping browser smoke."
+            exit 0
+          fi
+          pnpm exec playwright install --with-deps chromium
+          SMOKE_SKIP_BUILD=1 pnpm smoke:e2e
+
+  production:
+    name: Production TCOIN release alignment
+    if: >-
+      (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'production')
+    runs-on: ubuntu-latest
+    environment:
+      name: Production – tcoin
+    concurrency:
+      group: release-alignment-tcoin-production
+      cancel-in-progress: false
+    env:
+      TARGET_LABEL: Production – tcoin
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION || secrets.SUPABASE_SESSION_POOLER_PROD }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CITYCOIN: ${{ vars.NEXT_PUBLIC_CITYCOIN || 'tcoin' }}
+      NEXT_PUBLIC_APP_NAME: ${{ vars.NEXT_PUBLIC_APP_NAME || 'wallet' }}
+      NEXT_PUBLIC_APP_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_APP_ENVIRONMENT || 'production' }}
+      NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL: ${{ vars.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL || secrets.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
+      NEXT_PUBLIC_EXPLORER_URL: ${{ vars.NEXT_PUBLIC_EXPLORER_URL || secrets.NEXT_PUBLIC_EXPLORER_URL }}
+      USER_SETTINGS_ALLOWED_ORIGINS: ${{ vars.USER_SETTINGS_ALLOWED_ORIGINS || secrets.USER_SETTINGS_ALLOWED_ORIGINS }}
+      NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT: ${{ vars.NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT || 'false' }}
+      NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP: ${{ vars.NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP || 'false' }}
+      NOMINATIM_USER_AGENT: ${{ vars.NOMINATIM_USER_AGENT || secrets.NOMINATIM_USER_AGENT }}
+      NEXT_PUBLIC_CUBID_API_KEY: ${{ vars.NEXT_PUBLIC_CUBID_API_KEY || secrets.NEXT_PUBLIC_CUBID_API_KEY }}
+      NEXT_PUBLIC_CUBID_APP_ID: ${{ vars.NEXT_PUBLIC_CUBID_APP_ID || secrets.NEXT_PUBLIC_CUBID_APP_ID }}
+      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+      TWILIO_VERIFY_SERVICE_SID: ${{ secrets.TWILIO_VERIFY_SERVICE_SID }}
+      INDEXER_CHAIN_RPC_URL: ${{ vars.INDEXER_CHAIN_RPC_URL || secrets.INDEXER_CHAIN_RPC_URL }}
+      SMOKE_BASE_URL: ${{ github.event.inputs.smoke_base_url || vars.SMOKE_BASE_URL || secrets.SMOKE_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install PostgreSQL client
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Check release-alignment env
+        run: |
+          set -euo pipefail
+          missing=0
+          required=(
+            SUPABASE_DB_URL
+            NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+            NEXT_PUBLIC_CITYCOIN
+            NEXT_PUBLIC_APP_NAME
+            NEXT_PUBLIC_APP_ENVIRONMENT
+            NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL
+            NEXT_PUBLIC_SITE_URL
+            NEXT_PUBLIC_EXPLORER_URL
+            USER_SETTINGS_ALLOWED_ORIGINS
+          )
+          for name in "${required[@]}"; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing ${name} for ${TARGET_LABEL} release alignment."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Reload PostgREST schema cache
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+          sleep 5
+
+      - name: Run wallet deployment preflight
+        run: pnpm ops:wallet:preflight:deployment
+
+      - name: Run TorontoCoin ops checks
+        run: |
+          set -euo pipefail
+          pnpm ops:torontocoin
+          pnpm ops:torontocoin:pools
+
+      - name: Optional browser smoke
+        run: |
+          set -euo pipefail
+          if [ -z "${SMOKE_BASE_URL:-}" ]; then
+            echo "SMOKE_BASE_URL is not configured for ${TARGET_LABEL}; skipping browser smoke."
+            exit 0
+          fi
+          pnpm exec playwright install --with-deps chromium
+          SMOKE_SKIP_BUILD=1 pnpm smoke:e2e

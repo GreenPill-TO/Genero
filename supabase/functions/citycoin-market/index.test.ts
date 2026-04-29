@@ -1,15 +1,17 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const resolveAuthenticatedUserMock = vi.hoisted(() => vi.fn());
-const resolveActiveAppContextMock = vi.hoisted(() => vi.fn());
+const resolveAuthenticatedEdgeUserMock = vi.hoisted(() => vi.fn());
+const resolveAuthenticatedEdgeContextMock = vi.hoisted(() => vi.fn());
+const createServiceRoleClientMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../_shared/auth.ts", () => ({
-  resolveAuthenticatedUser: resolveAuthenticatedUserMock,
+  createServiceRoleClient: createServiceRoleClientMock,
+  resolveAuthenticatedEdgeContext: resolveAuthenticatedEdgeContextMock,
+  resolveAuthenticatedEdgeUser: resolveAuthenticatedEdgeUserMock,
 }));
 
 vi.mock("../_shared/appContext.ts", () => ({
-  resolveActiveAppContext: resolveActiveAppContextMock,
   resolveAppContextInput: vi.fn((req: Request) => ({
     appSlug: req.headers.get("x-app-slug") ?? "wallet",
     citySlug: req.headers.get("x-city-slug") ?? "tcoin",
@@ -34,18 +36,20 @@ describe("citycoin-market handleRequest", () => {
     selectMock.mockClear();
     fromMock.mockClear();
 
-    resolveAuthenticatedUserMock.mockResolvedValue({
-      serviceRole: {
-        from: fromMock,
-      },
+    createServiceRoleClientMock.mockReturnValue({ from: fromMock });
+    resolveAuthenticatedEdgeUserMock.mockResolvedValue({
+      scopedClient: {},
       userRow: { id: 12 },
     });
-
-    resolveActiveAppContextMock.mockResolvedValue({
-      appSlug: "wallet",
-      citySlug: "tcoin",
-      environment: "development",
-      appInstanceId: 7,
+    resolveAuthenticatedEdgeContextMock.mockResolvedValue({
+      scopedClient: {},
+      userRow: { id: 12 },
+      appContext: {
+        appSlug: "wallet",
+        citySlug: "tcoin",
+        environment: "development",
+        appInstanceId: 7,
+      },
     });
   });
 
@@ -182,7 +186,10 @@ describe("citycoin-market handleRequest", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(resolveActiveAppContextMock).toHaveBeenCalled();
+    expect(resolveAuthenticatedEdgeContextMock).toHaveBeenCalledWith(
+      expect.any(Request),
+      expect.objectContaining({ purpose: "citycoin market scoped identity and app context" })
+    );
   });
 
   it("rejects mismatched citySlug and appContext city", async () => {

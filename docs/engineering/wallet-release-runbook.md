@@ -22,7 +22,7 @@ Env template references:
 | Area | Env vars | Why it matters |
 | --- | --- | --- |
 | Core Supabase runtime | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Required by browser auth, edge-function proxying, and the publishable-key wallet release health preflight. |
-| Worker and privileged function runtime | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | The deployed Next.js wallet runtime does not need the service-role key. Edge Functions need the publishable key for request-scoped self-service RPCs, while the service-role key remains required only for privileged Edge mutations and the external indexer touch worker (`pnpm ops:indexer:drain-touch-queue`). |
+| Worker and privileged function runtime | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | The deployed Next.js wallet runtime does not need the service-role key. Edge Functions need the publishable key for request-scoped self-service RPCs and scoped identity/app-context resolution. The service-role key remains required only for explicit route-specific privileged Edge operations, webhook/settlement paths, custody/transfer bookkeeping, and the external indexer touch worker (`pnpm ops:indexer:drain-touch-queue`). |
 | App scoping | `NEXT_PUBLIC_CITYCOIN=tcoin`, `NEXT_PUBLIC_APP_NAME=wallet`, `NEXT_PUBLIC_APP_ENVIRONMENT=staging|production` | Controls app-instance scoping, auth bootstrap behaviour, and production-versus-local auth rules. |
 | Public wallet URLing | `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `USER_SETTINGS_ALLOWED_ORIGINS` | Required for pay-link generation, edge CORS, and public callback/origin checks. |
 | Wallet user experience | `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL`, `NEXT_PUBLIC_TCOIN_BANNER_DARK_URL` | Keeps public landing and authenticated wallet flows coherent when exchange-rate or explorer data is needed. |
@@ -102,6 +102,37 @@ Operational note:
 - If any command reports `Invalid schema: indexer` or `Invalid schema: chain_data`, the target Supabase Data API is missing required exposed schemas for the wallet's indexer features.
 - If queue-backed indexer health reports `blocked` or `stale`, treat that as a release blocker until the worker or scheduler is running again and the pending queue drains.
 - Treat any reported `releaseBlockers` output as a hard stop for go-live.
+
+### CI-assisted remote alignment
+
+`.github/workflows/release-alignment-tcoin.yml` automates the remote/deployment release-alignment checks after the Supabase migration deploy workflow succeeds on `dev` or `main`. It is also available through manual dispatch for Preview or Production.
+
+The workflow uses the matching GitHub Environment gate:
+
+- `Preview – tcoin` for `dev` / preview alignment
+- `Production – tcoin` for `main` / production alignment
+
+Required environment secrets or vars:
+
+- `SUPABASE_SESSION_POOLER_TCOIN_PREVIEW` or `SUPABASE_SESSION_POOLER_DEV` for Preview
+- `SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION` or `SUPABASE_SESSION_POOLER_PROD` for Production
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_EXPLORER_URL`
+- `USER_SETTINGS_ALLOWED_ORIGINS`
+
+Recommended environment vars:
+
+- `NEXT_PUBLIC_CITYCOIN=tcoin`
+- `NEXT_PUBLIC_APP_NAME=wallet`
+- `NEXT_PUBLIC_APP_ENVIRONMENT=staging|production`
+- `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false`
+- `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP=false` unless merchant signup is intentionally live
+- `SMOKE_BASE_URL` when browser smoke should run against a deployed URL
+
+The workflow installs dependencies, reloads PostgREST with `notify pgrst, 'reload schema';`, runs `pnpm ops:wallet:preflight:deployment`, runs `pnpm ops:torontocoin` and `pnpm ops:torontocoin:pools`, and runs `pnpm smoke:e2e` only when `SMOKE_BASE_URL` is set. It does not prove authenticated OTP flows, Buy TCOIN live checkout, or that the external indexer worker scheduler is deployed and running; keep those in the manual smoke checklist until dedicated fixtures exist.
 
 ### 3. Confirm the target database exposes the required wallet contracts
 
