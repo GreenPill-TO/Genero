@@ -2,7 +2,7 @@
 
 ## Production Readiness Priorities
 
-[x] `P0` Security hardening for wallet runtime flows:
+- [x] `P0` Security hardening for wallet runtime flows:
   Remove sensitive browser-side logging from wallet send / custody-recovery paths, retire the unused raw `/api/sendsms` endpoint, and keep only non-secret operational error messages in production-facing flows.
   - Status: Completed
   - Timestamp started: 2026-04-13 01:16 EDT
@@ -10,7 +10,6 @@
   - Feature branch: TBD
   - Head: `06d6d98`
   - Session-log reference(s): `v1.191`
-
 - [x] `P0` OTP contract hardening:
   Standardize validation and Twilio error handling for `/api/send_otp` and `/api/verify_otp`, then add automated route tests for missing input, missing env, upstream failure, and success cases.
   - Status: Completed
