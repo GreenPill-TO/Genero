@@ -1,14 +1,14 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const resolveAuthenticatedUserMock = vi.hoisted(() => vi.fn());
+const resolveAuthenticatedEdgeContextMock = vi.hoisted(() => vi.fn());
 const requestScopedRpcMock = vi.hoisted(() => vi.fn());
+const createServiceRoleClientMock = vi.hoisted(() => vi.fn(() => ({ serviceRole: true })));
 const createAuthenticatedRequestClientMock = vi.hoisted(() =>
   vi.fn(() => ({
     rpc: requestScopedRpcMock,
   }))
 );
-const resolveActiveAppContextMock = vi.hoisted(() => vi.fn());
 const userHasAnyRoleMock = vi.hoisted(() => vi.fn());
 const assertAdminOrOperatorMock = vi.hoisted(() => vi.fn());
 
@@ -18,12 +18,12 @@ vi.mock("npm:viem@2.23.3", () => ({
 }));
 
 vi.mock("../_shared/auth.ts", () => ({
-  resolveAuthenticatedUser: resolveAuthenticatedUserMock,
   createAuthenticatedRequestClient: createAuthenticatedRequestClientMock,
+  createServiceRoleClient: createServiceRoleClientMock,
+  resolveAuthenticatedEdgeContext: resolveAuthenticatedEdgeContextMock,
 }));
 
 vi.mock("../_shared/appContext.ts", () => ({
-  resolveActiveAppContext: resolveActiveAppContextMock,
   resolveAppContextInput: vi.fn(() => ({
     appSlug: "wallet",
     citySlug: "tcoin",
@@ -40,18 +40,18 @@ import { handleRequest } from "./index";
 
 describe("bia-service handleRequest", () => {
   beforeEach(() => {
-    resolveAuthenticatedUserMock.mockResolvedValue({
-      serviceRole: {},
+    resolveAuthenticatedEdgeContextMock.mockResolvedValue({
       userRow: { id: 3 },
-    });
-    resolveActiveAppContextMock.mockResolvedValue({
-      appSlug: "wallet",
-      citySlug: "tcoin",
-      environment: "development",
-      appInstanceId: 7,
+      appContext: {
+        appSlug: "wallet",
+        citySlug: "tcoin",
+        environment: "development",
+        appInstanceId: 7,
+      },
     });
     userHasAnyRoleMock.mockResolvedValue(false);
     assertAdminOrOperatorMock.mockResolvedValue(undefined);
+    createServiceRoleClientMock.mockClear();
     createAuthenticatedRequestClientMock.mockClear();
     requestScopedRpcMock.mockReset();
   });
@@ -81,7 +81,8 @@ describe("bia-service handleRequest", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(resolveAuthenticatedUserMock).not.toHaveBeenCalled();
+    expect(resolveAuthenticatedEdgeContextMock).not.toHaveBeenCalled();
+    expect(createServiceRoleClientMock).not.toHaveBeenCalled();
     expect(createAuthenticatedRequestClientMock).toHaveBeenCalledWith(
       expect.any(Request),
       expect.objectContaining({ purpose: "BIA catalogue and current-user affiliation read" })
@@ -120,7 +121,8 @@ describe("bia-service handleRequest", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(resolveAuthenticatedUserMock).not.toHaveBeenCalled();
+    expect(resolveAuthenticatedEdgeContextMock).not.toHaveBeenCalled();
+    expect(createServiceRoleClientMock).not.toHaveBeenCalled();
     expect(requestScopedRpcMock).toHaveBeenCalledWith("edge_bia_mappings_v1", {
       p_app_slug: "wallet",
       p_city_slug: "tcoin",

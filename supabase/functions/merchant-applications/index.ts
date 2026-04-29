@@ -1,5 +1,5 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import { createServiceRoleClient, resolveAuthenticatedEdgeContext } from "../_shared/auth.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import {
@@ -36,20 +36,19 @@ async function handleRequest(req: Request): Promise<Response> {
 
   try {
     const body = await readBody(req);
-    const auth = await resolveAuthenticatedUser(req, "merchant application state operations");
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
-      input: resolveAppContextInput(req, body),
-    });
-    const base = {
-      supabase: auth.serviceRole,
-      userId: Number(auth.userRow.id),
-      appContext,
-    };
-
     const rawPathname = new URL(req.url).pathname;
     const pathname =
       rawPathname.replace(/^\/functions\/v1\/merchant-applications/, "").replace(/^\/merchant-applications/, "") || "/";
+    const scoped = await resolveAuthenticatedEdgeContext(req, {
+      purpose: "merchant application scoped identity and app context",
+      input: resolveAppContextInput(req, body),
+    });
+    const serviceRole = createServiceRoleClient({ purpose: `merchant application ${pathname} operation` });
+    const base = {
+      supabase: serviceRole,
+      userId: Number(scoped.userRow.id),
+      appContext: scoped.appContext,
+    };
 
     if (req.method === "GET" && pathname === "/status") {
       return jsonResponse(req, await getMerchantStatus(base));

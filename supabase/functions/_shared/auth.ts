@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.6";
+import type { EdgeAppContext } from "./appContext.ts";
 
 type DenoEnv = {
   get(name: string): string | undefined;
@@ -84,6 +85,80 @@ export async function resolveAuthenticatedSupabaseUser(req: Request, purpose: st
   return {
     serviceRole,
     authUser,
+  };
+}
+
+type EdgeUserRow = {
+  id: number | string;
+  email: string | null;
+  auth_user_id: string | null;
+  cubid_id: string | null;
+};
+
+type EdgeAppContextInput = {
+  appSlug?: string | null;
+  citySlug?: string | null;
+  environment?: string | null;
+};
+
+function throwScopedRpcError(prefix: string, error: { code?: string; message?: string }) {
+  const message = error.message ?? "Unknown RPC error";
+  if (message === "Unauthorized" || message.startsWith("Forbidden") || error.code === "42501") {
+    throw new Error(message);
+  }
+  throw new Error(`${prefix}: ${message}`);
+}
+
+function firstRpcRow<T>(value: unknown): T | null {
+  if (Array.isArray(value)) {
+    return (value[0] as T | undefined) ?? null;
+  }
+  return (value as T | null) ?? null;
+}
+
+export async function resolveAuthenticatedEdgeContext(
+  req: Request,
+  options: { purpose: string; input: EdgeAppContextInput }
+): Promise<{ scopedClient: any; userRow: EdgeUserRow; appContext: EdgeAppContext }> {
+  const scopedClient = createAuthenticatedRequestClient(req, { purpose: options.purpose });
+
+  const { data: userData, error: userError } = await scopedClient.rpc("edge_resolve_current_user_v1");
+  if (userError) {
+    throwScopedRpcError("Failed to resolve current user", userError);
+  }
+
+  const userRow = firstRpcRow<EdgeUserRow>(userData);
+  if (!userRow?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const { data: contextData, error: contextError } = await scopedClient.rpc("edge_resolve_app_context_v1", {
+    p_app_slug: options.input.appSlug,
+    p_city_slug: options.input.citySlug,
+    p_environment: options.input.environment || null,
+  });
+  if (contextError) {
+    throwScopedRpcError("Failed to resolve app context", contextError);
+  }
+  if (!contextData || typeof contextData !== "object") {
+    throw new Error("Failed to resolve app context: empty response");
+  }
+
+  const context = contextData as Record<string, unknown>;
+  const appInstanceId = Number(context.appInstanceId);
+  if (!Number.isFinite(appInstanceId) || appInstanceId <= 0) {
+    throw new Error("Failed to resolve app context: invalid appInstanceId");
+  }
+
+  return {
+    scopedClient,
+    userRow,
+    appContext: {
+      appSlug: String(context.appSlug ?? options.input.appSlug ?? "wallet").trim().toLowerCase(),
+      citySlug: String(context.citySlug ?? options.input.citySlug ?? "tcoin").trim().toLowerCase(),
+      environment: String(context.environment ?? options.input.environment ?? "").trim().toLowerCase(),
+      appInstanceId,
+    },
   };
 }
 

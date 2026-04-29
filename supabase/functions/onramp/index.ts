@@ -1,5 +1,5 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import { createServiceRoleClient, resolveAuthenticatedEdgeContext } from "../_shared/auth.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import {
   createOnrampSession,
@@ -15,7 +15,6 @@ import {
   touchOnrampSessionsForUser,
   updateLegacyInteracAdminRequest,
 } from "../_shared/onramp.ts";
-import { createServiceRoleClient } from "../_shared/auth.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { toNumber } from "../_shared/validation.ts";
 
@@ -92,20 +91,20 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const body = await readBody(req);
-    const auth = await resolveAuthenticatedUser(req, "onramp authenticated session and settlement operations");
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
+    const scoped = await resolveAuthenticatedEdgeContext(req, {
+      purpose: "onramp scoped identity and app context",
       input: resolveAppContextInput(req, body),
     });
+    const serviceRole = createServiceRoleClient({ purpose: `onramp ${pathname} operation` });
 
     const url = new URL(req.url);
 
     if (req.method === "POST" && pathname === "/session") {
       const result = await createOnrampSession({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
-        citySlug: appContext.citySlug,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
+        citySlug: scoped.appContext.citySlug,
         fiatAmount: toNumber(body?.fiatAmount, 0),
         fiatCurrency: typeof body?.fiatCurrency === "string" ? body.fiatCurrency : "CAD",
         countryCode: typeof body?.countryCode === "string" ? body.countryCode : null,
@@ -117,8 +116,8 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await createLegacyInteracReference({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
           amount: body?.amount ?? 0,
           refCode: typeof body?.refCode === "string" ? body.refCode : "",
         })
@@ -129,8 +128,8 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await confirmLegacyInteracReference({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
           refCode: typeof body?.refCode === "string" ? body.refCode : "",
         })
       );
@@ -140,10 +139,10 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await createPoolPurchaseRequest({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appInstanceId: appContext.appInstanceId,
-          citySlug: appContext.citySlug,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appInstanceId: scoped.appContext.appInstanceId,
+          citySlug: scoped.appContext.citySlug,
           payload: body ?? {},
         })
       );
@@ -152,11 +151,11 @@ export async function handleRequest(req: Request): Promise<Response> {
     if (req.method === "GET" && /^\/session\/[^/]+$/.test(pathname)) {
       const sessionId = pathname.split("/")[2] ?? "";
       const result = await getOnrampSessionStatus({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
         sessionId,
-        citySlug: appContext.citySlug,
-        appInstanceId: appContext.appInstanceId,
+        citySlug: scoped.appContext.citySlug,
+        appInstanceId: scoped.appContext.appInstanceId,
       });
       return jsonResponse(req, result.body, { status: result.status });
     }
@@ -164,11 +163,11 @@ export async function handleRequest(req: Request): Promise<Response> {
     if (req.method === "POST" && /^\/session\/[^/]+$/.test(pathname)) {
       const sessionId = pathname.split("/")[2] ?? "";
       const result = await markOnrampSessionAction({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
         sessionId,
-        citySlug: appContext.citySlug,
-        appInstanceId: appContext.appInstanceId,
+        citySlug: scoped.appContext.citySlug,
+        appInstanceId: scoped.appContext.appInstanceId,
         action: typeof body?.action === "string" ? body.action : undefined,
       });
       return jsonResponse(req, result.body, { status: result.status });
@@ -177,9 +176,9 @@ export async function handleRequest(req: Request): Promise<Response> {
     if (req.method === "POST" && /^\/session\/[^/]+\/retry$/.test(pathname)) {
       const sessionId = pathname.split("/")[2] ?? "";
       const result = await retryOnrampSession({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
         sessionId,
       });
       return jsonResponse(req, result.body, { status: result.status });
@@ -187,20 +186,20 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/touch") {
       const result = await touchOnrampSessionsForUser({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
-        citySlug: appContext.citySlug,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
+        citySlug: scoped.appContext.citySlug,
       });
       return jsonResponse(req, result.body, { status: result.status });
     }
 
     if (req.method === "GET" && pathname === "/admin/sessions") {
       const result = await listOnrampAdminSessions({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
-        citySlug: appContext.citySlug,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
+        citySlug: scoped.appContext.citySlug,
         limit: Math.max(1, Math.min(200, Math.trunc(toNumber(url.searchParams.get("limit"), 50)))),
         status: url.searchParams.get("status")?.trim().toLowerCase() ?? null,
         targetUserId: Math.trunc(toNumber(url.searchParams.get("userId"), 0)),
@@ -210,10 +209,10 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "GET" && pathname === "/admin/requests") {
       const result = await listLegacyRampAdminRequests({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
-        citySlug: appContext.citySlug,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
+        citySlug: scoped.appContext.citySlug,
       });
       return jsonResponse(req, result.body, { status: result.status });
     }
@@ -222,9 +221,9 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await updateLegacyInteracAdminRequest({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appInstanceId: appContext.appInstanceId,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appInstanceId: scoped.appContext.appInstanceId,
           requestId: Number(pathname.split("/")[4]),
           payload: body ?? {},
         })

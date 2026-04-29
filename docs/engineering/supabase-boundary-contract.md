@@ -7,6 +7,7 @@ This repo is moving toward a multi-frontend Supabase boundary where app-facing w
 - Browser/page code should call typed application clients, narrow RPCs, or Supabase Edge Functions. It should not call `supabase.from(...)` directly against tables.
 - Server routes may use request-scoped Supabase clients for authentication and narrow RPCs. They should not construct service-role clients in the deployed Next.js runtime.
 - Supabase Edge Functions should prefer request-scoped publishable-key clients plus narrow RPCs for current-user reads and self-service writes. Service-role clients should be reserved for custody, settlement, admin/operator, webhook, worker, and other intentionally privileged operations.
+- Edge Functions that still need service-role access should resolve the caller and app context through request-scoped RPCs first, then construct the service-role client at the narrow route/domain operation with a purpose label. This keeps broad auth/context reads out of service-role while preserving explicit privileged boundaries.
 - Routine release health, wallet stats, and indexer status reads should stay behind `wallet_release_health_v1`, `wallet_stats_summary_v1`, and `indexer_scope_status_v1`.
 - Storage bucket operations via `supabase.storage.from(...)` are not database table access. They are allowed when the bucket, path, and public/private behaviour are documented by the owning feature.
 

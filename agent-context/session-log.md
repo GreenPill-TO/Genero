@@ -1,3 +1,40 @@
+# v1.238
+### Timestamp
+- 2026-04-29 12:46 EDT
+
+### Objective
+- Continue P1 service-role reduction for privileged Supabase Edge Function domains without rewriting settlement, custody, or admin state machines in one risky pass.
+
+### What Changed
+- Added a shared request-scoped Edge context resolver that uses the publishable-key client plus `edge_resolve_current_user_v1` and `edge_resolve_app_context_v1` RPCs to resolve caller identity and app context without constructing a service-role client.
+- Refactored user-settings, onramp, merchant application, store operation, voucher runtime, and BIA mutation entrypoints to use that scoped resolver before constructing route-specific service-role clients for the privileged operation itself.
+- Kept intentionally privileged service-role work in place for custody material, onramp settlement/webhooks, merchant/admin mutations, voucher payment records, and BIA admin/user-affiliation mutations.
+- Updated boundary documentation and production-readiness tracking to distinguish scoped identity/app-context resolution from the remaining privileged mutation boundaries.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/_shared/auth.test.ts supabase/functions/bia-service/index.test.ts supabase/functions/onramp/index.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `supabase/functions/_shared/auth.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/bia-service/index.test.ts`
+- `supabase/functions/bia-service/index.ts`
+- `supabase/functions/merchant-applications/index.ts`
+- `supabase/functions/onramp/index.test.ts`
+- `supabase/functions/onramp/index.ts`
+- `supabase/functions/store-operations/index.ts`
+- `supabase/functions/user-settings/index.ts`
+- `supabase/functions/voucher-runtime/index.ts`
+
 # v1.237
 ### Timestamp
 - 2026-04-29 04:48 EDT

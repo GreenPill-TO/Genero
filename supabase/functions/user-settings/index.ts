@@ -1,4 +1,8 @@
-import { resolveAuthenticatedSupabaseUser, resolveAuthenticatedUser } from "../_shared/auth.ts";
+import {
+  createServiceRoleClient,
+  resolveAuthenticatedEdgeContext,
+  resolveAuthenticatedSupabaseUser,
+} from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
@@ -72,19 +76,19 @@ async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
-    const auth = await resolveAuthenticatedUser(req, "user-settings privileged profile, signup, and custody operations");
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
+    const scoped = await resolveAuthenticatedEdgeContext(req, {
+      purpose: "user-settings scoped identity and app context",
       input: resolveAppContextInput(req, body),
     });
+    const serviceRole = createServiceRoleClient({ purpose: `user-settings ${pathname} operation` });
 
     if (req.method === "GET" && pathname === "/bootstrap") {
       return jsonResponse(
         req,
         await getUserSettingsBootstrap({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
         })
       );
     }
@@ -93,9 +97,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await updateUserProfile({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
           payload: body ?? {},
         })
       );
@@ -105,9 +109,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await updateUserPreferences({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
           payload: body ?? {},
         })
       );
@@ -117,7 +121,7 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await listPersonas({
-          supabase: auth.serviceRole,
+          supabase: serviceRole,
         })
       );
     }
@@ -126,9 +130,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await registerWalletCustody({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
           payload: body ?? {},
         })
       );
@@ -138,9 +142,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await getWalletCustodyMaterial({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
         })
       );
     }
@@ -149,9 +153,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await getLegacyCubidData({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
         })
       );
     }
@@ -160,9 +164,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await updateLegacyCubidData({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
           payload: body ?? {},
         })
       );
@@ -172,9 +176,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await startSignup({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
         })
       );
     }
@@ -183,9 +187,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await saveSignupStep({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
           payload: body ?? {},
         })
       );
@@ -195,9 +199,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await resetSignup({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
         })
       );
     }
@@ -206,9 +210,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await completeSignup({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
         })
       );
     }
@@ -217,9 +221,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await savePendingPaymentIntent({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
           payload: body ?? {},
         })
       );
@@ -229,9 +233,9 @@ async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(
         req,
         await clearPendingPaymentIntent({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appContext,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appContext: scoped.appContext,
         })
       );
     }
