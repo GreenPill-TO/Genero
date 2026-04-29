@@ -103,6 +103,37 @@ Operational note:
 - If queue-backed indexer health reports `blocked` or `stale`, treat that as a release blocker until the worker or scheduler is running again and the pending queue drains.
 - Treat any reported `releaseBlockers` output as a hard stop for go-live.
 
+### CI-assisted remote alignment
+
+`.github/workflows/release-alignment-tcoin.yml` automates the remote/deployment release-alignment checks after the Supabase migration deploy workflow succeeds on `dev` or `main`. It is also available through manual dispatch for Preview or Production.
+
+The workflow uses the matching GitHub Environment gate:
+
+- `Preview – tcoin` for `dev` / preview alignment
+- `Production – tcoin` for `main` / production alignment
+
+Required environment secrets or vars:
+
+- `SUPABASE_SESSION_POOLER_TCOIN_PREVIEW` or `SUPABASE_SESSION_POOLER_DEV` for Preview
+- `SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION` or `SUPABASE_SESSION_POOLER_PROD` for Production
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_EXPLORER_URL`
+- `USER_SETTINGS_ALLOWED_ORIGINS`
+
+Recommended environment vars:
+
+- `NEXT_PUBLIC_CITYCOIN=tcoin`
+- `NEXT_PUBLIC_APP_NAME=wallet`
+- `NEXT_PUBLIC_APP_ENVIRONMENT=staging|production`
+- `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false`
+- `NEXT_PUBLIC_ENABLE_MERCHANT_SIGNUP=false` unless merchant signup is intentionally live
+- `SMOKE_BASE_URL` when browser smoke should run against a deployed URL
+
+The workflow installs dependencies, reloads PostgREST with `notify pgrst, 'reload schema';`, runs `pnpm ops:wallet:preflight:deployment`, runs `pnpm ops:torontocoin` and `pnpm ops:torontocoin:pools`, and runs `pnpm smoke:e2e` only when `SMOKE_BASE_URL` is set. It does not prove authenticated OTP flows, Buy TCOIN live checkout, or that the external indexer worker scheduler is deployed and running; keep those in the manual smoke checklist until dedicated fixtures exist.
+
 ### 3. Confirm the target database exposes the required wallet contracts
 
 Use read-only SQL in the target Supabase environment:

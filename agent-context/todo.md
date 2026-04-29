@@ -57,13 +57,13 @@
   - Session-log reference(s): `v1.216`
 
 - [ ] `P1` Remote/deployment release environment alignment:
-  Mirror the local close-out against the intended remote Supabase and Vercel staging/production targets before go-live. Confirm the deployed Next.js env sets `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_APP_ENVIRONMENT`, `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_EXPLORER_URL`, and `USER_SETTINGS_ALLOWED_ORIGINS`; confirm the worker and privileged-function runtime still has `SUPABASE_SERVICE_ROLE_KEY`; have a human/operator apply the `public.wallet_release_health_v1(...)`, `public.indexer_scope_status_v1(...)`, `public.wallet_stats_summary_v1(...)`, and queued touch RPC migrations to the remote target, reload PostgREST, and confirm `public`, `storage`, `graphql_public`, `indexer`, and `chain_data` are exposed; keep `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false` unless the complete `ONRAMP_*` contract is present and smoke-tested; configure Twilio only if off-ramp OTP is live; and repeat the manual production smoke from `docs/engineering/wallet-release-runbook.md`, including queue-backed indexer worker checks.
-  - Status: Not started
-  - Timestamp started: TBD
+  CI-assisted alignment is now available through `.github/workflows/release-alignment-tcoin.yml`: after successful migration deploys on `dev`/`main`, or by manual dispatch, it reloads PostgREST, runs deployment-profile wallet preflight, runs TorontoCoin ops checks, and optionally runs browser smoke when `SMOKE_BASE_URL` is configured. Remaining close-out: configure the Preview/Production GitHub Environment secrets/vars, confirm Vercel envs and retired aliases, run the workflow green for the intended remote target, confirm Data API schema exposure for `public`, `storage`, `graphql_public`, `indexer`, and `chain_data`, keep Buy TCOIN disabled unless fully smoke-tested, and manually verify signed-in/OTP/pay-link/worker scheduler paths that CI cannot yet prove.
+  - Status: In progress
+  - Timestamp started: 2026-04-29 15:33 EDT
   - Timestamp completed: TBD
-  - Feature branch: TBD
-  - Head: TBD
-  - Session-log reference(s): TBD
+  - Feature branch: `codex/edge-privileged-boundary-hardening`
+  - Head: pending current branch commit
+  - Session-log reference(s): `v1.242`
 
 - [x] `P1` Retire temporary Supabase publishable-key aliases:
   Runtime Supabase clients now accept only `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; CI, active docs, and local profile contracts use the canonical name, with no active fallback to the retired legacy publishable-key aliases.

@@ -1,3 +1,29 @@
+# v1.242
+### Timestamp
+- 2026-04-29 15:33 EDT
+
+### Objective
+- Add CI-assisted remote/deployment release alignment after TCOIN Supabase migration deploys.
+
+### What Changed
+- Added `.github/workflows/release-alignment-tcoin.yml` with Preview and Production jobs gated by the `Preview – tcoin` and `Production – tcoin` GitHub Environments.
+- Wired the workflow to run automatically after successful `Supabase Deploy (TCOIN)` push deploys on `dev` and `main`, with manual dispatch support for Preview or Production.
+- Added target-env secret/var wiring for deployment-profile wallet preflight, PostgREST schema-cache reload via `notify pgrst, 'reload schema';`, TorontoCoin ops checks, and optional Playwright smoke when `SMOKE_BASE_URL` is configured.
+- Updated the testing/CI contract, wallet release runbook, technical spec, and todo tracking to explain what the workflow proves and what remains manual.
+
+### Verification
+- `ruby -e "require 'yaml'; YAML.load_file('.github/workflows/release-alignment-tcoin.yml'); puts 'yaml ok'"`
+- `git diff --check`
+- `pnpm lint`
+
+### Files Edited
+- `.github/workflows/release-alignment-tcoin.yml`
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/testing-ci-contract.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+
 # v1.241
 ### Timestamp
 - 2026-04-29 15:19 EDT
