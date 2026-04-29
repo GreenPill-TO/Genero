@@ -1,3 +1,39 @@
+# v1.241
+### Timestamp
+- 2026-04-29 15:19 EDT
+
+### Objective
+- Finish closing the P1 Supabase boundary hardening todos rather than leaving them in a stabilized-but-open state.
+
+### What Changed
+- Moved `user-settings /auth/ensure-user` off the service-role auth resolver by resolving the Supabase auth user through the request-scoped publishable-key client, then constructing service-role access only for the privileged user-row reconciliation write.
+- Removed the retired broad service-role auth resolver helpers from the Edge shared auth module so future Edge code cannot accidentally reintroduce that pattern.
+- Added focused tests proving request-scoped auth is used for `user-settings /auth/ensure-user` and that the request-scoped auth helper uses the caller bearer token.
+- Marked the P1 service-role and direct Supabase table-access todos complete for the production-readiness scope, with remaining deeper RPC/function splits captured as optional post-P1 hardening follow-up.
+- Updated the Supabase boundary contract, technical spec, and wallet release runbook to distinguish launch-blocking broad access from documented privileged Edge/worker/action-time exceptions.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/_shared/auth.test.ts supabase/functions/user-settings/index.test.ts supabase/functions/user-requests/index.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `rg "resolveAuthenticatedSupabaseUser|resolveAuthenticatedUser" supabase/functions app shared scripts docs -n`
+- `node scripts/check-no-direct-supabase-db.mjs`
+- `git diff --check`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `supabase/functions/_shared/auth.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/user-requests/index.test.ts`
+- `supabase/functions/user-settings/index.test.ts`
+- `supabase/functions/user-settings/index.ts`
+
 # v1.240
 ### Timestamp
 - 2026-04-29 14:10 EDT

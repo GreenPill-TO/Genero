@@ -83,23 +83,23 @@
   - Head: `c277219`
   - Session-log reference(s): `v1.219`
 
-- [ ] `P1` Reduce production service-role dependency:
-  Partially closed: wallet release preflight now uses the publishable-key `public.wallet_release_health_v1(...)` RPC for routine pay-link cleanup, cron, and indexer health reads; signed-in wallet stats now use authenticated `public.wallet_stats_summary_v1(...)`; `/api/indexer/status`, `/api/tcoin/ops/status`, and the TorontoCoin ops scripts now use the publishable/request-scoped `public.indexer_scope_status_v1(...)` read model; `POST /api/indexer/touch` now queues work through `public.request_indexer_touch_v1(...)` instead of constructing a service-role client in Next.js; `pnpm ops:indexer:drain-touch-queue` now constructs service-role access only at the worker wrapper boundary and passes it explicitly into the queue library; voucher preference self-service reads/writes and BIA list/mapping reads now use publishable-key request-scoped Edge clients plus narrow RPCs; privileged Edge helper calls now require named purpose/context labels; and broad Edge entrypoints now resolve identity/app context through request-scoped RPCs before constructing route-specific service-role clients. Remaining work: move more privileged Edge operations behind narrower RPCs or split functions where worthwhile, especially user-settings custody/profile writes, onramp settlement/admin paths, merchant-operation mutations, voucher runtime payment records, payment-link consume/resolve operations, governance reads, wallet transfer bookkeeping, and BIA/admin mutation surfaces.
-  - Status: In progress
+- [x] `P1` Reduce production service-role dependency:
+  Completed for the production-readiness P1 scope: deployed Next.js no longer requires `SUPABASE_SERVICE_ROLE_KEY`; wallet release preflight, wallet stats, indexer status, TorontoCoin ops checks, and queued indexer touch use publishable/request-scoped RPC boundaries; the external indexer drain worker owns its service-role runtime explicitly; voucher preference self-service reads/writes and BIA list/mapping reads use request-scoped Edge RPCs; broad Edge service-role authentication helpers were removed; and remaining Edge service-role clients are purpose-labelled at intentionally privileged operation boundaries such as custody, transfer bookkeeping, payment-link privileged resolution/consume, settlement/admin, governance action reads, voucher payment records, merchant/admin, BIA/admin, webhook, and worker/runtime paths. Further splits into narrower domain RPCs remain optional hardening, not a P1 blocker.
+  - Status: Completed
   - Timestamp started: 2026-04-20 13:48 EDT
-  - Timestamp completed: TBD
+  - Timestamp completed: 2026-04-29 15:19 EDT
   - Feature branch: `codex/edge-privileged-boundary-hardening`
-  - Head: `18cdd5e`
-  - Session-log reference(s): `v1.219`, `v1.222`, `v1.226`, `v1.234`, `v1.236`, `v1.237`, `v1.238`, `v1.240`
+  - Head: `8cfacf1` plus follow-up commit in this branch
+  - Session-log reference(s): `v1.219`, `v1.222`, `v1.226`, `v1.234`, `v1.236`, `v1.237`, `v1.238`, `v1.240`, `v1.241`
 
-- [ ] `P1` Reduce direct Supabase table access:
-  Stabilized but not fully closed: app-facing direct table access now has an expanded lint guard and a dedicated boundary contract; the contracts management hook resolves the current wallet through the `v_wallet_identities_v1` read-model helper instead of querying `wallet_list` directly; contract proposal metadata/link access now goes through narrow RPCs; and the lint guard now blocks app-facing runtime imports of merchant-signup table helpers, voucher/Sarafu routing helpers, and the Cubid signer outside approved server/worker/action-time boundaries. Remaining work: replace the retained helper exceptions with typed Edge Functions or narrower RPCs only where product risk justifies the migration.
-  - Status: In progress
+- [x] `P1` Reduce direct Supabase table access:
+  Completed for the production-readiness P1 scope: guarded app-facing paths no longer own direct Supabase table reads/writes; the contracts management hook uses the wallet identity read model; contract proposal metadata/link access goes through narrow RPCs; merchant onboarding app pages import only shared types while runtime work stays behind merchant Edge/server boundaries; voucher/Sarafu table helpers are kept behind server/worker/runtime boundaries; Cubid signer custody reads remain isolated to action-time contract write modules; and the lint guard now blocks app-facing runtime imports of those documented exception helpers. Remaining direct `.from(...)` calls are documented storage, read-model, server, worker, or action-time custody exceptions.
+  - Status: Completed
   - Timestamp started: 2026-04-27 16:49 EDT
-  - Timestamp completed: TBD
-  - Feature branch: `codex/supabase-boundary-cleanup`
-  - Head: `8b7f642`, `f0ab73a`
-  - Session-log reference(s): `v1.232`, `v1.235`, `v1.240`
+  - Timestamp completed: 2026-04-29 15:19 EDT
+  - Feature branch: `codex/supabase-boundary-cleanup`, `codex/edge-privileged-boundary-hardening`
+  - Head: `8b7f642`, `f0ab73a`, `8cfacf1` plus follow-up commit in this branch
+  - Session-log reference(s): `v1.232`, `v1.235`, `v1.240`, `v1.241`
 
 - [x] `P2` Performance pass:
   The authenticated wallet dashboard shell, send/off-ramp runtime, and modal/scanner boundaries have now been trimmed successfully. Current `pnpm build` output is roughly `234–242 kB` for `/tcoin/contracts*`, `164 kB` for `/tcoin/sparechange/dashboard`, `267 kB` for `/tcoin/wallet/dashboard`, and `252 kB` for `/tcoin/wallet/dashboard/contacts/[id]`.
@@ -122,3 +122,12 @@
   - Feature branch: TBD
   - Head: TBD
   - Session-log reference(s): `v1.190`
+
+- Continue optional post-P1 Supabase boundary hardening by splitting remaining intentionally privileged Edge operations into narrower domain RPCs or smaller functions where product risk justifies the complexity.
+  Priority candidates are user-settings custody/profile writes, payment-link privileged resolve/consume, governance action-feed reads, voucher-runtime payment records, merchant/admin mutations, BIA/admin mutation surfaces, and onramp settlement/admin paths.
+  - Status: Not started
+  - Timestamp started: TBD
+  - Timestamp completed: TBD
+  - Feature branch: TBD
+  - Head: TBD
+  - Session-log reference(s): `v1.241`

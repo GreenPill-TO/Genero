@@ -1,9 +1,10 @@
 import {
   createServiceRoleClient,
+  resolveAuthenticatedEdgeAuthUser,
   resolveAuthenticatedEdgeContext,
-  resolveAuthenticatedSupabaseUser,
+  resolveEdgeAppContext,
 } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import {
@@ -42,7 +43,7 @@ async function readRequestBody(req: Request) {
   }
 }
 
-async function handleRequest(req: Request): Promise<Response> {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: resolveCorsHeaders(req) });
   }
@@ -56,18 +57,17 @@ async function handleRequest(req: Request): Promise<Response> {
         .replace(/^\/user-settings/, "") || "/";
 
     if (req.method === "POST" && pathname === "/auth/ensure-user") {
-      const { serviceRole, authUser } = await resolveAuthenticatedSupabaseUser(req, "user-settings ensure-user");
-
-      const appContext = await resolveActiveAppContext({
-        supabase: serviceRole,
-        input: resolveAppContextInput(req, body),
+      const scopedAuth = await resolveAuthenticatedEdgeAuthUser(req, {
+        purpose: "user-settings ensure-user scoped auth",
       });
+      const appContext = await resolveEdgeAppContext(scopedAuth.scopedClient, resolveAppContextInput(req, body));
+      const serviceRole = createServiceRoleClient({ purpose: "user-settings /auth/ensure-user operation" });
 
       return jsonResponse(
         req,
         await ensureAuthenticatedUserRecord({
           supabase: serviceRole,
-          authUser,
+          authUser: scopedAuth.authUser,
           appContext,
           authMethod: typeof body?.authMethod === "string" ? body.authMethod : null,
           fullContact: typeof body?.fullContact === "string" ? body.fullContact : null,

@@ -7,7 +7,7 @@ This repo is moving toward a multi-frontend Supabase boundary where app-facing w
 - Browser/page code should call typed application clients, narrow RPCs, or Supabase Edge Functions. It should not call `supabase.from(...)` directly against tables.
 - Server routes may use request-scoped Supabase clients for authentication and narrow RPCs. They should not construct service-role clients in the deployed Next.js runtime.
 - Supabase Edge Functions should prefer request-scoped publishable-key clients plus narrow RPCs for current-user reads and self-service writes. Service-role clients should be reserved for custody, settlement, admin/operator, webhook, worker, and other intentionally privileged operations.
-- Edge Functions that still need service-role access should resolve the caller and app context through request-scoped RPCs first, then construct the service-role client at the narrow route/domain operation with a purpose label. This keeps broad auth/context reads out of service-role while preserving explicit privileged boundaries.
+- Edge Functions that still need service-role access should resolve the caller and app context through request-scoped RPCs first, then construct the service-role client at the narrow route/domain operation with a purpose label. Broad service-role authentication resolvers are retired; the remaining service-role clients are explicit privileged boundaries rather than general auth/context helpers.
 - App-facing code must not import documented exception helpers directly. The lint guard blocks runtime imports of merchant-signup table helpers, voucher/Sarafu routing helpers, and the Cubid signer outside their approved server/worker/action-time boundaries.
 - Routine release health, wallet stats, and indexer status reads should stay behind `wallet_release_health_v1`, `wallet_stats_summary_v1`, and `indexer_scope_status_v1`.
 - Storage bucket operations via `supabase.storage.from(...)` are not database table access. They are allowed when the bucket, path, and public/private behaviour are documented by the owning feature.
@@ -34,3 +34,5 @@ The lint guard in `scripts/check-no-direct-supabase-db.mjs` allows only named ex
 ## Guardrail
 
 `pnpm lint` runs the boundary guard. New direct table access in guarded app/shared paths should fail unless the path is deliberately added to the exception map with a short reason and this document is updated in the same change. Runtime imports of documented exception helpers from guarded app-facing paths should also fail unless the helper is explicitly approved for that consumer.
+
+The P1 boundary target is considered closed when guarded app-facing paths stay clean and the remaining direct table/service-role access is limited to the exception map above or to named privileged Edge/worker operations. Further RPC splits are useful hardening, but they are follow-up work rather than a launch blocker.

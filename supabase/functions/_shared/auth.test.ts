@@ -2,7 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const rpcMock = vi.hoisted(() => vi.fn());
-const createClientMock = vi.hoisted(() => vi.fn(() => ({ auth: {}, rpc: rpcMock })));
+const getUserMock = vi.hoisted(() => vi.fn());
+const createClientMock = vi.hoisted(() => vi.fn(() => ({ auth: { getUser: getUserMock }, rpc: rpcMock })));
 const denoEnv = vi.hoisted(() => {
   const env = {
     get(name: string) {
@@ -24,6 +25,7 @@ vi.mock("https://esm.sh/@supabase/supabase-js@2.45.6", () => ({
 import {
   createAuthenticatedRequestClient,
   createServiceRoleClient,
+  resolveAuthenticatedEdgeAuthUser,
   resolveAuthenticatedEdgeContext,
   resolveAuthenticatedEdgeUser,
 } from "./auth";
@@ -33,6 +35,7 @@ describe("edge auth client boundaries", () => {
     vi.clearAllMocks();
     (globalThis as any).Deno = { env: denoEnv };
     rpcMock.mockReset();
+    getUserMock.mockReset();
   });
 
   it("creates request-scoped clients with the publishable key and caller bearer token", () => {
@@ -116,5 +119,33 @@ describe("edge auth client boundaries", () => {
     expect(result.userRow.id).toBe(22);
     expect(rpcMock).toHaveBeenCalledTimes(1);
     expect(rpcMock).toHaveBeenCalledWith("edge_resolve_current_user_v1");
+  });
+
+  it("can resolve the Supabase auth user through the request-scoped auth client", async () => {
+    getUserMock.mockResolvedValueOnce({
+      data: { user: { id: "auth-3", email: "writer@example.test", phone: null } },
+      error: null,
+    });
+
+    const result = await resolveAuthenticatedEdgeAuthUser(
+      new Request("http://localhost/functions/v1/test", {
+        headers: { authorization: "Bearer caller-token" },
+      }),
+      { purpose: "unit test scoped auth user" }
+    );
+
+    expect(result.authUser.id).toBe("auth-3");
+    expect(getUserMock).toHaveBeenCalledTimes(1);
+    expect(createClientMock).toHaveBeenCalledWith(
+      "https://project.supabase.co",
+      "sb_publishable_test",
+      expect.objectContaining({
+        global: {
+          headers: {
+            Authorization: "Bearer caller-token",
+          },
+        },
+      })
+    );
   });
 });
