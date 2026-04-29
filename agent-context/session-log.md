@@ -1,3 +1,23 @@
+# v1.239
+### Timestamp
+- 2026-04-29 13:35 EDT
+
+### Objective
+- Add structured metadata to production-readiness todos and backfill completed-item provenance from session logs and commit history where available.
+
+### What Changed
+- Added status, started/completed timestamps, feature branch, head commit, and session-log reference fields to every production-readiness todo item and the future auth-boundary idea.
+- Marked not-yet-started items with explicit `TBD` metadata, preserved partial/in-progress status for the service-role and direct-Supabase-boundary cleanup tracks, and populated completed-item metadata from session-log timestamps plus commit heads where evidence was available.
+- Left older feature branch fields as `TBD` when the branch name was not recoverable from current local history instead of guessing.
+
+### Verification
+- Session-log reference scan for newly referenced versions
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+
 # v1.238
 ### Timestamp
 - 2026-04-29 12:46 EDT
