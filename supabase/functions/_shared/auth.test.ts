@@ -21,7 +21,12 @@ vi.mock("https://esm.sh/@supabase/supabase-js@2.45.6", () => ({
   createClient: createClientMock,
 }));
 
-import { createAuthenticatedRequestClient, createServiceRoleClient, resolveAuthenticatedEdgeContext } from "./auth";
+import {
+  createAuthenticatedRequestClient,
+  createServiceRoleClient,
+  resolveAuthenticatedEdgeContext,
+  resolveAuthenticatedEdgeUser,
+} from "./auth";
 
 describe("edge auth client boundaries", () => {
   beforeEach(() => {
@@ -93,5 +98,23 @@ describe("edge auth client boundaries", () => {
       p_city_slug: "tcoin",
       p_environment: "development",
     });
+  });
+
+  it("can resolve only the authenticated app user through the scoped RPC boundary", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [{ id: 22, email: "reader@example.test", auth_user_id: "auth-2", cubid_id: null }],
+      error: null,
+    });
+
+    const result = await resolveAuthenticatedEdgeUser(
+      new Request("http://localhost/functions/v1/test", {
+        headers: { authorization: "Bearer caller-token" },
+      }),
+      { purpose: "unit test scoped edge user" }
+    );
+
+    expect(result.userRow.id).toBe(22);
+    expect(rpcMock).toHaveBeenCalledTimes(1);
+    expect(rpcMock).toHaveBeenCalledWith("edge_resolve_current_user_v1");
   });
 });

@@ -1,4 +1,4 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
+import { createServiceRoleClient, resolveAuthenticatedEdgeUser } from "../_shared/auth.ts";
 import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
@@ -94,22 +94,23 @@ export async function handleRequest(req: Request): Promise<Response> {
   }
 
   try {
-    const auth = await resolveAuthenticatedUser(req);
+    const rawPathname = new URL(req.url).pathname;
+    const pathname =
+      rawPathname.replace(/^\/functions\/v1\/payment-requests/, "").replace(/^\/payment-requests/, "") || "/";
+    const scoped = await resolveAuthenticatedEdgeUser(req, { purpose: "payment requests scoped identity read" });
+    const serviceRole = createServiceRoleClient({ purpose: `payment requests ${pathname} operation` });
     const body = await readBody(req);
     const cityScope = await resolveCityScope({
       req,
       body,
-      supabase: auth.serviceRole,
+      supabase: serviceRole,
     });
-    const rawPathname = new URL(req.url).pathname;
-    const pathname =
-      rawPathname.replace(/^\/functions\/v1\/payment-requests/, "").replace(/^\/payment-requests/, "") || "/";
 
     if (req.method === "GET" && pathname === "/incoming") {
       const requests = await listIncomingPaymentRequests({
-        supabase: auth.serviceRole,
+        supabase: serviceRole,
         cityScope,
-        userId: Number(auth.userRow.id),
+        userId: Number(scoped.userRow.id),
       });
 
       return jsonResponse(req, {
@@ -121,9 +122,9 @@ export async function handleRequest(req: Request): Promise<Response> {
     if (req.method === "GET" && pathname === "/outgoing") {
       const includeClosed = new URL(req.url).searchParams.get("includeClosed") === "true";
       const requests = await listOutgoingPaymentRequests({
-        supabase: auth.serviceRole,
+        supabase: serviceRole,
         cityScope,
-        userId: Number(auth.userRow.id),
+        userId: Number(scoped.userRow.id),
         includeClosed,
       });
 
@@ -135,9 +136,9 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "GET" && pathname === "/recent-participants") {
       const participants = await listRecentPaymentRequestParticipants({
-        supabase: auth.serviceRole,
+        supabase: serviceRole,
         cityScope,
-        userId: Number(auth.userRow.id),
+        userId: Number(scoped.userRow.id),
       });
 
       return jsonResponse(req, {
@@ -148,9 +149,9 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/create") {
       const request = await createPaymentRequest({
-        supabase: auth.serviceRole,
+        supabase: serviceRole,
         cityScope,
-        requesterId: Number(auth.userRow.id),
+        requesterId: Number(scoped.userRow.id),
         requestFrom:
           typeof body?.requestFrom === "number"
             ? body.requestFrom
@@ -178,9 +179,9 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
 
       const request = await markPaymentRequestPaid({
-        supabase: auth.serviceRole,
+        supabase: serviceRole,
         cityScope,
-        userId: Number(auth.userRow.id),
+        userId: Number(scoped.userRow.id),
         requestId,
         transactionId:
           typeof body?.transactionId === "number"
@@ -203,9 +204,9 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
 
       const request = await dismissPaymentRequest({
-        supabase: auth.serviceRole,
+        supabase: serviceRole,
         cityScope,
-        userId: Number(auth.userRow.id),
+        userId: Number(scoped.userRow.id),
         requestId,
       });
 
@@ -222,9 +223,9 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
 
       const request = await cancelPaymentRequest({
-        supabase: auth.serviceRole,
+        supabase: serviceRole,
         cityScope,
-        userId: Number(auth.userRow.id),
+        userId: Number(scoped.userRow.id),
         requestId,
       });
 

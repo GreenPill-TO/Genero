@@ -1,5 +1,9 @@
-import { createAuthenticatedRequestClient, resolveAuthenticatedUser } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import {
+  createAuthenticatedRequestClient,
+  createServiceRoleClient,
+  resolveAuthenticatedEdgeContext,
+} from "../_shared/auth.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { assertAdminOrOperator } from "../_shared/rbac.ts";
@@ -118,22 +122,22 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(req, data);
     }
 
-    const auth = await resolveAuthenticatedUser(req, "voucher-preferences privileged compatibility and merchant reads");
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
+    const scoped = await resolveAuthenticatedEdgeContext(req, {
+      purpose: "voucher preferences privileged scoped identity and app context",
       input: appContextInput,
     });
+    const serviceRole = createServiceRoleClient({ purpose: `voucher preferences ${pathname} operation` });
 
     if (req.method === "GET" && pathname === "/compatibility") {
       const chainId = Math.max(1, Math.trunc(toNumber(new URL(req.url).searchParams.get("chainId"), 42220)));
       const rules = await getVoucherCompatibilityRules({
-        supabase: auth.serviceRole,
-        citySlug: appContext.citySlug,
+        supabase: serviceRole,
+        citySlug: scoped.appContext.citySlug,
         chainId,
       });
 
       return jsonResponse(req, {
-        citySlug: appContext.citySlug,
+        citySlug: scoped.appContext.citySlug,
         chainId,
         rules,
       });
@@ -141,9 +145,9 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     if (req.method === "POST" && pathname === "/compatibility") {
       await assertAdminOrOperator({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
       });
 
       const chainId = Math.max(1, Math.trunc(toNumber(body?.chainId, 42220)));
@@ -159,10 +163,10 @@ export async function handleRequest(req: Request): Promise<Response> {
       const ruleStatus = body?.ruleStatus === "inactive" ? "inactive" : "active";
       const nowIso = new Date().toISOString();
 
-      let existingQuery = auth.serviceRole
+      let existingQuery = serviceRole
         .from("voucher_compatibility_rules")
         .select("id")
-        .eq("city_slug", appContext.citySlug)
+        .eq("city_slug", scoped.appContext.citySlug)
         .eq("chain_id", chainId)
         .eq("pool_address", poolAddress)
         .eq("token_address", tokenAddress);
@@ -180,13 +184,13 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       let saved: Record<string, unknown> | null = null;
       if (existing?.id) {
-        const { data, error } = await auth.serviceRole
+        const { data, error } = await serviceRole
           .from("voucher_compatibility_rules")
           .update({
             accepted_by_default: acceptedByDefault,
             rule_status: ruleStatus,
             updated_at: nowIso,
-            created_by: auth.userRow.id,
+            created_by: scoped.userRow.id,
           })
           .eq("id", existing.id)
           .select("*")
@@ -197,17 +201,17 @@ export async function handleRequest(req: Request): Promise<Response> {
         }
         saved = data;
       } else {
-        const { data, error } = await auth.serviceRole
+        const { data, error } = await serviceRole
           .from("voucher_compatibility_rules")
           .insert({
-            city_slug: appContext.citySlug,
+            city_slug: scoped.appContext.citySlug,
             chain_id: chainId,
             pool_address: poolAddress,
             token_address: tokenAddress,
             merchant_store_id: merchantStoreId,
             accepted_by_default: acceptedByDefault,
             rule_status: ruleStatus,
-            created_by: auth.userRow.id,
+            created_by: scoped.userRow.id,
             created_at: nowIso,
             updated_at: nowIso,
           })
@@ -220,16 +224,16 @@ export async function handleRequest(req: Request): Promise<Response> {
         saved = data;
       }
 
-      await auth.serviceRole.from("governance_actions_log").insert({
+      await serviceRole.from("governance_actions_log").insert({
         action_type: "voucher_compatibility_updated",
-        city_slug: appContext.citySlug,
-        actor_user_id: auth.userRow.id,
+        city_slug: scoped.appContext.citySlug,
+        actor_user_id: scoped.userRow.id,
         reason:
           typeof body?.reason === "string" && body.reason.trim() !== ""
             ? body.reason.trim()
             : "Voucher compatibility rule updated",
         payload: {
-          appInstanceId: appContext.appInstanceId,
+          appInstanceId: scoped.appContext.appInstanceId,
           chainId,
           poolAddress,
           tokenAddress,
@@ -250,29 +254,29 @@ export async function handleRequest(req: Request): Promise<Response> {
 
       const [merchantResult, userBiaScope] = await Promise.all([
         listMerchantsForVoucherScope({
-          supabase: auth.serviceRole,
-          citySlug: appContext.citySlug,
+          supabase: serviceRole,
+          citySlug: scoped.appContext.citySlug,
           chainId,
-          userId: Number(auth.userRow.id),
-          appInstanceId: appContext.appInstanceId,
+          userId: Number(scoped.userRow.id),
+          appInstanceId: scoped.appContext.appInstanceId,
           scope,
         }),
         resolveActiveUserBiaSet({
-          supabase: auth.serviceRole,
-          userId: Number(auth.userRow.id),
-          appInstanceId: appContext.appInstanceId,
+          supabase: serviceRole,
+          userId: Number(scoped.userRow.id),
+          appInstanceId: scoped.appContext.appInstanceId,
         }),
       ]);
 
       return jsonResponse(req, {
-        citySlug: appContext.citySlug,
+        citySlug: scoped.appContext.citySlug,
         chainId,
         state: merchantResult.state,
         setupMessage: merchantResult.setupMessage,
         scope,
         liquiditySource: "sarafu_onchain",
         readOnly: true,
-        appInstanceId: appContext.appInstanceId,
+        appInstanceId: scoped.appContext.appInstanceId,
         biaScope: {
           primaryBiaId: userBiaScope.primaryBiaId,
           secondaryBiaIds: userBiaScope.secondaryBiaIds,

@@ -1,7 +1,8 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const resolveAuthenticatedUserMock = vi.hoisted(() => vi.fn());
+const resolveAuthenticatedEdgeUserMock = vi.hoisted(() => vi.fn());
+const createServiceRoleClientMock = vi.hoisted(() => vi.fn());
 const resolveActiveAppContextMock = vi.hoisted(() => vi.fn());
 const paymentRequestMocks = vi.hoisted(() => ({
   listIncomingPaymentRequests: vi.fn(),
@@ -14,7 +15,8 @@ const paymentRequestMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../_shared/auth.ts", () => ({
-  resolveAuthenticatedUser: resolveAuthenticatedUserMock,
+  createServiceRoleClient: createServiceRoleClientMock,
+  resolveAuthenticatedEdgeUser: resolveAuthenticatedEdgeUserMock,
 }));
 
 vi.mock("../_shared/appContext.ts", () => ({
@@ -55,10 +57,9 @@ describe("payment-requests handleRequest", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    resolveAuthenticatedUserMock.mockResolvedValue({
-      serviceRole: {
-        from: fromMock,
-      },
+    createServiceRoleClientMock.mockReturnValue({ from: fromMock });
+    resolveAuthenticatedEdgeUserMock.mockResolvedValue({
+      scopedClient: {},
       userRow: { id: 42 },
     });
 

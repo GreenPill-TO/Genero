@@ -120,6 +120,21 @@ export async function resolveAuthenticatedEdgeContext(
   req: Request,
   options: { purpose: string; input: EdgeAppContextInput }
 ): Promise<{ scopedClient: any; userRow: EdgeUserRow; appContext: EdgeAppContext }> {
+  const { scopedClient, userRow } = await resolveAuthenticatedEdgeUser(req, { purpose: options.purpose });
+
+  const appContext = await resolveEdgeAppContext(scopedClient, options.input);
+
+  return {
+    scopedClient,
+    userRow,
+    appContext,
+  };
+}
+
+export async function resolveAuthenticatedEdgeUser(
+  req: Request,
+  options: { purpose: string }
+): Promise<{ scopedClient: any; userRow: EdgeUserRow }> {
   const scopedClient = createAuthenticatedRequestClient(req, { purpose: options.purpose });
 
   const { data: userData, error: userError } = await scopedClient.rpc("edge_resolve_current_user_v1");
@@ -132,10 +147,17 @@ export async function resolveAuthenticatedEdgeContext(
     throw new Error("Unauthorized");
   }
 
+  return { scopedClient, userRow };
+}
+
+export async function resolveEdgeAppContext(
+  scopedClient: any,
+  input: EdgeAppContextInput
+): Promise<EdgeAppContext> {
   const { data: contextData, error: contextError } = await scopedClient.rpc("edge_resolve_app_context_v1", {
-    p_app_slug: options.input.appSlug,
-    p_city_slug: options.input.citySlug,
-    p_environment: options.input.environment || null,
+    p_app_slug: input.appSlug,
+    p_city_slug: input.citySlug,
+    p_environment: input.environment || null,
   });
   if (contextError) {
     throwScopedRpcError("Failed to resolve app context", contextError);
@@ -151,14 +173,10 @@ export async function resolveAuthenticatedEdgeContext(
   }
 
   return {
-    scopedClient,
-    userRow,
-    appContext: {
-      appSlug: String(context.appSlug ?? options.input.appSlug ?? "wallet").trim().toLowerCase(),
-      citySlug: String(context.citySlug ?? options.input.citySlug ?? "tcoin").trim().toLowerCase(),
-      environment: String(context.environment ?? options.input.environment ?? "").trim().toLowerCase(),
-      appInstanceId,
-    },
+    appSlug: String(context.appSlug ?? input.appSlug ?? "wallet").trim().toLowerCase(),
+    citySlug: String(context.citySlug ?? input.citySlug ?? "tcoin").trim().toLowerCase(),
+    environment: String(context.environment ?? input.environment ?? "").trim().toLowerCase(),
+    appInstanceId,
   };
 }
 

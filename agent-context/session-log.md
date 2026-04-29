@@ -1,3 +1,53 @@
+# v1.240
+### Timestamp
+- 2026-04-29 14:10 EDT
+
+### Objective
+- Complete the current P1 Supabase boundary hardening slice on `codex/edge-privileged-boundary-hardening` without merging or rebasing `dev`.
+
+### What Changed
+- Added a lightweight request-scoped Edge user resolver and kept full Edge app-context resolution on the publishable-key RPC boundary.
+- Refactored remaining lower-risk Edge entrypoints for control-plane, citycoin-market, payment-requests, payment-links, user-requests, governance, redemptions, wallet-operations, and privileged voucher-preference compatibility paths so caller identity/app context resolves before any route-specific service-role operation.
+- Kept intentionally privileged service-role work in place for custody, transfer bookkeeping, payment-link consume/resolve, settlement/admin, governance reads, voucher payment-records, merchant/admin, BIA/admin, and webhook/runtime paths, with purpose labels at the operation boundary.
+- Expanded the direct Supabase table-access guard to block app-facing runtime imports of documented exception helpers such as merchant-signup table helpers, voucher/Sarafu routing helpers, and the Cubid signer outside approved server/worker/action-time boundaries.
+- Updated the Supabase boundary contract, technical spec, wallet release runbook, and todo metadata to mark both P1 tracks as stabilized/in-progress rather than fully closed.
+
+### Verification
+- `pnpm exec vitest run supabase/functions/_shared/auth.test.ts supabase/functions/control-plane/index.test.ts supabase/functions/citycoin-market/index.test.ts supabase/functions/payment-requests/index.test.ts supabase/functions/payment-links/index.test.ts supabase/functions/user-requests/index.test.ts supabase/functions/governance/index.test.ts supabase/functions/redemptions/index.test.ts supabase/functions/wallet-operations/index.test.ts supabase/functions/voucher-preferences/index.test.ts supabase/functions/bia-service/index.test.ts supabase/functions/onramp/index.test.ts`
+- `pnpm exec tsc --noEmit --pretty false`
+- `node scripts/check-no-direct-supabase-db.mjs`
+- `git diff --check`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `agent-context/todo.md`
+- `docs/engineering/supabase-boundary-contract.md`
+- `docs/engineering/technical-spec.md`
+- `docs/engineering/wallet-release-runbook.md`
+- `scripts/check-no-direct-supabase-db.mjs`
+- `supabase/functions/_shared/auth.test.ts`
+- `supabase/functions/_shared/auth.ts`
+- `supabase/functions/citycoin-market/index.test.ts`
+- `supabase/functions/citycoin-market/index.ts`
+- `supabase/functions/control-plane/index.test.ts`
+- `supabase/functions/control-plane/index.ts`
+- `supabase/functions/governance/index.test.ts`
+- `supabase/functions/governance/index.ts`
+- `supabase/functions/payment-links/index.test.ts`
+- `supabase/functions/payment-links/index.ts`
+- `supabase/functions/payment-requests/index.test.ts`
+- `supabase/functions/payment-requests/index.ts`
+- `supabase/functions/redemptions/index.test.ts`
+- `supabase/functions/redemptions/index.ts`
+- `supabase/functions/user-requests/index.ts`
+- `supabase/functions/voucher-preferences/index.test.ts`
+- `supabase/functions/voucher-preferences/index.ts`
+- `supabase/functions/wallet-operations/index.test.ts`
+- `supabase/functions/wallet-operations/index.ts`
+
 # v1.239
 ### Timestamp
 - 2026-04-29 13:35 EDT

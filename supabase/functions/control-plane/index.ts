@@ -1,5 +1,5 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import { createServiceRoleClient, resolveAuthenticatedEdgeContext } from "../_shared/auth.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { userHasAnyRole } from "../_shared/rbac.ts";
@@ -10,31 +10,31 @@ type DenoServe = {
 
 const DenoRuntime = (globalThis as typeof globalThis & { Deno?: DenoServe }).Deno;
 
-async function handleRequest(req: Request): Promise<Response> {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: resolveCorsHeaders(req) });
   }
 
   try {
-    const auth = await resolveAuthenticatedUser(req);
-    const appContext = await resolveActiveAppContext({
-      supabase: auth.serviceRole,
+    const scoped = await resolveAuthenticatedEdgeContext(req, {
+      purpose: "control-plane scoped identity and app context",
       input: resolveAppContextInput(req, null),
     });
+    const serviceRole = createServiceRoleClient({ purpose: "control-plane access role check" });
     const rawPathname = new URL(req.url).pathname;
     const pathname = rawPathname.replace(/^\/functions\/v1\/control-plane/, "").replace(/^\/control-plane/, "") || "/";
 
     if (req.method === "GET" && pathname === "/access") {
       const isAdminOrOperator = await userHasAnyRole({
-        supabase: auth.serviceRole,
-        userId: Number(auth.userRow.id),
-        appInstanceId: appContext.appInstanceId,
+        supabase: serviceRole,
+        userId: Number(scoped.userRow.id),
+        appInstanceId: scoped.appContext.appInstanceId,
         roles: ["admin", "operator"],
       });
 
       return jsonResponse(req, {
-        citySlug: appContext.citySlug,
-        appInstanceId: appContext.appInstanceId,
+        citySlug: scoped.appContext.citySlug,
+        appInstanceId: scoped.appContext.appInstanceId,
         isAdminOrOperator,
         canAccessAdminDashboard: isAdminOrOperator,
         canAccessCityManager: isAdminOrOperator,

@@ -157,6 +157,47 @@ function isSkippedFile(file) {
 const matcher =
   /(?:\b(?:[A-Za-z_$][\w$]*\.)?supabase|\bserviceRole|\brpcClient)\s*(?:\.\s*schema\s*\([^)]*\))?\s*\.\s*from\s*\(/g;
 const violations = [];
+const importViolations = [];
+
+const forbiddenAppFacingImports = new Map([
+  [
+    "@shared/lib/contracts/management/cubidSigner",
+    "Cubid signer custody reads are allowed only behind action-time write modules, not app-facing read surfaces.",
+  ],
+  [
+    "./cubidSigner",
+    "Cubid signer custody reads are allowed only behind action-time write modules, not app-facing read surfaces.",
+  ],
+  [
+    "@shared/lib/merchantSignup/application",
+    "Merchant signup table mutations must stay behind merchant Edge/server boundaries.",
+  ],
+  [
+    "@shared/lib/merchantSignup/server",
+    "Merchant signup table reads/authorisation must stay behind merchant Edge/server boundaries.",
+  ],
+  [
+    "@shared/lib/vouchers/routing",
+    "Voucher routing table reads must stay behind voucher Edge/server/worker boundaries.",
+  ],
+  [
+    "@shared/lib/sarafu/guards",
+    "Sarafu guard table reads must stay behind Sarafu Edge/server/worker boundaries.",
+  ],
+  [
+    "@shared/lib/sarafu/routing",
+    "Sarafu routing table reads must stay behind Sarafu Edge/server/worker boundaries.",
+  ],
+]);
+
+const allowedForbiddenImportConsumers = new Map([
+  [
+    "shared/lib/contracts/management/writes.ts",
+    new Set(["@shared/lib/contracts/management/cubidSigner", "./cubidSigner"]),
+  ],
+]);
+
+const importMatcher = /import\s+(?:type\s+)?(?:[^'"]+\s+from\s+)?["']([^"']+)["']/g;
 
 for (const file of listFiles()) {
   const absolutePath = path.join(repoRoot, file);
@@ -168,6 +209,23 @@ for (const file of listFiles()) {
     const line = lines[lineNumber - 1]?.trim() ?? match[0].replace(/\s+/g, " ");
     violations.push(`${file}:${lineNumber}: ${line}`);
   }
+
+  for (const match of source.matchAll(importMatcher)) {
+    const importPath = match[1];
+    const normalisedImportPath = importPath.replace(/\/index$/, "");
+    const allowedForFile = allowedForbiddenImportConsumers.get(file);
+    if (allowedForFile?.has(normalisedImportPath)) {
+      continue;
+    }
+
+    const reason = forbiddenAppFacingImports.get(normalisedImportPath);
+    if (!reason) {
+      continue;
+    }
+
+    const lineNumber = source.slice(0, match.index).split("\n").length;
+    importViolations.push(`${file}:${lineNumber}: ${normalisedImportPath} - ${reason}`);
+  }
 }
 
 if (violations.length > 0) {
@@ -176,6 +234,12 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
+if (importViolations.length > 0) {
+  console.error("Documented Supabase exception helpers must not be imported by app-facing code:");
+  importViolations.forEach((entry) => console.error(`- ${entry}`));
+  process.exit(1);
+}
+
 console.log(
-  `No direct Supabase DB access found in guarded app-facing paths. ${allowedDirectAccess.size} documented exception paths are allowed.`
+  `No direct Supabase DB access or forbidden exception-helper imports found in guarded app-facing paths. ${allowedDirectAccess.size} documented exception paths are allowed.`
 );

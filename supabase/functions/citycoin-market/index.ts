@@ -1,5 +1,9 @@
-import { resolveAuthenticatedUser } from "../_shared/auth.ts";
-import { resolveActiveAppContext, resolveAppContextInput } from "../_shared/appContext.ts";
+import {
+  createServiceRoleClient,
+  resolveAuthenticatedEdgeContext,
+  resolveAuthenticatedEdgeUser,
+} from "../_shared/auth.ts";
+import { resolveAppContextInput } from "../_shared/appContext.ts";
 import { resolveCorsHeaders } from "../_shared/cors.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 
@@ -99,7 +103,6 @@ export async function handleRequest(req: Request): Promise<Response> {
       return jsonResponse(req, { error: "Not found." }, { status: 404 });
     }
 
-    const auth = await resolveAuthenticatedUser(req);
     const url = new URL(req.url);
     const rawPathname = url.pathname;
     const pathname =
@@ -127,20 +130,23 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     let citySlug = queryCitySlug;
     if (!citySlug) {
-      const appContext = await resolveActiveAppContext({
-        supabase: auth.serviceRole,
+      const scoped = await resolveAuthenticatedEdgeContext(req, {
+        purpose: "citycoin market scoped identity and app context",
         input: appContextInput,
       });
-      citySlug = appContext.citySlug;
+      const serviceRole = createServiceRoleClient({ purpose: "citycoin market rate read" });
+      citySlug = scoped.appContext.citySlug;
       const result = await resolveCityRate({
-        supabase: auth.serviceRole,
+        supabase: serviceRole,
         citySlug,
       });
       return jsonResponse(req, result, { status: 200 });
     }
 
+    await resolveAuthenticatedEdgeUser(req, { purpose: "citycoin market scoped identity read" });
+    const serviceRole = createServiceRoleClient({ purpose: "citycoin market rate read" });
     const result = await resolveCityRate({
-      supabase: auth.serviceRole,
+      supabase: serviceRole,
       citySlug,
     });
     return jsonResponse(req, result, { status: 200 });
