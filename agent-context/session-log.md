@@ -1,3 +1,28 @@
+# v1.246
+### Timestamp
+- 2026-05-15 22:01 EDT
+
+### Objective
+- Address Codex review comments on PR #73 before promoting `dev` to `main`.
+
+### What Changed
+- Split Transak webhook verification onto a narrow verification-only config path so the Next.js webhook route no longer depends on onramp settlement secrets such as gas-bank private keys or HD seeds.
+- Removed the wallet layout's `next/font/google` import and replaced it with a deterministic CSS font-family fallback to avoid build-time Google Fonts egress.
+- Added focused Transak webhook verification tests for JWT and legacy HMAC paths without settlement-only environment variables.
+
+### Verification
+- `pnpm exec vitest run services/onramp/src/provider/transak.test.ts app/api/onramp/webhooks/transak/route.test.ts`
+- `pnpm lint`
+- `git diff --check`
+
+### Files Edited
+- `agent-context/session-log.md`
+- `app/tcoin/wallet/layout.tsx`
+- `app/tcoin/wallet/styles/app.scss`
+- `services/onramp/src/config.ts`
+- `services/onramp/src/provider/transak.test.ts`
+- `services/onramp/src/provider/transak.ts`
+
 # v1.245
 ### Timestamp
 - 2026-05-15 21:56 EDT

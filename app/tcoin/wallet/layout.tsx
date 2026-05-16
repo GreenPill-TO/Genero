@@ -6,15 +6,9 @@ import { ReactQueryProvider } from "@shared/providers/react-query-provider";
 import { isPublicWalletPath } from "@tcoin/wallet/pathname";
 import "@tcoin/wallet/styles/app.scss";
 import ContentLayout from "./ContentLayout";
-import { Special_Elite } from "next/font/google";
 import { usePathname } from "next/navigation";
 import Script from "next/script";
 
-const specialElite = Special_Elite({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
 const themeCacheKey = `theme_cache:${(process.env.NEXT_PUBLIC_APP_NAME ?? "wallet").trim().toLowerCase()}:${(process.env.NEXT_PUBLIC_CITYCOIN ?? "tcoin").trim().toLowerCase()}:${((process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase() || "default")}`;
 
 function WalletRuntimeProviders({
@@ -50,7 +44,7 @@ export default function RootLayout({
           {`(function(){try{var key=${JSON.stringify(themeCacheKey)};var stored=window.localStorage.getItem(key);if(stored==null){var legacy=window.localStorage.getItem('theme');var legacyUserSet=window.localStorage.getItem('theme_user_set')==='1';if(legacyUserSet&&(legacy==='light'||legacy==='dark')){stored=legacy;window.localStorage.setItem(key, legacy);}}var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var shouldUseDark=stored==='dark'||(stored!=='light'&&prefersDark);if(shouldUseDark){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`}
         </Script>
       </head>
-      <body className={specialElite.className}>
+      <body className="wallet-special-elite">
         <style jsx global>{`
           body {
             line-height: 1.333;

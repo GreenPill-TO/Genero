@@ -1,5 +1,9 @@
 import crypto from "crypto";
-import { resolveOnrampConfig } from "../config";
+import {
+  resolveOnrampConfig,
+  resolveTransakWebhookVerificationConfig,
+  type TransakWebhookVerificationConfig,
+} from "../config";
 import type { CreateOnrampSessionInput, OnrampProviderEventNormalized, OnrampSessionStatus } from "../types";
 
 export type TransakSessionBuildResult = {
@@ -303,8 +307,11 @@ function constantTimeEqualsHex(a: string, b: string): boolean {
   }
 }
 
-function verifyLegacyTransakWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
-  const config = resolveOnrampConfig();
+function verifyLegacyTransakWebhookSignature(
+  rawBody: string,
+  signatureHeader: string | null,
+  config: TransakWebhookVerificationConfig
+): boolean {
   if (!signatureHeader || !config.transakWebhookSecret) {
     return false;
   }
@@ -333,11 +340,11 @@ export function verifyAndDecodeTransakWebhookPayload(
   rawBody: string,
   signatureHeader: string | null
 ): TransakWebhookVerificationResult {
-  const config = resolveOnrampConfig();
+  const config = resolveTransakWebhookVerificationConfig();
   const parsedJson = tryParseJsonObject(rawBody);
   const jwtCandidate = extractJwtCandidate(rawBody, parsedJson);
 
-  if (jwtCandidate) {
+  if (jwtCandidate && config.transakAccessToken) {
     const decodedJwtPayload = verifyAndDecodeJwtHs256(jwtCandidate, config.transakAccessToken);
     if (decodedJwtPayload) {
       return {
@@ -348,7 +355,7 @@ export function verifyAndDecodeTransakWebhookPayload(
     }
   }
 
-  if (verifyLegacyTransakWebhookSignature(rawBody, signatureHeader)) {
+  if (verifyLegacyTransakWebhookSignature(rawBody, signatureHeader, config)) {
     return {
       isValid: true,
       payload: parsedJson,

@@ -86,6 +86,18 @@ export type OnrampConfig = {
   buyCheckoutFlag: boolean;
 };
 
+export type TransakWebhookVerificationConfig = {
+  transakAccessToken: string | null;
+  transakWebhookSecret: string | null;
+};
+
+export function resolveTransakWebhookVerificationConfig(): TransakWebhookVerificationConfig {
+  return {
+    transakAccessToken: parseOptionalString("ONRAMP_TRANSAK_ACCESS_TOKEN"),
+    transakWebhookSecret: parseOptionalString("ONRAMP_TRANSAK_WEBHOOK_SECRET"),
+  };
+}
+
 export function resolveOnrampConfig(): OnrampConfig {
   const provider = (process.env.ONRAMP_PROVIDER ?? "transak").trim().toLowerCase();
   if (provider !== "transak") {
