@@ -1,6 +1,6 @@
 import { useAuth } from "@shared/api/hooks/useAuth";
 import InputField from "@shared/components/ui/InputField";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 
 interface UserInfoStepProps {
   fullName: string;
@@ -27,9 +27,7 @@ export const UserInfoStep: React.FC<UserInfoStepProps> = ({
 }) => {
   const { userData, authData } = useAuth();
 
-  const authMethod = useMemo(() => {
-    return authData?.user?.app_metadata?.provider;
-  }, [authData]);
+  const authMethod = authData?.user?.app_metadata?.provider;
 
   useEffect(() => {
     // Determine if user authenticated with email or phone
@@ -39,16 +37,16 @@ export const UserInfoStep: React.FC<UserInfoStepProps> = ({
     } else if (authMethod === "phone") {
       setPhoneNumber(authData?.user?.phone || "");
     }
-  }, [authMethod, authData?.user]);
+  }, [authData?.user?.email, authData?.user?.phone, authMethod, setEmail, setPhoneNumber]);
 
   useEffect(() => {
     if (userData?.cubidData?.full_name) {
       setFullName(userData?.cubidData?.full_name);
     }
     if (userData?.cubidData?.username) {
-      setUserName(userData?.cubidData?.full_name);
+      setUserName(userData?.cubidData?.username);
     }
-  }, [userData?.cubidData]);
+  }, [setFullName, setUserName, userData?.cubidData?.full_name, userData?.cubidData?.username]);
 
   useEffect(() => {
     // Enable the "Next" button only if fullName and either phoneNumber or email are not empty
@@ -58,7 +56,7 @@ export const UserInfoStep: React.FC<UserInfoStepProps> = ({
       ((authMethod === "email" && email.trim() !== "") || (authMethod === "phone" && phoneNumber.trim() !== ""));
 
     setIsNextEnabled(isComplete);
-  }, [authMethod, email, phoneNumber, fullName, username]);
+  }, [authMethod, email, fullName, phoneNumber, setIsNextEnabled, username]);
   const handleFullNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFullName(e.target.value);
   };

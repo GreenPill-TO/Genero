@@ -1,4 +1,5 @@
 export * from "./WalletHome";
+export * from "./SimpleWalletHome";
 export * from "./ContributionsCard";
 export * from "./ReceiveCard";
 export * from "./SendCard";
@@ -9,3 +10,4 @@ export * from "./ContactsTab";
 export * from "./SendTab";
 export * from "./ReceiveTab";
 export * from "./MoreTab";
+export * from "./TransactionHistoryTab";

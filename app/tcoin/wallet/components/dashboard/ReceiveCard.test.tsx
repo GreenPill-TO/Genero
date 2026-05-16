@@ -30,7 +30,17 @@ vi.mock("react-toastify", () => ({
   },
 }));
 
-const createProps = () => ({
+vi.mock("@tcoin/wallet/components/modals/ContactSelectModal", () => ({
+  ContactSelectModal: () => <div data-testid="contact-select-modal" />,
+}));
+
+vi.mock("@tcoin/wallet/components/modals/ShareQrModal", () => ({
+  ShareQrModal: () => <div data-testid="share-qr-modal" />,
+}));
+
+type ReceiveCardTestProps = React.ComponentProps<typeof ReceiveCard>;
+
+const createProps = (): ReceiveCardTestProps => ({
   qrCodeData: "payload",
   qrTcoinAmount: "",
   qrCadAmount: "",
@@ -51,14 +61,17 @@ const createProps = () => ({
   showQrCode: true,
 });
 
-const renderReceiveCard = (overrides: Partial<ReturnType<typeof createProps>> = {}) => {
+const renderReceiveCard = (overrides: Partial<ReceiveCardTestProps> = {}) => {
   const props = { ...createProps(), ...overrides };
-  return render(<ReceiveCard {...(props as any)} />);
+  return render(<ReceiveCard {...props} />);
 };
 
 
 describe("ReceiveCard", () => {
+  const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
   beforeEach(() => {
+    vi.useFakeTimers();
     openModalMock.mockReset();
     closeModalMock.mockReset();
     toastSuccessMock.mockReset();
@@ -66,14 +79,20 @@ describe("ReceiveCard", () => {
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockClear();
+    vi.useRealTimers();
     cleanup();
   });
 
-  it("opens the contact selector without requiring an amount", () => {
+  it("opens the contact selector without requiring an amount", async () => {
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
     renderReceiveCard();
 
-    fireEvent.click(screen.getByRole("button", { name: /Request from Contact/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Request from Contact/i }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
     expect(openModalMock).toHaveBeenCalled();
     expect(alertSpy).not.toHaveBeenCalled();
@@ -114,19 +133,19 @@ describe("ReceiveCard", () => {
     expect(openModalMock).toHaveBeenCalled();
   });
 
-  it("renders grouped open requests with share actions", () => {
+  it("renders grouped open requests with share actions", async () => {
     renderReceiveCard({
       openRequests: [
         {
           id: 1,
-          amount_requested: 5,
-          request_from: null,
-          created_at: "2024-01-01T00:00:00Z",
+          amountRequested: 5,
+          requestFrom: null,
+          createdAt: "2024-01-01T17:15:00",
         } as any,
         {
           id: 2,
-          amount_requested: 3,
-          request_from: 42,
+          amountRequested: 3,
+          requestFrom: 42,
         } as any,
       ],
       contacts: [
@@ -148,13 +167,18 @@ describe("ReceiveCard", () => {
     const targetedLabels = screen.getAllByText(/To Contacts/i, { selector: "p" });
     expect(targetedLabels.length).toBeGreaterThan(0);
     expect(screen.getByText(/Request sent to Alice Example/i)).toBeTruthy();
+    expect(screen.getByText("Saved 2024-01-01 at 5.15 pm")).toBeTruthy();
 
     const shareButtons = screen.getAllByRole("button", { name: /^Share$/i });
     expect(shareButtons.length).toBeGreaterThan(0);
     const deleteButtons = screen.getAllByRole("button", { name: /^Delete$/i });
     expect(deleteButtons.length).toBeGreaterThan(0);
 
-    fireEvent.click(shareButtons[0]);
+    await act(async () => {
+      fireEvent.click(shareButtons[0]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     expect(openModalMock).toHaveBeenCalled();
   });
 
@@ -164,8 +188,8 @@ describe("ReceiveCard", () => {
       openRequests: [
         {
           id: 55,
-          amount_requested: 2,
-          request_from: null,
+          amountRequested: 2,
+          requestFrom: null,
         } as any,
       ],
       onDeleteRequest,
@@ -188,8 +212,8 @@ describe("ReceiveCard", () => {
       openRequests: [
         {
           id: 99,
-          amount_requested: 4,
-          request_from: null,
+          amountRequested: 4,
+          requestFrom: null,
         } as any,
       ],
       onDeleteRequest,
@@ -213,8 +237,8 @@ describe("ReceiveCard", () => {
       openRequests: [
         {
           id: 10,
-          amount_requested: 0,
-          request_from: null,
+          amountRequested: 0,
+          requestFrom: null,
         } as any,
       ],
     });
@@ -282,6 +306,10 @@ describe("ReceiveCard", () => {
 
     warningModal.unmount();
 
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     expect(closeModalMock).toHaveBeenCalled();
     expect(openModalMock).toHaveBeenCalledTimes(2);
     const reviewArgs = openModalMock.mock.calls[1][0];
@@ -298,8 +326,8 @@ describe("ReceiveCard", () => {
       openRequests: [
         {
           id: 22,
-          amount_requested: 5,
-          request_from: 11,
+          amountRequested: 5,
+          requestFrom: 11,
         } as any,
       ],
     });
@@ -329,6 +357,74 @@ describe("ReceiveCard", () => {
     expect(
       screen.getByText(/QR code hidden while preparing a direct contact request/i)
     ).toBeTruthy();
+  });
+
+  it("shows an unavailable message instead of permanent loading when QR identity is missing", () => {
+    renderReceiveCard({
+      qrCodeData: "",
+      qrUnavailableReason:
+        "QR code is unavailable until your wallet identity finishes loading.",
+    });
+
+    expect(screen.queryByText(/Loading QR Code/i)).toBeNull();
+    expect(
+      screen.getByText(/QR code is unavailable until your wallet identity finishes loading/i)
+    ).toBeTruthy();
+  });
+
+  it("keeps the QR stage square and uses dark text on the white card", () => {
+    renderReceiveCard();
+
+    const receiveLayout = screen.getByTestId("receive-layout");
+    expect(receiveLayout.className).toContain("lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]");
+
+    const qrStage = screen.getByTestId("receive-qr-stage");
+    expect(qrStage.className).toContain("aspect-square");
+    expect(qrStage.className).toContain("bg-white");
+
+    const receiveControls = screen.getByTestId("receive-controls");
+    expect(receiveControls.className).toContain("space-y-3");
+    expect(screen.getByPlaceholderText("Enter TCOIN amount")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Enter CAD amount")).toBeTruthy();
+
+    const caption = screen.getByText(/Receive any amount/i);
+    expect(caption.className).toContain("text-slate-950");
+  });
+
+  it("shows a rounded combined TCOIN and CAD caption above the QR code", () => {
+    renderReceiveCard({
+      qrTcoinAmount: "3.912345678 TCOIN",
+      qrCadAmount: "$13.10",
+    });
+
+    expect(screen.getByText("Receive 3.91 TCOIN ($13.10)")).toBeTruthy();
+    expect(screen.queryByText(/3\.912345678/)).toBeNull();
+  });
+
+  it("shows simplified expiry and one-time copy for QR link modes", () => {
+    vi.setSystemTime(new Date("2026-04-02T20:00:00.000Z"));
+
+    const { rerender } = render(
+      <ReceiveCard
+        {...createProps()}
+        qrLinkMode="rotating_multi_use"
+        qrLinkExpiresAt="2026-04-02T20:01:00.000Z"
+      />
+    );
+
+    expect(screen.getByText("Expires within 60 seconds")).toBeTruthy();
+    expect(screen.getByText("This QR code can be shown to multiple people.")).toBeTruthy();
+
+    rerender(
+      <ReceiveCard
+        {...createProps()}
+        qrLinkMode="single_use"
+        qrLinkExpiresAt="2026-04-05T20:00:00.000Z"
+      />
+    );
+
+    expect(screen.getByText("Expires in 3 days")).toBeTruthy();
+    expect(screen.getByText("This QR code will work only once.")).toBeTruthy();
   });
 
   it("creates a targeted request after confirmation", async () => {
@@ -387,9 +483,9 @@ describe("ReceiveCard", () => {
       requestContact,
       qrTcoinAmount: "10",
       openRequests: [
-        { id: 31, request_from: 21 } as any,
-        { id: 32, request_from: 21 } as any,
-        { id: 33, request_from: 21 } as any,
+        { id: 31, requestFrom: 21 } as any,
+        { id: 32, requestFrom: 21 } as any,
+        { id: 33, requestFrom: 21 } as any,
       ],
     });
 

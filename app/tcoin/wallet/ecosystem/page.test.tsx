@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import EcosystemPage, { metadata } from "./page";
 
 vi.mock("next/link", () => ({ default: (props: any) => <a {...props} /> }));
+vi.mock("@tcoin/wallet/components/footer", () => ({ Footer: () => <div data-testid="footer" /> }));
 
 describe("EcosystemPage", () => {
   it("lists all ecosystem sites", () => {
@@ -14,9 +15,28 @@ describe("EcosystemPage", () => {
   });
 
   it("opens links safely in new tabs", () => {
-    const { getAllByRole } = render(<EcosystemPage />);
-    const links = getAllByRole("link");
-    links.forEach((link) => {
+    const { getAllByText } = render(<EcosystemPage />);
+    const siteNames = [
+      "ChainCrew",
+      "ClearPass",
+      "Cubid",
+      "EquityFlow",
+      "Firebelly",
+      "FundLoop",
+      "GreenPill Canada",
+      "GreenPill Toronto",
+      "Procent Foundation",
+      "Safe2Meet",
+      "SmarTrust",
+      "SnapVote",
+      "SpareChange",
+      "TCOIN",
+      "UBI Finder",
+      "FreeForm",
+    ];
+
+    siteNames.forEach((siteName) => {
+      const link = getAllByText(siteName)[0];
       expect(link.getAttribute("target")).toBe("_blank");
       expect(link.getAttribute("rel")).toBe("noopener noreferrer");
     });

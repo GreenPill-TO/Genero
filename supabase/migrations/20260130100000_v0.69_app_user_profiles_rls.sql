@@ -16,7 +16,7 @@ CREATE POLICY app_user_profiles_select_self
       SELECT 1
       FROM public.users u
       WHERE u.id = app_user_profiles.user_id
-        AND u.auth_user_id = auth.uid()
+        AND u.auth_user_id = auth.uid()::text
     )
   );
 
@@ -29,7 +29,7 @@ CREATE POLICY app_user_profiles_insert_self
       SELECT 1
       FROM public.users u
       WHERE u.id = app_user_profiles.user_id
-        AND u.auth_user_id = auth.uid()
+        AND u.auth_user_id = auth.uid()::text
     )
   );
 
@@ -42,7 +42,7 @@ CREATE POLICY app_user_profiles_update_self
       SELECT 1
       FROM public.users u
       WHERE u.id = app_user_profiles.user_id
-        AND u.auth_user_id = auth.uid()
+        AND u.auth_user_id = auth.uid()::text
     )
   )
   WITH CHECK (
@@ -51,23 +51,8 @@ CREATE POLICY app_user_profiles_update_self
       SELECT 1
       FROM public.users u
       WHERE u.id = app_user_profiles.user_id
-        AND u.auth_user_id = auth.uid()
+        AND u.auth_user_id = auth.uid()::text
     )
   );
-
-COMMIT;
-
--- migrate:down
-BEGIN;
-
-DROP POLICY IF EXISTS app_user_profiles_update_self ON public.app_user_profiles;
-DROP POLICY IF EXISTS app_user_profiles_insert_self ON public.app_user_profiles;
-DROP POLICY IF EXISTS app_user_profiles_select_self ON public.app_user_profiles;
-
-ALTER TABLE IF EXISTS public.app_user_profiles
-  NO FORCE ROW LEVEL SECURITY;
-
-ALTER TABLE IF EXISTS public.app_user_profiles
-  DISABLE ROW LEVEL SECURITY;
 
 COMMIT;

@@ -1,25 +1,49 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { useModal } from "@shared/contexts/ModalContext";
-import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
-import { useSendMoney } from "@shared/hooks/useSendMoney";
+import { useCurrentWalletAddress } from "@shared/hooks/useCurrentWalletAddress";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
-import { createClient } from "@shared/lib/supabase/client";
+import { useVoucherPortfolio } from "@shared/hooks/useVoucherPortfolio";
+import { getRecentPaymentRequestParticipants } from "@shared/lib/edge/paymentRequestsClient";
+import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
+import { getWalletRecents } from "@shared/lib/edge/walletOperationsClient";
+import type { VoucherMerchantLiquidity } from "@shared/lib/edge/vouchers";
 import { ContributionsCard } from "./ContributionsCard";
-import { SendCard } from "./SendCard";
 import { AccountCard } from "./AccountCard";
-import { OtherCard } from "./OtherCard";
-import { Hypodata } from "./types";
+import {
+  walletActionButtonClass,
+  walletInteractiveSurfaceClass,
+  walletPanelClass,
+  walletPanelMutedClass,
+} from "./authenticated-ui";
 
-export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
+type RecentInteraction = {
+  id: number;
+  full_name: string | null;
+  username: string | null;
+  profile_image_url: string | null;
+  lastInteractionAt: string | null;
+};
+
+export function WalletHome({
+  tokenLabel = "Tcoin",
+  onOpenTransactionHistory,
+}: {
+  tokenLabel?: string;
+  onOpenTransactionHistory?: () => void;
+}) {
   const { openModal, closeModal } = useModal();
   const { userData } = useAuth();
+  const router = useRouter();
   const activeProfile = userData?.cubidData?.activeProfile;
 
-  const [tcoinAmount, setTcoinAmount] = useState("");
-  const [cadAmount, setCadAmount] = useState("");
   const [selectedCharity, setSelectedCharity] = useState("");
+  const [recentInteractions, setRecentInteractions] = useState<RecentInteraction[]>([]);
+
+  const buyCheckoutEnabled =
+    (process.env.NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT ?? "false").trim().toLowerCase() === "true";
 
   useEffect(() => {
     const defaultCharity = activeProfile?.charityPreferences?.charity;
@@ -28,7 +52,6 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
     }
   }, [activeProfile]);
 
-  const { exchangeRate } = useControlVariables();
   const [charityData] = useState({
     personalContribution: 50,
     allUsersToCharity: 600,
@@ -36,233 +59,336 @@ export function WalletHome({ tokenLabel = "Tcoin" }: { tokenLabel?: string }) {
   });
 
   const user_id = userData?.cubidData.id;
-
-  const sanitizeNumeric = useCallback((value: string) => value.replace(/[^\d.]/g, ""), []);
-  const safeExchangeRate =
-    typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
-      ? exchangeRate
-      : 0;
-
-  const convertTcoinToCad = useCallback((value: string) => {
-    const num = parseFloat(value);
-    if (isNaN(num) || safeExchangeRate === 0) return "";
-    return (num * safeExchangeRate).toString();
-  }, [safeExchangeRate]);
-
-  const convertCadToTcoin = useCallback((value: string) => {
-    const num = parseFloat(value);
-    if (isNaN(num) || safeExchangeRate === 0) return "";
-    return (num / safeExchangeRate).toString();
-  }, [safeExchangeRate]);
-
-  const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = sanitizeNumeric(e.target.value);
-    setTcoinAmount(rawValue);
-    if (rawValue === "") {
-      setCadAmount("");
-      return;
-    }
-    const cadRaw = convertTcoinToCad(rawValue);
-    setCadAmount(cadRaw);
-  };
-
-  const handleCadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = sanitizeNumeric(e.target.value);
-    setCadAmount(rawValue);
-    if (rawValue === "") {
-      setTcoinAmount("");
-      return;
-    }
-    const tcoinRaw = convertCadToTcoin(rawValue);
-    setTcoinAmount(tcoinRaw);
-  };
-
-  const handleTcoinBlur = () => {
-    if (tcoinAmount.trim() === "") {
-      setCadAmount("");
-      return;
-    }
-    const numericValue = parseFloat(tcoinAmount);
-    if (isNaN(numericValue)) {
-      setTcoinAmount("");
-      setCadAmount("");
-      return;
-    }
-    const normalizedTcoin = numericValue.toFixed(2);
-    const cadNumeric = safeExchangeRate === 0 ? 0 : numericValue * safeExchangeRate;
-    setTcoinAmount(normalizedTcoin);
-    setCadAmount(cadNumeric.toFixed(2));
-  };
-
-  const handleCadBlur = () => {
-    if (cadAmount.trim() === "") {
-      setTcoinAmount("");
-      return;
-    }
-    const numericValue = parseFloat(cadAmount);
-    if (isNaN(numericValue)) {
-      setCadAmount("");
-      setTcoinAmount("");
-      return;
-    }
-    const normalizedCad = numericValue.toFixed(2);
-    const tcoinNumeric = safeExchangeRate === 0 ? 0 : numericValue / safeExchangeRate;
-    setCadAmount(normalizedCad);
-    setTcoinAmount(tcoinNumeric.toFixed(2));
-  };
-
-  function extractAndDecodeBase64(url: string) {
-    try {
-      const urlObj = new URL(url);
-      const base64Data = urlObj.searchParams.get("pay");
-      if (!base64Data) throw new Error("No Base64 data found in URL.");
-      const decodedData = decodeURIComponent(escape(atob(base64Data)));
-      return JSON.parse(decodedData);
-    } catch (error) {
-      console.error("Error decoding Base64:", error);
-      return null;
-    }
-  }
-
-  const handleScan = useCallback(
-    async (data: any) => {
-      const rest = extractAndDecodeBase64(data);
-      if (!rest?.nano_id) return;
-      try {
-        const supabase = createClient();
-        const { data: userDataFromSupabaseTable, error } = await supabase
-          .from("users")
-          .select("*")
-          .match({ user_identifier: rest.nano_id });
-        if (error) throw error;
-
-        const { error: insertError } = await supabase.from("connections").insert({
-          owner_user_id: userData?.cubidData?.id,
-          connected_user_id: userDataFromSupabaseTable?.[0]?.id,
-          state: "new",
-        });
-        if (insertError) throw insertError;
-
-        setToSendData(userDataFromSupabaseTable?.[0]);
-        if (rest?.qrTcoinAmount) {
-          const sanitized = sanitizeNumeric(String(rest.qrTcoinAmount));
-          if (sanitized) {
-            const numeric = Number.parseFloat(sanitized);
-            if (Number.isFinite(numeric)) {
-              setTcoinAmount(numeric.toFixed(2));
-              const cadNumeric = safeExchangeRate === 0 ? 0 : numeric * safeExchangeRate;
-              setCadAmount(cadNumeric.toFixed(2));
-            }
-          }
-        }
-        toast.success("Scanned User Successfully");
-      } catch (err) {
-        console.error("handleScan error", err);
-      }
-    },
-    [safeExchangeRate, sanitizeNumeric, userData]
-  );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    if (url.searchParams.has("pay")) {
-      handleScan(url.toString());
-    }
-  }, [handleScan]);
-  const [toSendData, setToSendData] = useState<Hypodata | null>(null);
-  const [explorerLink, setExplorerLink] = useState<string | null>(null);
-
-  const { senderWallet, sendMoney } = useSendMoney({
-    senderId: user_id,
-    receiverId: toSendData?.id ?? null,
+  const { walletAddress: senderWallet } = useCurrentWalletAddress({
+    enabled: Boolean(user_id),
   });
 
   const { balance: rawBalance } = useTokenBalance(senderWallet);
   const userBalance = parseFloat(rawBalance) || 0;
+  const { portfolio } = useVoucherPortfolio({ enabled: Boolean(senderWallet) });
+  const [myPoolMerchants, setMyPoolMerchants] = useState<VoucherMerchantLiquidity[]>([]);
 
-  const handleUseMax = () => {
-    const cadNumeric = safeExchangeRate === 0 ? 0 : userBalance * safeExchangeRate;
-    setTcoinAmount(userBalance.toFixed(2));
-    setCadAmount(cadNumeric.toFixed(2));
+  useEffect(() => {
+    if (!senderWallet) return;
+
+    const loadMerchants = async () => {
+      try {
+        const body = await getVoucherMerchants({
+          scope: "my_pool",
+          appContext: { citySlug: "tcoin" },
+        });
+        const rows = Array.isArray(body?.merchants) ? body.merchants : [];
+        const normalized = rows
+          .filter((row: any) => row && typeof row === "object" && row.available === true)
+          .map((row: any) => ({
+            merchantStoreId: Number(row.merchantStoreId),
+            available: true,
+            displayName: typeof row.displayName === "string" ? row.displayName : undefined,
+            tokenSymbol: typeof row.tokenSymbol === "string" ? row.tokenSymbol : undefined,
+          }))
+          .filter((row: any) => Number.isFinite(row.merchantStoreId))
+          .slice(0, 6);
+        setMyPoolMerchants(normalized);
+      } catch {
+        setMyPoolMerchants([]);
+      }
+    };
+
+    void loadMerchants();
+  }, [senderWallet]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!user_id) {
+      setRecentInteractions([]);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const loadRecents = async () => {
+      try {
+        const recentsByUser = new Map<number, RecentInteraction>();
+        const toTimestamp = (value: string | null | undefined): number => {
+          if (!value) return Number.NEGATIVE_INFINITY;
+          const parsed = Date.parse(value);
+          return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+        };
+        const upsertRecent = (row: RecentInteraction) => {
+          const existing = recentsByUser.get(row.id);
+          if (!existing || toTimestamp(row.lastInteractionAt) >= toTimestamp(existing.lastInteractionAt)) {
+            recentsByUser.set(row.id, row);
+          }
+        };
+
+        const [walletRecents, paymentRequestRecents] = await Promise.allSettled([
+          getWalletRecents({ citySlug: "tcoin" }),
+          getRecentPaymentRequestParticipants({
+            appContext: { citySlug: "tcoin" },
+          }),
+        ]);
+
+        if (walletRecents.status === "fulfilled") {
+          walletRecents.value.participants.forEach((participant) => {
+            if (participant.id === user_id) return;
+            upsertRecent({
+              id: participant.id,
+              full_name: participant.fullName,
+              username: participant.username,
+              profile_image_url: participant.profileImageUrl,
+              lastInteractionAt: participant.lastInteractionAt ?? null,
+            });
+          });
+        }
+
+        if (paymentRequestRecents.status === "fulfilled") {
+          paymentRequestRecents.value.participants.forEach((participant) => {
+            if (participant.id === user_id) return;
+            upsertRecent({
+              id: participant.id,
+              full_name: participant.fullName,
+              username: participant.username,
+              profile_image_url: participant.profileImageUrl,
+              lastInteractionAt: participant.lastInteractionAt,
+            });
+          });
+        }
+
+        const sorted = Array.from(recentsByUser.values())
+          .filter((row) => row.id !== user_id)
+          .sort((a, b) => toTimestamp(b.lastInteractionAt) - toTimestamp(a.lastInteractionAt))
+          .slice(0, 4);
+
+        if (isMounted) {
+          setRecentInteractions(sorted);
+        }
+      } catch (error) {
+        console.error("Failed to load recent interactions", error);
+        if (isMounted) {
+          setRecentInteractions([]);
+        }
+      }
+    };
+
+    void loadRecents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user_id]);
+
+  const openBuyTcoinModal = async () => {
+    const { BuyTcoinModal } = await import("@tcoin/wallet/components/modals/BuyTcoinModal");
+    openModal({
+      content: <BuyTcoinModal closeModal={closeModal} />,
+      title: "Buy TCOIN",
+      description: "Checkout with fiat to acquire cplTCOIN from USDC on Celo through the TorontoCoin liquidity router.",
+    });
+  };
+
+  const openTopUpModal = async () => {
+    const { TopUpModal } = await import("@tcoin/wallet/components/modals/TopUpModal");
+    openModal({
+      content: <TopUpModal closeModal={closeModal} tokenLabel={tokenLabel} />,
+      title: "Top Up with Interac eTransfer",
+      description: `Send an Interac eTransfer to top up your ${tokenLabel.toUpperCase()} balance.`,
+    });
+  };
+
+  const openContactProfile = (contactId: number) => {
+    router.push(`/dashboard/contacts/${contactId}`);
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-8 pb-24">
-      <div className="space-y-8 max-w-[400px] mx-auto md:hidden">
-        <ContributionsCard
-          selectedCharity={selectedCharity}
-          setSelectedCharity={setSelectedCharity}
-          charityData={charityData}
-          openModal={openModal}
-          closeModal={closeModal}
-        />
-        <SendCard
-          toSendData={toSendData}
-          setToSendData={setToSendData}
-          tcoinAmount={tcoinAmount}
-          cadAmount={cadAmount}
-          handleTcoinChange={handleTcoinChange}
-          handleCadChange={handleCadChange}
-          handleTcoinBlur={handleTcoinBlur}
-          handleCadBlur={handleCadBlur}
-          sendMoney={sendMoney}
-          setTcoin={setTcoinAmount}
-          setCad={setCadAmount}
-          explorerLink={explorerLink}
-          setExplorerLink={setExplorerLink}
-          userBalance={userBalance}
-          onUseMax={handleUseMax}
-        />
+    <div data-testid="wallet-home-layout" className="space-y-4 sm:space-y-6 lg:space-y-4">
+      <div
+        data-testid="wallet-home-summary-grid"
+        className="grid gap-4 sm:gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.95fr)] min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,1.05fr)_minmax(320px,0.92fr)]"
+      >
         <AccountCard
           balance={userBalance}
-          openModal={openModal}
-          closeModal={closeModal}
-          senderWallet={senderWallet}
+          totalEquivalent={portfolio ? Number.parseFloat(portfolio.totalEquivalent) : undefined}
+          voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
+          voucherCount={portfolio?.voucherBalances?.length ?? 0}
+          senderWallet={senderWallet ?? ""}
+          onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
         />
-        <OtherCard
-          openModal={openModal}
-          closeModal={closeModal}
-          tokenLabel={tokenLabel}
-        />
+        <div className="min-[1850px]:col-span-2">
+          <EverydayActionsPanel
+            buyCheckoutEnabled={buyCheckoutEnabled}
+            onOpenTransactionHistory={onOpenTransactionHistory}
+            onOpenBuyTcoinModal={openBuyTcoinModal}
+            onOpenTopUpModal={openTopUpModal}
+            onOpenContacts={() => router.push("/dashboard?tab=contacts")}
+            merchants={myPoolMerchants}
+          />
+        </div>
       </div>
-      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <ContributionsCard
-          selectedCharity={selectedCharity}
-          setSelectedCharity={setSelectedCharity}
-          charityData={charityData}
-          openModal={openModal}
-          closeModal={closeModal}
-        />
-        <SendCard
-          toSendData={toSendData}
-          setToSendData={setToSendData}
-          tcoinAmount={tcoinAmount}
-          cadAmount={cadAmount}
-          handleTcoinChange={handleTcoinChange}
-          handleCadChange={handleCadChange}
-          handleTcoinBlur={handleTcoinBlur}
-          handleCadBlur={handleCadBlur}
-          sendMoney={sendMoney}
-          setTcoin={setTcoinAmount}
-          setCad={setCadAmount}
-          explorerLink={explorerLink}
-          setExplorerLink={setExplorerLink}
-          userBalance={userBalance}
-          onUseMax={handleUseMax}
-        />
-        <AccountCard
-          balance={userBalance}
-          openModal={openModal}
-          closeModal={closeModal}
-          senderWallet={senderWallet}
-        />
-        <OtherCard
-          openModal={openModal}
-          closeModal={closeModal}
-          tokenLabel={tokenLabel}
-        />
+
+      <div
+        data-testid="wallet-home-support-grid"
+        className="grid gap-4 sm:gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] min-[1850px]:grid-cols-[minmax(0,1.08fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
+      >
+        <div className="min-[1850px]:col-span-2">
+          <ContributionsCard
+            selectedCharity={selectedCharity}
+            setSelectedCharity={setSelectedCharity}
+            charityData={charityData}
+            openModal={openModal}
+            closeModal={closeModal}
+          />
+        </div>
+        <div className="space-y-4">
+          <RecentsPanel recents={recentInteractions} onOpenContactProfile={openContactProfile} />
+          <NeedAccountSettingsPanel onOpenMore={() => router.push("/dashboard?tab=more")} />
+        </div>
       </div>
+    </div>
+  );
+}
+
+function EverydayActionsPanel({
+  buyCheckoutEnabled,
+  onOpenTransactionHistory,
+  onOpenBuyTcoinModal,
+  onOpenTopUpModal,
+  onOpenContacts,
+  merchants,
+}: {
+  buyCheckoutEnabled: boolean;
+  onOpenTransactionHistory?: () => void;
+  onOpenBuyTcoinModal: () => void;
+  onOpenTopUpModal: () => void;
+  onOpenContacts: () => void;
+  merchants: Awaited<ReturnType<typeof getVoucherMerchants>>["merchants"];
+}) {
+  return (
+    <section className={`${walletPanelClass} flex flex-col gap-4 sm:gap-6 min-[1850px]:grid min-[1850px]:grid-cols-[minmax(0,0.92fr)_minmax(280px,0.88fr)] min-[1850px]:items-start`}>
+      <div className="space-y-4 sm:space-y-5">
+        <div className="space-y-3">
+          <span className="inline-flex w-fit rounded-full border border-border/70 bg-background/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+            Everyday actions
+          </span>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold tracking-[-0.04em]">Move money with less friction.</h2>
+            <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+              Keep the next action obvious: send funds, add money, or review the people and merchants you use most.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-2">
+          <button type="button" className={walletActionButtonClass} onClick={() => onOpenTransactionHistory?.()}>
+            View activity
+          </button>
+          {buyCheckoutEnabled ? (
+            <button type="button" className={walletActionButtonClass} onClick={onOpenBuyTcoinModal}>
+              Buy TCOIN
+            </button>
+          ) : null}
+          <button type="button" className={walletActionButtonClass} onClick={onOpenTopUpModal}>
+            Top up with Interac
+          </button>
+          <button type="button" className={walletActionButtonClass} onClick={onOpenContacts}>
+            Open contacts
+          </button>
+        </div>
+      </div>
+      <MerchantsPanel merchants={merchants} />
+    </section>
+  );
+}
+
+function MerchantsPanel({
+  merchants,
+}: {
+  merchants: Awaited<ReturnType<typeof getVoucherMerchants>>["merchants"];
+}) {
+  return (
+    <div className={walletPanelMutedClass}>
+      <h3 className="text-sm font-semibold">Merchants in My Pool</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        These are the nearby merchants currently matched to your preferred neighbourhood pools.
+      </p>
+      {merchants.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          No mapped merchants were found in your primary or secondary BIA pools yet.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-2 text-sm">
+          {merchants.map((merchant) => (
+            <li
+              key={`${merchant.merchantStoreId}:${merchant.tokenSymbol ?? "token"}`}
+              className="flex items-center justify-between gap-3 border-b border-border/40 px-0 py-3 last:border-b-0 sm:rounded-2xl sm:border sm:border-border/50 sm:bg-background/65 sm:px-4"
+            >
+              <span>{merchant.displayName ?? `Store ${merchant.merchantStoreId}`}</span>
+              <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                {merchant.tokenSymbol ?? "TCOIN"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function NeedAccountSettingsPanel({ onOpenMore }: { onOpenMore: () => void }) {
+  return (
+    <section className={walletPanelMutedClass}>
+      <h3 className="text-sm font-semibold">Need account settings?</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Wallet address, explorer access, appearance, charity defaults, and routing preferences now live together in More.
+      </p>
+      <div className="mt-4">
+        <button type="button" className={walletActionButtonClass} onClick={onOpenMore}>
+          Open More
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function RecentsPanel({
+  recents,
+  onOpenContactProfile,
+}: {
+  recents: RecentInteraction[];
+  onOpenContactProfile: (contactId: number) => void;
+}) {
+  return (
+    <div className={walletPanelMutedClass}>
+      <h3 className="text-sm font-semibold">Recent people</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Jump back into the people you have paid or requested money from most recently.
+      </p>
+      {recents.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          No recent contacts yet. Your recent recipients and request interactions will show up here.
+        </p>
+      ) : (
+        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-4">
+          {recents.map((contact) => {
+            const label = contact.full_name?.trim() || contact.username?.trim() || `User ${contact.id}`;
+            const fallback = label.charAt(0).toUpperCase() || "?";
+            return (
+              <button
+                key={contact.id}
+                type="button"
+                className={`${walletInteractiveSurfaceClass} flex flex-col items-center gap-2 rounded-[20px] px-3 py-4 text-center before:bottom-3 before:top-3`}
+                onClick={() => onOpenContactProfile(contact.id)}
+                aria-label={`Open profile for ${label}`}
+                title={label}
+              >
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={contact.profile_image_url ?? undefined} alt={label} />
+                  <AvatarFallback>{fallback}</AvatarFallback>
+                </Avatar>
+                <span className="w-full truncate text-center text-[11px] text-muted-foreground">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

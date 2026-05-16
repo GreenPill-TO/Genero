@@ -9,6 +9,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
     },
     {
+      url: `${baseUrl}/merchants`,
+      lastModified: new Date(),
+    },
+    {
       url: `${baseUrl}/ecosystem`,
       lastModified: new Date(),
     },

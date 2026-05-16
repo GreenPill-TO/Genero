@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SendCard, calculateResponsiveFontSize } from "./SendCard";
 
@@ -20,6 +20,9 @@ const openModalMock = vi.fn();
 vi.mock("@shared/contexts/ModalContext", () => ({
   useModal: () => ({ openModal: openModalMock, closeModal: vi.fn() }),
 }));
+vi.mock("@tcoin/wallet/components/modals/ContactSelectModal", () => ({
+  ContactSelectModal: () => <div data-testid="contact-select-modal" />,
+}));
 vi.mock("@shared/lib/supabase/client", () => ({
   createClient: () => ({
     from: () => ({
@@ -32,11 +35,19 @@ vi.mock("@shared/lib/supabase/client", () => ({
   }),
 }));
 const insertSuccessNotificationMock = vi.hoisted(() => vi.fn());
+const getWalletContactDetailMock = vi.hoisted(() => vi.fn().mockResolvedValue({ contact: null }));
+const updateWalletContactStateMock = vi.hoisted(() => vi.fn().mockResolvedValue({ contact: null }));
 vi.mock("@shared/utils/insertNotification", () => ({
   insertSuccessNotification: insertSuccessNotificationMock,
 }));
+vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
+  getWalletContactDetail: getWalletContactDetailMock,
+  updateWalletContactState: updateWalletContactStateMock,
+}));
 
-const createProps = () => ({
+type SendCardTestProps = React.ComponentProps<typeof SendCard>;
+
+const createProps = (): SendCardTestProps => ({
   toSendData: null as any,
   setToSendData: vi.fn(),
   tcoinAmount: "",
@@ -53,17 +64,24 @@ const createProps = () => ({
   contacts: [],
 });
 
-const renderSendCard = (overrides: Partial<ReturnType<typeof createProps>> = {}) => {
+const renderSendCard = (overrides: Partial<SendCardTestProps> = {}) => {
   const props = { ...createProps(), ...overrides };
-  return render(<SendCard {...(props as any)} />);
+  return render(<SendCard {...props} />);
 };
 
 describe("SendCard", () => {
+  const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
   beforeEach(() => {
     openModalMock.mockReset();
+    getWalletContactDetailMock.mockReset();
+    getWalletContactDetailMock.mockResolvedValue({ contact: null });
+    updateWalletContactStateMock.mockReset();
+    updateWalletContactStateMock.mockResolvedValue({ contact: null });
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockClear();
     cleanup();
     insertSuccessNotificationMock.mockReset();
     Object.values(toastMock).forEach((fn) => fn.mockReset());
@@ -99,6 +117,21 @@ describe("SendCard", () => {
     renderSendCard();
     const selectButtons = screen.getAllByRole("button", { name: /Select Contact/i });
     expect(selectButtons.length).toBeGreaterThan(0);
+  });
+
+  it("opens the contact selector through the on-demand modal import", async () => {
+    renderSendCard();
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: /Select Contact/i })[0]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(openModalMock).toHaveBeenCalled();
+      expect(openModalMock.mock.calls[0][0].title).toBe("Select Contact");
+    });
   });
 
   it("focuses the amount input on mount", () => {
@@ -156,13 +189,13 @@ describe("SendCard", () => {
     vi.useFakeTimers();
     const baseProps = createProps();
 
-    const { rerender } = render(<SendCard {...(baseProps as any)} />);
+    const { rerender } = render(<SendCard {...baseProps} />);
 
     vi.runAllTimers();
 
     rerender(
       <SendCard
-        {...(baseProps as any)}
+        {...baseProps}
         toSendData={{ id: 4, full_name: "Recipient" } as any}
         tcoinAmount="0"
         cadAmount=""
@@ -180,13 +213,13 @@ describe("SendCard", () => {
     vi.useFakeTimers();
     const baseProps = createProps();
 
-    const { rerender } = render(<SendCard {...(baseProps as any)} />);
+    const { rerender } = render(<SendCard {...baseProps} />);
 
     vi.runAllTimers();
 
     rerender(
       <SendCard
-        {...(baseProps as any)}
+        {...baseProps}
         toSendData={{ id: 5, full_name: "Recipient" } as any}
         tcoinAmount="10"
         cadAmount=""
@@ -230,6 +263,8 @@ describe("SendCard", () => {
     fireEvent.change(recipientInput, { target: { value: "ali" } });
 
     const suggestionButton = screen.getByRole("button", { name: /Alice Johnson/i });
+    expect(suggestionButton.className).toContain("ring-teal-500/12");
+    expect(suggestionButton.className).toContain("before:bg-teal-600/40");
     fireEvent.click(suggestionButton);
 
     expect(setToSendData).toHaveBeenCalledWith(
@@ -255,11 +290,16 @@ describe("SendCard", () => {
     expect(setToSendData).toHaveBeenCalledWith(null);
   });
 
-  it("opens the contact selector modal when Select Contact is clicked", () => {
+  it("opens the contact selector modal when Select Contact is clicked", async () => {
     renderSendCard();
-    const buttons = screen.getAllByRole("button", { name: /Select Contact/i });
-    fireEvent.click(buttons[0]);
-    expect(openModalMock).toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: /Select Contact/i })[0]);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(openModalMock).toHaveBeenCalled();
+    });
   });
 
   it("does not render the clear recipient button when locked", () => {

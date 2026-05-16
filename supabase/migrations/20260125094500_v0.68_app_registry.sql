@@ -82,24 +82,3 @@ SET
 
 COMMIT;
 
--- migrate:down
-BEGIN;
-
-DELETE FROM public.ref_app_instances
-WHERE slug IN (
-  'wallet-tcoin-development',
-  'wallet-tcoin-staging',
-  'wallet-tcoin-production',
-  'sparechange-tcoin-development',
-  'sparechange-tcoin-staging',
-  'sparechange-tcoin-production'
-);
-
-DELETE FROM public.ref_apps WHERE slug IN ('wallet', 'sparechange');
-DELETE FROM public.ref_citycoins WHERE slug = 'tcoin';
-
-DROP TABLE IF EXISTS public.ref_app_instances;
-DROP TABLE IF EXISTS public.ref_citycoins;
-DROP TABLE IF EXISTS public.ref_apps;
-
-COMMIT;

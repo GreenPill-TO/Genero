@@ -1,38 +1,48 @@
-// app/api/otp/verify-otp/route.ts
-// @ts-nocheck
 import { NextResponse } from "next/server";
-import twilio from "twilio";
+import {
+  getTwilioVerifyConfig,
+  normaliseTwilioPasscode,
+  normaliseTwilioPhone,
+  verifyTwilioPasscode,
+} from "@shared/lib/twilioVerify";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { phone, otp } = body;
+    const body = (await req.json()) as { phone?: string; otp?: string };
+    const phone = normaliseTwilioPhone(body.phone);
+    const otp = normaliseTwilioPasscode(body.otp);
 
     if (!phone || !otp) {
       return NextResponse.json(
-        { success: false, message: "Phone number and OTP are required" },
+        {
+          success: false,
+          message: "Phone number and OTP are required in the expected formats.",
+        },
         { status: 400 }
       );
     }
 
-    const accountSid = process.env.accountSid;
-    const authToken = process.env.authToken;
-    const verifyServiceSid = process.env.verifyServiceSid;
-
-    if (!accountSid || !authToken || !verifyServiceSid) {
+    const config = getTwilioVerifyConfig();
+    if (!config) {
       return NextResponse.json(
-        { success: false, message: "Twilio environment variables are not set properly" },
+        { success: false, message: "SMS verification is not configured." },
         { status: 500 }
       );
     }
 
-    const client = twilio(accountSid, authToken);
+    const { response, payload } = await verifyTwilioPasscode(config, phone, otp);
 
-    const verificationCheck = await client.verify
-      .services(verifyServiceSid)
-      .verificationChecks.create({ to: phone, code: otp });
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: payload.message ?? "Failed to verify OTP.",
+        },
+        { status: response.status }
+      );
+    }
 
-    if (verificationCheck.status === "approved") {
+    if (payload.status === "approved") {
       return NextResponse.json({ success: true });
     } else {
       return NextResponse.json(
@@ -40,11 +50,10 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { success: false, message: error.message },
+      { success: false, message: "Failed to verify OTP." },
       { status: 500 }
     );
   }
 }
-

@@ -6,12 +6,15 @@ import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { useModal } from "@shared/contexts/ModalContext";
-import { createClient } from "@shared/lib/supabase/client";
+import {
+  getWalletContactDetail,
+  updateWalletContactState,
+} from "@shared/lib/edge/walletOperationsClient";
 import { insertSuccessNotification } from "@shared/utils/insertNotification";
-import { ContactSelectModal } from "@tcoin/wallet/components/modals";
 import { Hypodata, contactRecordToHypodata } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { TransferRecordSnapshot } from "@shared/utils/transferRecord";
+import { walletInteractiveSurfaceClass, walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
 
 const FONT_SIZE_MAX_REM = 4.5;
 const FONT_SIZE_MIN_REM = 1.1;
@@ -78,7 +81,7 @@ export interface PaymentCompletionDetails {
   transferRecord?: unknown;
 }
 
-interface SendCardProps {
+export interface SendCardProps {
   sendMoney: (amount: string) => Promise<string>;
   toSendData: Hypodata | null;
   setToSendData: (data: Hypodata | null) => void;
@@ -154,17 +157,9 @@ export function SendCard({
     if (!toSendData?.id || !userData?.cubidData?.id) return;
     const fetchConnections = async () => {
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("connections")
-          .select("*")
-          .match({
-            connected_user_id: toSendData.id,
-            owner_user_id: userData.cubidData.id,
-          })
-          .neq("state", "new");
-        if (error) throw error;
-        setConnections(data?.[0] ?? null);
+        const { contact } = await getWalletContactDetail(toSendData.id, { citySlug: "tcoin" });
+        const state = contact?.state?.toLowerCase() ?? null;
+        setConnections(state && state !== "new" ? [contact] : null);
       } catch (err) {
         console.error("fetchConnections error", err);
       }
@@ -245,8 +240,11 @@ export function SendCard({
     handleContactSelection(contactRecordToHypodata(contact));
   };
 
-  const openContactSelector = () => {
+  const openContactSelector = async () => {
     if (recipientLocked) return;
+    const { ContactSelectModal } = await import(
+      "@tcoin/wallet/components/modals/ContactSelectModal"
+    );
     openModal({
       content: (
         <ContactSelectModal
@@ -309,22 +307,52 @@ export function SendCard({
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col space-y-4">
-      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+    <div className="mx-auto flex w-full flex-col space-y-4">
+      <section className={`${walletPanelClass} p-5 sm:p-6`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Amount</h2>
-          {amountHeaderActions && (
-            <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
-              {amountHeaderActions}
-            </div>
-          )}
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Make a payment
+            </p>
+            <h2 className="text-2xl font-semibold tracking-[-0.04em]">{recipientHeading}</h2>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {amountHeaderActions && (
+              <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+                {amountHeaderActions}
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              className="rounded-full"
+              onClick={() => {
+                void openContactSelector();
+              }}
+              disabled={recipientLocked}
+            >
+              <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
+            </Button>
+            {toSendData && !recipientLocked && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={clearRecipient}
+                aria-label="Clear recipient"
+                className="rounded-full"
+              >
+                <LuX className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
-        <div className="relative mx-auto mt-4 flex w-full flex-col items-center gap-4 rounded-2xl border border-border/60 bg-background/70 px-5 py-6 shadow-sm sm:px-6">
+        <div className={`${walletPanelMutedClass} relative mt-5 flex w-full flex-col items-center gap-4 px-5 py-6 sm:px-6`}>
           <div className="w-full text-center">
             {isCadInput ? (
               <input
                 ref={amountInputRef}
-                className="w-full bg-transparent text-center font-bold leading-tight focus:outline-none"
+                className="wallet-auth-input w-full rounded-[22px] border bg-transparent px-4 py-3 text-center font-bold leading-tight focus:outline-none"
                 name="cad"
                 value={displayValue}
                 onChange={amountLocked ? undefined : handleCadChange}
@@ -342,7 +370,7 @@ export function SendCard({
             ) : (
               <input
                 ref={amountInputRef}
-                className="w-full bg-transparent text-center font-bold leading-tight focus:outline-none"
+                className="wallet-auth-input w-full rounded-[22px] border bg-transparent px-4 py-3 text-center font-bold leading-tight focus:outline-none"
                 name="tcoin"
                 value={displayValue}
                 onChange={amountLocked ? undefined : handleTcoinChange}
@@ -365,7 +393,7 @@ export function SendCard({
               variant="ghost"
               size="icon"
               aria-label="Toggle between TCOIN and CAD"
-              className="h-10 w-10 flex-shrink-0 rounded-full border border-border/60 [&_svg]:h-5 [&_svg]:w-5"
+              className="h-10 w-10 flex-shrink-0 rounded-full border border-border/60 bg-background/75 [&_svg]:h-5 [&_svg]:w-5"
               onClick={() => {
                 if (isCadInput) {
                   handleCadBlur();
@@ -397,36 +425,9 @@ export function SendCard({
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">{recipientHeading}</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={openContactSelector}
-              disabled={recipientLocked}
-            >
-              <LuUserPlus className="mr-2 h-4 w-4" /> Select Contact
-            </Button>
-            {toSendData && !recipientLocked && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={clearRecipient}
-                aria-label="Clear recipient"
-              >
-                <LuX className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
 
         {toSendData ? (
-          <div className="mt-4 flex items-center gap-4 rounded-2xl border border-border bg-background/70 p-4">
+          <div className={`${walletPanelMutedClass} mt-4 flex items-center gap-4`}>
             <Avatar className="h-12 w-12">
               <AvatarImage
                 src={toSendData.profile_image_url ?? undefined}
@@ -448,7 +449,7 @@ export function SendCard({
             </div>
           </div>
         ) : (
-          <div className="mt-4 rounded-2xl border border-dashed border-border/60 bg-background/70 p-5">
+          <div className={`${walletPanelMutedClass} mt-4 border-dashed`}>
             <label htmlFor="recipient-search" className="mb-2 block text-sm font-medium text-muted-foreground">
               Recipient
             </label>
@@ -459,6 +460,7 @@ export function SendCard({
               value={recipientQuery}
               onChange={(event) => setRecipientQuery(event.target.value)}
               aria-label="Recipient search"
+              className="wallet-auth-input h-12 rounded-2xl"
             />
             {trimmedRecipientQuery !== "" && matchingContacts.length > 0 && (
               <ul className="mt-3 space-y-2">
@@ -468,7 +470,7 @@ export function SendCard({
                     <li key={contact.id}>
                       <button
                         type="button"
-                        className="flex w-full flex-col rounded-xl border border-border/60 bg-background/80 px-4 py-3 text-left transition hover:border-primary"
+                        className={`${walletInteractiveSurfaceClass} flex w-full flex-col gap-1 rounded-2xl px-4 py-3 text-left before:bottom-3 before:top-3`}
                         onClick={() => handleContactRecordSelection(contact)}
                       >
                         <span className="text-sm font-medium">{name}</span>
@@ -483,57 +485,57 @@ export function SendCard({
             )}
           </div>
         )}
+
+        <Button
+          ref={sendButtonRef}
+          className={`mt-4 h-12 w-full rounded-full text-base ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
+          aria-disabled={!canSend}
+          onClick={() => {
+            if (!toSendData) {
+              toast.error("Select a recipient first.");
+              return;
+            }
+            if (!hasTcoinAmount) {
+              toast.error("Please enter an amount greater than zero.");
+              return;
+            }
+            if (!Number.isFinite(cadValue) && cadAmount.trim() !== "") {
+              toast.error("Enter a valid CAD amount or switch currencies.");
+              return;
+            }
+            if (amountExceedsBalance) {
+              toast.error("Amount exceeds your available balance.");
+              return;
+            }
+            openModal({
+              content: (
+                <ConfirmTransactionModal
+                  tcoinAmount={tcoinAmount}
+                  cadAmount={cadAmount}
+                  toSendData={toSendData}
+                  closeModal={closeModal}
+                  sendMoney={sendMoney}
+                  setExplorerLink={setExplorerLink}
+                  getLastTransferRecord={getLastTransferRecord}
+                  onPaymentComplete={onPaymentComplete}
+                />
+              ),
+              title: "Confirm Payment",
+            });
+          }}
+        >
+          <LuSend className="mr-2 h-4 w-4" /> {actionLabel}
+        </Button>
       </section>
 
-      <Button
-        ref={sendButtonRef}
-        className={`w-full ${!canSend ? "cursor-not-allowed opacity-60" : ""}`}
-        aria-disabled={!canSend}
-        onClick={() => {
-          if (!toSendData) {
-            toast.error("Select a recipient first.");
-            return;
-          }
-          if (!hasTcoinAmount) {
-            toast.error("Please enter an amount greater than zero.");
-            return;
-          }
-          if (!Number.isFinite(cadValue) && cadAmount.trim() !== "") {
-            toast.error("Enter a valid CAD amount or switch currencies.");
-            return;
-          }
-          if (amountExceedsBalance) {
-            toast.error("Amount exceeds your available balance.");
-            return;
-          }
-          openModal({
-            content: (
-              <ConfirmTransactionModal
-                tcoinAmount={tcoinAmount}
-                cadAmount={cadAmount}
-                toSendData={toSendData}
-                closeModal={closeModal}
-                sendMoney={sendMoney}
-                setExplorerLink={setExplorerLink}
-                getLastTransferRecord={getLastTransferRecord}
-                onPaymentComplete={onPaymentComplete}
-              />
-            ),
-            title: "Confirm Payment",
-          });
-        }}
-      >
-        <LuSend className="mr-2 h-4 w-4" /> {actionLabel}
-      </Button>
-
       {explorerLink && (
-        <div className="rounded-lg bg-green-900/20 p-4">
+        <div className={`${walletPanelMutedClass} border-emerald-400/30 bg-emerald-500/10`}>
           <div className="space-y-4 text-center">
             <>
-              <h3 className="text-lg font-bold text-green-400">Success!</h3>
+              <h3 className="text-lg font-bold text-emerald-600 dark:text-emerald-300">Success!</h3>
               <a
                 href={explorerLink}
-                className="block text-blue-400 underline"
+                className="block underline"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -544,60 +546,40 @@ export function SendCard({
               <div className="border-t border-gray-700 pt-4">
                 <p>Add to Contacts?</p>
                 <div className="mt-2 flex justify-center gap-4">
-                  <Button
-                    size="sm"
-                    onClick={async () => {
-                      const supabase = createClient();
-                      try {
-                        await supabase
-                          .from("connections")
-                          .update({ state: "added" })
-                          .match({
-                            connected_user_id: toSendData.id,
-                            owner_user_id: userData?.cubidData?.id,
-                          });
-                        await supabase
-                          .from("connections")
-                          .update({ state: "added" })
-                          .match({
-                            owner_user_id: toSendData.id,
-                            connected_user_id: userData?.cubidData?.id,
-                          });
-                        toast.success("Contact added!");
-                      } catch (err) {
-                        console.error("add contact error", err);
-                      }
-                    }}
-                  >
-                    Yes
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      const supabase = createClient();
-                      try {
-                        await supabase
-                          .from("connections")
-                          .update({ state: "removed" })
-                          .match({
-                            connected_user_id: toSendData.id,
-                            owner_user_id: userData?.cubidData?.id,
-                          });
-                        await supabase
-                          .from("connections")
-                          .update({ state: "removed" })
-                          .match({
-                            owner_user_id: toSendData.id,
-                            connected_user_id: userData?.cubidData?.id,
-                          });
-                        toast.success("Contact removed!");
-                      } catch (err) {
-                        console.error("remove contact error", err);
-                      }
-                    }}
-                  >
-                    No
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await updateWalletContactState(
+                            { connectedUserId: toSendData.id, state: "added" },
+                            { citySlug: "tcoin" }
+                          );
+                          setConnections([{ state: "added" }]);
+                          toast.success("Contact added!");
+                        } catch (err) {
+                          console.error("add contact error", err);
+                        }
+                      }}
+                    >
+                      Yes
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await updateWalletContactState(
+                            { connectedUserId: toSendData.id, state: "removed" },
+                            { citySlug: "tcoin" }
+                          );
+                          setConnections([{ state: "removed" }]);
+                          toast.success("Contact removed!");
+                        } catch (err) {
+                          console.error("remove contact error", err);
+                        }
+                      }}
+                    >
+                      No
                   </Button>
                 </div>
               </div>

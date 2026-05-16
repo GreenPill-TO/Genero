@@ -1,13 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-
-const toastSuccess = vi.hoisted(() => vi.fn());
-
-vi.mock("react-toastify", () => ({
-  toast: { success: toastSuccess },
-}));
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -47,11 +41,11 @@ vi.mock("@shared/contexts/ModalContext", () => ({
 }));
 
 vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
-  useControlVariables: () => ({ exchangeRate: 1 }),
+  useControlVariables: () => ({ exchangeRate: 1, state: "ready", loading: false, error: null }),
 }));
 
-vi.mock("@shared/hooks/useSendMoney", () => ({
-  useSendMoney: () => ({ sendMoney: vi.fn() }),
+vi.mock("@shared/hooks/useCurrentWalletAddress", () => ({
+  useCurrentWalletAddress: () => ({ walletAddress: "0xabc" }),
 }));
 
 const tokenBalanceMock = vi.hoisted(() => vi.fn(() => ({ balance: "0" })));
@@ -60,78 +54,105 @@ vi.mock("@shared/hooks/useTokenBalance", () => ({
   useTokenBalance: tokenBalanceMock,
 }));
 
-const matchMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue({ data: [{ id: 7 }], error: null })
+const getVoucherMerchantsMock = vi.hoisted(() => vi.fn(async () => ({ merchants: [] })));
+vi.mock("@shared/lib/edge/voucherPreferencesClient", () => ({
+  getVoucherMerchants: getVoucherMerchantsMock,
+}));
+const getRecentPaymentRequestParticipantsMock = vi.hoisted(() =>
+  vi.fn(async () => ({ citySlug: "tcoin", participants: [] }))
 );
-const insertMock = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
-const fromMock = vi.hoisted(() => vi.fn((table: string) => {
-  if (table === "users") {
-    return { select: () => ({ match: matchMock }) } as any;
-  }
-  return { insert: insertMock } as any;
+vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
+  getRecentPaymentRequestParticipants: getRecentPaymentRequestParticipantsMock,
+}));
+type WalletRecentParticipant = {
+  id: number;
+  fullName: string | null;
+  username: string | null;
+  profileImageUrl: string | null;
+  walletAddress: string | null;
+  state: string | null;
+  lastInteractionAt: string | null;
+};
+
+const getWalletRecentsMock = vi.hoisted(() =>
+  vi.fn(async (): Promise<{ participants: WalletRecentParticipant[] }> => ({ participants: [] }))
+);
+vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
+  getWalletRecents: getWalletRecentsMock,
 }));
 
-vi.mock("@shared/lib/supabase/client", () => ({
-  createClient: () => ({ from: fromMock }),
-}));
-
-vi.mock("@tcoin/wallet/components/modals", () => ({
-  QrScanModal: () => <div>qr-modal</div>,
+const pushMock = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock("./ContributionsCard", () => ({
   ContributionsCard: () => <div />,
-}));
-const sendCardMock = vi.hoisted(() => vi.fn(() => <div />));
-vi.mock("./SendCard", () => ({
-  SendCard: (props: any) => sendCardMock(props),
 }));
 vi.mock("./AccountCard", () => ({ AccountCard: () => <div /> }));
 vi.mock("./OtherCard", () => ({ OtherCard: () => <div /> }));
 
 import { WalletHome } from "./WalletHome";
 
-describe("WalletHome deep-link scanning", () => {
+describe("WalletHome", () => {
   beforeEach(() => {
-    toastSuccess.mockReset();
-    matchMock.mockClear();
-    insertMock.mockClear();
-    sendCardMock.mockClear();
+    getWalletRecentsMock.mockReset();
+    getWalletRecentsMock.mockResolvedValue({ participants: [] });
+    getRecentPaymentRequestParticipantsMock.mockReset();
+    getRecentPaymentRequestParticipantsMock.mockResolvedValue({
+      citySlug: "tcoin",
+      participants: [],
+    });
+    pushMock.mockReset();
     window.history.replaceState({}, "", "/dashboard");
   });
 
-  it("skips handleScan when URL lacks pay param", () => {
+  it("does not render the send panel on home", () => {
     render(<WalletHome />);
-    expect(toastSuccess).not.toHaveBeenCalled();
-    expect(matchMock).not.toHaveBeenCalled();
-    expect(insertMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("wallet-home-send-grid")).toBeNull();
   });
 
-  it("processes scan and shows toast when URL has pay param", async () => {
-    const payload = btoa(
-      unescape(
-        encodeURIComponent(
-          JSON.stringify({ nano_id: "target", qrTcoinAmount: "2" })
-        )
-      )
+  it("adds ultra-wide layout tracks for home sections", () => {
+    render(<WalletHome />);
+
+    expect(screen.getAllByTestId("wallet-home-summary-grid")[0].className).toContain(
+      "min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,1.05fr)_minmax(320px,0.92fr)]"
     );
-    window.history.replaceState({}, "", `/dashboard?pay=${payload}`);
-
-    render(<WalletHome />);
-
-    await waitFor(() => {
-      expect(matchMock).toHaveBeenCalled();
-      expect(insertMock).toHaveBeenCalled();
-      expect(toastSuccess).toHaveBeenCalledWith("Scanned User Successfully");
-    });
+    expect(screen.getAllByTestId("wallet-home-support-grid")[0].className).toContain(
+      "min-[1850px]:grid-cols-[minmax(0,1.08fr)_minmax(0,0.94fr)_minmax(320px,0.78fr)]"
+    );
   });
 
-  it("passes numeric userBalance to SendCard", () => {
-    tokenBalanceMock.mockReturnValueOnce({ balance: "5.5" });
+  it("routes to More from the account-settings prompt", () => {
     render(<WalletHome />);
-    expect(sendCardMock).toHaveBeenCalled();
-    const props = sendCardMock.mock.calls[0][0];
-    expect(props.userBalance).toBe(5.5);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Open More/i })[0]);
+    expect(pushMock).toHaveBeenCalledWith("/dashboard?tab=more");
+  });
+
+  it("opens contact profile page from Recents avatar", async () => {
+    getWalletRecentsMock.mockResolvedValueOnce({
+      participants: [
+        {
+          id: 77,
+          fullName: "Recent Contact",
+          username: "recent",
+          profileImageUrl: null,
+          walletAddress: null,
+          state: "accepted",
+          lastInteractionAt: "2026-03-11T10:00:00.000Z",
+        },
+      ],
+    });
+
+    render(<WalletHome />);
+
+    const buttons = await screen.findAllByRole("button", {
+      name: /Open profile for Recent Contact/i,
+    });
+    expect(buttons[0].className).toContain("ring-teal-500/12");
+    expect(buttons[0].className).toContain("before:bg-teal-600/40");
+    fireEvent.click(buttons[0]);
+    expect(pushMock).toHaveBeenCalledWith("/dashboard/contacts/77");
   });
 });
-

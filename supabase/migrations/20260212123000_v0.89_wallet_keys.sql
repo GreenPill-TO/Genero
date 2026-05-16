@@ -170,39 +170,3 @@ $$;
 
 COMMIT;
 
--- migrate:down
-BEGIN;
-
-ALTER TABLE IF EXISTS public.wallet_list
-  ADD COLUMN IF NOT EXISTS app_share text;
-
-UPDATE public.wallet_list AS wl
-SET app_share = wk.app_share
-FROM public.wallet_keys AS wk
-WHERE wl.wallet_key_id = wk.id
-  AND wl.app_share IS DISTINCT FROM wk.app_share;
-
-ALTER TABLE IF EXISTS public.user_encrypted_share
-  DROP CONSTRAINT IF EXISTS user_encrypted_share_wallet_key_id_fkey;
-
-ALTER TABLE IF EXISTS public.user_encrypted_share
-  ALTER COLUMN wallet_key_id DROP NOT NULL;
-
-ALTER TABLE IF EXISTS public.user_encrypted_share
-  DROP COLUMN IF EXISTS namespace;
-
-ALTER TABLE IF EXISTS public.user_encrypted_share
-  DROP COLUMN IF EXISTS wallet_key_id;
-
-ALTER TABLE IF EXISTS public.wallet_list
-  DROP CONSTRAINT IF EXISTS wallet_list_wallet_key_id_fkey;
-
-ALTER TABLE IF EXISTS public.wallet_list
-  DROP CONSTRAINT IF EXISTS wallet_list_wallet_key_id_for_user_chk;
-
-ALTER TABLE IF EXISTS public.wallet_list
-  DROP COLUMN IF EXISTS wallet_key_id;
-
-DROP TABLE IF EXISTS public.wallet_keys;
-
-COMMIT;

@@ -2,16 +2,16 @@ import React from "react";
 import { LuCreditCard, LuDollarSign } from "react-icons/lu";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
-import { OffRampModal } from "@tcoin/wallet/components/modals";
-import { TopUpModal } from "@tcoin/wallet/components/modals/TopUpModal";
 
 export function OtherCard({
   openModal,
   closeModal,
+  userBalance = 0,
   tokenLabel = "Tcoin",
 }: {
   openModal: any;
   closeModal: any;
+  userBalance?: number;
   tokenLabel?: string;
 }) {
   return (
@@ -23,7 +23,8 @@ export function OtherCard({
         <div className="space-y-4">
           <Button
             className="w-full"
-            onClick={() => {
+            onClick={async () => {
+              const { TopUpModal } = await import("@tcoin/wallet/components/modals/TopUpModal");
               openModal({
                 content: <TopUpModal closeModal={closeModal} tokenLabel={tokenLabel} />,
                 title: "Top Up with Interac eTransfer",
@@ -35,9 +36,10 @@ export function OtherCard({
           </Button>
           <Button
             className="w-full"
-            onClick={() => {
+            onClick={async () => {
+              const { OffRampModal } = await import("@tcoin/wallet/components/modals/OffRampModal");
               openModal({
-                content: <OffRampModal closeModal={closeModal} />,
+                content: <OffRampModal closeModal={closeModal} userBalance={userBalance} />,
                 title: "Convert and Off-ramp",
                 description: "Convert your TCOIN to CAD and transfer to your bank account.",
               });

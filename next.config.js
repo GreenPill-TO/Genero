@@ -1,10 +1,64 @@
 const path = require("path");
-const webpack = require("webpack");
 
 const citycoin = process.env.NEXT_PUBLIC_CITYCOIN || "tcoin"; // Default CityCoin
 const appToServe = process.env.NEXT_PUBLIC_APP_NAME || "wallet"; // Default app if not set
 
 console.log(`Serving ${appToServe} for ${citycoin}`);
+
+function hostnameFromUrl(value) {
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
+}
+
+const supabaseImageHostnames = Array.from(
+  new Set(
+    [
+      "https://images.unsplash.com",
+      "https://plus.unsplash.com",
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL,
+      process.env.NEXT_PUBLIC_TCOIN_BANNER_DARK_URL,
+      ...(process.env.NEXT_PUBLIC_SUPABASE_IMAGE_URLS || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ]
+      .map(hostnameFromUrl)
+      .filter(Boolean)
+  )
+);
+
+const explicitWalletRootRoutes = [
+  "dashboard",
+  "merchant",
+  "admin",
+  "city-manager",
+  "city-admin",
+  "welcome",
+  "resources",
+  "contact",
+  "ecosystem",
+];
+
+function rootWalletRewrite(route) {
+  return [
+    {
+      source: `/${route}`,
+      destination: `/${citycoin}/${appToServe}/${route}`,
+    },
+    {
+      source: `/${route}/:path*`,
+      destination: `/${citycoin}/${appToServe}/${route}/:path*`,
+    },
+  ];
+}
 
 const nextConfig = {
   eslint: {
@@ -14,13 +68,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "osgpkjqbdbybbmhrfxnw.supabase.co",
-        pathname: "/storage/v1/object/public/website-images/**",
-      },
-    ],
+    remotePatterns: supabaseImageHostnames.map((hostname) => ({
+      protocol: "https",
+      hostname,
+      pathname: "/**",
+    })),
   },
   // No redirect; instead, directly serve from base URL
   async rewrites() {
@@ -29,14 +81,17 @@ const nextConfig = {
         source: "/",
         destination: `/${citycoin}/${appToServe}`, // Serve the main app at the root
       },
+      ...explicitWalletRootRoutes.flatMap(rootWalletRewrite),
       {
-        source: "/:path*",
+        // Keep API routes in the app root namespace; rewrite only non-API paths.
+        source: "/:path((?!api(?:/|$)).*)",
         destination: `/${citycoin}/${appToServe}/:path*`, // Rewrite all other requests to the app
       },
     ];
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
+      const webpack = require("webpack");
       config.resolve.alias = {
         ...(config.resolve.alias ?? {}),
         "cubid-wallet": path.resolve(__dirname, "shared/stubs/cubid-wallet.tsx"),

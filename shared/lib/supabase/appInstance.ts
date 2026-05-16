@@ -70,11 +70,7 @@ const resolveActiveInstance = async (): Promise<AppInstanceRecord | null> => {
     const supabase = createClient();
     const appSlug = normaliseWithFallback(process.env.NEXT_PUBLIC_APP_NAME, "wallet");
     const citySlug = normaliseWithFallback(process.env.NEXT_PUBLIC_CITYCOIN, "tcoin");
-    const environment = normaliseOptional(
-      process.env.NEXT_PUBLIC_APP_ENVIRONMENT ??
-        process.env.NEXT_PUBLIC_DEPLOY_ENV ??
-        process.env.NEXT_PUBLIC_ENV
-    );
+    const environment = normaliseOptional(process.env.NEXT_PUBLIC_APP_ENVIRONMENT);
 
     let query = supabase
       .from("ref_app_instances")

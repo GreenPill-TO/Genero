@@ -1,9 +1,50 @@
 "use client";
 
 import useDarkMode from "@shared/hooks/useDarkMode";
+import { useUpdateUserPreferencesMutation } from "@shared/hooks/useUserSettingsMutations";
+import { useUserSettings } from "@shared/hooks/useUserSettings";
+import { readLegacyThemePreference } from "@shared/lib/userSettings/theme";
 import { ReactNode } from "react";
+import { useEffect, useRef } from "react";
 
 export default function DarkModeProvider({ children }: { children: ReactNode }) {
-  useDarkMode();
+  const { bootstrap } = useUserSettings();
+  const { themeMode, syncThemePreference } = useDarkMode();
+  const { mutate: mutateLegacyTheme } = useUpdateUserPreferencesMutation();
+  const didAttemptLegacyMigration = useRef(false);
+  const mutateLegacyThemeRef = useRef(mutateLegacyTheme);
+
+  useEffect(() => {
+    mutateLegacyThemeRef.current = mutateLegacyTheme;
+  }, [mutateLegacyTheme]);
+
+  useEffect(() => {
+    const serverTheme = bootstrap?.preferences.theme;
+    if (!serverTheme || serverTheme === themeMode) {
+      return;
+    }
+
+    syncThemePreference(serverTheme);
+  }, [bootstrap?.preferences.theme, syncThemePreference, themeMode]);
+
+  useEffect(() => {
+    if (didAttemptLegacyMigration.current) {
+      return;
+    }
+
+    if (!bootstrap || bootstrap.preferences.theme !== "system") {
+      return;
+    }
+
+    const legacyTheme = readLegacyThemePreference();
+    if (!legacyTheme) {
+      didAttemptLegacyMigration.current = true;
+      return;
+    }
+
+    didAttemptLegacyMigration.current = true;
+    mutateLegacyThemeRef.current({ theme: legacyTheme });
+  }, [bootstrap]);
+
   return <>{children}</>;
 }

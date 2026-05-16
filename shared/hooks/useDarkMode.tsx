@@ -1,45 +1,96 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@shared/components/ui/Button";
+import {
+  applyThemePreference,
+  migrateLegacyThemePreference,
+  readCachedThemePreference,
+  resolveSystemPrefersDark,
+  writeCachedThemePreference,
+} from "@shared/lib/userSettings/theme";
+import type { UserSettingsTheme } from "@shared/lib/userSettings/types";
 import { LuMoon, LuSun } from "react-icons/lu";
 
-export default function useDarkMode() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+function resolveInitialThemeMode(): UserSettingsTheme {
+  return readCachedThemePreference() ?? migrateLegacyThemePreference() ?? "system";
+}
 
-  const applyClass = (dark: boolean) => {
-    const root = document.documentElement;
-    if (dark) {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    setIsDarkMode(dark);
+function resolveInitialDarkMode(mode: UserSettingsTheme): boolean {
+  if (mode === "dark") {
+    return true;
+  }
+
+  if (mode === "light") {
+    return false;
+  }
+
+  return resolveSystemPrefersDark();
+}
+
+export default function useDarkMode() {
+  const initialThemeMode = resolveInitialThemeMode();
+  const [isDarkMode, setIsDarkMode] = useState(() => resolveInitialDarkMode(initialThemeMode));
+  const [isFollowingSystem, setIsFollowingSystem] = useState(initialThemeMode === "system");
+  const [themeMode, setThemeMode] = useState<UserSettingsTheme>(initialThemeMode);
+  const themeModeRef = useRef<UserSettingsTheme>(initialThemeMode);
+
+  const applyMode = useCallback((mode: UserSettingsTheme) => {
+    const resolvedDark = applyThemePreference(mode);
+    themeModeRef.current = mode;
+    setThemeMode(mode);
+    setIsFollowingSystem(mode === "system");
+    setIsDarkMode(resolvedDark);
+  }, []);
+
+  const setThemeOverride = (mode: "light" | "dark") => {
+    writeCachedThemePreference(mode);
+    applyMode(mode);
   };
 
   const toggleDarkMode = () => {
-    const next = !isDarkMode;
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("theme", next ? "dark" : "light");
-    }
-    applyClass(next);
+    setThemeOverride(isDarkMode ? "light" : "dark");
+  };
+
+  const clearThemeOverride = () => {
+    writeCachedThemePreference("system");
+    applyMode("system");
+  };
+
+  const syncThemePreference = (mode: UserSettingsTheme) => {
+    writeCachedThemePreference(mode);
+    applyMode(mode);
   };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("theme");
-    if (stored) {
-      applyClass(stored === "dark");
-      return;
-    }
+
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    applyClass(mediaQuery.matches);
-    const listener = (e: MediaQueryListEvent) => applyClass(e.matches);
+    const cachedTheme = resolveInitialThemeMode();
+    applyMode(cachedTheme);
+
+    const listener = (e: MediaQueryListEvent) => {
+      if (themeModeRef.current !== "system") {
+        return;
+      }
+
+      setIsFollowingSystem(true);
+      setIsDarkMode(e.matches);
+      applyThemePreference("system");
+    };
     mediaQuery.addEventListener("change", listener);
     return () => mediaQuery.removeEventListener("change", listener);
-  }, []);
+  }, [applyMode]);
 
-  return { isDarkMode, toggleDarkMode };
+  useEffect(() => {
+    if (themeMode !== "system") {
+      return;
+    }
+
+    setIsDarkMode(resolveSystemPrefersDark());
+  }, [themeMode]);
+
+  return { isDarkMode, isFollowingSystem, themeMode, toggleDarkMode, setThemeOverride, clearThemeOverride, syncThemePreference };
 }
 
 export function ThemeToggleButton() {

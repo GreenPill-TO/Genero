@@ -1,41 +1,49 @@
-// app/api/otp/send-otp/route.ts
-// @ts-nocheck
 import { NextResponse } from "next/server";
-import twilio from "twilio";
+import {
+  getTwilioVerifyConfig,
+  normaliseTwilioPhone,
+  sendTwilioPasscode,
+} from "@shared/lib/twilioVerify";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { phone } = body;
+    const body = (await req.json()) as { phone?: string };
+    const phone = normaliseTwilioPhone(body.phone);
 
     if (!phone) {
       return NextResponse.json(
-        { success: false, message: "Phone number is required" },
+        {
+          success: false,
+          message: "Phone number must be provided in international format, for example +14165551234.",
+        },
         { status: 400 }
       );
     }
 
-    const accountSid = process.env.accountSid;
-    const authToken = process.env.authToken;
-    const verifyServiceSid = process.env.verifyServiceSid;
-
-    if (!accountSid || !authToken || !verifyServiceSid) {
+    const config = getTwilioVerifyConfig();
+    if (!config) {
       return NextResponse.json(
-        { success: false, message: "Twilio environment variables are not set properly" },
+        { success: false, message: "SMS verification is not configured." },
         { status: 500 }
       );
     }
 
-    const client = twilio(accountSid, authToken);
+    const { response, payload } = await sendTwilioPasscode(config, phone);
 
-    const verification = await client.verify.v2
-      .services(verifyServiceSid)
-      .verifications.create({ to: phone, channel: "sms" });
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: payload.message ?? "Failed to send OTP.",
+        },
+        { status: response.status }
+      );
+    }
 
-    return NextResponse.json({ success: true, status: verification.status });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, status: payload.status });
+  } catch (error) {
     return NextResponse.json(
-      { success: false, message: error.message },
+      { success: false, message: "Failed to send OTP." },
       { status: 500 }
     );
   }

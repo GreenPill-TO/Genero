@@ -1,6 +1,6 @@
 export interface TBaseCubidUser {
   id: number;
-  cubid_id: string;
+  cubid_id: string | null;
   username: string | null;
   email: string | null;
   phone: string | null;
@@ -58,3 +58,20 @@ export type TCubidData = TBaseCubidUser & {
   activeProfileKey: string | null;
   activeProfile: TAppUserProfile | null;
 };
+
+export function resolveCubidRuntimeUserId(
+  value:
+    | Pick<TBaseCubidUser, "cubid_id" | "auth_user_id">
+    | null
+    | undefined
+): string | null {
+  if (typeof value?.cubid_id === "string" && value.cubid_id.trim().length > 0) {
+    return value.cubid_id.trim();
+  }
+
+  if (typeof value?.auth_user_id === "string" && value.auth_user_id.trim().length > 0) {
+    return value.auth_user_id.trim();
+  }
+
+  return null;
+}

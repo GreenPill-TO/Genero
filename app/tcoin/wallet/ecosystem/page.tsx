@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import React from "react";
 import Link from "next/link";
+import { Footer } from "@tcoin/wallet/components/footer";
 
 const baseUrl = "https://tcoin.me";
 
@@ -47,7 +48,8 @@ export default function EcosystemPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 text-slate-800 dark:text-slate-100">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 text-slate-800 dark:text-slate-100">
+      <main className="flex-grow">
       <div className="max-w-5xl mx-auto py-16 px-6">
         <h1 className="text-4xl font-bold text-center mb-10">
           Our Ecosystem
@@ -73,7 +75,8 @@ export default function EcosystemPage() {
           ))}
         </div>
       </div>
+      </main>
+      <Footer />
     </div>
   )
 }
-

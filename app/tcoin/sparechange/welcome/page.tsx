@@ -3,14 +3,18 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { createClient } from "@shared/lib/supabase/client";
 
 // Import all the step components
 import { useAuth } from "@shared/api/hooks/useAuth";
-import { updateCubidDataInSupabase } from "@shared/api/services/supabaseService";
+import {
+  normaliseDeviceInfo,
+  serialiseUserShare,
+  updateCubidDataInSupabase,
+} from "@shared/api/services/supabaseService";
+import { registerWalletCustody } from "@shared/lib/edge/userSettingsClient";
 import { Button } from "@shared/components/ui/Button";
 import { Card, CardContent, CardFooter, CardHeader } from "@shared/components/ui/Card";
-import { TCubidData } from "@shared/types/cubid";
+import { resolveCubidRuntimeUserId, TCubidData } from "@shared/types/cubid";
 import { cn } from "@shared/utils/classnames";
 import {
   AddFundsStep,
@@ -34,8 +38,6 @@ const CubidWidget = dynamic(
   () => import('cubid-sdk').then((mod) => mod.CubidWidget),
   { ssr: false }
 );
-
-const supabase = createClient();
 
 const stepHeadings = [
   "Introduction",
@@ -131,6 +133,7 @@ const WelcomeFlow: React.FC = () => {
   const router = useRouter();
   const { userData } = useAuth();
   const { isDarkMode } = useDarkMode();
+  const cubidRuntimeUserId = resolveCubidRuntimeUserId(userData?.cubidData ?? userData?.user);
 
   const initialState = deriveFormStateFromCubid(userData?.cubidData);
   const [userFormData, setUserFormData] = useState<WelcomeFormState>(
@@ -140,16 +143,51 @@ const WelcomeFlow: React.FC = () => {
   );
 
   const [isNextEnabled, setIsNextEnabled] = useState<boolean>(true);
+  const [deviceLabel, setDeviceLabel] = useState<string>("");
+
+  // Helper to generate a smart device label
+  const getDeviceMetadata = (customLabel?: string) => {
+    if (typeof navigator === "undefined") {
+      return null;
+    }
+
+    const platform = navigator.userAgentData?.platform ?? navigator.platform ?? "Unknown platform";
+
+    // Generate a friendly default label if not provided
+    let autoLabel = platform;
+    if (navigator.userAgentData?.brands) {
+      const brandLabel = navigator.userAgentData.brands
+        .map((b) => b.brand)
+        .filter(Boolean)
+        .join(", ");
+      if (brandLabel) {
+        autoLabel = `${brandLabel} on ${platform}`;
+      }
+    } else {
+      // Fallback to a truncated user agent for better readability
+      const ua = navigator.userAgent;
+      if (ua.length > 50) {
+        autoLabel = `${platform} - ${ua.substring(0, 47)}...`;
+      } else {
+        autoLabel = `${platform} - ${ua}`;
+      }
+    }
+
+    return normaliseDeviceInfo({
+      userAgent: navigator.userAgent,
+      platform,
+      label: customLabel || autoLabel,
+    });
+  };
 
   const mainClass = cn("flex-grow flex flex-col items-center justify-center overflow-auto");
 
-  const saveToLocalStorage = () => {
+  const saveToLocalStorage = useCallback(() => {
     localStorage.setItem("welcomeFlowData", JSON.stringify(userFormData));
-  };
+  }, [userFormData]);
 
-  const syncToSupabase = async (isCompleted?: boolean) => {
-    const cubidId = userData?.user?.cubid_id;
-    if (!cubidId) {
+  const syncToSupabase = useCallback(async (isCompleted?: boolean) => {
+    if (!userData?.user) {
       return;
     }
 
@@ -193,7 +231,7 @@ const WelcomeFlow: React.FC = () => {
       },
     };
 
-    const { error } = await updateCubidDataInSupabase(cubidId, {
+    const { error } = await updateCubidDataInSupabase({
       user: userUpdates,
       profile: profileUpdates,
     });
@@ -201,31 +239,31 @@ const WelcomeFlow: React.FC = () => {
     if (error) {
       console.error("Error syncing user data to Supabase:", error.message ?? error);
     }
-  };
+  }, [userData?.cubidData?.activeProfile?.charityPreferences?.charity, userData?.cubidData?.activeProfile?.charityPreferences?.selectedCause, userData?.user, userFormData]);
 
   const nextStep = useCallback(() => {
     saveToLocalStorage();
-    syncToSupabase();
-    setUserFormData({ ...userFormData, current_step: userFormData.current_step + 1 });
-  }, [userFormData]);
+    void syncToSupabase();
+    setUserFormData((current) => ({ ...current, current_step: current.current_step + 1 }));
+  }, [saveToLocalStorage, syncToSupabase]);
 
   const previousStep = useCallback(() => {
-    setUserFormData({ ...userFormData, current_step: userFormData.current_step - 1 });
-  }, [userFormData]);
+    setUserFormData((current) => ({ ...current, current_step: current.current_step - 1 }));
+  }, []);
 
   const handlePersonaSelection = useCallback(
     (selectedPersona: string) => {
-      setUserFormData({ ...userFormData, persona: selectedPersona });
+      setUserFormData((current) => ({ ...current, persona: selectedPersona }));
       setIsNextEnabled(true); // Enable the Continue button after persona selection
     },
-    [userFormData]
+    []
   );
 
   const updateUserFormField = useCallback(
     (key: string, value: any) => {
-      setUserFormData({ ...userFormData, [key]: value });
+      setUserFormData((current) => ({ ...current, [key]: value }));
     },
-    [userFormData]
+    []
   );
 
   useEffect(() => {
@@ -244,64 +282,16 @@ const WelcomeFlow: React.FC = () => {
     }
   }, [userData?.cubidData, userFormData.current_step]);
 
-  const upsertWalletKey = async (userId: number, payload: Record<string, unknown> = {}) => {
-    const namespace = (payload.namespace as string) || "EVM";
-    const { data: keyData, error } = await supabase
-      .from("wallet_keys")
-      .upsert(
-        {
-          user_id: userId,
-          namespace,
-          ...payload,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,namespace" }
-      )
-      .select("id")
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    return keyData.id as number;
-  }
-
   const insertOrUpdateDataInWallet = async (userId: number, add: Record<string, unknown>) => {
-    const walletKeyId =
-      (add.wallet_key_id as number | undefined) ??
-      (await upsertWalletKey(userId, {
-        namespace: (add.namespace as string) || "EVM",
-        ...(typeof add.app_share === "string" ? { app_share: add.app_share } : {}),
-      }));
+    const result = await registerWalletCustody({
+      namespace: (add.namespace as string) || "EVM",
+      publicKey: typeof add.public_key === "string" ? add.public_key : undefined,
+      isGenerated: typeof add.is_generated === "boolean" ? add.is_generated : undefined,
+      appShare: typeof add.app_share === "string" ? add.app_share : undefined,
+      walletKeyId: typeof add.wallet_key_id === "number" ? add.wallet_key_id : undefined,
+    });
 
-    const walletPayload: Record<string, unknown> = {
-      ...add,
-      wallet_key_id: walletKeyId,
-    };
-    delete walletPayload.app_share;
-
-    const { data } = await supabase
-      .from("wallet_list")
-      .select("id")
-      .match({ user_id: userId, namespace: (walletPayload.namespace as string) || "EVM" })
-      .order("id", { ascending: false })
-      .limit(1);
-
-    if (data?.[0]) {
-      await supabase
-        .from("wallet_list")
-        .update(walletPayload)
-        .match({ id: data[0].id })
-    } else {
-      await supabase.from("wallet_list").insert({
-        user_id: userId,
-        namespace: (walletPayload.namespace as string) || "EVM",
-        ...walletPayload,
-      })
-    }
-
-    return walletKeyId;
+    return result.walletKeyId;
   }
 
 
@@ -411,19 +401,36 @@ const WelcomeFlow: React.FC = () => {
             )}
             {userFormData.current_step === 6 && (
               <>
-                <CubidWidget stampToRender="phone" uuid={userData?.user?.cubid_id}
+                <CubidWidget stampToRender="phone" uuid={cubidRuntimeUserId}
                   page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                   onStampChange={() => {
                     nextStep()
                   }}
                 />
-                <CubidWidget stampToRender="email" uuid={userData?.user?.cubid_id}
+                <CubidWidget stampToRender="email" uuid={cubidRuntimeUserId}
                   page_id="37" api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                 />
               </>
             )}
             {userFormData.current_step === 7 && (
-              <WalletComponent type="evm" user_id={userData?.user?.cubid_id} dapp_id="59"
+              <>
+                <div className="mb-4 w-full max-w-md">
+                  <label htmlFor="deviceLabel" className="block text-sm font-medium text-gray-700 mb-2">
+                    Device name (optional)
+                  </label>
+                  <input
+                    id="deviceLabel"
+                    type="text"
+                    value={deviceLabel}
+                    onChange={(e) => setDeviceLabel(e.target.value)}
+                    placeholder="e.g., My Laptop, Work Phone"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Give this device a friendly name to identify it later
+                  </p>
+                </div>
+              <WalletComponent type="evm" user_id={cubidRuntimeUserId} dapp_id="59"
                 api_key="14475a54-5bbe-4f3f-81c7-ff4403ad0830"
                 onEVMWallet={async (wallet: any) => {
                   const [walletDetails] = wallet;
@@ -437,28 +444,17 @@ const WelcomeFlow: React.FC = () => {
                   }
                 }}
                 onUserShare={async (usershare: any) => {
-                  function bufferToBase64(buf) {
-                    return Buffer.from(buf).toString('base64');
+                  const serialisedShare = serialiseUserShare(usershare);
+                  const deviceInfo = getDeviceMetadata(deviceLabel.trim() || undefined);
+                  if (serialisedShare.credentialId) {
+                    window.localStorage.setItem("tcoin_wallet_activeWalletCredentialId", serialisedShare.credentialId);
                   }
-                  const jsonData = {
-                    encryptedAesKey
-                      : bufferToBase64(usershare.encryptedAesKey),
-                    encryptedData: bufferToBase64(usershare.encryptedData),
-                    encryptionMethod: usershare.encryptionMethod,
-                    id: usershare.id,
-                    iv: bufferToBase64(usershare.iv),
-                    ivForKeyEncryption: usershare.ivForKeyEncryption,
-                    salt: usershare.salt,
-                    credentialId: bufferToBase64(usershare.credentialId)
-                  };
-                  const walletKeyId = await upsertWalletKey(userData?.cubidData?.id, {
+                  await registerWalletCustody({
                     namespace: "EVM",
+                    userShareEncrypted: serialisedShare.userShareEncrypted,
+                    credentialId: serialisedShare.credentialId,
+                    deviceInfo,
                   });
-                  await supabase.from("user_encrypted_share").insert({
-                    user_share_encrypted: jsonData,
-                    user_id: userData?.cubidData?.id,
-                    wallet_key_id: walletKeyId,
-                  })
                 }}
                 onAppShare={async (share: any) => {
                   if (share) {
@@ -469,6 +465,7 @@ const WelcomeFlow: React.FC = () => {
                   }
                 }}
               />
+              </>
             )}
             {userFormData.current_step === 8 && (
               <FinalWelcomeStep
