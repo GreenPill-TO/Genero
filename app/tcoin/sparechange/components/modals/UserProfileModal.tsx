@@ -1,8 +1,11 @@
 // @ts-nocheck
 import { useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@shared/components/ui/Avatar";
 import { Button } from "@shared/components/ui/Button";
-import { createClient } from "@shared/lib/supabase/client";
+import { fileInputFieldClass, nativeFieldClass } from "@shared/components/ui/formFieldStyles";
+import { uploadProfilePicture } from "@shared/lib/supabase/profilePictures";
+import { updateUserProfile } from "@shared/lib/userSettings/client";
 
 interface UserProfileModalProps {
   closeModal: () => void;
@@ -26,8 +29,6 @@ const EditProfileContent = ({ onCancel }: EditProfileContentProps) => {
   };
 
   const handleSave = async () => {
-    const supabase = createClient();
-
     let profileImageUrl = profilePicture; // Default to existing profile picture
 
     // Upload new profile picture if a file was selected
@@ -35,42 +36,28 @@ const EditProfileContent = ({ onCancel }: EditProfileContentProps) => {
       const fileInput = document.querySelector("input[type='file']") as HTMLInputElement;
       if (fileInput.files && fileInput.files[0]) {
         const file = fileInput.files[0];
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${userData?.cubidData?.id}.${fileExt}`;
-        const filePath = `profile_pictures/${fileName}`;
-
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage.from("profile_pictures").upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: true,
-        });
-
-        if (uploadError) {
+        try {
+          profileImageUrl = await uploadProfilePicture(userData?.cubidData?.id, file);
+        } catch (uploadError) {
           console.error("Error uploading file:", uploadError);
           return;
         }
-
-        // Get public URL
-        const { data } = supabase.storage.from("profile_pictures").getPublicUrl(filePath);
-        profileImageUrl = data.publicUrl;
       }
     }
 
     // Update user profile in the database
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({
-        full_name: displayName,
-        profile_image_url: profileImageUrl,
-      })
-      .eq("id", userData?.cubidData?.id);
-
-    if (updateError) {
+    const [firstName, ...restNames] = displayName.trim().split(/\s+/);
+    try {
+      await updateUserProfile({
+        firstName: firstName ?? "",
+        lastName: restNames.join(" "),
+        profileImageUrl: profileImageUrl,
+      });
+    } catch (updateError) {
       console.error("Error updating profile:", updateError);
       return;
     }
 
-    console.log("Profile updated successfully");
     onCancel();
   };
 
@@ -86,14 +73,17 @@ const EditProfileContent = ({ onCancel }: EditProfileContentProps) => {
           type="text"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="border rounded text-black px-2 py-1 w-full"
+          className={nativeFieldClass}
         />
       </div>
       <div className="mb-4">
         <label className="block mb-1 font-medium">Profile Picture</label>
         <div className="flex items-center space-x-4">
-          <img className="w-16 h-16" src={profilePicture} alt="Profile" />
-          <input type="file" accept="image/*" onChange={handleProfilePictureChange} />
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={profilePicture} alt="Profile" />
+            <AvatarFallback>U</AvatarFallback>
+          </Avatar>
+          <input type="file" accept="image/*" onChange={handleProfilePictureChange} className={fileInputFieldClass} />
         </div>
       </div>
       <>
@@ -116,8 +106,6 @@ interface ViewProfileContentProps {
 const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => {
   const { signOut, userData } = useAuth();
 
-  console.log({ userData })
-
   return (
     <>
       <>
@@ -125,8 +113,11 @@ const ViewProfileContent = ({ onEdit, closeModal }: ViewProfileContentProps) => 
       </>
       <div className="mb-4">
         <div className="flex items-center space-x-4 mb-4">
-          <img className="w-20 h-20" src={userData?.cubidData?.profile_image_url || "https://github.com/shadcn.png"} alt="@shadcn" />
-          <Button variant="link" className="p-0 h-auto" onClick={() => console.log("Change avatar")}>
+          <Avatar className="h-20 w-20">
+            <AvatarImage src={userData?.cubidData?.profile_image_url || "https://github.com/shadcn.png"} alt="@shadcn" />
+            <AvatarFallback>U</AvatarFallback>
+          </Avatar>
+          <Button variant="link" className="p-0 h-auto" onClick={onEdit}>
             Change avatar
           </Button>
         </div>

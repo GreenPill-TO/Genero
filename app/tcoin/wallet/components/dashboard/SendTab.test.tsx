@@ -10,6 +10,13 @@ const useSendMoneyMock = vi.hoisted(() =>
     getLastTransferRecord: vi.fn(),
   })
 );
+const useCameraAvailabilityMock = vi.hoisted(() =>
+  vi.fn().mockReturnValue({
+    hasCamera: true,
+    hasMultipleCameras: true,
+    isCheckingCamera: false,
+  })
+);
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -18,7 +25,7 @@ vi.mock("@shared/api/hooks/useAuth", () => ({
 }));
 
 vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
-  useControlVariables: () => ({ exchangeRate: 1 }),
+  useControlVariables: () => ({ exchangeRate: 1, state: "ready", loading: false, error: null }),
 }));
 
 vi.mock("@shared/hooks/useSendMoney", () => ({
@@ -33,94 +40,106 @@ vi.mock("@shared/hooks/useTokenBalance", () => ({
   useTokenBalance: useTokenBalanceMock,
 }));
 
-const openModal = vi.fn();
-vi.mock("@shared/contexts/ModalContext", () => ({
-  useModal: () => ({ openModal, closeModal: vi.fn() }),
+vi.mock("@shared/hooks/useCameraAvailability", () => ({
+  useCameraAvailability: useCameraAvailabilityMock,
 }));
+
+const resolvePaymentRequestLinkMock = vi.hoisted(() => vi.fn());
+const consumePaymentRequestLinkMock = vi.hoisted(() => vi.fn());
+const lookupWalletUserByIdentifierMock = vi.hoisted(() => vi.fn());
+const clearPendingPaymentIntentMutateAsyncMock = vi.hoisted(() => vi.fn());
 
 const invoiceRequests = [
   {
     id: 1,
-    amount_requested: 12,
-    request_from: 42,
-    request_by: 99,
+    amountRequested: 12,
+    requestFrom: 42,
+    requestBy: 99,
     status: "pending",
-    created_at: "2024-05-01T00:00:00Z",
-    is_active: true,
+    createdAt: "2024-05-01T00:00:00Z",
+    isActive: true,
+    isOpen: true,
+    requesterFullName: "Requester One",
+    requesterUsername: "requester",
+    requesterProfileImageUrl: null,
+    requesterWalletPublicKey: "0xwallet",
   },
   {
     id: 2,
-    amount_requested: 0,
-    request_from: 42,
-    request_by: 100,
+    amountRequested: 0,
+    requestFrom: 42,
+    requestBy: 100,
     status: "pending",
-    created_at: "2024-06-01T00:00:00Z",
-    is_active: true,
+    createdAt: "2024-06-01T00:00:00Z",
+    isActive: true,
+    isOpen: true,
+    requesterFullName: "Requester Two",
+    requesterUsername: "variable",
+    requesterProfileImageUrl: null,
+    requesterWalletPublicKey: "0xwallet2",
   },
   {
     id: 3,
-    amount_requested: 5,
-    request_from: 42,
-    request_by: 101,
+    amountRequested: 5,
+    requestFrom: 42,
+    requestBy: 101,
     status: "pending",
-    created_at: "2024-07-01T00:00:00Z",
-    is_active: false,
+    createdAt: "2024-07-01T00:00:00Z",
+    isActive: false,
+    isOpen: false,
+    requesterFullName: "Requester Three",
+    requesterUsername: "hidden",
+    requesterProfileImageUrl: null,
+    requesterWalletPublicKey: "0xwallet3",
   },
 ];
-const requesterRows = [
-  {
-    id: 99,
-    full_name: "Requester One",
-    username: "requester",
-    profile_image_url: null,
-  },
-  {
-    id: 100,
-    full_name: "Requester Two",
-    username: "variable",
-    profile_image_url: null,
-  },
-];
-const walletRows = [
-  { user_id: 99, public_key: "0xwallet" },
-  { user_id: 100, public_key: "0xwallet2" },
-];
-const updateEqMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
-const updateMock = vi.fn(() => ({ eq: updateEqMock }));
+const dismissPaymentRequestMock = vi.hoisted(() => vi.fn(() => Promise.resolve({ request: { id: 1 } })));
+const markPaymentRequestPaidMock = vi.hoisted(() => vi.fn(() => Promise.resolve({ request: { id: 1, status: "paid" } })));
+const getIncomingPaymentRequestsMock = vi.hoisted(() =>
+  vi.fn(() => Promise.resolve({ citySlug: "tcoin", requests: invoiceRequests }))
+);
+
+vi.mock("@shared/lib/edge/paymentRequestsClient", () => ({
+  dismissPaymentRequest: dismissPaymentRequestMock,
+  markPaymentRequestPaid: markPaymentRequestPaidMock,
+  getIncomingPaymentRequests: getIncomingPaymentRequestsMock,
+}));
+
+vi.mock("@shared/lib/edge/paymentRequestLinksClient", () => ({
+  resolvePaymentRequestLink: resolvePaymentRequestLinkMock,
+  consumePaymentRequestLink: consumePaymentRequestLinkMock,
+}));
+
+vi.mock("@shared/lib/edge/walletOperationsClient", () => ({
+  lookupWalletUserByIdentifier: lookupWalletUserByIdentifierMock,
+}));
+
+vi.mock("@shared/hooks/useUserSettingsMutations", () => ({
+  useClearPendingPaymentIntentMutation: () => ({
+    mutateAsync: clearPendingPaymentIntentMutateAsyncMock,
+  }),
+}));
 
 vi.mock("@shared/lib/supabase/client", () => ({
   createClient: () => ({
     from: (table: string) => {
-      if (table === "invoice_pay_request") {
-        return {
-          select: () => {
-            const builder: any = {
-              eq: () => builder,
-              order: () =>
-                Promise.resolve({ data: invoiceRequests, error: null }),
-            };
-            return builder;
-          },
-          update: updateMock,
-        };
-      }
-
       if (table === "users") {
         return {
           select: () => ({
-            in: (_column: string, values: any[]) => {
-              const ids = values.map((value) => Number(value));
-              const matches = requesterRows.filter((row) => ids.includes(row.id));
-              return Promise.resolve({ data: matches, error: null });
-            },
             eq: (_column: string, value: any) => ({
               single: () => {
-                const id = Number(value);
-                const match = requesterRows.find((row) => row.id === id) ?? null;
-                return Promise.resolve({ data: match, error: null });
+                return Promise.resolve({
+                  data: {
+                    id: Number(value),
+                    full_name: "Requester Fallback",
+                    username: "fallback",
+                    profile_image_url: null,
+                  },
+                  error: null,
+                });
               },
             }),
-            match: () => Promise.resolve({ data: requesterRows, error: null }),
+            match: () => Promise.resolve({ data: [], error: null }),
           }),
         };
       }
@@ -128,16 +147,12 @@ vi.mock("@shared/lib/supabase/client", () => ({
       if (table === "wallet_list") {
         return {
           select: () => ({
-            in: (_column: string, values: any[]) => {
-              const ids = values.map((value) => Number(value));
-              const matches = walletRows.filter((row) => ids.includes(Number(row.user_id)));
-              return Promise.resolve({ data: matches, error: null });
-            },
             eq: (_column: string, value: any) => ({
               single: () => {
-                const id = Number(value);
-                const match = walletRows.find((row) => Number(row.user_id) === id) ?? null;
-                return Promise.resolve({ data: match, error: null });
+                return Promise.resolve({
+                  data: { public_key: `0xwallet-${String(value)}` },
+                  error: null,
+                });
               },
             }),
           }),
@@ -171,8 +186,7 @@ vi.mock("./SendCard", () => ({
   },
 }));
 
-
-vi.mock("@tcoin/wallet/components/modals", () => ({
+vi.mock("@tcoin/wallet/components/modals/QrScanModal", () => ({
   QrScanModal: () => <div>qr-modal</div>,
 }));
 
@@ -181,10 +195,20 @@ import { SendTab } from "./SendTab";
 afterEach(() => {
   cleanup();
   sendCardProps = undefined;
-  openModal.mockReset();
-  updateMock.mockReset();
-  updateEqMock.mockReset();
+  dismissPaymentRequestMock.mockClear();
+  markPaymentRequestPaidMock.mockClear();
+  getIncomingPaymentRequestsMock.mockClear();
+  resolvePaymentRequestLinkMock.mockReset();
+  consumePaymentRequestLinkMock.mockReset();
+  lookupWalletUserByIdentifierMock.mockReset();
+  clearPendingPaymentIntentMutateAsyncMock.mockReset();
   useTokenBalanceMock.mockClear();
+  useCameraAvailabilityMock.mockReset();
+  useCameraAvailabilityMock.mockReturnValue({
+    hasCamera: true,
+    hasMultipleCameras: true,
+    isCheckingCamera: false,
+  });
 });
 
 describe("SendTab", () => {
@@ -196,14 +220,32 @@ describe("SendTab", () => {
     });
   });
 
-  it("renders send mode actions and opens the QR scanner", () => {
+  it("renders send mode actions and shows inline QR scanner panel", async () => {
     render(<SendTab recipient={null} />);
+    expect(screen.getByTestId("send-tab-layout").className).not.toContain("lg:px-[25vw]");
     expect(screen.getByText("Manual")).toBeTruthy();
     expect(screen.getByText("Scan QR Code")).toBeTruthy();
     expect(screen.getByText("Pay Link")).toBeTruthy();
     expect(screen.getByText("Requests")).toBeTruthy();
-    fireEvent.click(screen.getByText("Scan QR Code"));
-    expect(openModal).toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByText("Scan QR Code"));
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Scan QR")).toBeTruthy();
+    expect(screen.getByText("qr-modal")).toBeTruthy();
+  });
+
+  it("hides scan actions when the device reports no camera", () => {
+    useCameraAvailabilityMock.mockReturnValue({
+      hasCamera: false,
+      hasMultipleCameras: false,
+      isCheckingCamera: false,
+    });
+
+    render(<SendTab recipient={null} />);
+
+    expect(screen.queryByText("Scan QR Code")).toBeNull();
+    expect(screen.queryByText("Scan QR")).toBeNull();
   });
 
   it("passes numeric userBalance to SendCard", () => {
@@ -234,27 +276,23 @@ describe("SendTab", () => {
     expect(onRecipientChange).toHaveBeenCalledWith(null);
   });
 
-  it("opens the requests modal with pending entries", async () => {
+  it("shows incoming requests in-panel", async () => {
     render(<SendTab recipient={null} />);
     await act(async () => {
       fireEvent.click(screen.getByText("Requests"));
       await Promise.resolve();
     });
 
-    expect(openModal).toHaveBeenCalled();
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    expect(modalArgs.title).toBe("Incoming Requests To Pay");
-    const modal = render(modalArgs.content as React.ReactElement);
-    expect(modal.getByText("12.00 TCOIN")).toBeTruthy();
-    expect(modal.getByText("Any Amount")).toBeTruthy();
-    expect(modal.getByText(/Requested by Requester One/i)).toBeTruthy();
-    const payButtons = modal.getAllByRole("button", { name: /^Pay$/i });
-    const ignoreButtons = modal.getAllByRole("button", { name: /^Ignore$/i });
+    expect(screen.getByText("Incoming Requests To Pay")).toBeTruthy();
+    expect(screen.getByText("12.00 TCOIN")).toBeTruthy();
+    expect(screen.getByText("Any Amount")).toBeTruthy();
+    expect(screen.getByText(/Requested by Requester One/i)).toBeTruthy();
+    const payButtons = screen.getAllByRole("button", { name: /^Pay$/i });
+    const ignoreButtons = screen.getAllByRole("button", { name: /^Ignore$/i });
     expect(payButtons).toHaveLength(2);
     expect(ignoreButtons).toHaveLength(2);
     expect(payButtons[0].className).toContain("bg-primary");
     expect(ignoreButtons[0].className).toContain("bg-white");
-    modal.unmount();
   });
 
   it("locks the send card when a request is selected", async () => {
@@ -264,17 +302,13 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const selectButton = modal.getAllByRole("button", { name: /^Pay$/i })[0];
+    const selectButton = screen.getAllByRole("button", { name: /^Pay$/i })[0];
 
     await act(async () => {
       fireEvent.click(selectButton);
       await Promise.resolve();
       await Promise.resolve();
     });
-
-    modal.unmount();
 
     expect(sendCardProps.locked).toBe(true);
     expect(sendCardProps.lockRecipient).toBe(true);
@@ -291,9 +325,7 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const payButtons = modal.getAllByRole("button", { name: /^Pay$/i });
+    const payButtons = screen.getAllByRole("button", { name: /^Pay$/i });
     const variableButton = payButtons[1];
 
     await act(async () => {
@@ -301,8 +333,6 @@ describe("SendTab", () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-
-    modal.unmount();
 
     expect(sendCardProps.lockRecipient).toBe(true);
     expect(sendCardProps.lockAmount).toBe(false);
@@ -318,20 +348,17 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const ignoreButtons = modal.getAllByRole("button", { name: /^Ignore$/i });
+    const ignoreButtons = screen.getAllByRole("button", { name: /^Ignore$/i });
 
     await act(async () => {
       fireEvent.click(ignoreButtons[0]);
       await Promise.resolve();
     });
 
-    expect(updateMock).toHaveBeenCalledWith({ is_active: false });
-    expect(updateEqMock).toHaveBeenCalledWith("id", 1);
-    expect(modal.getAllByRole("button", { name: /^Pay$/i })).toHaveLength(1);
-
-    modal.unmount();
+    expect(dismissPaymentRequestMock).toHaveBeenCalledWith({
+      requestId: 1,
+      appContext: { citySlug: "tcoin" },
+    });
   });
 
   it("marks the selected request as paid when payment completes", async () => {
@@ -341,9 +368,7 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const selectButton = modal.getAllByRole("button", { name: /^Pay$/i })[0];
+    const selectButton = screen.getAllByRole("button", { name: /^Pay$/i })[0];
 
     await act(async () => {
       fireEvent.click(selectButton);
@@ -363,15 +388,11 @@ describe("SendTab", () => {
       });
     });
 
-    expect(updateMock).toHaveBeenCalledWith({
-      status: "paid",
-      paid_at: expect.any(String),
-      transaction_id: 77,
-      is_active: false,
+    expect(markPaymentRequestPaidMock).toHaveBeenCalledWith({
+      requestId: 1,
+      transactionId: 77,
+      appContext: { citySlug: "tcoin" },
     });
-    expect(updateEqMock).toHaveBeenCalledWith("id", 1);
-
-    modal.unmount();
   });
 
   it("extracts the transaction id from transfer metadata when not provided", async () => {
@@ -381,9 +402,7 @@ describe("SendTab", () => {
       await Promise.resolve();
     });
 
-    const modalArgs = openModal.mock.calls.at(-1)![0];
-    const modal = render(modalArgs.content as React.ReactElement);
-    const selectButton = modal.getAllByRole("button", { name: /^Pay$/i })[0];
+    const selectButton = screen.getAllByRole("button", { name: /^Pay$/i })[0];
 
     await act(async () => {
       fireEvent.click(selectButton);
@@ -402,15 +421,127 @@ describe("SendTab", () => {
       });
     });
 
-    expect(updateMock).toHaveBeenCalledWith({
-      status: "paid",
-      paid_at: expect.any(String),
-      transaction_id: 88,
-      is_active: false,
+    expect(markPaymentRequestPaidMock).toHaveBeenCalledWith({
+      requestId: 1,
+      transactionId: 88,
+      appContext: { citySlug: "tcoin" },
     });
-    expect(updateEqMock).toHaveBeenCalledWith("id", 1);
+  });
 
-    modal.unmount();
+  it("resolves public payment-link tokens into send details", async () => {
+    resolvePaymentRequestLinkMock.mockResolvedValue({
+      link: {
+        token: "opaque-token",
+        state: "ready",
+        amountRequested: 13.1,
+        recipient: {
+          id: 55,
+          fullName: "Taylor Example",
+          username: "tay",
+          profileImageUrl: null,
+          walletAddress: "0xwallet",
+        },
+      },
+    });
+
+    render(<SendTab recipient={null} paymentLinkToken="opaque-token" />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(resolvePaymentRequestLinkMock).toHaveBeenCalledWith("opaque-token");
+    expect(sendCardProps.toSendData).toEqual(
+      expect.objectContaining({
+        id: 55,
+        full_name: "Taylor Example",
+        wallet_address: "0xwallet",
+      })
+    );
+    expect(sendCardProps.tcoinAmount).toBe("13.10");
+    expect(sendCardProps.cadAmount).toBe("13.10");
+  });
+
+  it("supports pasted public pay links in the pay-link panel", async () => {
+    resolvePaymentRequestLinkMock.mockResolvedValue({
+      link: {
+        token: "opaque-token",
+        state: "ready",
+        amountRequested: 5,
+        recipient: {
+          id: 77,
+          fullName: "Pay Link User",
+          username: "plink",
+          profileImageUrl: null,
+          walletAddress: "0xplink",
+        },
+      },
+    });
+
+    render(<SendTab recipient={null} />);
+
+    fireEvent.click(screen.getByText("Pay Link"));
+    fireEvent.change(screen.getByPlaceholderText("Paste pay link"), {
+      target: { value: "https://www.tcoin.me/pay/opaque-token" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Load Link/i }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(resolvePaymentRequestLinkMock).toHaveBeenCalledWith("opaque-token");
+    expect(screen.getByTestId("sendcard")).toBeTruthy();
+    expect(sendCardProps.toSendData).toEqual(
+      expect.objectContaining({
+        id: 77,
+        full_name: "Pay Link User",
+      })
+    );
+  });
+
+  it("consumes payment links and clears resumed signup intents after payment", async () => {
+    consumePaymentRequestLinkMock.mockResolvedValue({ link: { state: "consumed" } });
+    clearPendingPaymentIntentMutateAsyncMock.mockResolvedValue({});
+
+    render(
+      <SendTab
+        recipient={null}
+        resumePendingPayment
+        pendingPaymentIntent={{
+          recipientUserId: 66,
+          recipientName: "Resume User",
+          recipientUsername: "resume",
+          recipientProfileImageUrl: null,
+          recipientWalletAddress: "0xresume",
+          recipientUserIdentifier: "resume-user",
+          amountRequested: 7,
+          sourceToken: "resume-token",
+          sourceMode: "single_use",
+          createdAt: "2026-04-02T12:00:00.000Z",
+        }}
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const paymentComplete = sendCardProps.onPaymentComplete as (details: any) => Promise<void>;
+    await act(async () => {
+      await paymentComplete({
+        transactionId: 123,
+        transactionHash: "0xhash",
+      });
+    });
+
+    expect(consumePaymentRequestLinkMock).toHaveBeenCalledWith({
+      token: "resume-token",
+      transactionId: 123,
+      appContext: { citySlug: "tcoin" },
+    });
+    expect(clearPendingPaymentIntentMutateAsyncMock).toHaveBeenCalled();
   });
 });
-

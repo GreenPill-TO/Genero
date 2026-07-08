@@ -1,6 +1,7 @@
 // @ts-nocheck
 export * from "./OTPForm";
 import { Button } from "@shared/components/ui/Button";
+import { authModalEmailFieldClass, otpDigitFieldClass } from "@shared/components/ui/formFieldStyles";
 import { Input } from "@shared/components/ui/Input";
 import { Loading } from "@shared/components/ui/Loading";
 import { Select } from "@shared/components/ui/Select";
@@ -12,6 +13,7 @@ type OTPFormProps = {
   countryCode: string;
   contact: string;
   passcode: string;
+  otpResetKey?: number;
   setCountryCode: (value: string) => void;
   setContact: (value: string) => void;
   setPasscode: (value: string) => void;
@@ -29,6 +31,7 @@ function OTPForm({
   countryCode,
   contact,
   passcode,
+  otpResetKey = 0,
   setCountryCode,
   setContact,
   setPasscode,
@@ -49,12 +52,12 @@ function OTPForm({
   const inputsRef = useRef([]);
 
   useEffect(() => {
-    if (isOtpSent) {
-      setDigits(Array(6).fill(""));
-      setPasscode("");
-      inputsRef.current[0]?.focus();
-    }
-  }, [isOtpSent, setPasscode]);
+    if (!isOtpSent) return;
+
+    setDigits(Array(6).fill(""));
+    setPasscode("");
+    inputsRef.current[0]?.focus();
+  }, [isOtpSent, otpResetKey, setPasscode]);
 
   const handleDigitChange = (value: string, idx: number) => {
     if (!/^\d?$/.test(value)) return;
@@ -125,17 +128,17 @@ function OTPForm({
           </div>
         )}
 
-        {/* Updated email input with pattern validation */}
+        {/* Use native email validation and avoid browser-specific pattern parsing issues. */}
         {!isOtpSent && authMethod === "email" && (
           <div className="form-control w-full mt-8">
             <Input
+              className={authModalEmailFieldClass}
               elSize="md"
               variant="bordered"
               type="email"
               placeholder="Enter your email"
               value={contact}
               onChange={handleContactChange}
-              pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
               title="Please enter a valid email address"
               required
             />
@@ -155,7 +158,7 @@ function OTPForm({
                   type="text"
                   inputMode="numeric"
                   maxLength={1}
-                  className="w-10 h-10 text-center border border-gray-500 rounded-md bg-white"
+                  className={otpDigitFieldClass}
                   value={digit}
                   onChange={(e) => handleDigitChange(e.target.value, idx)}
                   onKeyDown={(e) => handleKeyDown(e, idx)}

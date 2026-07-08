@@ -2,11 +2,44 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
+import { useControlPlaneAccess } from "@shared/api/hooks/useControlPlaneAccess";
+import {
+  createBia,
+  getBiaControls,
+  getBiaList,
+  getBiaMappings,
+  saveBiaControls,
+  saveBiaMappings,
+} from "@shared/lib/edge/biaClient";
+import { getGovernanceActions } from "@shared/lib/edge/governanceClient";
+import {
+  approveRedemptionRequest,
+  getRedemptionRequests,
+  settleRedemptionRequest,
+} from "@shared/lib/edge/redemptionsClient";
+import {
+  getAdminOnrampSessions,
+  getOnrampAdminRequests,
+  retryOnrampSession,
+  updateLegacyInteracAdminRequest,
+} from "@shared/lib/edge/onrampClient";
+import {
+  getVoucherCompatibilityRules,
+  getVoucherMerchants,
+  saveVoucherCompatibilityRule,
+} from "@shared/lib/edge/voucherPreferencesClient";
+import type { OperationalState } from "@shared/lib/edge/types";
 import { useRouter } from "next/navigation";
-import { createClient } from "@shared/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
 import { Button } from "@shared/components/ui/Button";
 import { Badge } from "@shared/components/ui/badge";
+import { DashboardFooter } from "@tcoin/wallet/components/DashboardFooter";
+import {
+  WalletPageIntro,
+  walletPageClass,
+  walletPanelMutedClass,
+  walletRailPageClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
 import {
   Select,
   SelectContent,
@@ -18,7 +51,8 @@ import { Input } from "@shared/components/ui/Input";
 import { Textarea } from "@shared/components/ui/TextArea";
 import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui/alert";
 import { toast } from "react-toastify";
-import { hasAdminAccess } from "@shared/utils/access";
+import { updateLegacyOfframpAdminRequest } from "@shared/lib/edge/redemptionsClient";
+import { cn } from "@shared/utils/classnames";
 
 type OnRampRequest = {
   id: number;
@@ -70,6 +104,207 @@ type OffRampEditState = {
   cadOffRampFee: string;
 };
 
+type BiaRecord = {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  center_lat: number | null;
+  center_lng: number | null;
+};
+
+type BiaControlRecord = {
+  bia_id: string;
+  max_daily_redemption: number | null;
+  max_tx_amount: number | null;
+  queue_only_mode: boolean;
+  is_frozen: boolean;
+  updated_at: string | null;
+};
+
+type RedemptionRequestRecord = {
+  id: string | number;
+  status: string;
+  token_amount: number | null;
+  settlement_amount: number | null;
+  settlement_asset: string | null;
+  pool_address: string | null;
+  tx_hash: string | null;
+  rejection_reason: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  bia: { id: string; code: string; name: string } | null;
+  storeProfile: { store_id: number; display_name: string | null; wallet_address: string | null } | null;
+  settlements: Array<{
+    id: string | number;
+    status: string;
+    tx_hash: string | null;
+    settlement_amount: number | null;
+    settlement_asset: string | null;
+    created_at: string | null;
+  }>;
+};
+
+type GovernanceActionRecord = {
+  id: string | number;
+  action_type: string;
+  reason: string | null;
+  store_id: number | null;
+  bia_id: string | null;
+  created_at: string | null;
+  payload?: Record<string, unknown> | null;
+};
+
+type VoucherCompatibilityRule = {
+  id: string;
+  city_slug: string;
+  chain_id: number;
+  pool_address: string;
+  token_address: string;
+  merchant_store_id: number | null;
+  accepted_by_default: boolean;
+  rule_status: string;
+  updated_at: string | null;
+};
+
+type MerchantVoucherLiquidity = {
+  merchantStoreId: number;
+  displayName?: string;
+  walletAddress?: string;
+  biaCode?: string;
+  poolAddress?: string;
+  tokenAddress?: string;
+  tokenSymbol?: string;
+  voucherIssueLimit?: string | null;
+  requiredLiquidityAbsolute?: string | null;
+  requiredLiquidityRatio?: string | null;
+  creditIssued?: string;
+  creditRemaining?: string | null;
+  sourceMode?: string;
+  available: boolean;
+};
+
+type OnrampCheckoutSessionSummary = {
+  id: string;
+  userId: number;
+  provider: string;
+  fiatAmount: string;
+  fiatCurrency: string;
+  status: string;
+  statusReason: string | null;
+  depositAddress: string;
+  recipientWallet: string;
+  incomingUsdcTxHash: string | null;
+  mintTxHash: string | null;
+  routerTxHash?: string | null;
+  tcoinOutAmount: string | null;
+  finalTokenSymbol?: string | null;
+  poolId?: string | null;
+  reserveAssetUsed?: string | null;
+  latestAttemptNo: number | null;
+  latestAttemptMode: string | null;
+  latestAttemptState: string | null;
+  latestAttemptError: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type TorontoCoinOpsStatus = {
+  addresses: {
+    chainId: number;
+    governance: string;
+    treasuryController: string;
+    liquidityRouter: string;
+    poolRegistry: string;
+    reserveRegistry: string;
+    reserveInputRouter: string;
+    sarafuSwapPoolAdapter: string;
+    mentoBrokerSwapAdapter: string;
+    mrTcoin: string;
+    cplTcoin: string;
+    bootstrapSwapPool: string;
+    bootstrapPoolId: string;
+    reserveAssetId: string;
+    reserveAssetToken: string;
+    scenarioInputToken: string;
+    trackedPoolCount: number;
+  };
+  ownership: {
+    liquidityRouter: { owner: string; healthy: boolean };
+    treasuryController: { owner: string; healthy: boolean };
+    poolRegistry: { owner: string; healthy: boolean };
+    sarafuSwapPoolAdapter: { owner: string; healthy: boolean };
+  };
+  pools: Array<{
+    poolId: string;
+    poolAddress: string;
+    name: string;
+    expectedIndexerVisibility: boolean;
+    previewEnabled: boolean;
+    acceptanceEnabled: boolean;
+    registration: {
+      registryAddressMatches: boolean;
+      active: boolean;
+      feeBypassEligible: boolean;
+    };
+    components: {
+      tokenRegistry: string | null;
+      tokenLimiter: string | null;
+      quoter: string | null;
+      feePpm: string | null;
+    };
+    tokensStatus: Array<{
+      address: string;
+      symbol: string;
+      balanceFormatted: string;
+      limitFormatted: string | null;
+    }>;
+    limiter: {
+      configured: boolean;
+      healthy: boolean;
+    };
+    quoteChecks: Array<{
+      label: string;
+      outputAmountFormatted: string | null;
+      healthy: boolean;
+    }>;
+    scenarioPreview: {
+      healthy: boolean;
+      cplTcoinOutFormatted: string | null;
+      reserveAmountOutFormatted: string | null;
+      error: string | null;
+    } | null;
+  }>;
+  reserveRouteHealth: {
+    reserveAssetActive: boolean;
+    mentoUsdcRouteConfigured: boolean;
+    liquidityRouterPointerHealthy: boolean;
+    treasuryControllerPointerHealthy: boolean;
+  };
+  indexer: {
+    requiredTokenAddress: string;
+    cplTcoinTracked: boolean;
+    trackedPools: Array<{
+      poolId: string;
+      poolAddress: string;
+      tracked: boolean;
+      healthy: boolean;
+      tokenAddresses: string[];
+    }>;
+  };
+  artifactTimestamps: {
+    deployedAt: number;
+    validatedAt: number;
+  };
+};
+
+type SettlementDraft = {
+  settlementAmount: string;
+  settlementAsset: string;
+  txHash: string;
+  notes: string;
+};
+
 const OFF_RAMP_STATUSES: OffRampStatus[] = [
   "initiated",
   "completed",
@@ -109,6 +344,13 @@ const normaliseBoolean = (value: unknown): boolean | null => {
     if (value === 0) return false;
   }
   return null;
+};
+
+const formatLiquiditySource = (value: string | undefined): string => {
+  if (value === "contract_field") {
+    return "sarafu_onchain";
+  }
+  return "derived_supply";
 };
 
 const normaliseString = (value: unknown): string | null => {
@@ -177,21 +419,111 @@ const parseAmountInput = (raw: string): number | null => {
   return parsed;
 };
 
+const asApiErrorMessage = (status: number, body: unknown): string => {
+  if (body && typeof body === "object" && "error" in body) {
+    const candidate = (body as { error?: unknown }).error;
+    if (typeof candidate === "string" && candidate.trim() !== "") {
+      return candidate;
+    }
+  }
+  return `Request failed with status ${status}`;
+};
+
+const fetchJson = async <T,>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
+  const response = await fetch(input, {
+    credentials: "include",
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(asApiErrorMessage(response.status, body));
+  }
+
+  return body as T;
+};
+
 export default function AdminDashboardPage() {
   const { userData, isLoading } = useAuth();
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
+  const controlPlaneAccess = useControlPlaneAccess("tcoin", !isLoading);
   const isMountedRef = useRef(true);
+  const mainClass = cn(walletPageClass, walletRailPageClass, "font-sans min-h-screen text-foreground");
 
   const [onRampRequests, setOnRampRequests] = useState<OnRampRequest[]>([]);
   const [offRampRequests, setOffRampRequests] = useState<OffRampRequest[]>([]);
   const [onRampStatuses, setOnRampStatuses] = useState<string[]>([]);
+  const [cashOpsState, setCashOpsState] = useState<OperationalState>("empty");
+  const [cashOpsSetupMessage, setCashOpsSetupMessage] = useState<string | null>(null);
   const [onRampEdits, setOnRampEdits] = useState<Record<number, OnRampEditState>>({});
   const [offRampEdits, setOffRampEdits] = useState<Record<number, OffRampEditState>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<Record<string, boolean>>({});
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [biaRecords, setBiaRecords] = useState<BiaRecord[]>([]);
+  const [biaControls, setBiaControls] = useState<BiaControlRecord[]>([]);
+  const [mappingHealth, setMappingHealth] = useState<{
+    mappedPools: number;
+    discoveredPools: number;
+    unmappedPools: number;
+    staleMappings: number;
+  } | null>(null);
+  const [biaMappingsState, setBiaMappingsState] = useState<OperationalState>("empty");
+  const [biaMappingsSetupMessage, setBiaMappingsSetupMessage] = useState<string | null>(null);
+  const [redemptionRequests, setRedemptionRequests] = useState<RedemptionRequestRecord[]>([]);
+  const [governanceActions, setGovernanceActions] = useState<GovernanceActionRecord[]>([]);
+  const [voucherRules, setVoucherRules] = useState<VoucherCompatibilityRule[]>([]);
+  const [merchantLiquidityRows, setMerchantLiquidityRows] = useState<MerchantVoucherLiquidity[]>([]);
+  const [voucherMerchantState, setVoucherMerchantState] = useState<OperationalState>("empty");
+  const [voucherMerchantSetupMessage, setVoucherMerchantSetupMessage] = useState<string | null>(null);
+  const [onrampCheckoutSessions, setOnrampCheckoutSessions] = useState<OnrampCheckoutSessionSummary[]>([]);
+  const [torontoCoinOps, setTorontoCoinOps] = useState<TorontoCoinOpsStatus | null>(null);
+  const [controlPlaneError, setControlPlaneError] = useState<string | null>(null);
+  const [isControlPlaneLoading, setIsControlPlaneLoading] = useState(false);
+  const [biaCreateForm, setBiaCreateForm] = useState({
+    code: "",
+    name: "",
+    centerLat: "",
+    centerLng: "",
+  });
+  const [mappingForm, setMappingForm] = useState({
+    biaId: "",
+    chainId: "42220",
+    poolAddress: "",
+    tokenRegistry: "",
+    tokenLimiter: "",
+    quoter: "",
+    feeAddress: "",
+    forceTouch: false,
+  });
+  const [controlsForm, setControlsForm] = useState({
+    biaId: "",
+    maxDailyRedemption: "",
+    maxTxAmount: "",
+    queueOnlyMode: false,
+    isFrozen: false,
+    reason: "",
+  });
+  const [settlementDrafts, setSettlementDrafts] = useState<Record<string, SettlementDraft>>({});
+  const [voucherRuleForm, setVoucherRuleForm] = useState({
+    poolAddress: "",
+    tokenAddress: "",
+    merchantStoreId: "",
+    acceptedByDefault: true,
+    ruleStatus: "active",
+    reason: "",
+  });
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -243,47 +575,49 @@ export default function AdminDashboardPage() {
     });
   }, [offRampRequests, buildOffRampEditState]);
 
-  const isAdmin = hasAdminAccess(
-    userData?.cubidData?.is_admin ?? userData?.user?.is_admin
+  const canAccessAdminDashboard = controlPlaneAccess.data?.canAccessAdminDashboard === true;
+  const accessError = controlPlaneAccess.error instanceof Error ? controlPlaneAccess.error.message : null;
+
+  const handleTabChange = useCallback(
+    (next: string) => {
+      if (next === "home") {
+        router.push("/dashboard");
+        return;
+      }
+      router.push(`/dashboard?tab=${encodeURIComponent(next)}`);
+    },
+    [router]
   );
 
   useEffect(() => {
-    if (!isLoading && !isAdmin) {
+    if (isLoading || controlPlaneAccess.isLoading) {
+      return;
+    }
+
+    if (accessError === "Unauthorized" || (!accessError && !canAccessAdminDashboard)) {
       router.replace("/dashboard");
     }
-  }, [isLoading, isAdmin, router]);
+  }, [accessError, canAccessAdminDashboard, controlPlaneAccess.isLoading, isLoading, router]);
 
   const loadRequests = useCallback(async () => {
     if (!isMountedRef.current) return;
+    if (!canAccessAdminDashboard) return;
 
     setIsFetching(true);
     setLoadError(null);
 
     try {
-      const [onRampResult, offRampResult, statusResult] = await Promise.all([
-        supabase
-          .from("interac_transfer")
-          .select(
-            "id, created_at, amount, amount_override, status, admin_notes, bank_reference, interac_code, is_sent, approved_timestamp, user_id, users(full_name, email)"
-          )
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("off_ramp_req")
-          .select(
-            "id, created_at, updated_at, cad_to_user, tokens_burned, exchange_rate, cad_off_ramp_fee, admin_notes, bank_reference_number, status, interac_transfer_target, wallet_account, user_id, users(full_name, email)"
-          )
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("ref_request_statuses")
-          .select("status")
-          .order("status", { ascending: true }),
-      ]);
+      const body = await getOnrampAdminRequests({
+        citySlug: "tcoin",
+      }) as {
+        state?: OperationalState;
+        setupMessage?: string | null;
+        onRampRequests?: Array<Record<string, unknown>>;
+        offRampRequests?: Array<Record<string, unknown>>;
+        statuses?: Array<Record<string, unknown>>;
+      };
 
-      if (onRampResult.error) throw onRampResult.error;
-      if (offRampResult.error) throw offRampResult.error;
-      if (statusResult.error) throw statusResult.error;
-
-      const normalisedOnRamps: OnRampRequest[] = (onRampResult.data ?? []).map(
+      const normalisedOnRamps: OnRampRequest[] = (body.onRampRequests ?? []).map(
         (row: Record<string, unknown>) => {
           const { name, email } = extractUserInfo(row.users);
           return {
@@ -304,7 +638,7 @@ export default function AdminDashboardPage() {
         }
       );
 
-      const normalisedOffRamps: OffRampRequest[] = (offRampResult.data ?? []).map(
+      const normalisedOffRamps: OffRampRequest[] = (body.offRampRequests ?? []).map(
         (row: Record<string, unknown>) => {
           const { name, email } = extractUserInfo(row.users);
           const status = normaliseString(row.status) as OffRampStatus | null;
@@ -330,11 +664,13 @@ export default function AdminDashboardPage() {
         }
       );
 
-      const statusValues = (statusResult.data ?? [])
+      const statusValues = (body.statuses ?? [])
         .map((row: Record<string, unknown>) => normaliseString(row.status))
         .filter((value): value is string => Boolean(value));
 
       if (isMountedRef.current) {
+        setCashOpsState(body.state ?? (normalisedOnRamps.length === 0 && normalisedOffRamps.length === 0 ? "empty" : "ready"));
+        setCashOpsSetupMessage(body.setupMessage ?? null);
         setOnRampRequests(normalisedOnRamps);
         setOffRampRequests(normalisedOffRamps);
         setOnRampStatuses(statusValues);
@@ -343,20 +679,423 @@ export default function AdminDashboardPage() {
     } catch (error) {
       console.error("Failed to load ramp requests", error);
       if (isMountedRef.current) {
-        setLoadError("Unable to load the latest ramp requests. Please try again.");
+        setLoadError(
+          error instanceof Error ? error.message : "Unable to load the latest ramp requests. Please try again."
+        );
       }
     } finally {
       if (isMountedRef.current) {
         setIsFetching(false);
       }
     }
-  }, [supabase]);
+  }, [canAccessAdminDashboard]);
 
   useEffect(() => {
-    if (!isLoading && isAdmin) {
+    if (!isLoading && !controlPlaneAccess.isLoading && canAccessAdminDashboard) {
       void loadRequests();
     }
-  }, [isLoading, isAdmin, loadRequests]);
+  }, [canAccessAdminDashboard, controlPlaneAccess.isLoading, isLoading, loadRequests]);
+
+  const loadControlPlaneData = useCallback(async () => {
+    if (!isMountedRef.current) return;
+
+    setIsControlPlaneLoading(true);
+    setControlPlaneError(null);
+
+    try {
+      const [
+        biaList,
+        mappingList,
+        controlsList,
+        redemptionList,
+        governanceList,
+        voucherRuleList,
+        voucherMerchants,
+        onrampAdminList,
+        torontoCoinOpsStatus,
+      ] = await Promise.all([
+        getBiaList({
+          includeMappings: true,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ bias?: BiaRecord[]; controls?: BiaControlRecord[] }>,
+        getBiaMappings({
+          chainId: 42220,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{
+          state?: OperationalState;
+          setupMessage?: string | null;
+          health?: {
+            mappedPools: number;
+            discoveredPools: number;
+            unmappedPools: number;
+            staleMappings: number;
+          } | null;
+        }>,
+        getBiaControls({ citySlug: "tcoin" }) as Promise<{ controls?: BiaControlRecord[] }>,
+        getRedemptionRequests({ limit: 100, appContext: { citySlug: "tcoin" } }) as Promise<{
+          requests?: RedemptionRequestRecord[];
+        }>,
+        getGovernanceActions({ limit: 50, appContext: { citySlug: "tcoin" } }) as Promise<{
+          actions?: GovernanceActionRecord[];
+        }>,
+        getVoucherCompatibilityRules({
+          chainId: 42220,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ rules?: VoucherCompatibilityRule[] }>,
+        getVoucherMerchants({
+          chainId: 42220,
+          scope: "city",
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{
+          state?: OperationalState;
+          setupMessage?: string | null;
+          merchants?: MerchantVoucherLiquidity[];
+        }>,
+        getAdminOnrampSessions({
+          limit: 50,
+          appContext: { citySlug: "tcoin" },
+        }) as Promise<{ sessions?: OnrampCheckoutSessionSummary[] }>,
+        fetchJson<TorontoCoinOpsStatus>("/api/tcoin/ops/status"),
+      ]);
+
+      if (!isMountedRef.current) return;
+
+      const nextBias = biaList.bias ?? [];
+      const nextTorontoCoinOps =
+        torontoCoinOpsStatus && typeof torontoCoinOpsStatus === "object" && "addresses" in torontoCoinOpsStatus
+          ? torontoCoinOpsStatus
+          : null;
+      setBiaRecords(nextBias);
+      setBiaControls(controlsList.controls ?? biaList.controls ?? []);
+      setBiaMappingsState(mappingList.state ?? (mappingList.health ? "ready" : "empty"));
+      setBiaMappingsSetupMessage(mappingList.setupMessage ?? null);
+      setMappingHealth(mappingList.health ?? null);
+      setRedemptionRequests(redemptionList.requests ?? []);
+      setGovernanceActions(governanceList.actions ?? []);
+      setVoucherRules(voucherRuleList.rules ?? []);
+      setVoucherMerchantState(voucherMerchants.state ?? ((voucherMerchants.merchants ?? []).length === 0 ? "empty" : "ready"));
+      setVoucherMerchantSetupMessage(voucherMerchants.setupMessage ?? null);
+      setMerchantLiquidityRows(voucherMerchants.merchants ?? []);
+      setOnrampCheckoutSessions(onrampAdminList.sessions ?? []);
+      setTorontoCoinOps(nextTorontoCoinOps);
+      setLastSyncedAt(new Date());
+
+      if (nextBias.length > 0) {
+        const fallbackBiaId = nextBias[0].id;
+        setMappingForm((prev) => (prev.biaId ? prev : { ...prev, biaId: fallbackBiaId }));
+        setControlsForm((prev) => (prev.biaId ? prev : { ...prev, biaId: fallbackBiaId }));
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load BIA/redemption control-plane data.";
+      if (isMountedRef.current) {
+        setControlPlaneError(message);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsControlPlaneLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && !controlPlaneAccess.isLoading && canAccessAdminDashboard) {
+      void loadControlPlaneData();
+    }
+  }, [canAccessAdminDashboard, controlPlaneAccess.isLoading, isLoading, loadControlPlaneData]);
+
+  useEffect(() => {
+    if (!controlsForm.biaId) return;
+    const existing = biaControls.find((control) => control.bia_id === controlsForm.biaId);
+    if (!existing) return;
+
+    setControlsForm((prev) => {
+      const next = {
+        ...prev,
+        maxDailyRedemption:
+          existing.max_daily_redemption != null ? String(existing.max_daily_redemption) : "",
+        maxTxAmount: existing.max_tx_amount != null ? String(existing.max_tx_amount) : "",
+        queueOnlyMode: Boolean(existing.queue_only_mode),
+        isFrozen: Boolean(existing.is_frozen),
+      };
+      if (
+        next.maxDailyRedemption === prev.maxDailyRedemption &&
+        next.maxTxAmount === prev.maxTxAmount &&
+        next.queueOnlyMode === prev.queueOnlyMode &&
+        next.isFrozen === prev.isFrozen
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [controlsForm.biaId, biaControls]);
+
+  const updateSettlementDraft = (requestId: string | number, updates: Partial<SettlementDraft>) => {
+    const key = String(requestId);
+    setSettlementDrafts((prev) => {
+      const current: SettlementDraft = prev[key] ?? {
+        settlementAmount: "",
+        settlementAsset: "CAD",
+        txHash: "",
+        notes: "",
+      };
+      return {
+        ...prev,
+        [key]: {
+          ...current,
+          ...updates,
+        },
+      };
+    });
+  };
+
+  const handleCreateBia = async () => {
+    const code = biaCreateForm.code.trim().toUpperCase();
+    const name = biaCreateForm.name.trim();
+    const centerLat = Number.parseFloat(biaCreateForm.centerLat);
+    const centerLng = Number.parseFloat(biaCreateForm.centerLng);
+
+    if (!code || !name || !Number.isFinite(centerLat) || !Number.isFinite(centerLng)) {
+      toast.error("BIA code, name, and numeric center coordinates are required.");
+      return;
+    }
+
+    const key = "create-bia";
+    markSaving(key);
+
+    try {
+      await createBia(
+        {
+          code,
+          name,
+          centerLat,
+          centerLng,
+        },
+        { citySlug: "tcoin" }
+      );
+      toast.success(`Created BIA ${code}.`);
+      setBiaCreateForm({ code: "", name: "", centerLat: "", centerLng: "" });
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to create BIA", error);
+      toast.error(error instanceof Error ? error.message : "Could not create BIA.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleCreateMapping = async () => {
+    const chainId = Number.parseInt(mappingForm.chainId, 10);
+    if (!mappingForm.biaId || !Number.isFinite(chainId) || chainId <= 0) {
+      toast.error("Select a BIA and provide a valid chain id.");
+      return;
+    }
+    if (mappingForm.poolAddress.trim() === "") {
+      toast.error("Pool address is required.");
+      return;
+    }
+
+    const key = "create-mapping";
+    markSaving(key);
+
+    try {
+      await saveBiaMappings(
+        {
+          biaId: mappingForm.biaId,
+          chainId,
+          poolAddress: mappingForm.poolAddress.trim(),
+          tokenRegistry: mappingForm.tokenRegistry.trim() || null,
+          tokenLimiter: mappingForm.tokenLimiter.trim() || null,
+          quoter: mappingForm.quoter.trim() || null,
+          feeAddress: mappingForm.feeAddress.trim() || null,
+          mappingStatus: "active",
+          forceTouch: mappingForm.forceTouch,
+        },
+        { citySlug: "tcoin" }
+      );
+      toast.success("Pool mapping saved.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to create mapping", error);
+      toast.error(error instanceof Error ? error.message : "Could not create mapping.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleUpsertControls = async () => {
+    if (!controlsForm.biaId) {
+      toast.error("Select a BIA before saving controls.");
+      return;
+    }
+
+    const key = "upsert-controls";
+    markSaving(key);
+
+    try {
+      const maxDaily =
+        controlsForm.maxDailyRedemption.trim() === ""
+          ? null
+          : Number.parseFloat(controlsForm.maxDailyRedemption);
+      const maxTx =
+        controlsForm.maxTxAmount.trim() === "" ? null : Number.parseFloat(controlsForm.maxTxAmount);
+
+      if (
+        (maxDaily != null && !Number.isFinite(maxDaily)) ||
+        (maxTx != null && !Number.isFinite(maxTx))
+      ) {
+        throw new Error("maxDailyRedemption and maxTxAmount must be numeric when provided.");
+      }
+
+      await saveBiaControls(
+        {
+          biaId: controlsForm.biaId,
+          maxDailyRedemption: maxDaily,
+          maxTxAmount: maxTx,
+          queueOnlyMode: controlsForm.queueOnlyMode,
+          isFrozen: controlsForm.isFrozen,
+          reason: controlsForm.reason.trim() || "Controls updated from admin UI",
+        },
+        { citySlug: "tcoin" }
+      );
+
+      toast.success("BIA controls updated.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to update controls", error);
+      toast.error(error instanceof Error ? error.message : "Could not update BIA controls.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleUpsertVoucherRule = async () => {
+    const poolAddress = voucherRuleForm.poolAddress.trim();
+    const tokenAddress = voucherRuleForm.tokenAddress.trim();
+    const merchantStoreId = Number.parseInt(voucherRuleForm.merchantStoreId, 10);
+
+    if (!poolAddress || !tokenAddress) {
+      toast.error("Pool address and token address are required for voucher compatibility.");
+      return;
+    }
+
+    const key = "upsert-voucher-rule";
+    markSaving(key);
+
+    try {
+      await saveVoucherCompatibilityRule(
+        {
+          chainId: 42220,
+          poolAddress,
+          tokenAddress,
+          merchantStoreId: Number.isFinite(merchantStoreId) && merchantStoreId > 0 ? merchantStoreId : null,
+          acceptedByDefault: voucherRuleForm.acceptedByDefault,
+          ruleStatus: voucherRuleForm.ruleStatus === "inactive" ? "inactive" : "active",
+          reason: voucherRuleForm.reason.trim() || "Voucher compatibility updated from admin dashboard",
+        },
+        { citySlug: "tcoin" }
+      );
+
+      toast.success("Voucher compatibility rule saved.");
+      setVoucherRuleForm((prev) => ({
+        ...prev,
+        poolAddress: "",
+        tokenAddress: "",
+        merchantStoreId: "",
+        reason: "",
+      }));
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to save voucher compatibility rule", error);
+      toast.error(error instanceof Error ? error.message : "Could not save voucher compatibility rule.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleApproveRedemption = async (requestId: string | number, approve: boolean) => {
+    const key = `redemption-approve-${requestId}`;
+    markSaving(key);
+
+    try {
+      await approveRedemptionRequest(
+        String(requestId),
+        {
+          approve,
+          rejectionReason: approve ? null : "Rejected in admin dashboard",
+          reason: approve ? "Approved from admin dashboard" : "Rejected from admin dashboard",
+        },
+        { citySlug: "tcoin" }
+      );
+      toast.success(approve ? "Redemption approved." : "Redemption rejected.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to update redemption approval", error);
+      toast.error(error instanceof Error ? error.message : "Could not update redemption status.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleSettleRedemption = async (request: RedemptionRequestRecord, failed = false) => {
+    const key = `redemption-settle-${request.id}`;
+    const draft = settlementDrafts[String(request.id)] ?? {
+      settlementAmount: "",
+      settlementAsset: "CAD",
+      txHash: "",
+      notes: "",
+    };
+    markSaving(key);
+
+    try {
+      const fallbackAmount =
+        request.settlement_amount != null && Number.isFinite(request.settlement_amount)
+          ? request.settlement_amount
+          : request.token_amount;
+      const parsedAmount =
+        draft.settlementAmount.trim() === ""
+          ? fallbackAmount
+          : Number.parseFloat(draft.settlementAmount);
+      if (!parsedAmount || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        throw new Error("Settlement amount must be a positive number.");
+      }
+
+      await settleRedemptionRequest(
+        String(request.id),
+        {
+          settlementAmount: parsedAmount,
+          settlementAsset: draft.settlementAsset || request.settlement_asset || "CAD",
+          txHash: draft.txHash.trim() || null,
+          notes: draft.notes.trim() || null,
+          failed,
+          reason: failed ? "Marked as settlement failure from admin dashboard" : "Settled from admin dashboard",
+        },
+        { citySlug: "tcoin" }
+      );
+      toast.success(failed ? "Redemption marked as failed." : "Redemption settled.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to settle redemption", error);
+      toast.error(error instanceof Error ? error.message : "Could not settle redemption.");
+    } finally {
+      clearSaving(key);
+    }
+  };
+
+  const handleRetryOnrampSession = async (sessionId: string) => {
+    const key = `onramp-retry-${sessionId}`;
+    markSaving(key);
+    try {
+      await retryOnrampSession(sessionId, {}, { citySlug: "tcoin" });
+      toast.success("On-ramp settlement retry submitted.");
+      await loadControlPlaneData();
+    } catch (error) {
+      console.error("Failed to retry on-ramp session", error);
+      toast.error(error instanceof Error ? error.message : "Could not retry on-ramp settlement.");
+    } finally {
+      clearSaving(key);
+    }
+  };
 
   const availableOnRampStatuses = useMemo(() => {
     const derived = onRampRequests
@@ -492,12 +1231,7 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      const { error } = await supabase
-        .from("interac_transfer")
-        .update(payload)
-        .eq("id", request.id);
-
-      if (error) throw error;
+      await updateLegacyInteracAdminRequest(request.id, payload, { citySlug: "tcoin" });
 
       toast.success(`On-ramp request #${request.id} updated.`);
       await loadRequests();
@@ -533,12 +1267,7 @@ export default function AdminDashboardPage() {
     markSaving(key);
 
     try {
-      const { error } = await supabase
-        .from("off_ramp_req")
-        .update(payload)
-        .eq("id", request.id);
-
-      if (error) throw error;
+      await updateLegacyOfframpAdminRequest(request.id, payload, { citySlug: "tcoin" });
 
       toast.success(`Off-ramp request #${request.id} updated.`);
       await loadRequests();
@@ -550,13 +1279,34 @@ export default function AdminDashboardPage() {
     }
   };
 
-  if (isLoading) {
-    return <div className="p-6 text-sm">Checking admin permissions…</div>;
+  if (isLoading || controlPlaneAccess.isLoading) {
+    return (
+      <div className={mainClass}>
+        <div className="text-sm">Checking admin permissions…</div>
+        <DashboardFooter active="more" onChange={handleTabChange} />
+      </div>
+    );
   }
 
-  if (!isAdmin) {
+  if (accessError && accessError !== "Unauthorized") {
     return (
-      <div className="p-6">
+      <div className={mainClass}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Could not verify access</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{accessError}</p>
+          </CardContent>
+        </Card>
+        <DashboardFooter active="more" onChange={handleTabChange} />
+      </div>
+    );
+  }
+
+  if (!canAccessAdminDashboard) {
+    return (
+      <div className={mainClass}>
         <Card>
           <CardHeader>
             <CardTitle>Restricted area</CardTitle>
@@ -567,6 +1317,7 @@ export default function AdminDashboardPage() {
             </p>
           </CardContent>
         </Card>
+        <DashboardFooter active="more" onChange={handleTabChange} />
       </div>
     );
   }
@@ -576,33 +1327,46 @@ export default function AdminDashboardPage() {
     normaliseString(userData?.cubidData?.nickname);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Admin dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Review on-ramp and off-ramp activity, leave notes for the operations team and update request statuses.
-          </p>
-          {adminName && (
-            <p className="mt-1 text-xs text-muted-foreground">Signed in as {adminName}</p>
+    <div className={mainClass}>
+      <div className="space-y-6">
+        <WalletPageIntro
+          eyebrow="Administrator workspace"
+          title="Admin dashboard"
+          description="Review on-ramp and off-ramp activity, update request statuses, and keep the wallet’s control-plane operations healthy."
+          actions={(
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" className="rounded-full" onClick={() => router.push("/dashboard?tab=more")}>
+                Back to More
+              </Button>
+              <Button onClick={() => void loadRequests()} disabled={isFetching} variant="outline" className="rounded-full">
+                {isFetching ? "Refreshing…" : "Refresh data"}
+              </Button>
+            </div>
           )}
-        </div>
-        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+        />
+        <div className={`${walletPanelMutedClass} flex flex-wrap items-center justify-between gap-3`}>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            {adminName ? <p>Signed in as <span className="font-semibold text-foreground">{adminName}</span></p> : null}
+            <p>Operational views and control-plane signals for the TorontoCoin wallet stack.</p>
+          </div>
           {lastSyncedAt && (
             <span className="text-xs text-muted-foreground">
               Synced {lastSyncedAt.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
-          <Button onClick={() => void loadRequests()} disabled={isFetching} variant="outline">
-            {isFetching ? "Refreshing…" : "Refresh data"}
-          </Button>
         </div>
-      </div>
 
       {loadError && (
         <Alert variant="destructive">
           <AlertTitle>Could not load requests</AlertTitle>
           <AlertDescription>{loadError}</AlertDescription>
+        </Alert>
+      )}
+
+      {cashOpsState === "setup_required" && cashOpsSetupMessage && (
+        <Alert>
+          <AlertTitle>Cash operations setup required</AlertTitle>
+          <AlertDescription>{cashOpsSetupMessage}</AlertDescription>
         </Alert>
       )}
 
@@ -650,6 +1414,194 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+        <Card>
+        <CardHeader>
+          <CardTitle>TorontoCoin Ops Status</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!torontoCoinOps ? (
+            <p className="text-sm text-muted-foreground">TorontoCoin ops status is unavailable.</p>
+          ) : (
+            <>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-md border p-3 text-xs text-muted-foreground space-y-1">
+                  <p>Liquidity router: {torontoCoinOps.addresses.liquidityRouter}</p>
+                  <p>Pool registry: {torontoCoinOps.addresses.poolRegistry}</p>
+                  <p>cplTCOIN: {torontoCoinOps.addresses.cplTcoin}</p>
+                  <p>mrTCOIN: {torontoCoinOps.addresses.mrTcoin}</p>
+                  <p>Bootstrap pool: {torontoCoinOps.addresses.bootstrapSwapPool}</p>
+                  <p>Tracked pools: {torontoCoinOps.addresses.trackedPoolCount}</p>
+                </div>
+                <div className="rounded-md border p-3 text-xs text-muted-foreground space-y-1">
+                  <p>Indexer cplTCOIN tracked: {torontoCoinOps.indexer.cplTcoinTracked ? "yes" : "no"}</p>
+                  <p>Indexer tracked pools: {torontoCoinOps.indexer.trackedPools.length}</p>
+                  <p>Validated: {formatDateTime(new Date(torontoCoinOps.artifactTimestamps.validatedAt * 1000).toISOString())}</p>
+                </div>
+              </div>
+              <div className="grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
+                <p>
+                  Router owner healthy: {torontoCoinOps.ownership.liquidityRouter.healthy ? "yes" : "no"}
+                </p>
+                <p>
+                  Treasury owner healthy: {torontoCoinOps.ownership.treasuryController.healthy ? "yes" : "no"}
+                </p>
+                <p>
+                  Pool registry owner healthy: {torontoCoinOps.ownership.poolRegistry.healthy ? "yes" : "no"}
+                </p>
+                <p>
+                  Swap adapter owner healthy: {torontoCoinOps.ownership.sarafuSwapPoolAdapter.healthy ? "yes" : "no"}
+                </p>
+                <p>
+                  Reserve asset active: {torontoCoinOps.reserveRouteHealth.reserveAssetActive ? "yes" : "no"}
+                </p>
+                <p>
+                  Mento USDC route configured: {torontoCoinOps.reserveRouteHealth.mentoUsdcRouteConfigured ? "yes" : "no"}
+                </p>
+                <p>
+                  ReserveInputRouter pointer healthy: {torontoCoinOps.reserveRouteHealth.liquidityRouterPointerHealthy ? "yes" : "no"}
+                </p>
+                <p>
+                  TreasuryController pointer healthy: {torontoCoinOps.reserveRouteHealth.treasuryControllerPointerHealthy ? "yes" : "no"}
+                </p>
+              </div>
+              <div className="space-y-3">
+                {torontoCoinOps.pools.map((pool) => {
+                  const indexerStatus = torontoCoinOps.indexer.trackedPools.find(
+                    (trackedPool) => trackedPool.poolId.toLowerCase() === pool.poolId.toLowerCase()
+                  );
+
+                  return (
+                    <div key={pool.poolId} className="rounded-md border p-3 text-xs text-muted-foreground space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-foreground">{pool.name}</p>
+                          <p>{pool.poolAddress}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge variant={pool.registration.active ? "secondary" : "outline"}>
+                            {pool.registration.active ? "active" : "inactive"}
+                          </Badge>
+                          <Badge variant={indexerStatus?.healthy ? "secondary" : "outline"}>
+                            {indexerStatus?.tracked ? "indexed" : "not indexed"}
+                          </Badge>
+                          <Badge variant={pool.limiter.healthy ? "secondary" : "outline"}>
+                            {pool.limiter.configured ? "limiter set" : "no limiter"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <p>Fee bypass eligible: {pool.registration.feeBypassEligible ? "yes" : "no"}</p>
+                        <p>Registry address healthy: {pool.registration.registryAddressMatches ? "yes" : "no"}</p>
+                        <p>Quoter: {pool.components.quoter ?? "unset"}</p>
+                        <p>Fee ppm: {pool.components.feePpm ?? "unset"}</p>
+                        <p>
+                          Preview ready: {pool.scenarioPreview?.healthy ? "yes" : pool.previewEnabled ? "no" : "disabled"}
+                        </p>
+                        <p>
+                          Acceptance enabled: {pool.acceptanceEnabled ? "yes" : "no"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">Token balances</p>
+                        {pool.tokensStatus.map((token) => (
+                          <p key={token.address}>
+                            {token.symbol}: {token.balanceFormatted}
+                            {token.limitFormatted ? ` / limit ${token.limitFormatted}` : ""}
+                          </p>
+                        ))}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">Quotes</p>
+                        {pool.quoteChecks.length === 0 ? (
+                          <p>No quote checks available.</p>
+                        ) : (
+                          pool.quoteChecks.map((quote) => (
+                            <p key={`${pool.poolId}-${quote.label}`}>
+                              {quote.label}: {quote.outputAmountFormatted ?? quote.outputAmountFormatted === "0" ? quote.outputAmountFormatted : "n/a"} ({quote.healthy ? "ok" : "failed"})
+                            </p>
+                          ))
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">Scenario preview</p>
+                        <p>
+                          cplTCOIN out: {pool.scenarioPreview?.cplTcoinOutFormatted ?? "n/a"}
+                        </p>
+                        <p>
+                          reserve out: {pool.scenarioPreview?.reserveAmountOutFormatted ?? "n/a"}
+                        </p>
+                        {pool.scenarioPreview?.error ? <p>preview error: {pool.scenarioPreview.error}</p> : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </CardContent>
+        </Card>
+
+        <Card>
+        <CardHeader>
+          <CardTitle>Buy cplTCOIN Checkout Sessions</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {onrampCheckoutSessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No on-ramp checkout sessions found yet.
+            </p>
+          ) : (
+            onrampCheckoutSessions.map((session) => {
+              const isRetrying = pendingUpdates[`onramp-retry-${session.id}`] === true;
+              const canRetry = session.status === "manual_review" || session.status === "failed";
+              return (
+                <div key={session.id} className="rounded-md border p-4 space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Session {session.id}</p>
+                      <p className="text-xs text-muted-foreground">
+                        User #{session.userId} · {session.provider} · {session.fiatAmount} {session.fiatCurrency}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Created {formatDateTime(session.createdAt)} · Updated {formatDateTime(session.updatedAt)}
+                      </p>
+                    </div>
+                    <Badge variant={getBadgeVariant(session.status)}>{session.status}</Badge>
+                  </div>
+                  <div className="grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
+                    <p>Deposit: {session.depositAddress}</p>
+                    <p>Recipient: {session.recipientWallet}</p>
+                    <p>USDC tx: {session.incomingUsdcTxHash ?? "n/a"}</p>
+                    <p>Router tx: {session.routerTxHash ?? session.mintTxHash ?? "n/a"}</p>
+                    <p>{session.finalTokenSymbol ?? "cplTCOIN"} out: {session.tcoinOutAmount ?? "n/a"}</p>
+                    <p>Pool id: {session.poolId ?? "n/a"}</p>
+                    <p>Reserve asset: {session.reserveAssetUsed ?? "n/a"}</p>
+                    <p>
+                      Attempt: {session.latestAttemptNo ?? "n/a"} ({session.latestAttemptMode ?? "n/a"} /{" "}
+                      {session.latestAttemptState ?? "n/a"})
+                    </p>
+                  </div>
+                  {(session.statusReason || session.latestAttemptError) && (
+                    <p className="text-xs text-red-600">
+                      {session.statusReason ?? session.latestAttemptError}
+                    </p>
+                  )}
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      disabled={!canRetry || isRetrying}
+                      onClick={() => void handleRetryOnrampSession(session.id)}
+                    >
+                      {isRetrying ? "Retrying..." : "Retry Settlement"}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -988,6 +1940,657 @@ export default function AdminDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>BIA + Redemption Control Plane</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {controlPlaneError && (
+            <Alert variant="destructive">
+              <AlertTitle>Control plane data issue</AlertTitle>
+              <AlertDescription>{controlPlaneError}</AlertDescription>
+            </Alert>
+          )}
+          {biaMappingsState === "setup_required" && biaMappingsSetupMessage && (
+            <Alert>
+              <AlertTitle>BIA mapping setup required</AlertTitle>
+              <AlertDescription>{biaMappingsSetupMessage}</AlertDescription>
+            </Alert>
+          )}
+          {voucherMerchantState === "setup_required" && voucherMerchantSetupMessage && (
+            <Alert>
+              <AlertTitle>Voucher liquidity setup required</AlertTitle>
+              <AlertDescription>{voucherMerchantSetupMessage}</AlertDescription>
+            </Alert>
+          )}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-md border p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">BIAs</p>
+              <p className="text-2xl font-semibold">{biaRecords.length}</p>
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Redemption queue</p>
+              <p className="text-2xl font-semibold">
+                {redemptionRequests.filter((request) => request.status === "pending").length}
+              </p>
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Unmapped pools</p>
+              <p className="text-2xl font-semibold">{mappingHealth?.unmappedPools ?? 0}</p>
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Stale mappings</p>
+              <p className="text-2xl font-semibold">{mappingHealth?.staleMappings ?? 0}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => void loadControlPlaneData()}
+              disabled={isControlPlaneLoading}
+            >
+              {isControlPlaneLoading ? "Refreshing…" : "Refresh control plane"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Create BIA</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Code (e.g. DTN)"
+                value={biaCreateForm.code}
+                onChange={(event) =>
+                  setBiaCreateForm((prev) => ({ ...prev, code: event.target.value }))
+                }
+                aria-label="BIA code"
+              />
+              <Input
+                placeholder="Name"
+                value={biaCreateForm.name}
+                onChange={(event) =>
+                  setBiaCreateForm((prev) => ({ ...prev, name: event.target.value }))
+                }
+                aria-label="BIA name"
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Center latitude"
+                value={biaCreateForm.centerLat}
+                onChange={(event) =>
+                  setBiaCreateForm((prev) => ({ ...prev, centerLat: event.target.value }))
+                }
+                aria-label="BIA center latitude"
+              />
+              <Input
+                placeholder="Center longitude"
+                value={biaCreateForm.centerLng}
+                onChange={(event) =>
+                  setBiaCreateForm((prev) => ({ ...prev, centerLng: event.target.value }))
+                }
+                aria-label="BIA center longitude"
+              />
+            </div>
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void handleCreateBia()}
+                disabled={pendingUpdates["create-bia"] === true}
+              >
+                {pendingUpdates["create-bia"] ? "Creating…" : "Create BIA"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Map BIA to Pool</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Select
+                value={mappingForm.biaId || undefined}
+                onValueChange={(value) => setMappingForm((prev) => ({ ...prev, biaId: value }))}
+              >
+                <SelectTrigger aria-label="BIA for mapping">
+                  <SelectValue placeholder="Select BIA" />
+                </SelectTrigger>
+                <SelectContent>
+                  {biaRecords.map((bia) => (
+                    <SelectItem key={bia.id} value={bia.id}>
+                      {bia.code} · {bia.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Chain id"
+                value={mappingForm.chainId}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, chainId: event.target.value }))
+                }
+                aria-label="Mapping chain id"
+              />
+            </div>
+            <Input
+              placeholder="Pool address"
+              value={mappingForm.poolAddress}
+              onChange={(event) =>
+                setMappingForm((prev) => ({ ...prev, poolAddress: event.target.value }))
+              }
+              aria-label="Pool address"
+            />
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Token registry address"
+                value={mappingForm.tokenRegistry}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, tokenRegistry: event.target.value }))
+                }
+                aria-label="Token registry address"
+              />
+              <Input
+                placeholder="Token limiter address"
+                value={mappingForm.tokenLimiter}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, tokenLimiter: event.target.value }))
+                }
+                aria-label="Token limiter address"
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Quoter address"
+                value={mappingForm.quoter}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, quoter: event.target.value }))
+                }
+                aria-label="Quoter address"
+              />
+              <Input
+                placeholder="Fee address"
+                value={mappingForm.feeAddress}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, feeAddress: event.target.value }))
+                }
+                aria-label="Fee address"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={mappingForm.forceTouch}
+                onChange={(event) =>
+                  setMappingForm((prev) => ({ ...prev, forceTouch: event.target.checked }))
+                }
+              />
+              Trigger indexer touch after mapping save
+            </label>
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void handleCreateMapping()}
+                disabled={pendingUpdates["create-mapping"] === true}
+              >
+                {pendingUpdates["create-mapping"] ? "Saving…" : "Save Mapping"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>BIA Controls</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Select
+              value={controlsForm.biaId || undefined}
+              onValueChange={(value) => setControlsForm((prev) => ({ ...prev, biaId: value }))}
+            >
+              <SelectTrigger aria-label="BIA for controls">
+                <SelectValue placeholder="Select BIA" />
+              </SelectTrigger>
+              <SelectContent>
+                {biaRecords.map((bia) => (
+                  <SelectItem key={bia.id} value={bia.id}>
+                    {bia.code} · {bia.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Max daily redemption"
+                value={controlsForm.maxDailyRedemption}
+                onChange={(event) =>
+                  setControlsForm((prev) => ({
+                    ...prev,
+                    maxDailyRedemption: event.target.value,
+                  }))
+                }
+                aria-label="Max daily redemption"
+              />
+              <Input
+                placeholder="Max transaction amount"
+                value={controlsForm.maxTxAmount}
+                onChange={(event) =>
+                  setControlsForm((prev) => ({
+                    ...prev,
+                    maxTxAmount: event.target.value,
+                  }))
+                }
+                aria-label="Max transaction amount"
+              />
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={controlsForm.queueOnlyMode}
+                  onChange={(event) =>
+                    setControlsForm((prev) => ({ ...prev, queueOnlyMode: event.target.checked }))
+                  }
+                />
+                Queue-only redemptions
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={controlsForm.isFrozen}
+                  onChange={(event) =>
+                    setControlsForm((prev) => ({ ...prev, isFrozen: event.target.checked }))
+                  }
+                />
+                Freeze this BIA pool
+              </label>
+            </div>
+
+            <Textarea
+              rows={3}
+              placeholder="Reason (logged to governance actions)"
+              value={controlsForm.reason}
+              onChange={(event) =>
+                setControlsForm((prev) => ({ ...prev, reason: event.target.value }))
+              }
+              aria-label="Control change reason"
+            />
+
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void handleUpsertControls()}
+                disabled={pendingUpdates["upsert-controls"] === true}
+              >
+                {pendingUpdates["upsert-controls"] ? "Saving…" : "Save Controls"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Current Controls Snapshot</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {biaControls.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No BIA controls configured yet.</p>
+            ) : (
+              biaControls.map((control) => {
+                const bia = biaRecords.find((candidate) => candidate.id === control.bia_id);
+                return (
+                  <div key={control.bia_id} className="rounded-md border p-3 text-sm">
+                    <p className="font-medium">
+                      {bia?.code ?? "Unknown"} · {bia?.name ?? control.bia_id}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Max daily:{" "}
+                      {control.max_daily_redemption != null
+                        ? tokenFormatter.format(control.max_daily_redemption)
+                        : "none"}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Max tx:{" "}
+                      {control.max_tx_amount != null
+                        ? tokenFormatter.format(control.max_tx_amount)
+                        : "none"}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Queue only: {String(Boolean(control.queue_only_mode))}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Frozen: {String(Boolean(control.is_frozen))}
+                    </p>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Voucher Compatibility Rules</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Pool address"
+                value={voucherRuleForm.poolAddress}
+                onChange={(event) =>
+                  setVoucherRuleForm((prev) => ({ ...prev, poolAddress: event.target.value }))
+                }
+                aria-label="Voucher pool address"
+              />
+              <Input
+                placeholder="Token address"
+                value={voucherRuleForm.tokenAddress}
+                onChange={(event) =>
+                  setVoucherRuleForm((prev) => ({ ...prev, tokenAddress: event.target.value }))
+                }
+                aria-label="Voucher token address"
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                placeholder="Merchant store id (optional)"
+                value={voucherRuleForm.merchantStoreId}
+                onChange={(event) =>
+                  setVoucherRuleForm((prev) => ({ ...prev, merchantStoreId: event.target.value }))
+                }
+                aria-label="Voucher merchant store id"
+              />
+              <Select
+                value={voucherRuleForm.ruleStatus}
+                onValueChange={(value) =>
+                  setVoucherRuleForm((prev) => ({ ...prev, ruleStatus: value }))
+                }
+              >
+                <SelectTrigger aria-label="Voucher rule status">
+                  <SelectValue placeholder="Rule status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">active</SelectItem>
+                  <SelectItem value="inactive">inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={voucherRuleForm.acceptedByDefault}
+                onChange={(event) =>
+                  setVoucherRuleForm((prev) => ({
+                    ...prev,
+                    acceptedByDefault: event.target.checked,
+                  }))
+                }
+              />
+              Accept by default
+            </label>
+            <Textarea
+              rows={2}
+              placeholder="Reason (logged)"
+              value={voucherRuleForm.reason}
+              onChange={(event) =>
+                setVoucherRuleForm((prev) => ({ ...prev, reason: event.target.value }))
+              }
+              aria-label="Voucher rule reason"
+            />
+            <div className="flex justify-end">
+              <Button
+                onClick={() => void handleUpsertVoucherRule()}
+                disabled={pendingUpdates["upsert-voucher-rule"] === true}
+              >
+                {pendingUpdates["upsert-voucher-rule"] ? "Saving…" : "Save Voucher Rule"}
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {voucherRules.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No voucher rules configured yet.</p>
+              ) : (
+                voucherRules.slice(0, 20).map((rule) => (
+                  <div key={rule.id} className="rounded-md border p-2 text-xs">
+                    <p className="font-medium break-all">
+                      {rule.pool_address} · {rule.token_address}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Status: {rule.rule_status} · accepted: {String(rule.accepted_by_default)}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Merchant: {rule.merchant_store_id ?? "any"} · updated {formatDateTime(rule.updated_at)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Merchant Voucher Liquidity</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Voucher issuance and liquidity requirements are read from Sarafu pool/limiter contracts. These values are
+              read-only in Genero.
+            </p>
+            {voucherMerchantState === "setup_required" && voucherMerchantSetupMessage ? (
+              <p className="text-sm text-muted-foreground">{voucherMerchantSetupMessage}</p>
+            ) : merchantLiquidityRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No merchant voucher liquidity rows found.</p>
+            ) : (
+              merchantLiquidityRows.slice(0, 40).map((row, index) => (
+                <div
+                  key={`${row.merchantStoreId}:${row.tokenAddress ?? "none"}:${index}`}
+                  className="rounded-md border p-2 text-xs"
+                >
+                  <p className="font-medium">
+                    {row.displayName ?? `Store ${row.merchantStoreId}`} · {row.tokenSymbol ?? "n/a"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    BIA: {row.biaCode ?? "n/a"} · Pool: {row.poolAddress ?? "n/a"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Credit issued: {row.creditIssued ?? "0"} · remaining: {row.creditRemaining ?? "n/a"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Voucher limit: {row.voucherIssueLimit ?? "null"} · liquidity abs:{" "}
+                    {row.requiredLiquidityAbsolute ?? "null"} · liquidity ratio:{" "}
+                    {row.requiredLiquidityRatio ?? "null"}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Source: {formatLiquiditySource(row.sourceMode)}
+                  </p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Redemption Queue</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {redemptionRequests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No redemption requests found.</p>
+          ) : (
+            redemptionRequests.map((request) => {
+              const requestId = String(request.id);
+              const approvalPending = pendingUpdates[`redemption-approve-${requestId}`] === true;
+              const settlementPending = pendingUpdates[`redemption-settle-${requestId}`] === true;
+              const draft = settlementDrafts[requestId] ?? {
+                settlementAmount:
+                  request.settlement_amount != null ? String(request.settlement_amount) : "",
+                settlementAsset: request.settlement_asset ?? "CAD",
+                txHash: request.tx_hash ?? "",
+                notes: "",
+              };
+              const settlementRows = request.settlements ?? [];
+              const canApprove = request.status === "pending";
+              const canSettle = request.status === "approved";
+              const canFail = ["pending", "approved"].includes(request.status);
+
+              return (
+                <div key={requestId} className="rounded-md border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Redemption #{requestId}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDateTime(request.created_at)} · {request.bia?.code ?? "No BIA"} ·{" "}
+                        {request.storeProfile?.display_name ?? `Store ${request.storeProfile?.store_id ?? "?"}`}
+                      </p>
+                      {request.pool_address && (
+                        <p className="text-xs text-muted-foreground break-all">
+                          Pool {request.pool_address}
+                        </p>
+                      )}
+                      {request.rejection_reason && (
+                        <p className="text-xs text-muted-foreground">
+                          Rejection reason: {request.rejection_reason}
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant={getBadgeVariant(request.status)}>{request.status}</Badge>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    <p className="text-sm">
+                      Token amount: {tokenFormatter.format(request.token_amount ?? 0)}
+                    </p>
+                    <p className="text-sm">
+                      Settlement target:{" "}
+                      {request.settlement_amount != null
+                        ? cadFormatter.format(request.settlement_amount)
+                        : "Not set"}{" "}
+                      {request.settlement_asset ?? ""}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <Input
+                      placeholder="Settlement amount"
+                      value={draft.settlementAmount}
+                      onChange={(event) =>
+                        updateSettlementDraft(requestId, { settlementAmount: event.target.value })
+                      }
+                      aria-label={`Settlement amount for ${requestId}`}
+                    />
+                    <Input
+                      placeholder="Settlement asset"
+                      value={draft.settlementAsset}
+                      onChange={(event) =>
+                        updateSettlementDraft(requestId, { settlementAsset: event.target.value })
+                      }
+                      aria-label={`Settlement asset for ${requestId}`}
+                    />
+                    <Input
+                      placeholder="Settlement tx hash (optional)"
+                      value={draft.txHash}
+                      onChange={(event) =>
+                        updateSettlementDraft(requestId, { txHash: event.target.value })
+                      }
+                      aria-label={`Settlement tx hash for ${requestId}`}
+                    />
+                    <Input
+                      placeholder="Settlement notes"
+                      value={draft.notes}
+                      onChange={(event) =>
+                        updateSettlementDraft(requestId, { notes: event.target.value })
+                      }
+                      aria-label={`Settlement notes for ${requestId}`}
+                    />
+                  </div>
+
+                  {settlementRows.length > 0 && (
+                    <div className="mt-3 rounded-md bg-muted p-3 text-xs">
+                      <p className="font-medium">Settlements</p>
+                      {settlementRows.map((row) => (
+                        <p key={String(row.id)}>
+                          {row.status} · {row.settlement_amount ?? "?"} {row.settlement_asset ?? ""} ·{" "}
+                          {formatDateTime(row.created_at)}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={!canApprove || approvalPending}
+                      onClick={() => void handleApproveRedemption(request.id, true)}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canApprove || approvalPending}
+                      onClick={() => void handleApproveRedemption(request.id, false)}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      disabled={!canSettle || settlementPending}
+                      onClick={() => void handleSettleRedemption(request, false)}
+                    >
+                      Settle
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canFail || settlementPending}
+                      onClick={() => void handleSettleRedemption(request, true)}
+                    >
+                      Mark Failed
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Governance Actions Feed</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {governanceActions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No governance actions logged yet.</p>
+          ) : (
+            governanceActions.map((action) => (
+              <div key={String(action.id)} className="rounded-md border p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{action.action_type}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDateTime(action.created_at)}
+                  </p>
+                </div>
+                {action.reason && <p className="text-muted-foreground">{action.reason}</p>}
+                <p className="text-xs text-muted-foreground">
+                  BIA: {action.bia_id ?? "n/a"} · Store: {action.store_id ?? "n/a"}
+                </p>
+              </div>
+            ))
+          )}
+        </CardContent>
+        </Card>
+      </div>
+      <DashboardFooter active="more" onChange={handleTabChange} />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { Button } from "@shared/components/ui/Button";
 
@@ -11,8 +12,10 @@ export function Hero({ onAuthClick }: HeroProps) {
   return (
     <div className="hero pb-12 bg-gradient-to-t from-blue-500 to-purple-700">
       <div className="hero-content max-w-7xl mx-auto flex-col lg:flex-row-reverse items-center">
-        <img
+        <Image
           src="https://plus.unsplash.com/premium_photo-1675116866759-6d198dcf5753?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          width={1932}
+          height={1288}
           className="max-w-sm h-80 object-cover rounded-lg shadow-2xl"
           alt="Community Support"
         />

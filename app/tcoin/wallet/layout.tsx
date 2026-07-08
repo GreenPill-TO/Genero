@@ -1,27 +1,36 @@
 'use client';
+import { useAuth } from "@shared/api/hooks/useAuth";
 import { ModalProvider } from "@shared/contexts/ModalContext";
 import DarkModeProvider from "@shared/providers/dark-mode-provider";
 import { ReactQueryProvider } from "@shared/providers/react-query-provider";
+import { isPublicWalletPath } from "@tcoin/wallet/pathname";
 import "@tcoin/wallet/styles/app.scss";
-import type { Metadata } from "next";
 import ContentLayout from "./ContentLayout";
-import dynamic from "next/dynamic";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
+import Script from "next/script";
 
+const themeCacheKey = `theme_cache:${(process.env.NEXT_PUBLIC_APP_NAME ?? "wallet").trim().toLowerCase()}:${(process.env.NEXT_PUBLIC_CITYCOIN ?? "tcoin").trim().toLowerCase()}:${((process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim().toLowerCase() || "default")}`;
 
+function WalletRuntimeProviders({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
+  const shouldUseWalletTheme = isAuthenticated && !isPublicWalletPath(pathname);
+  const modalThemeClassName = shouldUseWalletTheme
+    ? "wallet-auth-shell font-sans"
+    : undefined;
 
-const Provider = dynamic(
-  () => import('cubid-sdk').then((mod) => mod.Provider),
-  { ssr: false }
-);
-const WalletCubidProvider = dynamic(
-  () => import('cubid-wallet').then((mod) => mod.WalletCubidProvider),
-  { ssr: false }
-);
-import 'cubid-wallet/dist/styles.css'
-import 'cubid-sdk/dist/index.css'
-
-const queryClient = new QueryClient();
+  return (
+    <DarkModeProvider>
+      <ModalProvider modalThemeClassName={modalThemeClassName}>
+        {children}
+      </ModalProvider>
+    </DarkModeProvider>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -31,10 +40,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');`}</style>
-        <style>{`.special-elite-regular { font-family: 'Special Elite', system-ui; font-weight: 400; font-style: normal; }`}</style>
+        <Script id="theme-bootstrap" strategy="beforeInteractive">
+          {`(function(){try{var key=${JSON.stringify(themeCacheKey)};var stored=window.localStorage.getItem(key);if(stored==null){var legacy=window.localStorage.getItem('theme');var legacyUserSet=window.localStorage.getItem('theme_user_set')==='1';if(legacyUserSet&&(legacy==='light'||legacy==='dark')){stored=legacy;window.localStorage.setItem(key, legacy);}}var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var shouldUseDark=stored==='dark'||(stored!=='light'&&prefersDark);if(shouldUseDark){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`}
+        </Script>
       </head>
-      <body className="special-elite-regular">
+      <body className="wallet-special-elite">
         <style jsx global>{`
           body {
             line-height: 1.333;
@@ -46,19 +56,11 @@ export default function RootLayout({
             text-decoration: underline;
           }
         `}</style>
-        <QueryClientProvider client={queryClient}>
-          <Provider>
-            <WalletCubidProvider>
-              <ReactQueryProvider>
-                <DarkModeProvider>
-                  <ModalProvider>
-                    <ContentLayout>{children}</ContentLayout>
-                  </ModalProvider>
-                </DarkModeProvider>
-              </ReactQueryProvider>
-            </WalletCubidProvider>
-          </Provider>
-        </QueryClientProvider>
+        <ReactQueryProvider>
+          <WalletRuntimeProviders>
+            <ContentLayout>{children}</ContentLayout>
+          </WalletRuntimeProviders>
+        </ReactQueryProvider>
       </body>
     </html>
   );

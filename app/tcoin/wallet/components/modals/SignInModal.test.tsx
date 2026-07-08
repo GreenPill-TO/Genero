@@ -1,11 +1,10 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { createRoot } from "react-dom/client";
-import { act } from "react-dom/test-utils";
+import { act, render, cleanup } from "@testing-library/react";
 import SignInModal from "./SignInModal";
 
-let verifySuccess: (() => void) | null = null;
+let verifySuccess: ((session?: { access_token?: string } | null) => Promise<void> | void) | null = null;
 vi.mock("@shared/api/mutations/usePasscode", () => ({
   useSendPasscodeMutation: () => ({ mutate: vi.fn(), isPending: false }),
   useVerifyPasscodeMutation: (args: any) => {
@@ -24,15 +23,14 @@ vi.mock("@tcoin/wallet/components/forms/OTPForm", () => ({
   default: (props: any) => <form onSubmit={props.onSubmit}></form>,
 }));
 
-const { createNewUserMock, fetchUserByContactMock } = vi.hoisted(() => ({
-  createNewUserMock: vi.fn().mockResolvedValue({ error: null }),
+const { fetchUserByContactMock, waitForAuthenticatedSessionMock } = vi.hoisted(() => ({
   fetchUserByContactMock: vi.fn().mockResolvedValue({ user: null, error: null }),
+  waitForAuthenticatedSessionMock: vi.fn().mockResolvedValue({ access_token: "access-token" }),
 }));
 
-vi.mock("@shared/api/services/cubidService", () => ({ createCubidUser: vi.fn().mockResolvedValue("uuid") }));
 vi.mock("@shared/api/services/supabaseService", () => ({
-  createNewUser: createNewUserMock,
   fetchUserByContact: fetchUserByContactMock,
+  waitForAuthenticatedSession: waitForAuthenticatedSessionMock,
 }));
 
 vi.mock("react-toastify", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -41,19 +39,16 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 describe("SignInModal", () => {
   beforeEach(() => {
+    fetchUserByContactMock.mockReset();
     fetchUserByContactMock.mockResolvedValue({ user: null, error: null });
+    waitForAuthenticatedSessionMock.mockReset();
+    waitForAuthenticatedSessionMock.mockResolvedValue({ access_token: "access-token" });
     push.mockReset();
   });
 
   it("calls closeModal on Escape key press", () => {
     const closeModal = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
-    act(() => {
-      root.render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
-    });
+    render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
 
     act(() => {
       const event = new KeyboardEvent("keydown", { key: "Escape" });
@@ -61,64 +56,105 @@ describe("SignInModal", () => {
     });
 
     expect(closeModal).toHaveBeenCalled();
-
-    act(() => {
-      root.unmount();
-    });
-    document.body.removeChild(container);
+    cleanup();
   });
 
-  it("redirects new users to the welcome flow", async () => {
-    vi.useFakeTimers();
+  it("routes newly provisioned users to welcome", async () => {
     const closeModal = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42, has_completed_intro: false }, error: null });
 
-    act(() => {
-      root.render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
-    });
+    render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
 
     await act(async () => {
       await verifySuccess?.();
     });
-    vi.runAllTimers();
 
     expect(push).toHaveBeenCalledWith("/welcome");
-
-    act(() => {
-      root.unmount();
-    });
-    document.body.removeChild(container);
-    vi.useRealTimers();
+    expect(closeModal).toHaveBeenCalled();
+    cleanup();
   });
 
   it("returns existing users to the dashboard", async () => {
-    vi.useFakeTimers();
     const closeModal = vi.fn();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42, has_completed_intro: true }, error: null });
 
-    fetchUserByContactMock.mockResolvedValue({ user: { id: 42 }, error: null });
-
-    act(() => {
-      root.render(
-        <SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />
-      );
-    });
+    render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
 
     await act(async () => {
       await verifySuccess?.();
     });
-    vi.runAllTimers();
 
     expect(push).toHaveBeenCalledWith("/dashboard");
+    expect(closeModal).toHaveBeenCalled();
+    cleanup();
+  });
 
-    act(() => {
-      root.unmount();
+  it("routes incomplete existing users back to welcome", async () => {
+    const closeModal = vi.fn();
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42, has_completed_intro: false }, error: null });
+
+    render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
+
+    await act(async () => {
+      await verifySuccess?.();
     });
-    document.body.removeChild(container);
-    vi.useRealTimers();
+
+    expect(push).toHaveBeenCalledWith("/welcome");
+    expect(closeModal).toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("supports an explicit post-auth redirect override", async () => {
+    const closeModal = vi.fn();
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42, has_completed_intro: true }, error: null });
+
+    render(
+      <SignInModal
+        closeModal={closeModal}
+        extraObject={{ isSignIn: true }}
+        postAuthRedirect="/pay/opaque-token"
+      />
+    );
+
+    await act(async () => {
+      await verifySuccess?.();
+    });
+
+    expect(push).toHaveBeenCalledWith("/pay/opaque-token");
+    expect(closeModal).toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("stops and keeps the modal open when the authenticated session never settles", async () => {
+    const closeModal = vi.fn();
+    waitForAuthenticatedSessionMock.mockResolvedValue(null);
+
+    render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
+
+    await act(async () => {
+      await verifySuccess?.();
+    });
+
+    expect(fetchUserByContactMock).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    expect(closeModal).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("uses the freshly verified session without waiting for auth polling", async () => {
+    const closeModal = vi.fn();
+    fetchUserByContactMock.mockResolvedValue({ user: { id: 42, has_completed_intro: true }, error: null });
+
+    render(<SignInModal closeModal={closeModal} extraObject={{ isSignIn: true }} />);
+
+    await act(async () => {
+      await verifySuccess?.({ access_token: "fresh-token" });
+    });
+
+    expect(waitForAuthenticatedSessionMock).not.toHaveBeenCalled();
+    expect(fetchUserByContactMock).toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith("/dashboard");
+    expect(closeModal).toHaveBeenCalled();
+    cleanup();
   });
 });

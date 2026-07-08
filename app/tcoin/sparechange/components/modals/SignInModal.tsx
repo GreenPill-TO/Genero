@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
-import { createCubidUser } from "@shared/api/services/cubidService";
-import { createNewUser, fetchUserByContact } from "@shared/api/services/supabaseService";
+import { fetchUserByContact, waitForAuthenticatedSession } from "@shared/api/services/supabaseService";
 
 const constants = {
   SIGN_UP_IMAGES: [
@@ -49,6 +48,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const [contact, setContact] = useState("");
   const [passcode, setPasscode] = useState("");
   const [isPasscodeSent, setIsPasscodeSent] = useState(false);
+  const [otpResetKey, setOtpResetKey] = useState(0);
   const router = useRouter();
 
   const fullContact = useMemo(() => {
@@ -59,6 +59,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
     onSuccessCallback: () => {
       toast.success("Passcode sent successfully!");
       setIsPasscodeSent(true);
+      setOtpResetKey((current) => current + 1);
     },
     onErrorCallback: (err) => {
       toast.error(err.message);
@@ -72,6 +73,8 @@ function SignInModal({ closeModal }: SignInModalProps) {
       closeModal();
     },
     onErrorCallback: (err) => {
+      setPasscode("");
+      setOtpResetKey((current) => current + 1);
       toast.error(err.message);
     },
   });
@@ -79,31 +82,31 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const handleSendPasscode = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      sendCodeMut.mutate({ contact, method: authMethod });
+      sendCodeMut.mutate({ contact: fullContact, method: authMethod });
     },
-    [fullContact, authMethod, contact]
+    [authMethod, fullContact, sendCodeMut]
   );
 
   const handleVerifyPasscode = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      verifyCodeMut.mutate({ contact, method: authMethod, passcode });
+      verifyCodeMut.mutate({ contact: fullContact, method: authMethod, passcode });
     },
-    [authMethod, contact, passcode]
+    [authMethod, fullContact, passcode, verifyCodeMut]
   );
 
   const handlePostAuthentication = async (fullContact: string) => {
+    const session = await waitForAuthenticatedSession();
+    if (!session?.access_token) {
+      toast.error("We couldn't finish signing you in. Please try again.");
+      return;
+    }
+
     const { user, error } = await fetchUserByContact(authMethod, fullContact);
 
     if (error || !user) {
-      const uuid = await createCubidUser(fullContact, authMethod);
-      const { error: insertError } = await createNewUser(authMethod, fullContact, uuid);
-      if (insertError) return;
-
-      setTimeout(() => {
-        closeModal();
-        router.push("/welcome");
-      }, 2000);
+      console.error("Failed to finish authenticated user provisioning:", error);
+      toast.error("We couldn't finish signing you in. Please try again.");
     } else {
       setTimeout(() => {
         closeModal();
@@ -116,7 +119,9 @@ function SignInModal({ closeModal }: SignInModalProps) {
   const handleAuthMethodChange = (method: "phone" | "email") => {
     setAuthMethod(method);
     setContact("");
+    setPasscode("");
     setIsPasscodeSent(false);
+    setOtpResetKey(0);
   };
 
   return (
@@ -129,6 +134,7 @@ function SignInModal({ closeModal }: SignInModalProps) {
             countryCode={countryCode}
             contact={contact}
             passcode={passcode}
+            otpResetKey={otpResetKey}
             setCountryCode={setCountryCode}
             setContact={setContact}
             setPasscode={setPasscode}
@@ -138,7 +144,8 @@ function SignInModal({ closeModal }: SignInModalProps) {
             handleAuthMethodChange={handleAuthMethodChange}
             canResend={true}
             onResend={() => {
-              sendCodeMut.mutate({ contact, method: "email" });
+              setPasscode("");
+              sendCodeMut.mutate({ contact: fullContact, method: authMethod });
             }}
             isLoading={sendCodeMut.isPending || verifyCodeMut.isPending}
           />

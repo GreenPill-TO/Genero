@@ -1,4 +1,5 @@
 import type { ContactRecord } from "@shared/api/services/supabaseService";
+import type { PaymentRequestRecord } from "@shared/lib/edge/paymentRequests";
 
 export interface Hypodata {
   id: number;
@@ -18,14 +19,4 @@ export const contactRecordToHypodata = (contact: ContactRecord): Hypodata => ({
   state: contact.state ?? undefined,
 });
 
-export interface InvoicePayRequest {
-  id: number;
-  amount_requested: number | null;
-  request_from: number | null;
-  request_by?: number | null;
-  created_at?: string | null;
-  status?: string | null;
-  is_active?: boolean | null;
-  paid_at?: string | null;
-  transaction_id?: number | string | null;
-}
+export type InvoicePayRequest = PaymentRequestRecord;

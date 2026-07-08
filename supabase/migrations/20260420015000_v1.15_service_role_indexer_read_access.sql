@@ -1,0 +1,33 @@
+-- v1.15: allow service-role release preflight reads on indexer schemas
+
+BEGIN;
+
+GRANT USAGE ON SCHEMA indexer TO service_role;
+GRANT USAGE ON SCHEMA chain_data TO service_role;
+
+GRANT SELECT ON ALL TABLES IN SCHEMA indexer TO service_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA chain_data TO service_role;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA indexer TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA chain_data TO service_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA indexer GRANT SELECT ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA indexer GRANT USAGE, SELECT ON SEQUENCES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data GRANT SELECT ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data GRANT USAGE, SELECT ON SEQUENCES TO service_role;
+
+COMMIT;
+
+-- DOWN (manual rollback SQL; keep commented so Supabase forward migrations do not immediately revoke the grants above)
+-- BEGIN;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data REVOKE USAGE, SELECT ON SEQUENCES FROM service_role;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA chain_data REVOKE SELECT ON TABLES FROM service_role;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA indexer REVOKE USAGE, SELECT ON SEQUENCES FROM service_role;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA indexer REVOKE SELECT ON TABLES FROM service_role;
+-- REVOKE USAGE, SELECT ON ALL SEQUENCES IN SCHEMA chain_data FROM service_role;
+-- REVOKE USAGE, SELECT ON ALL SEQUENCES IN SCHEMA indexer FROM service_role;
+-- REVOKE SELECT ON ALL TABLES IN SCHEMA chain_data FROM service_role;
+-- REVOKE SELECT ON ALL TABLES IN SCHEMA indexer FROM service_role;
+-- REVOKE USAGE ON SCHEMA chain_data FROM service_role;
+-- REVOKE USAGE ON SCHEMA indexer FROM service_role;
+-- COMMIT;

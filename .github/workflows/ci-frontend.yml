@@ -21,6 +21,8 @@ permissions:
 env:
   NEXT_TELEMETRY_DISABLED: 1
   CI: true
+  NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
 
 jobs:
   build-and-test:
@@ -31,9 +33,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+        # pnpm/action-setup reads the pinned packageManager field from package.json.
+        # Do not duplicate a version here; v4 fails when both sources are present.
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -42,15 +44,16 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
 
       - name: Typecheck (Next.js includes TS checks during build)
         run: |
-          if [ -f tsconfig.json ]; then
-            # If you later add a dedicated script, swap to: pnpm typecheck
+          if [ -f tsconfig.ci.json ]; then
+            pnpm exec tsc --noEmit -p tsconfig.ci.json
+          elif [ -f tsconfig.json ]; then
             pnpm exec tsc --noEmit
           else
             echo "No tsconfig.json found; skipping typecheck."
@@ -60,6 +63,4 @@ jobs:
         run: pnpm build
 
       - name: Test (Vitest)
-        run: |
-          # Your script is "vitest run"
-          pnpm test -- --reporter=default --run || pnpm test
+        run: pnpm test -- --reporter=default

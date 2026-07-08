@@ -29,7 +29,9 @@ const radioVariants = cva("radio", {
   },
 });
 
-export interface RadioProps extends React.HTMLAttributes<HTMLInputElement>, VariantProps<typeof radioVariants> {
+export interface RadioProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size" | "name" | "value" | "onChange">,
+    VariantProps<typeof radioVariants> {
   label?: string;
   name: string;
   value: string;

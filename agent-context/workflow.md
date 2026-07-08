@@ -1,8 +1,14 @@
 # Workflow Checklist
 
 1. Update session-log.md with a new entry.
-2. Update technical-spec.md and others as needed.
-3. If supabase changes, then update supabase/sql-schema.sql and add migration file in supabase/migrations/
+2. Update docs/engineering/technical-spec.md, docs/engineering/functional-spec.md, and others as needed.
+3. If Supabase changes, add/update migration files in `supabase/migrations/`.
 4. Implement code changes.
 5. Run lint and tests.
 6. Commit with conventional message.
+7. For any TorontoCoin session that touches live or testnet chain state, record the deployer wallet end-balance in `session-log.md`, plus the delta from the prior tracked session and a transaction-cost breakdown if the balance changed.
+
+## Feature Delivery Rule
+
+1. After implementing any new feature, always add a session-log entry for that feature.
+2. After that session-log update, always create a commit that includes the feature work and the log entry.

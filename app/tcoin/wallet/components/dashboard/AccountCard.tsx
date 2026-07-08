@@ -1,63 +1,32 @@
-import React, { useState } from "react";
-import { FiCopy, FiDollarSign, FiHeart, FiList, FiTrendingUp } from "react-icons/fi";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import React from "react";
 import { Button } from "@shared/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@shared/components/ui/Card";
-import { Label } from "@shared/components/ui/Label";
-import { Switch } from "@shared/components/ui/Switch";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
-
-const balanceHistory = [
-  { date: "2023-06-01", balance: 800 },
-  { date: "2023-06-15", balance: 950 },
-  { date: "2023-06-30", balance: 1100 },
-  { date: "2023-07-15", balance: 1000 },
-  { date: "2023-07-30", balance: 1200 },
-];
-
-const recentTransactions = [
-  { id: 1, type: "Received", amount: 100, from: "Alice", date: "2023-07-30" },
-  { id: 2, type: "Sent", amount: 50, to: "Bob", date: "2023-07-29" },
-  { id: 3, type: "Charity", amount: 20, to: "Save the Trees", date: "2023-07-28" },
-  { id: 4, type: "Received", amount: 200, from: "Work", date: "2023-07-27" },
-  { id: 5, type: "Sent", amount: 30, to: "Coffee Shop", date: "2023-07-26" },
-];
-
-const charityContributionData = [
-  { date: "2023-05-01", TheShelter: 10, TheFoodBank: 0 },
-  { date: "2023-06-01", TheShelter: 15, TheFoodBank: 0 },
-  { date: "2023-07-01", TheShelter: 20, TheFoodBank: 5 },
-  { date: "2023-08-01", TheShelter: 18, TheFoodBank: 12 },
-  { date: "2023-09-01", TheShelter: 22, TheFoodBank: 18 },
-];
+import { walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
 
 export function AccountCard({
   balance,
-  openModal,
-  closeModal,
+  totalEquivalent,
+  voucherEquivalent,
+  voucherCount,
   senderWallet,
+  onOpenTransactionHistory,
 }: {
   balance: number;
-  openModal: any;
-  closeModal: any;
+  totalEquivalent?: number;
+  voucherEquivalent?: number;
+  voucherCount?: number;
   senderWallet: string;
+  onOpenTransactionHistory: () => void;
 }) {
-  const [activeAccountTab, setActiveAccountTab] = useState("balance");
   const { ...rest } = useTokenBalance(senderWallet);
-  const { exchangeRate } = useControlVariables();
+  const { exchangeRate, fallbackMessage } = useControlVariables();
 
-  const convertToCad = (tcoin: number) => (tcoin * exchangeRate).toFixed(2);
+  const convertToCad = (tcoin: number | string) => {
+    const parsed = typeof tcoin === "number" ? tcoin : Number.parseFloat(tcoin);
+    const safeTcoin = Number.isFinite(parsed) ? parsed : 0;
+    return (safeTcoin * exchangeRate).toFixed(2);
+  };
   const formatNumber = (value: string, isCad: boolean) => {
     const num = parseFloat(value);
     if (isNaN(num)) return isCad ? "$0.00" : "0.00 TCOIN";
@@ -68,161 +37,74 @@ export function AccountCard({
     return isCad ? `$${formatted}` : `${formatted} TCOIN`;
   };
 
-  const shortenedAddress = (address: string) => {
-    if (address?.length <= 10) return address;
-    return `${address?.substring(0, 6)}...${address?.substring(address.length - 4)}`;
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard
-      .writeText(senderWallet)
-      .then(() => alert("Wallet address copied to clipboard!"))
-      .catch((error) => console.error("Copy failed:", error));
-  };
-
-  const explorerBaseUrl =
-    process.env.NEXT_PUBLIC_EXPLORER_URL ||
-    "https://explorer.example.com/address/";
-  const explorerHref = `${explorerBaseUrl}${senderWallet}`;
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>My Account</CardTitle>
-      </CardHeader>
-      <CardContent className="p-4">
-        <div className="flex justify-around mb-4">
-          {[
-            { key: "balance", icon: <FiDollarSign className="font-bold" />, label: "Balance" },
-            { key: "graph", icon: <FiTrendingUp className="font-bold" />, label: "Graph" },
-            { key: "transactions", icon: <FiList className="font-bold" />, label: "Transactions" },
-            { key: "charity", icon: <FiHeart className="font-bold" />, label: "Charity" },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveAccountTab(tab.key)}
-              title={tab.label}
-              className={`px-5 py-3 rounded-md font-bold transition-colors ${
-                activeAccountTab === tab.key
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-gray-800 hover:bg-gray-300"
-              }`}
-            >
-              {tab.icon}
-            </button>
-          ))}
+    <section className={`${walletPanelClass} flex h-full flex-col gap-4 sm:gap-6`}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-3">
+          <span className="inline-flex rounded-full border border-border/70 bg-background/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+            Account overview
+          </span>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold tracking-[-0.04em]">Available balance</h2>
+            <p className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
+              {formatNumber(rest.balance.toString(), false)}
+            </p>
+            <p className="text-lg text-muted-foreground">
+              {formatNumber(convertToCad(rest.balance), true)} CAD
+            </p>
+          </div>
         </div>
+        <div className={`${walletPanelMutedClass} w-full min-w-0 space-y-3 sm:min-w-[220px] sm:max-w-[320px]`}>
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Today&apos;s estimate
+            </p>
+            <p className="text-2xl font-semibold">{formatNumber(convertToCad(rest.balance), true)}</p>
+            <p className="text-sm text-muted-foreground">
+              A live CAD estimate for the TCOIN that is ready to spend right now.
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Wallet address, explorer access, and account settings now live in More.
+          </p>
+        </div>
+      </div>
 
-        <div>
-          {activeAccountTab === "graph" && (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={balanceHistory}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="balance" stroke="#8884d8" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-          {activeAccountTab === "balance" && (
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">Your Balance</h2>
-              <div className="flex justify-center items-center space-x-2 mb-1">
-                <span className="text-md break-all font-bold" title={senderWallet}>
-                  {`Wallet: ${shortenedAddress(senderWallet)}`}
-                </span>
-                <button onClick={handleCopy} title="Copy wallet address">
-                  <FiCopy className="w-4 h-4 text-gray-600" />
-                </button>
-              </div>
-              <a
-                href={explorerHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-500 underline mb-3 block"
-              >
-                View on Explorer
-              </a>
-              <p className="text-4xl font-bold">
-                {formatNumber(rest.balance.toString(), false)}
-              </p>
-              <p className="text-xl">
-                {formatNumber(convertToCad(rest.balance), true)} CAD
-              </p>
-            </div>
-          )}
-          {activeAccountTab === "transactions" && (
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <Switch id="currency-toggle" onCheckedChange={() => {}} />
-                <Label htmlFor="currency-toggle">Show amounts in CAD</Label>
-              </div>
-              <ul className="space-y-2">
-                {recentTransactions.map((transaction) => (
-                  <li
-                    key={transaction.id}
-                    className="flex justify-between items-center border-b border-gray-700 pb-2"
-                  >
-                    <div>
-                      <p className="font-semibold">{transaction.type}</p>
-                      <p className="text-sm text-gray-500">
-                        {transaction.from
-                          ? `From: ${transaction.from}`
-                          : `To: ${transaction.to}`}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={`font-semibold ${
-                          transaction.type === "Received"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {transaction.type === "Received" ? "+" : "-"}
-                        {formatNumber(transaction.amount.toString(), false)}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Charity: {formatNumber((transaction.amount * 0.03).toString(), false)}
-                      </p>
-                      <p className="text-sm text-gray-500">{transaction.date}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {activeAccountTab === "charity" && (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={charityContributionData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="TheShelter"
-                    stackId="1"
-                    stroke="#8884d8"
-                    fill="#8884d8"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="TheFoodBank"
-                    stackId="1"
-                    stroke="#82ca9d"
-                    fill="#82ca9d"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+      <div className="grid gap-0 sm:gap-3 sm:grid-cols-3">
+        <div className={walletPanelMutedClass}>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Spendable now</p>
+          <p className="mt-2 text-xl font-semibold">{formatNumber(balance.toString(), false)}</p>
         </div>
-      </CardContent>
-    </Card>
+        <div className={walletPanelMutedClass}>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Wallet total</p>
+          <p className="mt-2 text-xl font-semibold">
+            {typeof totalEquivalent === "number" && Number.isFinite(totalEquivalent)
+              ? formatNumber(totalEquivalent.toString(), false)
+              : formatNumber(balance.toString(), false)}
+          </p>
+        </div>
+        <div className={walletPanelMutedClass}>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Voucher positions</p>
+          <p className="mt-2 text-xl font-semibold">{voucherCount ?? 0}</p>
+          {typeof voucherEquivalent === "number" && Number.isFinite(voucherEquivalent) && voucherEquivalent > 0 ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Equivalent to {formatNumber(voucherEquivalent.toString(), false)}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {fallbackMessage ? <p className="text-sm text-amber-700 dark:text-amber-300">{fallbackMessage}</p> : null}
+
+      <div className="flex flex-wrap gap-3">
+        <Button
+          type="button"
+          className="rounded-full px-5"
+          onClick={onOpenTransactionHistory}
+        >
+          View transaction history
+        </Button>
+      </div>
+    </section>
   );
 }

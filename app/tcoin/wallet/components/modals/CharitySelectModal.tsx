@@ -1,11 +1,15 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
-import { useAuth } from "@shared/api/hooks/useAuth";
-import { updateCubidDataInSupabase } from "@shared/api/services/supabaseService";
 import { Button } from "@shared/components/ui/Button";
-import { Radio } from "@shared/components/ui/Radio";
-import { createClient } from "@shared/lib/supabase/client";
+import { useUpdateUserPreferencesMutation } from "@shared/hooks/useUserSettingsMutations";
+import { useUserSettings } from "@shared/hooks/useUserSettings";
 import useEscapeKey from "@shared/hooks/useEscapeKey";
+import {
+  walletBadgeClass,
+  walletChoiceCardClass,
+  walletSectionLabelClass,
+} from "@tcoin/wallet/components/dashboard/authenticated-ui";
+import { cn } from "@shared/utils/classnames";
 
 interface Charity {
   id: string;
@@ -15,8 +19,8 @@ interface Charity {
 
 interface CharitySelectModalProps {
   closeModal: () => void;
-  selectedCharity: string;
-  setSelectedCharity: (v: string) => void;
+  selectedCharity?: string;
+  setSelectedCharity?: (v: string) => void;
 }
 
 const CharitySelectModal = ({
@@ -24,69 +28,78 @@ const CharitySelectModal = ({
   selectedCharity,
   setSelectedCharity,
 }: CharitySelectModalProps) => {
-  const [charity, setCharity] = useState(selectedCharity);
-  const [charities, setCharities] = useState<Charity[]>([]);
-  const { userData } = useAuth();
+  const { bootstrap } = useUserSettings();
+  const savePreferences = useUpdateUserPreferencesMutation();
+  const [charity, setCharity] = useState(selectedCharity ?? bootstrap?.preferences.charity ?? "");
   useEscapeKey(closeModal);
 
   useEffect(() => {
-    const fetchCharities = async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("charities")
-        .select("*");
-      if (error) {
-        console.error("Error fetching charities:", error);
-      } else if (data) {
-        setCharities(data);
-      }
-    };
-
-    fetchCharities();
-  }, []);
+    setCharity(selectedCharity ?? bootstrap?.preferences.charity ?? "");
+  }, [bootstrap?.preferences.charity, selectedCharity]);
 
   const handleSelect = async () => {
-    setSelectedCharity(charity);
-
-    const cubidId = userData?.user?.cubid_id;
-    if (cubidId) {
-      const { error } = await updateCubidDataInSupabase(cubidId, {
-        profile: {
-          charityPreferences: {
-            charity,
-            selectedCause: charity,
-          },
-        },
-      });
-
-      if (error) {
-        console.error("Error updating user's charity:", error);
-      }
+    if (!charity) {
+      return;
     }
 
+    await savePreferences.mutateAsync({
+      charity,
+      selectedCause: charity,
+    });
+    setSelectedCharity?.(charity);
     closeModal();
   };
 
-  return (
-    <div className="mt-2 p-0">
-      <div className="space-y-4">
-        {charities.map((ch) => (
-          <Radio
-            name="charity-selection"
-            key={ch.id}
-            label={ch.name}
-            value={ch.name}
-            onValueChange={setCharity}
-            id={ch.id}
-            defaultChecked={ch.name === charity}
-          />
-        ))}
+  const charities: Charity[] =
+    bootstrap?.options.charities.map((item) => ({
+      id: item.id,
+      name: item.name,
+      value: item.value ?? item.name,
+    })) ?? [];
 
-        <div className="flex justify-end space-x-2 mt-4">
-          <Button variant="outline" onClick={closeModal}>
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <span className={walletBadgeClass}>Default charity</span>
+        <p className="text-sm text-muted-foreground">
+          Choose the cause your wallet should support by default when a flow relies on your saved giving preference.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {charities.length === 0 ? <p className="text-sm text-muted-foreground">No charities are available right now.</p> : null}
+        {charities.map((ch) => {
+          const selected = ch.name === charity;
+          return (
+            <button
+              type="button"
+              key={ch.id}
+              className={cn(
+                walletChoiceCardClass,
+                "flex items-center justify-between gap-4",
+                selected ? "border-teal-500/70 bg-teal-50 dark:bg-teal-500/10" : ""
+              )}
+              onClick={() => setCharity(ch.name)}
+              aria-pressed={selected}
+            >
+              <div className="text-left">
+                <p className="text-sm font-semibold text-slate-950 dark:text-white">{ch.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selected ? "Currently selected for this wallet." : "Use this charity as your default."}
+                </p>
+              </div>
+              <span className={walletSectionLabelClass}>{selected ? "Selected" : "Available"}</span>
+            </button>
+          );
+        })}
+
+        <div className="flex justify-end space-x-2 pt-1">
+          <Button variant="outline" onClick={closeModal} className="rounded-full">
             Cancel
           </Button>
-          <Button onClick={handleSelect}>Select</Button>
+          <Button onClick={() => void handleSelect()} className="rounded-full" disabled={savePreferences.isPending || !charity}>
+            {savePreferences.isPending ? "Saving..." : "Select"}
+          </Button>
         </div>
       </div>
     </div>

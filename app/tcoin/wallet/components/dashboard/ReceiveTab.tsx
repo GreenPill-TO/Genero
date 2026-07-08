@@ -1,11 +1,18 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
-import axios from "axios";
+import {
+  cancelPaymentRequest,
+  createPaymentRequest,
+  getOutgoingPaymentRequests,
+} from "@shared/lib/edge/paymentRequestsClient";
+import {
+  createPaymentRequestLink,
+} from "@shared/lib/edge/paymentRequestLinksClient";
+import type { PaymentRequestLinkMode } from "@shared/lib/edge/paymentRequestLinks";
 import { ReceiveCard } from "./ReceiveCard";
 import { Hypodata, InvoicePayRequest } from "./types";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
-import { createClient } from "@shared/lib/supabase/client";
 
 interface ReceiveTabProps {
   contact?: Hypodata | null;
@@ -20,27 +27,112 @@ export function ReceiveTab({
   contacts,
   showQrCode = true,
 }: ReceiveTabProps) {
-  const { userData } = useAuth();
+  const { authData, userData, isLoadingUser, error: authError } = useAuth();
   const { exchangeRate } = useControlVariables();
 
   const user_id = userData?.cubidData.id;
-  const nano_id = userData?.cubidData.user_identifier;
   const [qrCodeData, setQrCodeData] = useState("");
   const [qrTcoinAmount, setQrTcoinAmount] = useState("");
   const [qrCadAmount, setQrCadAmount] = useState("");
+  const [qrLinkMode, setQrLinkMode] = useState<PaymentRequestLinkMode>("rotating_multi_use");
+  const [qrLinkExpiresAt, setQrLinkExpiresAt] = useState<string | null>(null);
+  const [isGeneratingQrLink, setIsGeneratingQrLink] = useState(false);
+  const [qrLinkError, setQrLinkError] = useState<string | null>(null);
   const [requestContact, setRequestContact] = useState<Hypodata | null>(
     contact ?? null
   );
   const [openRequests, setOpenRequests] = useState<InvoicePayRequest[]>([]);
 
+  const resolveQrLinkErrorMessage = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message.trim() : "";
+
+    if (!message) {
+      return "Unable to generate a pay link right now.";
+    }
+
+    if (message === "Unauthorized") {
+      return "We couldn't match this sign-in to a local wallet profile yet. Refresh the page, or sign out and sign back in.";
+    }
+
+    if (message.includes("route /create is not available")) {
+      return "Your local Supabase payment-links function is not available yet. Restart the local Supabase stack and try again.";
+    }
+
+    if (message.includes("payment_request_links")) {
+      return "Your local Supabase database is missing the payment-links schema. Apply the latest local migrations and try again.";
+    }
+
+    return message.replace(/^Failed to create payment request link:\s*/i, "");
+  }, []);
+
+  const parsePositiveAmount = useCallback((value: string) => {
+    const cleaned = value.replace(/[^\d.]/g, "");
+    const parsed = Number.parseFloat(cleaned);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+    return parsed;
+  }, []);
+
+  const requestedAmount = parsePositiveAmount(qrTcoinAmount);
+  const missingWalletProfile =
+    Boolean(authData?.user) && !isLoadingUser && !user_id;
+  const shouldGenerateQrLink =
+    Boolean(authData?.user) &&
+    Boolean(user_id) &&
+    !isLoadingUser &&
+    showQrCode &&
+    !requestContact;
+
+  const mintQrLink = useCallback(
+    async (mode: PaymentRequestLinkMode) => {
+      if (!authData?.user || !user_id) {
+        setQrCodeData("");
+        setQrLinkExpiresAt(null);
+        return;
+      }
+
+      setIsGeneratingQrLink(true);
+      try {
+        const { link } = await createPaymentRequestLink({
+          amountRequested: requestedAmount,
+          mode,
+          appContext: { citySlug: "tcoin" },
+        });
+        setQrCodeData(link.url ?? "");
+        setQrLinkExpiresAt(link.expiresAt);
+        setQrLinkError(null);
+      } catch (error) {
+        console.error("Failed to create payment request link:", error);
+        setQrCodeData("");
+        setQrLinkExpiresAt(null);
+        setQrLinkError(resolveQrLinkErrorMessage(error));
+      } finally {
+        setIsGeneratingQrLink(false);
+      }
+    },
+    [authData?.user, requestedAmount, resolveQrLinkErrorMessage, user_id]
+  );
+
   useEffect(() => {
-    if (!user_id) return;
-    setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
-    const interval = setInterval(() => {
-      setQrCodeData(JSON.stringify({ nano_id, timestamp: Date.now() }));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [user_id, nano_id]);
+    if (!shouldGenerateQrLink) {
+      setQrCodeData("");
+      setQrLinkExpiresAt(null);
+      return;
+    }
+
+    void mintQrLink(qrLinkMode);
+
+    if (qrLinkMode !== "rotating_multi_use") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void mintQrLink("rotating_multi_use");
+    }, 3_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [mintQrLink, qrLinkMode, shouldGenerateQrLink]);
 
   const handleQrTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^\d.]/g, "");
@@ -89,16 +181,10 @@ export function ReceiveTab({
     }
 
     try {
-      const supabase = createClient();
-      const query = supabase
-        .from("invoice_pay_request")
-        .select("*")
-        .eq("request_by", user_id)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-      const { data, error } = await query;
-      if (error) throw error;
-      setOpenRequests((data ?? []) as InvoicePayRequest[]);
+      const body = await getOutgoingPaymentRequests({
+        appContext: { citySlug: "tcoin" },
+      });
+      setOpenRequests(body.requests as InvoicePayRequest[]);
     } catch (error) {
       console.error("Failed to fetch open requests:", error);
     }
@@ -115,22 +201,13 @@ export function ReceiveTab({
       }
 
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("invoice_pay_request")
-          .insert({
-            request_from: null,
-            request_by: user_id,
-            amount_requested: amount,
-            is_active: true,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
+        const { request } = await createPaymentRequest({
+          requestFrom: null,
+          amountRequested: amount,
+          appContext: { citySlug: "tcoin" },
+        });
         await fetchOpenRequests();
-        return data as InvoicePayRequest;
+        return request as InvoicePayRequest;
       } catch (error) {
         console.error("Failed to create shareable request:", error);
         throw error;
@@ -143,75 +220,39 @@ export function ReceiveTab({
     async (
       contactToRequest: Hypodata,
       amount: number,
-      formattedAmount: string
+      _formattedAmount: string
     ) => {
       if (!user_id || !contactToRequest?.id) {
         throw new Error("Missing request context");
       }
 
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("invoice_pay_request")
-          .insert({
-            request_from: contactToRequest.id,
-            request_by: user_id,
-            amount_requested: amount,
-            is_active: true,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        const requesterName = userData?.cubidData?.full_name ?? "Someone";
-        const notificationMessage = `${formattedAmount} request by ${requesterName}`;
-
-        await supabase.from("notifications").insert({
-          user_id: String(contactToRequest.id),
-          notification: notificationMessage,
+        const { request } = await createPaymentRequest({
+          requestFrom: contactToRequest.id,
+          amountRequested: amount,
+          appContext: { citySlug: "tcoin" },
         });
-
-        const { data: recipientRecords } = await supabase
-          .from("users")
-          .select("phone")
-          .match({ user_id: String(contactToRequest.id) });
-
-        const recipientPhone = recipientRecords?.[0]?.phone;
-        if (recipientPhone) {
-          try {
-            await axios.post("/api/sendsms", {
-              message: notificationMessage,
-              to: recipientPhone,
-            });
-          } catch (smsError) {
-            console.error("Failed to send SMS notification:", smsError);
-          }
-        }
 
         await fetchOpenRequests();
         setQrTcoinAmount("");
         setQrCadAmount("");
 
-        return data as InvoicePayRequest;
+        return request as InvoicePayRequest;
       } catch (error) {
         console.error("Failed to create targeted request:", error);
         throw error;
       }
     },
-    [fetchOpenRequests, userData?.cubidData?.full_name, user_id]
+    [fetchOpenRequests, user_id]
   );
 
   const handleDeactivateRequest = useCallback(
     async (requestId: number) => {
       try {
-        const supabase = createClient();
-        const { error } = await supabase
-          .from("invoice_pay_request")
-          .update({ is_active: false })
-          .eq("id", requestId);
-
-        if (error) throw error;
+        await cancelPaymentRequest({
+          requestId,
+          appContext: { citySlug: "tcoin" },
+        });
 
         setOpenRequests((previous) =>
           previous.filter((request) => request.id !== requestId)
@@ -231,21 +272,35 @@ export function ReceiveTab({
     void fetchOpenRequests();
   };
 
+  const qrUnavailableReason =
+    isLoadingUser && !authData?.user
+      ? "QR code is still loading your wallet session."
+      : missingWalletProfile
+        ? "We couldn't find a wallet profile for this signed-in account yet. Finish onboarding, or sign out and sign back in."
+        : authError instanceof Error && !user_id
+          ? authError.message
+          : qrLinkError;
+
   return (
-    <div className="lg:px-[25vw]">
+    <div className="mx-auto w-full">
       <ReceiveCard
         qrCodeData={qrCodeData}
         qrTcoinAmount={qrTcoinAmount}
         qrCadAmount={qrCadAmount}
+        qrLinkMode={qrLinkMode}
+        qrLinkExpiresAt={qrLinkExpiresAt}
+        isGeneratingQrCode={isGeneratingQrLink}
+        onSwitchQrLinkMode={setQrLinkMode}
         handleQrTcoinChange={handleQrTcoinChange}
         handleQrCadChange={handleQrCadChange}
-        senderWallet={userData?.cubidData?.wallet_address || ""}
+        senderWallet=""
         handleQrTcoinBlur={handleQrTcoinBlur}
         handleQrCadBlur={handleQrCadBlur}
         tokenLabel="TCOIN"
         qrBgColor="#fff"
         qrFgColor="#000"
         qrWrapperClassName="bg-white p-1"
+        qrUnavailableReason={qrUnavailableReason}
         requestContact={requestContact}
         onClearRequestContact={() => handleRequestContactChange(null)}
         contacts={contacts}

@@ -7,6 +7,7 @@ import { Search } from "lucide-react"
 
 import { cn } from "@shared/lib/utils"
 import { Dialog, DialogContent } from "@shared/components/ui/dialog"
+import { inputFieldClass } from "./formFieldStyles"
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -39,16 +40,19 @@ const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+  <div className="border-b px-3 py-3" cmdk-input-wrapper="">
+    <div className="flex items-center gap-2 rounded-md border border-input bg-slate-50/92 px-3 dark:border-white/10 dark:bg-slate-950/55">
     <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        inputFieldClass,
+        "h-10 border-0 bg-transparent px-0 py-3 shadow-none focus-visible:ring-0 dark:bg-transparent",
         className
       )}
       {...props}
     />
+    </div>
   </div>
 ))
 

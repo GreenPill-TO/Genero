@@ -8,6 +8,8 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
 
 # next.js
 /.next/
@@ -26,7 +28,10 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env.local
 .env*.local
+.env.local-supabase-local
+.env.local-supabase-remote
 
 # vercel
 .vercel
@@ -34,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# supabase cli temp cache
+supabase/.temp/
+supabase/.branches/

@@ -1,26 +1,46 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { useAuth } from "@shared/api/hooks/useAuth";
 import { useControlVariables } from "@shared/hooks/useGetLatestExchangeRate";
 import { useSendMoney } from "@shared/hooks/useSendMoney";
 import { useTokenBalance } from "@shared/hooks/useTokenBalance";
-import { createClient } from "@shared/lib/supabase/client";
+import { useCameraAvailability } from "@shared/hooks/useCameraAvailability";
+import {
+  dismissPaymentRequest,
+  getIncomingPaymentRequests,
+  markPaymentRequestPaid,
+} from "@shared/lib/edge/paymentRequestsClient";
+import {
+  consumePaymentRequestLink,
+  resolvePaymentRequestLink,
+} from "@shared/lib/edge/paymentRequestLinksClient";
+import type { PaymentRequestLinkResolution } from "@shared/lib/edge/paymentRequestLinks";
+import { lookupWalletUserByIdentifier } from "@shared/lib/edge/walletOperationsClient";
 import { Button } from "@shared/components/ui/Button";
 import { Input } from "@shared/components/ui/Input";
-import { useModal } from "@shared/contexts/ModalContext";
+import { useClearPendingPaymentIntentMutation } from "@shared/hooks/useUserSettingsMutations";
+import {
+  decodeLegacyWalletPayPayload,
+  extractWalletPayToken,
+} from "@shared/lib/walletPayLinks";
 import { Hypodata, InvoicePayRequest, contactRecordToHypodata } from "./types";
 import { SendCard, type PaymentCompletionDetails } from "./SendCard";
-import { QrScanModal } from "@tcoin/wallet/components/modals";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
+import type { UserSettingsPendingPaymentIntent } from "@shared/lib/userSettings/types";
 import { extractTransactionId } from "@shared/utils/transferRecord";
+import type { QrScanModalProps } from "@tcoin/wallet/components/modals/QrScanModal";
 
 interface SendTabProps {
   recipient: Hypodata | null;
   onRecipientChange?: (recipient: Hypodata | null) => void;
   contacts?: ContactRecord[];
+  paymentLinkToken?: string | null;
+  resumePendingPayment?: boolean;
+  pendingPaymentIntent?: UserSettingsPendingPaymentIntent | null;
 }
 
 type IncomingRequest = InvoicePayRequest & { requester: Hypodata | null };
+type QrScannerComponent = React.ComponentType<QrScanModalProps>;
 
 const CLOSED_REQUEST_STATUSES = new Set([
   "paid",
@@ -29,6 +49,26 @@ const CLOSED_REQUEST_STATUSES = new Set([
   "closed",
   "fulfilled",
 ]);
+
+let qrScannerPromise: Promise<QrScannerComponent> | null = null;
+let qrScannerComponent: QrScannerComponent | null = null;
+
+const loadQrScannerComponent = async () => {
+  if (qrScannerComponent) {
+    return qrScannerComponent;
+  }
+
+  if (!qrScannerPromise) {
+    qrScannerPromise = import("@tcoin/wallet/components/modals/QrScanModal").then(
+      (mod) => {
+        qrScannerComponent = mod.QrScanModal;
+        return qrScannerComponent;
+      }
+    );
+  }
+
+  return qrScannerPromise;
+};
 
 const formatRequestAmount = (amount: number | null | undefined) => {
   if (!Number.isFinite(amount ?? NaN) || (amount ?? 0) <= 0) {
@@ -45,7 +85,7 @@ const formatRequesterName = (
 ): { primary: string; secondary: string } => {
   const requester = request.requester;
   const fallbackId = (() => {
-    const value = request.request_by;
+    const value = request.requestBy;
     if (typeof value === "number" && Number.isFinite(value)) return value;
     if (typeof value === "string") {
       const parsed = Number.parseInt(value, 10);
@@ -100,8 +140,17 @@ const resolveTransactionId = (
   return extractTransactionId(details.transferRecord);
 };
 
-export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps) {
+export function SendTab({
+  recipient,
+  onRecipientChange,
+  contacts,
+  paymentLinkToken,
+  resumePendingPayment = false,
+  pendingPaymentIntent = null,
+}: SendTabProps) {
   const { userData } = useAuth();
+  const { hasCamera, isCheckingCamera } = useCameraAvailability();
+  const clearPendingPaymentIntent = useClearPendingPaymentIntentMutation();
   const { exchangeRate } = useControlVariables();
   const safeExchangeRate =
     typeof exchangeRate === "number" && Number.isFinite(exchangeRate) && exchangeRate > 0
@@ -112,15 +161,20 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
   const [tcoinAmount, setTcoinAmount] = useState("");
   const [cadAmount, setCadAmount] = useState("");
   const [explorerLink, setExplorerLink] = useState<string | null>(null);
-  const [mode, setMode] = useState<"manual" | "link">("manual");
   const [activeAction, setActiveAction] = useState<
     "manual" | "scan" | "link" | "requests"
   >("manual");
-  const [, setIncomingRequests] = useState<IncomingRequest[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<IncomingRequest | null>(null);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [payLink, setPayLink] = useState("");
-  const { openModal, closeModal } = useModal();
+  const [activePaymentLinkToken, setActivePaymentLinkToken] = useState<string | null>(null);
+  const [pendingPaymentSource, setPendingPaymentSource] = useState<"payment-link" | "signup" | null>(null);
+  const [QrScanner, setQrScanner] = useState<QrScannerComponent | null>(
+    qrScannerComponent
+  );
+  const processedPaymentLinkTokenRef = useRef<string | null>(null);
+  const processedResumeIntentRef = useRef<string | null>(null);
   const contactsById = useMemo(() => {
     const map = new Map<number, Hypodata>();
     (contacts ?? []).forEach((contact) => {
@@ -129,8 +183,13 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     return map;
   }, [contacts]);
 
-  const { senderWallet, sendMoney, getLastTransferRecord } = useSendMoney({
-    senderId: userData?.cubidData?.id,
+  const {
+    senderWallet,
+    sendMoney,
+    executeVoucherPayment,
+    getLastTransferRecord,
+  } = useSendMoney({
+    senderId: userData?.cubidData?.id ?? 0,
     receiverId: toSendData?.id ?? null,
   });
   const { balance: rawBalance } = useTokenBalance(senderWallet ?? null);
@@ -138,27 +197,12 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
 
   const selectedRequestAmount = useMemo(() => {
     if (!selectedRequest) return null;
-    const raw = selectedRequest.amount_requested;
-    if (typeof raw === "number") {
-      return Number.isFinite(raw) ? raw : null;
-    }
-    if (typeof raw === "string" && raw.trim() !== "") {
-      const parsed = Number.parseFloat(raw);
-      if (Number.isFinite(parsed)) {
-        return parsed;
-      }
-    }
-    return null;
+    const raw = selectedRequest.amountRequested;
+    return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
   }, [selectedRequest]);
 
   const shouldLockAmount =
     selectedRequestAmount != null ? selectedRequestAmount > 0 : false;
-
-
-  useEffect(() => {
-    setToSendData(recipient);
-  }, [recipient]);
-
   const updateRecipient = useCallback(
     (value: Hypodata | null | undefined) => {
       const normalised = value ?? null;
@@ -168,11 +212,296 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     [onRecipientChange]
   );
 
+  const applyRequestedAmount = useCallback(
+    (amount: number | null | undefined) => {
+      if (!Number.isFinite(amount ?? NaN) || (amount ?? 0) <= 0) {
+        return;
+      }
+      const nextAmount = amount ?? 0;
+      const cadNumeric = safeExchangeRate === 0 ? 0 : nextAmount * safeExchangeRate;
+      setTcoinAmount(nextAmount.toFixed(2));
+      setCadAmount(cadNumeric.toFixed(2));
+    },
+    [safeExchangeRate]
+  );
+
+  const applyResolvedPaymentLink = useCallback(
+    (link: {
+      token: string;
+      amountRequested: number | null;
+      recipient: {
+        id: number;
+        fullName: string | null;
+        username: string | null;
+        profileImageUrl: string | null;
+        walletAddress: string | null;
+      } | null;
+    }) => {
+      if (!link.recipient) {
+        throw new Error("The pay link is missing recipient details.");
+      }
+
+      updateRecipient({
+        id: link.recipient.id,
+        full_name: link.recipient.fullName,
+        username: link.recipient.username,
+        profile_image_url: link.recipient.profileImageUrl,
+        wallet_address: link.recipient.walletAddress,
+        state: null,
+      });
+      applyRequestedAmount(link.amountRequested);
+      setActiveAction("manual");
+      setActivePaymentLinkToken(link.token);
+      setPendingPaymentSource("payment-link");
+    },
+    [applyRequestedAmount, updateRecipient]
+  );
+
+  useEffect(() => {
+    setToSendData(recipient);
+  }, [recipient]);
+
+  useEffect(() => {
+    if (!paymentLinkToken) {
+      processedPaymentLinkTokenRef.current = null;
+      return;
+    }
+
+    if (processedPaymentLinkTokenRef.current === paymentLinkToken) {
+      return;
+    }
+
+    processedPaymentLinkTokenRef.current = paymentLinkToken;
+
+    void (async () => {
+      try {
+        const { link } = await resolvePaymentRequestLink(paymentLinkToken);
+        if (link.state !== "ready") {
+          toast.error("That pay link is no longer available.");
+          return;
+        }
+        applyResolvedPaymentLink(link);
+      } catch (error) {
+        console.error("Failed to resolve payment link token:", error);
+        toast.error("Failed to load the pay link.");
+      }
+    })();
+  }, [applyResolvedPaymentLink, paymentLinkToken]);
+
+  useEffect(() => {
+    if (!resumePendingPayment || !pendingPaymentIntent) {
+      processedResumeIntentRef.current = null;
+      return;
+    }
+
+    const intentKey = `${pendingPaymentIntent.recipientUserId}:${pendingPaymentIntent.createdAt ?? ""}`;
+    if (processedResumeIntentRef.current === intentKey) {
+      return;
+    }
+
+    processedResumeIntentRef.current = intentKey;
+    updateRecipient({
+      id: pendingPaymentIntent.recipientUserId,
+      full_name: pendingPaymentIntent.recipientName,
+      username: pendingPaymentIntent.recipientUsername,
+      profile_image_url: pendingPaymentIntent.recipientProfileImageUrl,
+      wallet_address: pendingPaymentIntent.recipientWalletAddress,
+      state: null,
+    });
+    applyRequestedAmount(pendingPaymentIntent.amountRequested);
+    setActiveAction("manual");
+    setActivePaymentLinkToken(pendingPaymentIntent.sourceToken);
+    setPendingPaymentSource("signup");
+  }, [applyRequestedAmount, pendingPaymentIntent, resumePendingPayment, updateRecipient]);
+
   const handleUseMax = () => {
     const cadNumeric = safeExchangeRate === 0 ? 0 : balance * safeExchangeRate;
     setTcoinAmount(balance.toFixed(2));
     setCadAmount(cadNumeric.toFixed(2));
   };
+
+  const postPaymentRecord = useCallback(
+    async (payload: Record<string, unknown>) => {
+      try {
+        await fetch("/api/vouchers/payment-record", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            citySlug: "tcoin",
+            chainId: 42220,
+            payerWallet: senderWallet,
+            recipientWallet: toSendData?.wallet_address ?? null,
+            ...payload,
+          }),
+        });
+      } catch {
+        // Best-effort logging only.
+      }
+    },
+    [senderWallet, toSendData?.wallet_address]
+  );
+
+  const sendMoneyWithRouting = useCallback(
+    async (amount: string) => {
+      const recipientWallet =
+        typeof toSendData?.wallet_address === "string" ? toSendData.wallet_address.trim() : "";
+      const amountNumeric = Number.parseFloat(amount);
+      if (!recipientWallet || !Number.isFinite(amountNumeric) || amountNumeric <= 0) {
+        return sendMoney(amount);
+      }
+
+      try {
+        const isIrrecoverableVoucherExecutionError = (error: unknown) => {
+          if (!(error instanceof Error)) {
+            return false;
+          }
+          const message = error.message.toLowerCase();
+          return (
+            message.includes("post-trade slippage") ||
+            message.includes("after successful swap") ||
+            message.includes("swap tx:")
+          );
+        };
+
+        const response = await fetch(
+          `/api/vouchers/route?citySlug=tcoin&amount=${encodeURIComponent(
+            amountNumeric.toString()
+          )}&recipientWallet=${encodeURIComponent(recipientWallet)}`,
+          { credentials: "include" }
+        );
+        const body = await response.json();
+        const quote = body?.quote;
+
+        if (!quote || quote.mode !== "voucher") {
+          const fallbackTxHash = await sendMoney(amount);
+          await postPaymentRecord({
+            mode: "tcoin_fallback",
+            transferTxHash: fallbackTxHash,
+            amountTcoin: amountNumeric,
+            status: "completed",
+            fallbackReason:
+              typeof quote?.reason === "string" ? quote.reason : "No eligible voucher route.",
+            metadata: {
+              guardDecisions: Array.isArray(quote?.guardDecisions) ? quote.guardDecisions : [],
+              quoteSource: typeof quote?.quoteSource === "string" ? quote.quoteSource : "fallback",
+              feePpm: typeof quote?.feePpm === "number" ? quote.feePpm : null,
+            },
+          });
+          return fallbackTxHash;
+        }
+
+        const attemptVoucher = async (routeQuote: any) => {
+          const voucherTx = await executeVoucherPayment({
+            amount,
+            poolAddress: routeQuote.poolAddress,
+            voucherTokenAddress: routeQuote.tokenAddress,
+            recipientWalletAddress: recipientWallet,
+            minAmountOut: routeQuote.minVoucherOut ?? amount,
+            tokenDecimals:
+              typeof routeQuote.tokenDecimals === "number" ? routeQuote.tokenDecimals : 18,
+          });
+          await postPaymentRecord({
+            mode: "voucher",
+            poolAddress: routeQuote.poolAddress,
+            tokenAddress: routeQuote.tokenAddress,
+            amountTcoin: amountNumeric,
+            amountVoucher: Number.parseFloat(voucherTx.transferAmount),
+            swapTxHash: voucherTx.swapTxHash,
+            transferTxHash: voucherTx.transferTxHash,
+            status: "completed",
+            metadata: {
+              approvalTxHash: voucherTx.approvalTxHash,
+              guardDecisions: routeQuote.guardDecisions,
+              quoteSource: routeQuote.quoteSource,
+              feePpm: typeof routeQuote.feePpm === "number" ? routeQuote.feePpm : null,
+            },
+          });
+          return voucherTx.transferTxHash;
+        };
+
+        try {
+          return await attemptVoucher(quote);
+        } catch (firstError) {
+          if (isIrrecoverableVoucherExecutionError(firstError)) {
+            await postPaymentRecord({
+              mode: "voucher",
+              amountTcoin: amountNumeric,
+              status: "failed",
+              fallbackReason:
+                firstError instanceof Error
+                  ? firstError.message
+                  : "Voucher execution failed after swap.",
+              metadata: {
+                guardDecisions: Array.isArray(quote?.guardDecisions) ? quote.guardDecisions : [],
+                quoteSource: typeof quote?.quoteSource === "string" ? quote.quoteSource : "unknown",
+              },
+            });
+            throw firstError;
+          }
+
+          // Retry once with refreshed quote before falling back.
+          try {
+            const retryResponse = await fetch(
+              `/api/vouchers/route?citySlug=tcoin&amount=${encodeURIComponent(
+                amountNumeric.toString()
+              )}&recipientWallet=${encodeURIComponent(recipientWallet)}`,
+              { credentials: "include" }
+            );
+            const retryBody = await retryResponse.json();
+            const retryQuote = retryBody?.quote;
+            if (!retryQuote || retryQuote.mode !== "voucher") {
+              throw firstError;
+            }
+            return await attemptVoucher(retryQuote);
+          } catch (retryError) {
+            if (isIrrecoverableVoucherExecutionError(retryError)) {
+              await postPaymentRecord({
+                mode: "voucher",
+                amountTcoin: amountNumeric,
+                status: "failed",
+                fallbackReason:
+                  retryError instanceof Error
+                    ? retryError.message
+                    : "Voucher execution failed after swap.",
+                metadata: {
+                  quoteSource: typeof quote?.quoteSource === "string" ? quote.quoteSource : "unknown",
+                },
+              });
+              throw retryError;
+            }
+
+            const fallbackTxHash = await sendMoney(amount);
+            await postPaymentRecord({
+              mode: "tcoin_fallback",
+              transferTxHash: fallbackTxHash,
+              amountTcoin: amountNumeric,
+              status: "completed",
+              fallbackReason:
+                retryError instanceof Error
+                  ? `Voucher route failed: ${retryError.message}`
+                  : "Voucher route failed.",
+            });
+            return fallbackTxHash;
+          }
+        }
+      } catch (routeError) {
+        const fallbackTxHash = await sendMoney(amount);
+        await postPaymentRecord({
+          mode: "tcoin_fallback",
+          transferTxHash: fallbackTxHash,
+          amountTcoin: amountNumeric,
+          status: "completed",
+          fallbackReason:
+            routeError instanceof Error
+              ? `Voucher routing unavailable: ${routeError.message}`
+              : "Voucher routing unavailable.",
+        });
+        return fallbackTxHash;
+      }
+    },
+    [toSendData?.wallet_address, executeVoucherPayment, sendMoney, postPaymentRecord]
+  );
 
   const handleTcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = sanitizeNumeric(e.target.value);
@@ -245,22 +574,9 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     setTcoinAmount("");
     setCadAmount("");
     setPayLink("");
+    setActivePaymentLinkToken(null);
+    setPendingPaymentSource(null);
   }, [updateRecipient]);
-
-  const openScanner = useCallback(() => {
-    openModal({
-      content: (
-        <QrScanModal
-          closeModal={closeModal}
-          setToSendData={(d: Hypodata) => updateRecipient(d)}
-          setTcoin={setTcoinAmount}
-          setCad={setCadAmount}
-        />
-      ),
-      title: "Scan QR",
-      description: "Use your device's camera to scan a code.",
-    });
-  }, [closeModal, openModal, updateRecipient]);
 
   const fetchIncomingRequests = useCallback(async (): Promise<IncomingRequest[]> => {
     const currentUserId = userData?.cubidData?.id;
@@ -270,106 +586,39 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     }
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("invoice_pay_request")
-        .select("*")
-        .eq("request_from", currentUserId)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
+      const body = await getIncomingPaymentRequests({
+        appContext: { citySlug: "tcoin" },
+      });
 
-      if (error) throw error;
-
-      const rows = (data ?? []) as InvoicePayRequest[];
+      const rows = (body.requests ?? []) as InvoicePayRequest[];
       const filtered = rows.filter((request) => {
-        if (request.is_active === false) {
+        if (request.isActive === false) {
           return false;
         }
 
-        if (typeof request.status === "string") {
-          const status = request.status.trim().toLowerCase();
-          if (CLOSED_REQUEST_STATUSES.has(status)) {
-            return false;
-          }
+        if (CLOSED_REQUEST_STATUSES.has(request.status)) {
+          return false;
         }
 
         return true;
       });
 
-      const requesterIds = Array.from(
-        new Set(
-          filtered
-            .map((request) => {
-              if (typeof request.request_by === "number" && Number.isFinite(request.request_by)) {
-                return request.request_by;
-              }
-              if (typeof request.request_by === "string") {
-                const parsed = Number.parseInt(request.request_by, 10);
-                if (Number.isFinite(parsed)) {
-                  return parsed;
-                }
-              }
-              return null;
-            })
-            .filter((value): value is number => value != null)
-        )
-      );
-
-      const requesterMap = new Map<number, Hypodata>();
-      contactsById.forEach((value, key) => {
-        requesterMap.set(key, value);
-      });
-
-      if (requesterIds.length > 0) {
-        const { data: userRows, error: userError } = await supabase
-          .from("users")
-          .select("id, full_name, username, profile_image_url")
-          .in("id", requesterIds);
-
-        if (userError) throw userError;
-
-        const { data: walletRows, error: walletError } = await supabase
-          .from("wallet_list")
-          .select("user_id, public_key")
-          .in("user_id", requesterIds);
-
-        if (walletError) throw walletError;
-
-        const walletMap = new Map<number, string | undefined>();
-        for (const wallet of walletRows ?? []) {
-          const id = Number(wallet.user_id);
-          if (Number.isFinite(id)) {
-            walletMap.set(id, typeof wallet.public_key === "string" ? wallet.public_key : undefined);
-          }
-        }
-
-        for (const row of userRows ?? []) {
-          const id = Number(row.id);
-          if (!Number.isFinite(id)) continue;
-          const existing = requesterMap.get(id);
-          requesterMap.set(id, {
-            id,
-            full_name: row.full_name ?? existing?.full_name ?? undefined,
-            username: row.username ?? existing?.username ?? undefined,
-            profile_image_url: row.profile_image_url ?? existing?.profile_image_url ?? undefined,
-            wallet_address: walletMap.get(id) ?? existing?.wallet_address ?? undefined,
-            state: existing?.state ?? undefined,
-          });
-        }
-      }
-
       const enriched = filtered.map((request) => {
-        let requesterId: number | null = null;
-        if (typeof request.request_by === "number" && Number.isFinite(request.request_by)) {
-          requesterId = request.request_by;
-        } else if (typeof request.request_by === "string") {
-          const parsed = Number.parseInt(request.request_by, 10);
-          if (Number.isFinite(parsed)) {
-            requesterId = parsed;
-          }
-        }
-
-        const requester = requesterId != null ? requesterMap.get(requesterId) ?? null : null;
+        const requesterId = request.requestBy;
+        const contactRequester =
+          requesterId != null ? contactsById.get(requesterId) ?? null : null;
+        const requester =
+          contactRequester ??
+          (requesterId != null
+            ? ({
+                id: requesterId,
+                full_name: request.requesterFullName ?? undefined,
+                username: request.requesterUsername ?? undefined,
+                profile_image_url: request.requesterProfileImageUrl ?? undefined,
+                wallet_address: request.requesterWalletPublicKey ?? undefined,
+                state: undefined,
+              } as Hypodata)
+            : null);
         return { ...request, requester } as IncomingRequest;
       });
 
@@ -384,49 +633,20 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
 
   const handleRequestSelection = useCallback(
     async (request: IncomingRequest) => {
+      const requesterId = request.requestBy;
       let requester = request.requester ?? null;
-      let requesterId: number | null = null;
-      if (typeof request.request_by === "number" && Number.isFinite(request.request_by)) {
-        requesterId = request.request_by;
-      } else if (typeof request.request_by === "string") {
-        const parsed = Number.parseInt(request.request_by, 10);
-        if (Number.isFinite(parsed)) {
-          requesterId = parsed;
-        }
-      }
 
       if (!requester && requesterId != null) {
-        requester = contactsById.get(requesterId) ?? null;
-      }
-
-      if (!requester && requesterId != null) {
-        try {
-          const supabase = createClient();
-          const { data: userRow, error: userError } = await supabase
-            .from("users")
-            .select("id, full_name, username, profile_image_url")
-            .eq("id", requesterId)
-            .single();
-
-          if (userError) throw userError;
-
-          const { data: walletRow } = await supabase
-            .from("wallet_list")
-            .select("public_key")
-            .eq("user_id", requesterId)
-            .single();
-
-          requester = {
+        requester =
+          contactsById.get(requesterId) ??
+          ({
             id: requesterId,
-            full_name: userRow?.full_name ?? undefined,
-            username: userRow?.username ?? undefined,
-            profile_image_url: userRow?.profile_image_url ?? undefined,
-            wallet_address: walletRow?.public_key ?? undefined,
+            full_name: request.requesterFullName ?? undefined,
+            username: request.requesterUsername ?? undefined,
+            profile_image_url: request.requesterProfileImageUrl ?? undefined,
+            wallet_address: request.requesterWalletPublicKey ?? undefined,
             state: undefined,
-          };
-        } catch (error) {
-          console.error("Unable to load requester details:", error);
-        }
+          } as Hypodata);
       }
 
       if (!requester) {
@@ -437,9 +657,9 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       updateRecipient(requester);
 
       const numericAmount =
-        typeof request.amount_requested === "number"
-          ? request.amount_requested
-          : Number.parseFloat(String(request.amount_requested ?? "0"));
+        typeof request.amountRequested === "number"
+          ? request.amountRequested
+          : Number.parseFloat(String(request.amountRequested ?? "0"));
       const safeAmount = Number.isFinite(numericAmount) ? Math.max(numericAmount, 0) : 0;
 
       if (safeAmount > 0) {
@@ -455,24 +675,19 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       }
 
       setSelectedRequest({ ...request, requester });
-      setActiveAction("requests");
-      setMode("manual");
+      setActiveAction("manual");
       setPayLink("");
-      closeModal();
     },
-    [closeModal, contactsById, safeExchangeRate, updateRecipient]
+    [contactsById, safeExchangeRate, updateRecipient]
   );
 
   const handleIgnoreRequest = useCallback(
     async (request: IncomingRequest) => {
       try {
-        const supabase = createClient();
-        const { error } = await supabase
-          .from("invoice_pay_request")
-          .update({ is_active: false })
-          .eq("id", request.id);
-
-        if (error) throw error;
+        await dismissPaymentRequest({
+          requestId: request.id,
+          appContext: { citySlug: "tcoin" },
+        });
 
         setIncomingRequests((prev) =>
           prev.filter((existing) => existing.id !== request.id)
@@ -490,42 +705,21 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     [fetchIncomingRequests]
   );
 
-  const openRequestsModal = useCallback(async () => {
+  const openRequestsPanel = useCallback(async () => {
     if (isLoadingRequests) return;
     setIsLoadingRequests(true);
     try {
       const requests = await fetchIncomingRequests();
       setIncomingRequests(requests);
-      openModal({
-        title: "Incoming Requests To Pay",
-        description:
-          "Choose a request to pay or ignore. Ignored requests will be archived.",
-        content: (
-          <RequestsList
-            requests={requests}
-            onSelect={(selection) => {
-              void handleRequestSelection(selection);
-            }}
-            onIgnore={(request) => handleIgnoreRequest(request)}
-          />
-        ),
-      });
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [
-    fetchIncomingRequests,
-    handleIgnoreRequest,
-    handleRequestSelection,
-    isLoadingRequests,
-    openModal,
-  ]);
+  }, [fetchIncomingRequests, isLoadingRequests]);
 
   const handleManualClick = () => {
     if (selectedRequest) {
       setSelectedRequest(null);
     }
-    setMode("manual");
     setActiveAction("manual");
   };
 
@@ -535,9 +729,10 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       setSelectedRequest(null);
     }
     reset();
-    setMode("manual");
     setActiveAction("scan");
-    openScanner();
+    void loadQrScannerComponent().then((component) => {
+      setQrScanner(() => component);
+    });
   };
 
   const handleLinkClick = () => {
@@ -547,26 +742,27 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     }
     reset();
     setPayLink("");
-    setMode("link");
     setActiveAction("link");
   };
+
+  const handleRequestsClick = useCallback(() => {
+    if (selectedRequest) {
+      setSelectedRequest(null);
+    }
+    setActiveAction("requests");
+    void openRequestsPanel();
+  }, [openRequestsPanel, selectedRequest]);
 
   const handleRequestPaid = useCallback(
     async (details?: PaymentCompletionDetails) => {
       if (!selectedRequest) return;
       const requestId = selectedRequest.id;
       try {
-        const supabase = createClient();
-        const updates = {
-          status: "paid",
-          paid_at: new Date().toISOString(),
-          transaction_id: resolveTransactionId(details) ?? null,
-          is_active: false,
-        };
-        await supabase
-          .from("invoice_pay_request")
-          .update(updates)
-          .eq("id", requestId);
+        await markPaymentRequestPaid({
+          requestId,
+          transactionId: resolveTransactionId(details) ?? null,
+          appContext: { citySlug: "tcoin" },
+        });
       } catch (error) {
         console.error("Failed to mark request as paid:", error);
       } finally {
@@ -578,11 +774,47 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     [fetchIncomingRequests, selectedRequest]
   );
 
-  useEffect(() => {
-    if (!selectedRequest && activeAction === "requests") {
-      setActiveAction("manual");
-    }
-  }, [activeAction, selectedRequest]);
+  const handleLinkedPaymentComplete = useCallback(
+    async (details?: PaymentCompletionDetails) => {
+      const tokenToConsume = activePaymentLinkToken;
+      const transactionId = resolveTransactionId(details);
+      const shouldClearPendingIntent = pendingPaymentSource === "signup";
+
+      if (selectedRequest) {
+        await handleRequestPaid(details);
+      }
+
+      if (tokenToConsume) {
+        try {
+          await consumePaymentRequestLink({
+            token: tokenToConsume,
+            transactionId,
+            appContext: { citySlug: "tcoin" },
+          });
+        } catch (error) {
+          console.error("Failed to consume payment link:", error);
+        }
+      }
+
+      if (shouldClearPendingIntent) {
+        try {
+          await clearPendingPaymentIntent.mutateAsync();
+        } catch (error) {
+          console.error("Failed to clear pending payment intent:", error);
+        }
+      }
+
+      setActivePaymentLinkToken(null);
+      setPendingPaymentSource(null);
+    },
+    [
+      activePaymentLinkToken,
+      clearPendingPaymentIntent,
+      handleRequestPaid,
+      pendingPaymentSource,
+      selectedRequest,
+    ]
+  );
 
   useEffect(() => {
     if (!toSendData && selectedRequest) {
@@ -594,34 +826,52 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
     void fetchIncomingRequests();
   }, [fetchIncomingRequests]);
 
-  const extractAndDecodeBase64 = (url: string) => {
-    try {
-      const urlObj = new URL(url);
-      const base64Data = urlObj.searchParams.get("pay");
-      if (!base64Data) throw new Error("No Base64 data found in URL.");
-      const decodedData = decodeURIComponent(escape(atob(base64Data)));
-      return JSON.parse(decodedData);
-    } catch (error) {
-      console.error("Error decoding Base64:", error);
-      return null;
+  useEffect(() => {
+    if (!isCheckingCamera && !hasCamera && activeAction === "scan") {
+      setActiveAction("manual");
     }
-  };
+  }, [activeAction, hasCamera, isCheckingCamera]);
 
-  const handlePayLink = async () => {
-    const decoded = extractAndDecodeBase64(payLink);
-    const { nano_id, qrTcoinAmount } = decoded ?? {};
-    if (!nano_id) {
-      toast.error("Invalid pay link");
+  useEffect(() => {
+    if (activeAction !== "scan" || QrScanner) {
       return;
     }
-    try {
-      const supabase = createClient();
-      const { data: userDataFromSupabaseTable, error } = await supabase
-        .from("users")
-        .select("*")
-        .match({ user_identifier: nano_id });
-      if (error) throw error;
-      updateRecipient(userDataFromSupabaseTable?.[0] ?? null);
+
+    void loadQrScannerComponent().then((component) => {
+      setQrScanner(() => component);
+    });
+  }, [QrScanner, activeAction]);
+
+  const applyLegacyPayPayload = useCallback(
+    async (payload: Record<string, unknown>) => {
+      const nanoId =
+        typeof payload.nano_id === "string" && payload.nano_id.trim()
+          ? payload.nano_id.trim()
+          : null;
+      const qrTcoinAmount =
+        typeof payload.qrTcoinAmount === "string" ? payload.qrTcoinAmount : null;
+
+      if (!nanoId) {
+        throw new Error("Invalid pay link");
+      }
+
+      const lookup = await lookupWalletUserByIdentifier(
+        { userIdentifier: nanoId },
+        { citySlug: "tcoin" }
+      );
+      updateRecipient(
+        lookup.user
+          ? {
+              id: lookup.user.id,
+              full_name: lookup.user.fullName,
+              username: lookup.user.username,
+              profile_image_url: lookup.user.profileImageUrl,
+              wallet_address: lookup.user.walletAddress,
+              state: lookup.user.state,
+            }
+          : null
+      );
+
       if (qrTcoinAmount) {
         const sanitized = sanitizeNumeric(String(qrTcoinAmount));
         if (sanitized) {
@@ -633,6 +883,34 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           }
         }
       }
+
+      setActiveAction("manual");
+      setActivePaymentLinkToken(null);
+      setPendingPaymentSource(null);
+    },
+    [safeExchangeRate, updateRecipient]
+  );
+
+  const handlePayLink = async () => {
+    try {
+      const paymentToken = extractWalletPayToken(payLink);
+      if (paymentToken) {
+        const { link } = await resolvePaymentRequestLink(paymentToken);
+        if (link.state !== "ready") {
+          toast.error("That pay link is no longer available.");
+          return;
+        }
+        applyResolvedPaymentLink(link);
+        return;
+      }
+
+      const decoded = decodeLegacyWalletPayPayload(payLink);
+      if (!decoded) {
+        toast.error("Invalid pay link");
+        return;
+      }
+
+      await applyLegacyPayPayload(decoded);
     } catch (err) {
       console.error("handlePayLink error", err);
       toast.error("Failed to process link");
@@ -649,14 +927,22 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       >
         Manual
       </Button>
-      <Button
-        type="button"
-        variant={activeAction === "scan" ? "default" : "outline"}
-        onClick={handleScanClick}
-        className="min-w-[120px]"
-      >
-        Scan QR Code
-      </Button>
+      {hasCamera ? (
+        <Button
+          type="button"
+          variant={activeAction === "scan" ? "default" : "outline"}
+          onClick={handleScanClick}
+          onMouseEnter={() => {
+            void loadQrScannerComponent();
+          }}
+          onFocus={() => {
+            void loadQrScannerComponent();
+          }}
+          className="min-w-[120px]"
+        >
+          Scan QR Code
+        </Button>
+      ) : null}
       <Button
         type="button"
         variant={activeAction === "link" ? "default" : "outline"}
@@ -668,9 +954,7 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
       <Button
         type="button"
         variant={activeAction === "requests" ? "default" : "outline"}
-        onClick={() => {
-          void openRequestsModal();
-        }}
+        onClick={handleRequestsClick}
         className="min-w-[120px]"
         disabled={isLoadingRequests}
       >
@@ -684,8 +968,12 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
   const recipientHeading = selectedRequest ? "Requested By:" : undefined;
 
   return (
-    <div className="space-y-4 lg:px-[25vw]">
-      {mode !== "link" && (
+    <div data-testid="send-tab-layout" className="space-y-4">
+      <section className="rounded-2xl border border-border bg-card/70 p-3 shadow-sm sm:p-4">
+        <div className="flex flex-wrap items-center gap-2">{modeActions}</div>
+      </section>
+
+      {activeAction === "manual" && (
         <SendCard
           toSendData={toSendData}
           setToSendData={updateRecipient}
@@ -697,28 +985,63 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
           handleCadBlur={handleCadBlur}
           explorerLink={explorerLink}
           setExplorerLink={setExplorerLink}
-          sendMoney={sendMoney}
+          sendMoney={sendMoneyWithRouting}
           userBalance={balance}
           onUseMax={handleUseMax}
           contacts={contacts}
-          amountHeaderActions={modeActions}
           locked={lockRecipient}
           actionLabel={selectedRequest ? "Pay this request" : "Send..."}
           getLastTransferRecord={getLastTransferRecord}
-          onPaymentComplete={selectedRequest ? handleRequestPaid : undefined}
+          onPaymentComplete={
+            selectedRequest || activePaymentLinkToken || pendingPaymentSource
+              ? handleLinkedPaymentComplete
+              : undefined
+          }
           lockRecipient={lockRecipient}
           lockAmount={lockAmount}
           recipientHeading={recipientHeading}
         />
       )}
 
-      {mode === "link" && (
+      {activeAction === "scan" && hasCamera && (
+        <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Scan QR</h2>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Scan a payment QR code to load recipient and amount details.
+          </p>
+          <div className="mt-4">
+            {QrScanner ? (
+              <QrScanner
+                closeModal={() => setActiveAction("manual")}
+                setToSendData={(d: Hypodata) => updateRecipient(d)}
+                setTcoin={setTcoinAmount}
+                setCad={setCadAmount}
+                onResolvedPaymentLink={(link: PaymentRequestLinkResolution) => {
+                  applyResolvedPaymentLink(link);
+                }}
+                onResolvedLegacyPayload={() => {
+                  setActivePaymentLinkToken(null);
+                  setPendingPaymentSource(null);
+                  setActiveAction("manual");
+                }}
+              />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border/80 p-4 text-sm text-muted-foreground">
+                Loading scanner…
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {activeAction === "link" && (
         <>
           {!toSendData ? (
             <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Amount</h2>
-                {modeActions}
+                <h2 className="text-lg font-semibold">Pay Link</h2>
               </div>
               <div className="mt-4 space-y-3">
                 <Input
@@ -744,15 +1067,49 @@ export function SendTab({ recipient, onRecipientChange, contacts }: SendTabProps
               handleCadBlur={handleCadBlur}
               explorerLink={explorerLink}
               setExplorerLink={setExplorerLink}
-              sendMoney={sendMoney}
+              sendMoney={sendMoneyWithRouting}
               userBalance={balance}
               onUseMax={handleUseMax}
               contacts={contacts}
-              amountHeaderActions={modeActions}
               getLastTransferRecord={getLastTransferRecord}
+              onPaymentComplete={handleLinkedPaymentComplete}
             />
           )}
         </>
+      )}
+
+      {activeAction === "requests" && (
+        <section className="rounded-2xl border border-border bg-card/70 p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Incoming Requests To Pay</h2>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void openRequestsPanel();
+              }}
+              disabled={isLoadingRequests}
+            >
+              Refresh
+            </Button>
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Choose a request to pay or ignore. Ignored requests are archived.
+          </p>
+          <div className="mt-4">
+            {isLoadingRequests ? (
+              <p className="text-sm text-muted-foreground">Loading requests...</p>
+            ) : (
+              <RequestsList
+                requests={incomingRequests}
+                onSelect={(selection) => {
+                  void handleRequestSelection(selection);
+                }}
+                onIgnore={(request) => handleIgnoreRequest(request)}
+              />
+            )}
+          </div>
+        </section>
       )}
     </div>
   );
@@ -785,8 +1142,8 @@ function RequestsList({
     <div className="space-y-3">
       {visibleRequests.map((request) => {
         const { primary, secondary } = formatRequesterName(request);
-        const createdLabel = request.created_at
-          ? new Date(request.created_at).toLocaleDateString("en-CA")
+        const createdLabel = request.createdAt
+          ? new Date(request.createdAt).toLocaleDateString("en-CA")
           : null;
 
         const handleIgnore = async () => {
@@ -806,7 +1163,7 @@ function RequestsList({
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-semibold">
-                  {formatRequestAmount(request.amount_requested)}
+                  {formatRequestAmount(request.amountRequested)}
                 </span>
                 {createdLabel && (
                   <span className="text-xs text-muted-foreground">
@@ -847,4 +1204,3 @@ function RequestsList({
     </div>
   );
 }
-

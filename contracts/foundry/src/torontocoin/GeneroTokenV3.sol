@@ -1,0 +1,1000 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {ABDKMath64x64} from "../sarafu-read-only/DemurrageTokenSingleNocap.sol";
+
+interface IPoolRegistryForCplTCOIN {
+    function isMerchantPosFeeTarget(address wallet) external view returns (bool);
+    function isRegisteredPoolAddress(address wallet) external view returns (bool);
+    function getMerchantPaymentConfig(address wallet)
+        external
+        view
+        returns (
+            bool exists_,
+            bytes32 merchantId_,
+            bool approved_,
+            bool poolActive_,
+            bool acceptsCpl_,
+            bool posFeeEligible_,
+            bytes32 poolId_
+        );
+}
+
+interface IUserCharityPreferencesRegistryForCplTCOIN {
+    function resolveFeePreferences(address user)
+        external
+        view
+        returns (uint256 resolvedCharityId, address charityWallet, uint16 voluntaryFeeBps);
+}
+
+/// @notice Sarafu-style demurrage token for cplTCOIN with merchant POS fee routing.
+/// @dev Merchant transfers interpret the visible `_value` as the sticker price.
+contract GeneroTokenV3 {
+    // solhint-disable-next-line private-vars-leading-underscore
+    uint256 constant VALUE_LIMIT = 1 << 63;
+
+    struct redistributionItem {
+        uint32 period;
+        uint72 value;
+        uint64 demurrage;
+    }
+
+    struct TransferQuote {
+        bytes32 merchantId;
+        uint256 payerDebit;
+        uint256 recipientCredit;
+        uint256 charityCredit;
+        uint256 resolvedCharityId;
+        address charityWallet;
+        uint16 baseFeeBps;
+        uint16 voluntaryFeeBps;
+        bool feeApplies;
+        uint256 payerDebitBase;
+        uint256 recipientCreditBase;
+        uint256 charityCreditBase;
+    }
+
+    redistributionItem[] public redistributions;
+
+    // Base balances are stored in non-visible units so demurrage can be applied lazily.
+    mapping(address => uint256) private _accounts;
+
+    int128 public demurrageAmount;
+    uint256 public demurrageTimestamp;
+
+    address public owner;
+
+    string public name;
+    string public symbol;
+    uint256 public immutable decimals;
+
+    uint256 private _supply;
+    uint256 public lastPeriod;
+    uint256 public totalSink;
+    uint256 private _burned;
+
+    uint256 public immutable periodStart;
+    uint256 public immutable periodDuration;
+    int128 public immutable decayLevel;
+
+    // Writer permissions gate mint and burn; owner is not implicitly a writer.
+    mapping(address => bool) private _writers;
+    // Allowances are stored in base units, then projected into visible units for getters and events.
+    mapping(address => mapping(address => uint256)) private _allowanceBase;
+
+    address public sinkAddress;
+    uint256 public expires;
+    bool private _expired;
+    uint256 public maxSupply;
+
+    address public poolRegistry;
+    address public charityPreferencesRegistry;
+
+    uint16 public defaultMerchantFeeBps;
+    uint16 public constant MAX_BASE_MERCHANT_FEE_BPS = 1000;
+
+    mapping(bytes32 => uint16) private _merchantFeeOverrideBps;
+    mapping(bytes32 => bool) private _merchantFeeOverrideSet;
+    mapping(address => bool) public feeExempt;
+
+    bool public merchantFeesEnabled;
+
+    event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
+    event Mint(address indexed _minter, address indexed _beneficiary, uint256 _value);
+    event Decayed(uint256 indexed _period, uint256 indexed _periodCount, int128 indexed _oldAmount, int128 _newAmount);
+    event Period(uint256 _period);
+    event Redistribution(address indexed _account, uint256 indexed _period, uint256 _value);
+    event Debug(int128 indexed _foo, uint256 indexed _bar);
+    event Burn(address indexed _burner, uint256 _value);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event Expired(uint256 _timestamp);
+    event ExpiryChange(uint256 indexed _oldTimestamp, uint256 _newTimestamp);
+    event Cap(uint256 indexed _oldCap, uint256 _newCap);
+
+    uint256 public sealState;
+    // solhint-disable private-vars-leading-underscore
+    uint8 constant WRITER_STATE = 1;
+    uint8 constant SINK_STATE = 2;
+    uint8 constant EXPIRY_STATE = 4;
+    uint8 constant CAP_STATE = 8;
+    // solhint-enable private-vars-leading-underscore
+    uint256 public constant MAX_SEAL_STATE = 15;
+
+    event SealStateChange(bool indexed _final, uint256 _sealState);
+
+    event PoolRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
+    event CharityPreferencesRegistryUpdated(address indexed oldRegistry, address indexed newRegistry);
+    event MerchantFeesEnabledUpdated(bool enabled);
+    event DefaultMerchantFeeUpdated(uint16 oldFeeBps, uint16 newFeeBps);
+    event MerchantFeeOverrideUpdated(bytes32 indexed merchantId, uint16 oldFeeBps, uint16 newFeeBps);
+    event FeeExemptUpdated(address indexed account, bool exempt);
+    event MerchantTransferCharged(
+        address indexed payer,
+        address indexed merchant,
+        address indexed charityWallet,
+        bytes32 merchantId,
+        uint256 displayedAmount,
+        uint256 payerDebit,
+        uint256 merchantCredit,
+        uint256 charityCredit,
+        uint16 baseFeeBps,
+        uint16 voluntaryFeeBps
+    );
+    event CharityFeeRouted(
+        address indexed payer, uint256 indexed charityId, address indexed charityWallet, uint256 amount
+    );
+
+    error ZeroAddressRegistry();
+    error ZeroAddressSink();
+    error ZeroMerchantId();
+    error SameAddress();
+    error InvalidMerchantFeeBps(uint16 feeBps, uint16 maxFeeBps);
+    error MerchantFeeOverrideAboveDefault(bytes32 merchantId, uint16 feeBps, uint16 defaultFeeBps);
+
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals,
+        int128 _decayLevel,
+        uint256 _periodMinutes,
+        address _defaultSinkAddress,
+        address poolRegistry_,
+        address charityPreferencesRegistry_,
+        uint16 defaultMerchantFeeBps_
+    ) {
+        require(_decayLevel < (1 << 64));
+        redistributionItem memory initialRedistribution;
+
+        owner = msg.sender;
+        name = _name;
+        symbol = _symbol;
+        decimals = _decimals;
+
+        demurrageTimestamp = block.timestamp;
+        periodStart = demurrageTimestamp;
+        periodDuration = _periodMinutes * 60;
+        demurrageAmount = ABDKMath64x64.fromUInt(1);
+
+        decayLevel = ABDKMath64x64.ln(_decayLevel);
+        initialRedistribution = toRedistribution(0, demurrageAmount, 0, 1);
+        redistributions.push(initialRedistribution);
+
+        if (_defaultSinkAddress == address(0)) revert ZeroAddressSink();
+        sinkAddress = _defaultSinkAddress;
+
+        _setPoolRegistry(poolRegistry_);
+        _setCharityPreferencesRegistry(charityPreferencesRegistry_);
+        _setDefaultMerchantFeeBps(defaultMerchantFeeBps_);
+
+        merchantFeesEnabled = true;
+        emit MerchantFeesEnabledUpdated(true);
+    }
+
+    function seal(uint256 _state) public returns (uint256) {
+        require(msg.sender == owner);
+        require(_state < 16, "ERR_INVALID_STATE");
+        require(_state & sealState == 0, "ERR_ALREADY_LOCKED");
+        sealState |= _state;
+        emit SealStateChange(sealState == MAX_SEAL_STATE, sealState);
+        return uint256(sealState);
+    }
+
+    function isSealed(uint256 _state) public view returns (bool) {
+        require(_state < MAX_SEAL_STATE);
+        if (_state == 0) {
+            return sealState == MAX_SEAL_STATE;
+        }
+        return _state & sealState == _state;
+    }
+
+    function setExpirePeriod(uint256 _expirePeriod) public {
+        uint256 r;
+        uint256 oldTimestamp;
+
+        require(!isSealed(EXPIRY_STATE));
+        require(!_expired);
+        require(msg.sender == owner);
+        r = periodStart + (_expirePeriod * periodDuration);
+        require(r > expires);
+        oldTimestamp = expires;
+        expires = r;
+        emit ExpiryChange(oldTimestamp, expires);
+    }
+
+    function setMaxSupply(uint256 _cap) public {
+        require(!isSealed(CAP_STATE));
+        require(msg.sender == owner);
+        require(_cap > totalSupply());
+        emit Cap(maxSupply, _cap);
+        maxSupply = _cap;
+    }
+
+    function setSinkAddress(address _sinkAddress) public {
+        require(!isSealed(SINK_STATE));
+        require(msg.sender == owner);
+        if (_sinkAddress == address(0)) revert ZeroAddressSink();
+        sinkAddress = _sinkAddress;
+    }
+
+    function setPoolRegistry(address registry) external {
+        require(msg.sender == owner);
+        _setPoolRegistry(registry);
+    }
+
+    function setCharityPreferencesRegistry(address registry) external {
+        require(msg.sender == owner);
+        _setCharityPreferencesRegistry(registry);
+    }
+
+    function setDefaultMerchantFeeBps(uint16 feeBps) external {
+        require(msg.sender == owner);
+        _setDefaultMerchantFeeBps(feeBps);
+    }
+
+    function setMerchantFeeOverride(bytes32 merchantId, uint16 feeBps) external {
+        uint16 oldFeeBps;
+
+        require(msg.sender == owner);
+        if (merchantId == bytes32(0)) revert ZeroMerchantId();
+        if (feeBps > MAX_BASE_MERCHANT_FEE_BPS) revert InvalidMerchantFeeBps(feeBps, MAX_BASE_MERCHANT_FEE_BPS);
+        if (feeBps > defaultMerchantFeeBps) {
+            revert MerchantFeeOverrideAboveDefault(merchantId, feeBps, defaultMerchantFeeBps);
+        }
+
+        oldFeeBps = _merchantFeeOverrideSet[merchantId] ? _merchantFeeOverrideBps[merchantId] : defaultMerchantFeeBps;
+        _merchantFeeOverrideBps[merchantId] = feeBps;
+        _merchantFeeOverrideSet[merchantId] = true;
+
+        emit MerchantFeeOverrideUpdated(merchantId, oldFeeBps, feeBps);
+    }
+
+    function clearMerchantFeeOverride(bytes32 merchantId) external {
+        uint16 oldFeeBps;
+
+        require(msg.sender == owner);
+        if (merchantId == bytes32(0)) revert ZeroMerchantId();
+
+        oldFeeBps = _merchantFeeOverrideSet[merchantId] ? _merchantFeeOverrideBps[merchantId] : defaultMerchantFeeBps;
+        delete _merchantFeeOverrideBps[merchantId];
+        delete _merchantFeeOverrideSet[merchantId];
+
+        emit MerchantFeeOverrideUpdated(merchantId, oldFeeBps, defaultMerchantFeeBps);
+    }
+
+    function setFeeExempt(address account_, bool exempt) external {
+        require(msg.sender == owner);
+        feeExempt[account_] = exempt;
+        emit FeeExemptUpdated(account_, exempt);
+    }
+
+    function setMerchantFeesEnabled(bool enabled) external {
+        require(msg.sender == owner);
+        merchantFeesEnabled = enabled;
+        emit MerchantFeesEnabledUpdated(enabled);
+    }
+
+    function getMerchantFeeOverride(bytes32 merchantId) external view returns (uint16) {
+        return _merchantFeeOverrideBps[merchantId];
+    }
+
+    function hasMerchantFeeOverride(bytes32 merchantId) external view returns (bool) {
+        return _merchantFeeOverrideSet[merchantId];
+    }
+
+    function getEffectiveMerchantFeeBps(address merchantWallet) external view returns (uint16) {
+        (, bytes32 merchantId,,,,,) = IPoolRegistryForCplTCOIN(poolRegistry).getMerchantPaymentConfig(merchantWallet);
+        if (merchantId == bytes32(0)) {
+            return 0;
+        }
+        return _effectiveMerchantFeeBps(merchantId);
+    }
+
+    function getMerchantFeeConfig(address merchantWallet)
+        external
+        view
+        returns (
+            bytes32 merchantId,
+            bool hasOverride,
+            uint16 effectiveFeeBps,
+            uint16 overrideFeeBps,
+            uint16 defaultFeeBps_
+        )
+    {
+        (, merchantId,,,,,) = IPoolRegistryForCplTCOIN(poolRegistry).getMerchantPaymentConfig(merchantWallet);
+        defaultFeeBps_ = defaultMerchantFeeBps;
+
+        if (merchantId == bytes32(0)) {
+            return (bytes32(0), false, 0, 0, defaultFeeBps_);
+        }
+
+        hasOverride = _merchantFeeOverrideSet[merchantId];
+        overrideFeeBps = hasOverride ? _merchantFeeOverrideBps[merchantId] : 0;
+        effectiveFeeBps = _effectiveMerchantFeeBps(merchantId);
+    }
+
+    function feeApplies(address payer, address to) public view returns (bool) {
+        if (!merchantFeesEnabled) return false;
+        if (feeExempt[payer] || feeExempt[to]) return false;
+        if (IPoolRegistryForCplTCOIN(poolRegistry).isRegisteredPoolAddress(to)) return false;
+        return IPoolRegistryForCplTCOIN(poolRegistry).isMerchantPosFeeTarget(to);
+    }
+
+    function previewTransfer(address payer, address to, uint256 displayedAmount)
+        external
+        view
+        returns (uint256 payerDebit, uint256 recipientCredit, uint256 charityCredit, bool feeApplies_)
+    {
+        TransferQuote memory quote = _quoteTransfer(payer, to, displayedAmount);
+        return (quote.payerDebit, quote.recipientCredit, quote.charityCredit, quote.feeApplies);
+    }
+
+    function previewMerchantTransfer(address payer, address to, uint256 displayedAmount)
+        external
+        view
+        returns (
+            uint256 payerDebit,
+            uint256 merchantCredit,
+            uint256 charityCredit,
+            uint256 resolvedCharityId,
+            address charityWallet,
+            uint16 baseFeeBps,
+            uint16 voluntaryFeeBps,
+            bool feeApplies_
+        )
+    {
+        TransferQuote memory quote = _quoteTransfer(payer, to, displayedAmount);
+        return (
+            quote.payerDebit,
+            quote.recipientCredit,
+            quote.charityCredit,
+            quote.resolvedCharityId,
+            quote.charityWallet,
+            quote.baseFeeBps,
+            quote.voluntaryFeeBps,
+            quote.feeApplies
+        );
+    }
+
+    function previewAllowanceRequired(address payer, address to, uint256 displayedAmount)
+        external
+        view
+        returns (uint256 requiredVisible, uint256 requiredBase)
+    {
+        TransferQuote memory quote = _quoteTransfer(payer, to, displayedAmount);
+        return (quote.payerDebit, quote.payerDebitBase);
+    }
+
+    function canResolveCharityFor(address payer) external view returns (bool) {
+        try IUserCharityPreferencesRegistryForCplTCOIN(charityPreferencesRegistry)
+            .resolveFeePreferences(payer) returns (
+            uint256, address charityWallet, uint16
+        ) {
+            return charityWallet != address(0);
+        } catch {
+            return false;
+        }
+    }
+
+    function applyExpiry() public returns (uint8) {
+        if (_expired) {
+            return 1;
+        }
+        if (expires == 0) {
+            return 0;
+        }
+        if (block.timestamp >= expires) {
+            applyDemurrageLimited(expires - demurrageTimestamp / 60);
+            _expired = true;
+            emit Expired(block.timestamp);
+            changePeriod();
+            return 2;
+        }
+        return 0;
+    }
+
+    function addWriter(address _minter) public returns (bool) {
+        require(!isSealed(WRITER_STATE));
+        require(msg.sender == owner);
+        _writers[_minter] = true;
+        return true;
+    }
+
+    function deleteWriter(address _minter) public returns (bool) {
+        require(!isSealed(WRITER_STATE));
+        require(msg.sender == owner || _minter == msg.sender);
+        _writers[_minter] = false;
+        return true;
+    }
+
+    function isWriter(address _minter) public view returns (bool) {
+        return _writers[_minter];
+    }
+
+    function balanceOf(address _account) public view returns (uint256) {
+        return _visibleAmountFromBase(baseBalanceOf(_account));
+    }
+
+    function baseBalanceOf(address _account) public view returns (uint256) {
+        return _accounts[_account];
+    }
+
+    function allowance(address owner_, address spender) public view returns (uint256) {
+        return _visibleAmountFromBase(_allowanceBase[owner_][spender]);
+    }
+
+    function _increaseBaseBalance(address _account, uint256 _delta) internal returns (bool) {
+        uint256 oldBalance;
+
+        if (_delta == 0) {
+            return false;
+        }
+
+        oldBalance = baseBalanceOf(_account);
+        _accounts[_account] = oldBalance + _delta;
+        return true;
+    }
+
+    function _decreaseBaseBalance(address _account, uint256 _delta) internal returns (bool) {
+        uint256 oldBalance;
+
+        if (_delta == 0) {
+            return false;
+        }
+
+        oldBalance = baseBalanceOf(_account);
+        require(oldBalance >= _delta, "ERR_OVERSPEND");
+        _accounts[_account] = oldBalance - _delta;
+        return true;
+    }
+
+    function sweep(address _account) public returns (uint256) {
+        uint256 v;
+
+        v = _accounts[msg.sender];
+        _accounts[msg.sender] = 0;
+        _accounts[_account] += v;
+        emit Transfer(msg.sender, _account, v);
+        return v;
+    }
+
+    function mintTo(address _beneficiary, uint256 _amount) public returns (bool) {
+        uint256 baseAmount;
+
+        require(applyExpiry() == 0);
+        require(_writers[msg.sender], "ERR_ACCESS");
+
+        changePeriod();
+        if (maxSupply > 0) {
+            require(_supply + _amount <= maxSupply);
+        }
+        _supply += _amount;
+
+        baseAmount = toBaseAmount(_amount);
+        _increaseBaseBalance(_beneficiary, baseAmount);
+        emit Mint(msg.sender, _beneficiary, _amount);
+        _saveRedistributionSupply();
+        return true;
+    }
+
+    function mint(address _beneficiary, uint256 _amount, bytes calldata _data) public {
+        _data;
+        mintTo(_beneficiary, _amount);
+    }
+
+    function safeMint(address _beneficiary, uint256 _amount, bytes calldata _data) public {
+        _data;
+        mintTo(_beneficiary, _amount);
+    }
+
+    function toRedistribution(uint256 _participants, int128 _demurrageModifier, uint256 _value, uint256 _period)
+        public
+        pure
+        returns (redistributionItem memory redistribution)
+    {
+        redistribution.period = uint32(_period);
+        redistribution.value = uint72(_value);
+        redistribution.demurrage = uint64(uint128(_demurrageModifier) & 0xffffffffffffffff);
+        _participants;
+    }
+
+    function toRedistributionPeriod(redistributionItem memory _redistribution) public pure returns (uint256) {
+        return uint256(_redistribution.period);
+    }
+
+    function toRedistributionSupply(redistributionItem memory _redistribution) public pure returns (uint256) {
+        return uint256(_redistribution.value);
+    }
+
+    function toRedistributionDemurrageModifier(redistributionItem memory _redistribution) public pure returns (int128) {
+        int128 r;
+
+        r = int128(int64(_redistribution.demurrage) & int128(0x0000000000000000ffffffffffffffff));
+        if (r == 0) {
+            r = ABDKMath64x64.fromUInt(1);
+        }
+        return r;
+    }
+
+    function redistributionCount() public view returns (uint256) {
+        return redistributions.length;
+    }
+
+    function _saveRedistributionSupply() internal returns (bool) {
+        redistributionItem memory currentRedistribution;
+        uint256 grownSupply;
+
+        grownSupply = totalSupply();
+        currentRedistribution = redistributions[redistributions.length - 1];
+        currentRedistribution.value = uint72(grownSupply);
+
+        redistributions[redistributions.length - 1] = currentRedistribution;
+        return true;
+    }
+
+    function actualPeriod() public view returns (uint128) {
+        return uint128((block.timestamp - periodStart) / periodDuration + 1);
+    }
+
+    function _checkPeriod() internal view returns (redistributionItem memory) {
+        redistributionItem memory lastRedistribution;
+        redistributionItem memory emptyRedistribution;
+        uint256 currentPeriod;
+
+        lastRedistribution = redistributions[lastPeriod];
+        currentPeriod = this.actualPeriod();
+        if (currentPeriod <= toRedistributionPeriod(lastRedistribution)) {
+            return emptyRedistribution;
+        }
+        return lastRedistribution;
+    }
+
+    function getDistribution(uint256 _supplyAmount, int128 _demurrageAmount) public pure returns (uint256) {
+        int128 difference;
+
+        difference = ABDKMath64x64.mul(
+            ABDKMath64x64.fromUInt(_supplyAmount), ABDKMath64x64.sub(ABDKMath64x64.fromUInt(1), _demurrageAmount)
+        );
+        return _supplyAmount - ABDKMath64x64.toUInt(difference);
+    }
+
+    function getDistributionFromRedistribution(redistributionItem memory _redistribution)
+        public
+        pure
+        returns (uint256)
+    {
+        uint256 redistributionSupply;
+        int128 redistributionDemurrage;
+
+        redistributionSupply = toRedistributionSupply(_redistribution);
+        redistributionDemurrage = toRedistributionDemurrageModifier(_redistribution);
+        return getDistribution(redistributionSupply, redistributionDemurrage);
+    }
+
+    function _applyDefaultRedistribution(redistributionItem memory _redistribution) internal returns (uint256) {
+        uint256 unit;
+        uint256 baseUnit;
+
+        unit = totalSupply() - getDistributionFromRedistribution(_redistribution);
+        baseUnit = toBaseAmount(unit) - totalSink;
+        _increaseBaseBalance(sinkAddress, baseUnit);
+        emit Redistribution(sinkAddress, _redistribution.period, unit);
+        lastPeriod += 1;
+        totalSink += baseUnit;
+        return unit;
+    }
+
+    function changePeriod() public returns (bool) {
+        redistributionItem memory currentRedistribution;
+        redistributionItem memory nextRedistribution;
+        redistributionItem memory lastRedistribution;
+        uint256 currentPeriod;
+        int128 lastDemurrageAmount;
+        int128 nextRedistributionDemurrage;
+        uint256 demurrageCounts;
+        uint256 nextPeriod;
+
+        applyDemurrage();
+        currentRedistribution = _checkPeriod();
+        if (isEmptyRedistribution(currentRedistribution)) {
+            return false;
+        }
+
+        lastRedistribution = redistributions[lastPeriod];
+        currentPeriod = toRedistributionPeriod(currentRedistribution);
+        nextPeriod = currentPeriod + 1;
+        lastDemurrageAmount = toRedistributionDemurrageModifier(lastRedistribution);
+        demurrageCounts = (periodDuration * currentPeriod) / 60;
+        nextRedistributionDemurrage =
+            ABDKMath64x64.exp(ABDKMath64x64.mul(decayLevel, ABDKMath64x64.fromUInt(demurrageCounts)));
+        nextRedistribution = toRedistribution(0, nextRedistributionDemurrage, totalSupply(), nextPeriod);
+        redistributions.push(nextRedistribution);
+
+        _applyDefaultRedistribution(nextRedistribution);
+        emit Period(nextPeriod);
+        lastDemurrageAmount;
+        return true;
+    }
+
+    function getMinutesDelta(uint256 _lastTimestamp) public view returns (uint256) {
+        return (block.timestamp - _lastTimestamp) / 60;
+    }
+
+    function applyDemurrage() public returns (uint256) {
+        return applyDemurrageLimited(0);
+    }
+
+    function applyDemurrageLimited(uint256 _rounds) public returns (uint256) {
+        int128 v;
+        uint256 periodCount;
+        int128 periodPoint;
+        int128 lastDemurrageAmount;
+
+        if (_expired) {
+            return 0;
+        }
+
+        periodCount = getMinutesDelta(demurrageTimestamp);
+        if (periodCount == 0) {
+            return 0;
+        }
+        lastDemurrageAmount = demurrageAmount;
+
+        if (_rounds > 0 && _rounds < periodCount) {
+            periodCount = _rounds;
+        }
+
+        periodPoint = ABDKMath64x64.fromUInt(periodCount);
+        v = ABDKMath64x64.mul(decayLevel, periodPoint);
+        v = ABDKMath64x64.exp(v);
+        demurrageAmount = ABDKMath64x64.mul(demurrageAmount, v);
+
+        demurrageTimestamp = demurrageTimestamp + (periodCount * 60);
+        emit Decayed(demurrageTimestamp, periodCount, lastDemurrageAmount, demurrageAmount);
+        return periodCount;
+    }
+
+    function getPeriodTimeDelta(uint256 _periodCount) public view returns (uint256) {
+        return periodStart + (_periodCount * periodDuration);
+    }
+
+    function demurrageCycles(uint256 _target) public view returns (uint256) {
+        return (block.timestamp - _target) / 60;
+    }
+
+    function isEmptyRedistribution(redistributionItem memory _redistribution) public pure returns (bool) {
+        if (_redistribution.period > 0) return false;
+        if (_redistribution.value > 0) return false;
+        if (_redistribution.demurrage > 0) return false;
+        return true;
+    }
+
+    function decayBy(uint256 _value, uint256 _period) public view returns (uint256) {
+        int128 valuePoint;
+        int128 periodPoint;
+        int128 v;
+
+        valuePoint = ABDKMath64x64.fromUInt(_value);
+        periodPoint = ABDKMath64x64.fromUInt(_period);
+
+        v = ABDKMath64x64.mul(decayLevel, periodPoint);
+        v = ABDKMath64x64.exp(v);
+        v = ABDKMath64x64.mul(valuePoint, v);
+        return ABDKMath64x64.toUInt(v);
+    }
+
+    function toBaseAmount(uint256 _value) public view returns (uint256) {
+        int128 r;
+        r = ABDKMath64x64.div(ABDKMath64x64.fromUInt(_value), demurrageAmount);
+        return ABDKMath64x64.toUInt(r);
+    }
+
+    function approve(address _spender, uint256 _value) public returns (bool) {
+        uint256 baseValue;
+        uint8 ex;
+
+        ex = applyExpiry();
+        if (ex == 2) {
+            return false;
+        } else if (ex > 0) {
+            revert("EXPIRED");
+        }
+        if (_allowanceBase[msg.sender][_spender] > 0) {
+            require(_value == 0, "ZERO_FIRST");
+        }
+
+        changePeriod();
+
+        if (_value <= VALUE_LIMIT) {
+            baseValue = toBaseAmount(_value);
+        } else {
+            baseValue = VALUE_LIMIT;
+        }
+
+        _allowanceBase[msg.sender][_spender] = baseValue;
+        emit Approval(msg.sender, _spender, _visibleAmountFromBase(baseValue));
+        return true;
+    }
+
+    function decreaseAllowance(address _spender, uint256 _value) public returns (bool) {
+        uint256 baseValue;
+        uint256 remainingBaseValue;
+
+        changePeriod();
+
+        baseValue = toBaseAmount(_value);
+        require(_allowanceBase[msg.sender][_spender] >= baseValue, "ERR_SPENDER");
+
+        remainingBaseValue = _allowanceBase[msg.sender][_spender] - baseValue;
+        _allowanceBase[msg.sender][_spender] = remainingBaseValue;
+        emit Approval(msg.sender, _spender, _visibleAmountFromBase(remainingBaseValue));
+        return true;
+    }
+
+    function increaseAllowance(address _spender, uint256 _value) public returns (bool) {
+        uint256 baseValue;
+        uint256 newBaseValue;
+
+        changePeriod();
+
+        baseValue = toBaseAmount(_value);
+        newBaseValue = _allowanceBase[msg.sender][_spender] + baseValue;
+
+        _allowanceBase[msg.sender][_spender] = newBaseValue;
+        emit Approval(msg.sender, _spender, _visibleAmountFromBase(newBaseValue));
+        return true;
+    }
+
+    function transfer(address _to, uint256 _value) public returns (bool) {
+        uint8 ex;
+
+        ex = applyExpiry();
+        if (ex == 2) {
+            return false;
+        } else if (ex > 0) {
+            revert("EXPIRED");
+        }
+        changePeriod();
+
+        return _executeTransferQuote(msg.sender, _to, _value, _quoteTransfer(msg.sender, _to, _value));
+    }
+
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
+        uint8 ex;
+        TransferQuote memory quote;
+        uint256 remainingBaseAllowance;
+
+        ex = applyExpiry();
+        if (ex == 2) {
+            return false;
+        } else if (ex > 0) {
+            revert("EXPIRED");
+        }
+        changePeriod();
+
+        quote = _quoteTransfer(_from, _to, _value);
+        require(_allowanceBase[_from][msg.sender] >= quote.payerDebitBase, "ERR_SPENDER");
+
+        remainingBaseAllowance = _allowanceBase[_from][msg.sender] - quote.payerDebitBase;
+        _allowanceBase[_from][msg.sender] = remainingBaseAllowance;
+        emit Approval(_from, msg.sender, _visibleAmountFromBase(remainingBaseAllowance));
+
+        return _executeTransferQuote(_from, _to, _value, quote);
+    }
+
+    function _transferBase(address _from, address _to, uint256 _value) internal returns (bool) {
+        _decreaseBaseBalance(_from, _value);
+        _increaseBaseBalance(_to, _value);
+
+        return true;
+    }
+
+    function transferOwnership(address _newOwner) public returns (bool) {
+        address oldOwner;
+
+        require(msg.sender == owner);
+        oldOwner = owner;
+        owner = _newOwner;
+
+        emit OwnershipTransferred(oldOwner, owner);
+        return true;
+    }
+
+    function burn(uint256 _value) public returns (bool) {
+        uint256 _delta;
+
+        require(applyExpiry() == 0);
+        require(_writers[msg.sender], "ERR_ACCESS");
+        _delta = toBaseAmount(_value);
+        require(_accounts[msg.sender] >= _delta, "ERR_OVERSPEND");
+
+        _decreaseBaseBalance(msg.sender, _delta);
+        _burned += _value;
+        emit Burn(msg.sender, _value);
+        return true;
+    }
+
+    function burn(address _from, uint256 _value, bytes calldata _data) public {
+        require(_from == msg.sender, "ERR_ONLY_SELF_BURN");
+        _data;
+        burn(_value);
+    }
+
+    function totalSupply() public view returns (uint256) {
+        return _supply - _burned;
+    }
+
+    function totalBurned() public view returns (uint256) {
+        return _burned;
+    }
+
+    function totalMinted() public view returns (uint256) {
+        return _supply;
+    }
+
+    function supportsInterface(bytes4 _sum) public pure returns (bool) {
+        if (_sum == 0xb61bc941) return true;
+        if (_sum == 0x5878bcf4) return true;
+        if (_sum == 0xbc4babdd) return true;
+        if (_sum == 0x0d7491f8) return true;
+        if (_sum == 0xabe1f1f5) return true;
+        if (_sum == 0x841a0e94) return true;
+        if (_sum == 0x01ffc9a7) return true;
+        if (_sum == 0x9493f8b2) return true;
+        if (_sum == 0xd0017968) return true;
+        return false;
+    }
+
+    function _executeTransferQuote(
+        address payer,
+        address recipient,
+        uint256 displayedAmount,
+        TransferQuote memory quote
+    ) internal returns (bool) {
+        _decreaseBaseBalance(payer, quote.payerDebitBase);
+        _increaseBaseBalance(recipient, quote.recipientCreditBase);
+
+        // Transfer events report recipient-visible credits, not the payer's total debit.
+        emit Transfer(payer, recipient, quote.recipientCredit);
+
+        if (quote.charityCreditBase > 0) {
+            _increaseBaseBalance(quote.charityWallet, quote.charityCreditBase);
+            emit Transfer(payer, quote.charityWallet, quote.charityCredit);
+            emit CharityFeeRouted(payer, quote.resolvedCharityId, quote.charityWallet, quote.charityCredit);
+        }
+
+        if (quote.feeApplies) {
+            emit MerchantTransferCharged(
+                payer,
+                recipient,
+                quote.charityWallet,
+                quote.merchantId,
+                displayedAmount,
+                quote.payerDebit,
+                quote.recipientCredit,
+                quote.charityCredit,
+                quote.baseFeeBps,
+                quote.voluntaryFeeBps
+            );
+        }
+
+        return true;
+    }
+
+    function _quoteTransfer(address payer, address recipient, uint256 displayedAmount)
+        internal
+        view
+        returns (TransferQuote memory quote)
+    {
+        quote.payerDebit = displayedAmount;
+        quote.recipientCredit = displayedAmount;
+        quote.payerDebitBase = toBaseAmount(displayedAmount);
+        quote.recipientCreditBase = quote.payerDebitBase;
+
+        if (!feeApplies(payer, recipient)) {
+            return quote;
+        }
+
+        (, quote.merchantId,,,,,) = IPoolRegistryForCplTCOIN(poolRegistry).getMerchantPaymentConfig(recipient);
+        quote.feeApplies = true;
+        quote.baseFeeBps = _effectiveMerchantFeeBps(quote.merchantId);
+        (quote.resolvedCharityId, quote.charityWallet, quote.voluntaryFeeBps) =
+            IUserCharityPreferencesRegistryForCplTCOIN(charityPreferencesRegistry).resolveFeePreferences(payer);
+
+        uint256 baseFeeVisible = displayedAmount * quote.baseFeeBps / 10_000;
+        uint256 voluntaryFeeVisible = displayedAmount * quote.voluntaryFeeBps / 10_000;
+
+        quote.payerDebit = displayedAmount + voluntaryFeeVisible;
+        quote.recipientCredit = displayedAmount - baseFeeVisible;
+        quote.charityCredit = baseFeeVisible + voluntaryFeeVisible;
+
+        quote.payerDebitBase = toBaseAmount(quote.payerDebit);
+        quote.recipientCreditBase = toBaseAmount(quote.recipientCredit);
+
+        // Visible fee legs are rounded independently. Using the base-unit remainder for charity preserves exact
+        // conservation, so payerDebitBase always equals recipientCreditBase plus charityCreditBase.
+        quote.charityCreditBase = quote.payerDebitBase - quote.recipientCreditBase;
+    }
+
+    function _effectiveMerchantFeeBps(bytes32 merchantId) internal view returns (uint16) {
+        uint16 overrideBps;
+
+        if (merchantId == bytes32(0)) {
+            return defaultMerchantFeeBps;
+        }
+        if (!_merchantFeeOverrideSet[merchantId]) {
+            return defaultMerchantFeeBps;
+        }
+
+        overrideBps = _merchantFeeOverrideBps[merchantId];
+        if (overrideBps > defaultMerchantFeeBps) {
+            return defaultMerchantFeeBps;
+        }
+        return overrideBps;
+    }
+
+    function _visibleAmountFromBase(uint256 baseValue) internal view returns (uint256) {
+        int128 baseBalance;
+        int128 currentDemurragedAmount;
+        uint256 periodCount;
+
+        if (baseValue == 0) {
+            return 0;
+        }
+
+        baseBalance = ABDKMath64x64.fromUInt(baseValue);
+        periodCount = getMinutesDelta(demurrageTimestamp);
+        currentDemurragedAmount = ABDKMath64x64.mul(baseBalance, demurrageAmount);
+
+        return decayBy(ABDKMath64x64.toUInt(currentDemurragedAmount), periodCount);
+    }
+
+    function _setPoolRegistry(address registry) internal {
+        address oldRegistry = poolRegistry;
+
+        if (registry == address(0)) revert ZeroAddressRegistry();
+        if (registry == oldRegistry) revert SameAddress();
+
+        poolRegistry = registry;
+        emit PoolRegistryUpdated(oldRegistry, registry);
+    }
+
+    function _setCharityPreferencesRegistry(address registry) internal {
+        address oldRegistry = charityPreferencesRegistry;
+
+        if (registry == address(0)) revert ZeroAddressRegistry();
+        if (registry == oldRegistry) revert SameAddress();
+
+        charityPreferencesRegistry = registry;
+        emit CharityPreferencesRegistryUpdated(oldRegistry, registry);
+    }
+
+    function _setDefaultMerchantFeeBps(uint16 feeBps) internal {
+        uint16 oldFeeBps = defaultMerchantFeeBps;
+
+        if (feeBps > MAX_BASE_MERCHANT_FEE_BPS) revert InvalidMerchantFeeBps(feeBps, MAX_BASE_MERCHANT_FEE_BPS);
+
+        defaultMerchantFeeBps = feeBps;
+        emit DefaultMerchantFeeUpdated(oldFeeBps, feeBps);
+    }
+}

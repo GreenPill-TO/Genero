@@ -15,8 +15,8 @@ const ShareQrModal = ({ closeModal, qrCodeData }: ShareQrModalProps) => {
 
   // Opens the user's default email client with a prefilled subject and body.
   const handleEmailShare = () => {
-    const subject = encodeURIComponent("Check out this QR Code!");
-    const body = encodeURIComponent(`Please check out this QR code link: ${link}`);
+    const subject = encodeURIComponent("My TCOIN Request");
+    const body = encodeURIComponent(`Please check out this TCOIN invoice / request link: ${link}`);
     window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
     closeModal();
   };
