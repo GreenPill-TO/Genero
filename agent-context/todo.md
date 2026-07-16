@@ -1,5 +1,19 @@
 # Todo
 
+> Superseded by GitHub Issues as of 2026-07-16.
+>
+> Per `AGENTS.md`, GitHub Issues plus the owner-level `GreenPill Project` are now the active roadmap/backlog. Keep this file as historical/reference context only. Do not add new active work here unless explicitly asked to restore repo-local todo tracking.
+>
+> Active open work migrated or confirmed in GitHub:
+> - [#57](https://github.com/GreenPill-TO/Genero/issues/57) `refactor(edge): move remaining backend interactions behind Supabase edge functions`
+> - [#59](https://github.com/GreenPill-TO/Genero/issues/59) `Refactor TorontoCoin suite toward upgradeable core contracts and reduce helper sprawl`
+> - [#63](https://github.com/GreenPill-TO/Genero/issues/63) `Reduce broad SUPABASE_SERVICE_ROLE_KEY usage in production request paths`
+> - [#74](https://github.com/GreenPill-TO/Genero/issues/74) `Finish TCOIN remote/deployment release environment alignment`
+> - [#75](https://github.com/GreenPill-TO/Genero/issues/75) `Consolidate passcode send/verify behind a shared server boundary`
+> - [#76](https://github.com/GreenPill-TO/Genero/issues/76) `Continue optional post-P1 Supabase privileged-boundary hardening`
+>
+> All listed issues were added to the owner-level `GreenPill Project` with `Status = Inbox`. They have not yet been aligned to Features, Sprints, or Goals.
+
 ## Production Readiness Priorities
 
 - [x] `P0` Security hardening for wallet runtime flows:
@@ -56,9 +70,9 @@
   - Head: `a59fed5`
   - Session-log reference(s): `v1.216`
 
-- [ ] `P1` Remote/deployment release environment alignment:
+- [x] `P1` Remote/deployment release environment alignment:
   CI-assisted alignment is now available through `.github/workflows/release-alignment-tcoin.yml`: after successful migration deploys on `dev`/`main`, or by manual dispatch, it reloads PostgREST, runs deployment-profile wallet preflight, runs TorontoCoin ops checks, and optionally runs browser smoke when `SMOKE_BASE_URL` is configured. Remaining close-out: configure the Preview/Production GitHub Environment secrets/vars, confirm Vercel envs and retired aliases, run the workflow green for the intended remote target, confirm Data API schema exposure for `public`, `storage`, `graphql_public`, `indexer`, and `chain_data`, keep Buy TCOIN disabled unless fully smoke-tested, and manually verify signed-in/OTP/pay-link/worker scheduler paths that CI cannot yet prove.
-  - Status: In progress
+  - Status: Superseded by GitHub issue [#74](https://github.com/GreenPill-TO/Genero/issues/74); not completed here
   - Timestamp started: 2026-04-29 15:33 EDT
   - Timestamp completed: TBD
   - Feature branch: `codex/edge-privileged-boundary-hardening`
@@ -116,7 +130,7 @@
   Consider a Supabase Edge Function or a common server-side helper that both wallet and SpareChange can reuse.
   Preserve the current post-OTP requirement that verification returns or establishes a usable session quickly enough for the browser auth bootstrap to reuse the fresh access token without reintroducing the earlier `401` race.
   If this is pursued, carry over the stronger error-handling and test coverage ideas from the older `codex/fix-toast-error-on-signup-modal` branch rather than reviving that branch wholesale.
-  - Status: Not started
+  - Status: Superseded by GitHub issue [#75](https://github.com/GreenPill-TO/Genero/issues/75); not started here
   - Timestamp started: TBD
   - Timestamp completed: TBD
   - Feature branch: TBD
@@ -125,7 +139,7 @@
 
 - Continue optional post-P1 Supabase boundary hardening by splitting remaining intentionally privileged Edge operations into narrower domain RPCs or smaller functions where product risk justifies the complexity.
   Priority candidates are user-settings custody/profile writes, payment-link privileged resolve/consume, governance action-feed reads, voucher-runtime payment records, merchant/admin mutations, BIA/admin mutation surfaces, and onramp settlement/admin paths.
-  - Status: Not started
+  - Status: Superseded by GitHub issue [#76](https://github.com/GreenPill-TO/Genero/issues/76); not started here
   - Timestamp started: TBD
   - Timestamp completed: TBD
   - Feature branch: TBD
