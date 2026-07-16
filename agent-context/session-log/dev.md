@@ -18,6 +18,15 @@
 - validation: `vercel --version` failed with command not found; `pnpm exec vercel --version` failed with command not found; checked `printenv` and local env profiles for `VERCEL*`; checked `~/.vercel` and `.vercel/project.json`; inspected PR #77 Vercel deployment comment.
 - follow-ups: A Vercel-authenticated operator or agent session must inspect TCOIN Preview/Production env metadata directly, or provide/install a Vercel token/CLI login, before Task #83 can claim full Vercel env confirmation.
 
+## 2026-07-16T19:36:45Z - Record remote Supabase DNS blocker
+
+- agent: Codex
+- branch: codex/tcoin-production-launch-readiness
+- head: 8c7c938
+- summary: Started Task #84 and ran the read-only remote Supabase release checks. The wallet remote preflight, TorontoCoin ops check, pool compatibility check, direct fetch probe, and DNS lookup all failed before schema/RPC validation because the configured `.env.local-supabase-remote` Supabase host does not resolve.
+- validation: `pnpm ops:wallet:preflight:supabase-remote` failed with `Wallet release health RPC failed: TypeError: fetch failed`; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin` failed with `TypeError: fetch failed`; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin:pools` failed with `TypeError: fetch failed`; direct Node fetch/DNS probe failed with `getaddrinfo ENOTFOUND`.
+- follow-ups: Confirm or replace the remote Supabase project URL in `.env.local-supabase-remote`, or restore/unpause the intended Supabase project, before remote schema/API alignment and hosted smoke can proceed.
+
 ## 2026-07-16T18:05:12Z - Align local Supabase Colima defaults
 
 - agent: Codex
