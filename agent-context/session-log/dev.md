@@ -1,5 +1,14 @@
 # Session Log - dev
 
+## 2026-07-16T18:05:12Z - Align local Supabase Colima defaults
+
+- agent: Codex
+- branch: dev
+- head: 68908b5
+- summary: Updated the local Supabase startup helper to default to the shared `colima-agents` Docker context, clear `DOCKER_HOST`, document that context in the README, and align local Supabase config with Postgres 17 plus disabled local analytics.
+- validation: `bash -n scripts/start-local-supabase.sh`; `git diff --check`.
+- follow-ups: None.
+
 ## 2026-07-16T17:54:29Z - Migrate active todos to GitHub Issues
 
 - agent: Codex
