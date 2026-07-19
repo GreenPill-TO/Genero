@@ -27,6 +27,15 @@
 - validation: `pnpm ops:wallet:preflight:supabase-remote` failed with `Wallet release health RPC failed: TypeError: fetch failed`; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin` failed with `TypeError: fetch failed`; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin:pools` failed with `TypeError: fetch failed`; direct Node fetch/DNS probe failed with `getaddrinfo ENOTFOUND`.
 - follow-ups: Confirm or replace the remote Supabase project URL in `.env.local-supabase-remote`, or restore/unpause the intended Supabase project, before remote schema/API alignment and hosted smoke can proceed.
 
+## 2026-07-19T09:53:18Z - Re-run restored remote Supabase readiness
+
+- agent: Codex
+- branch: codex/tcoin-production-launch-readiness
+- head: abf8c97
+- summary: Re-ran Task #84 after the Supabase projects were restored. The prior DNS blocker is resolved and remote release-health reads now return structured data, but remote readiness remains blocked by missing `pg_cron`, missing `wallet-payment-request-links-cleanup` cron, indexer run status `error`, and missing required TCOIN/pool indexer visibility.
+- validation: `pnpm ops:wallet:preflight:supabase-remote` reached the RPC and failed with release blockers; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin` reached chain/ops checks and failed on indexer tracking blockers; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin:pools` reached pool compatibility checks and failed on tracked-pool/indexed visibility blockers.
+- follow-ups: Fixing the remaining remote blockers requires explicit linked Supabase/operator approval for `pg_cron`/cleanup cron configuration and follow-up indexer/scheduler work before Preview smoke should proceed.
+
 ## 2026-07-16T18:05:12Z - Align local Supabase Colima defaults
 
 - agent: Codex
