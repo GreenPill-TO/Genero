@@ -1,5 +1,14 @@
 # Session Log - dev
 
+## 2026-07-20T14:51:02Z - Address PR #95 env template review
+
+- agent: Codex
+- branch: codex/tcoin-worker-scheduler-proof
+- head: 8cb1be6
+- summary: Addressed the Codex review comment on PR #95 by documenting `INDEXER_TOUCH_WORKER_SCOPE_KEY` and `INDEXER_TOUCH_WORKER_TIMEOUT_MS` in `.env.example` with safe TorontoCoin launch defaults and timeout behaviour notes.
+- validation: `pnpm exec vitest run services/indexer/src/touchQueue.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`.
+- follow-ups: Push the fix to PR #95, reply to and resolve the Codex review thread, then wait for CI to rerun.
+
 ## 2026-07-20T14:35:24Z - Configure bounded worker scheduler target
 
 - agent: Codex
