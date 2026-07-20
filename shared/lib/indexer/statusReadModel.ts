@@ -20,6 +20,11 @@ type IndexerScopeStatusReadOptions = {
   citySlug?: string | null;
   chainId?: number | null;
   requiredTokenAddress?: string | null;
+  expectedTorontoCoinPools?: Array<{
+    poolId: string;
+    poolAddress: string;
+    expectedIndexerVisibility: boolean;
+  }>;
 };
 
 function normaliseCitySlug(value?: string | null) {
@@ -51,13 +56,25 @@ function stripInternalPoolDetails(status: RpcIndexerScopeStatus): IndexerScopeSt
   return safeStatus;
 }
 
-function enrichTorontoCoinTracking(status: RpcIndexerScopeStatus): IndexerScopeStatus {
+function enrichTorontoCoinTracking(
+  status: RpcIndexerScopeStatus,
+  expectedTorontoCoinPools: NonNullable<IndexerScopeStatusReadOptions["expectedTorontoCoinPools"]> = []
+): IndexerScopeStatus {
   const runtimePools = getConfiguredTorontoCoinTrackedPools({
     citySlug: status.citySlug,
     chainId: status.chainId,
   });
+  const runtimePoolKeys = new Set(
+    runtimePools.map((pool) => `${pool.poolId.toLowerCase()}:${normaliseAddress(pool.poolAddress)}`)
+  );
+  const trackedPoolInputs = [
+    ...runtimePools,
+    ...expectedTorontoCoinPools.filter(
+      (pool) => !runtimePoolKeys.has(`${pool.poolId.toLowerCase()}:${normaliseAddress(pool.poolAddress)}`)
+    ),
+  ];
 
-  if (runtimePools.length === 0) {
+  if (trackedPoolInputs.length === 0) {
     return stripInternalPoolDetails(status);
   }
 
@@ -66,7 +83,7 @@ function enrichTorontoCoinTracking(status: RpcIndexerScopeStatus): IndexerScopeS
       .filter((detail) => Boolean(detail.poolAddress))
       .map((detail) => [normaliseAddress(detail.poolAddress), detail])
   );
-  const trackedPools = runtimePools.map((pool) => {
+  const trackedPools = trackedPoolInputs.map((pool) => {
     const poolDetail = activePoolsByAddress.get(normaliseAddress(pool.poolAddress));
     const tokenAddresses = poolDetail?.tokenAddresses ?? [];
     const tracked = Boolean(poolDetail);
@@ -111,5 +128,5 @@ export async function getIndexerScopeStatusReadModel(
     throw new Error(`Failed to load indexer scope status: ${error.message}`);
   }
 
-  return enrichTorontoCoinTracking(data as RpcIndexerScopeStatus);
+  return enrichTorontoCoinTracking(data as RpcIndexerScopeStatus, options.expectedTorontoCoinPools);
 }
