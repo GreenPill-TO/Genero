@@ -63,6 +63,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
+        with:
+          version: 2.101.0
 
       - name: Check required secrets
         run: |
@@ -150,6 +152,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
+        with:
+          version: 2.101.0
 
       - name: Check required secrets
         run: |
