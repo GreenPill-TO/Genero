@@ -6,10 +6,12 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - "supabase/migrations/**"
+      - "supabase/functions/**"
   push:
     branches: [dev, main]
     paths:
       - "supabase/migrations/**"
+      - "supabase/functions/**"
   workflow_dispatch:
     inputs:
       target:
@@ -28,6 +30,11 @@ on:
         options:
           - dry-run
           - deploy
+      deploy_edge_functions:
+        type: boolean
+        description: Deploy wallet-critical TCOIN Edge Functions after migration handling?
+        required: false
+        default: true
 
 jobs:
   preview:
@@ -46,9 +53,13 @@ jobs:
       TARGET_LABEL: Preview – tcoin
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_TCOIN_PREVIEW || secrets.SUPABASE_SESSION_POOLER_DEV }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW || secrets.SUPABASE_ACCESS_TOKEN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
       RUN_MODE: ${{ github.event_name == 'pull_request' && 'dry-run' || github.event_name == 'push' && 'deploy' || github.event.inputs.mode }}
+      DEPLOY_EDGE_FUNCTIONS: ${{ github.event_name == 'pull_request' && 'false' || github.event_name == 'push' && 'true' || github.event.inputs.deploy_edge_functions }}
       DB_URL_SECRET_NAME: SUPABASE_SESSION_POOLER_TCOIN_PREVIEW or SUPABASE_SESSION_POOLER_DEV
       ACCESS_TOKEN_SECRET_NAME: SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW or SUPABASE_ACCESS_TOKEN
+      SUPABASE_URL_SECRET_NAME: NEXT_PUBLIC_SUPABASE_URL
+      TCOIN_EDGE_FUNCTIONS: user-settings payment-links payment-requests
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -63,6 +74,10 @@ jobs:
           fi
           if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
             echo "::error::Missing GitHub secret ${ACCESS_TOKEN_SECRET_NAME} for ${TARGET_LABEL}."
+            missing=1
+          fi
+          if [ "${DEPLOY_EDGE_FUNCTIONS:-false}" = "true" ] && [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ]; then
+            echo "::error::Missing GitHub var or secret ${SUPABASE_URL_SECRET_NAME} for ${TARGET_LABEL} Edge Function deployment."
             missing=1
           fi
           exit "$missing"
@@ -85,6 +100,29 @@ jobs:
               ;;
           esac
           supabase "${args[@]}"
+
+      - name: Deploy wallet-critical Edge Functions
+        if: env.DEPLOY_EDGE_FUNCTIONS == 'true'
+        run: |
+          set -euo pipefail
+          project_ref="$(node -e "const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL); console.log(url.hostname.split('.')[0]);")"
+          if [ -z "$project_ref" ]; then
+            echo "::error::Unable to derive Supabase project ref from NEXT_PUBLIC_SUPABASE_URL."
+            exit 1
+          fi
+
+          echo "Deploying wallet-critical Edge Functions for ${TARGET_LABEL}: ${TCOIN_EDGE_FUNCTIONS}"
+          supabase functions deploy ${TCOIN_EDGE_FUNCTIONS} \
+            --project-ref "$project_ref" \
+            --no-verify-jwt \
+            --use-api
+
+      - name: Report Edge Function deployment plan
+        if: env.DEPLOY_EDGE_FUNCTIONS != 'true'
+        run: |
+          set -euo pipefail
+          echo "PR validation does not deploy Edge Functions."
+          echo "On merge/push to dev or main, this workflow deploys: ${TCOIN_EDGE_FUNCTIONS}"
 
   production:
     name: Production TCOIN migrations
@@ -102,9 +140,13 @@ jobs:
       TARGET_LABEL: Production – tcoin
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION || secrets.SUPABASE_SESSION_POOLER_PROD }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_TCOIN_PRODUCTION || secrets.SUPABASE_ACCESS_TOKEN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
       RUN_MODE: ${{ github.event_name == 'pull_request' && 'dry-run' || github.event_name == 'push' && 'deploy' || github.event.inputs.mode }}
+      DEPLOY_EDGE_FUNCTIONS: ${{ github.event_name == 'pull_request' && 'false' || github.event_name == 'push' && 'true' || github.event.inputs.deploy_edge_functions }}
       DB_URL_SECRET_NAME: SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION or SUPABASE_SESSION_POOLER_PROD
       ACCESS_TOKEN_SECRET_NAME: SUPABASE_ACCESS_TOKEN_TCOIN_PRODUCTION or SUPABASE_ACCESS_TOKEN
+      SUPABASE_URL_SECRET_NAME: NEXT_PUBLIC_SUPABASE_URL
+      TCOIN_EDGE_FUNCTIONS: user-settings payment-links payment-requests
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -119,6 +161,10 @@ jobs:
           fi
           if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
             echo "::error::Missing GitHub secret ${ACCESS_TOKEN_SECRET_NAME} for ${TARGET_LABEL}."
+            missing=1
+          fi
+          if [ "${DEPLOY_EDGE_FUNCTIONS:-false}" = "true" ] && [ -z "${NEXT_PUBLIC_SUPABASE_URL:-}" ]; then
+            echo "::error::Missing GitHub var or secret ${SUPABASE_URL_SECRET_NAME} for ${TARGET_LABEL} Edge Function deployment."
             missing=1
           fi
           exit "$missing"
@@ -141,3 +187,26 @@ jobs:
               ;;
           esac
           supabase "${args[@]}"
+
+      - name: Deploy wallet-critical Edge Functions
+        if: env.DEPLOY_EDGE_FUNCTIONS == 'true'
+        run: |
+          set -euo pipefail
+          project_ref="$(node -e "const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL); console.log(url.hostname.split('.')[0]);")"
+          if [ -z "$project_ref" ]; then
+            echo "::error::Unable to derive Supabase project ref from NEXT_PUBLIC_SUPABASE_URL."
+            exit 1
+          fi
+
+          echo "Deploying wallet-critical Edge Functions for ${TARGET_LABEL}: ${TCOIN_EDGE_FUNCTIONS}"
+          supabase functions deploy ${TCOIN_EDGE_FUNCTIONS} \
+            --project-ref "$project_ref" \
+            --no-verify-jwt \
+            --use-api
+
+      - name: Report Edge Function deployment plan
+        if: env.DEPLOY_EDGE_FUNCTIONS != 'true'
+        run: |
+          set -euo pipefail
+          echo "PR validation does not deploy Edge Functions."
+          echo "On merge/push to dev or main, this workflow deploys: ${TCOIN_EDGE_FUNCTIONS}"

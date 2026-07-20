@@ -206,8 +206,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified boolean DEFAULT false;
 ALTER TABLE users DROP COLUMN IF EXISTS phone_verified;
 ```
 
-### Database Workflows
-- `supabase-deploy-tcoin.yml` - Dry-run migrations on PRs to `dev`/`main`, and deploy migrations after merges to those branches.
+### Database And Edge Function Workflows
+- `supabase-deploy-tcoin.yml` - Dry-run migrations on PRs to `dev`/`main`, report the wallet-critical Edge Function deployment plan on PRs, and deploy migrations plus `user-settings`, `payment-links`, and `payment-requests` after merges to those branches.
 - `db-pull-env.yml` - Manually generate drift migrations from the selected TCOIN Supabase environment.
 
 TCOIN Supabase deploys use GitHub Environments `Preview – tcoin` and `Production – tcoin`, plus these secrets:
