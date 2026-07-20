@@ -1,5 +1,14 @@
 # Session Log - dev
 
+## 2026-07-20T20:32:55Z - Follow up on PR #97 post-merge review comments
+
+- agent: Codex
+- branch: dev
+- head: a3ec41f
+- summary: Audited PR #97 after the user flagged that Codex review comments appeared unaddressed. The PR was merged at 2026-07-20T19:39:55Z and the Codex review landed later at 2026-07-20T19:44:28Z, but the comments were valid workflow hardening items. Patched the TCOIN Supabase deploy workflow so manual dry-runs cannot deploy Edge Functions by default and so wallet-critical Edge Functions deploy one at a time through supported Supabase CLI invocations.
+- validation: `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/supabase-deploy-tcoin.yml"); puts "ok"'`; `git diff --check`.
+- follow-ups: Commit and push this direct `dev` follow-up, then reply to both PR #97 review threads with the corrective commit. Future PR merge flow should wait for Codex review completion after requesting it, even when CI is already green.
+
 ## 2026-07-20T17:59:38Z - Capture Preview Edge alignment blocker for OTP smoke
 
 - agent: Codex

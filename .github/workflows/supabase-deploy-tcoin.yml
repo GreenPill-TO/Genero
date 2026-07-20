@@ -34,7 +34,7 @@ on:
         type: boolean
         description: Deploy wallet-critical TCOIN Edge Functions after migration handling?
         required: false
-        default: true
+        default: false
 
 jobs:
   preview:
@@ -55,7 +55,7 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW || secrets.SUPABASE_ACCESS_TOKEN }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
       RUN_MODE: ${{ github.event_name == 'pull_request' && 'dry-run' || github.event_name == 'push' && 'deploy' || github.event.inputs.mode }}
-      DEPLOY_EDGE_FUNCTIONS: ${{ github.event_name == 'pull_request' && 'false' || github.event_name == 'push' && 'true' || github.event.inputs.deploy_edge_functions }}
+      DEPLOY_EDGE_FUNCTIONS: ${{ github.event_name == 'pull_request' && 'false' || github.event_name == 'push' && 'true' || (github.event.inputs.mode == 'deploy' && github.event.inputs.deploy_edge_functions == 'true' && 'true' || 'false') }}
       DB_URL_SECRET_NAME: SUPABASE_SESSION_POOLER_TCOIN_PREVIEW or SUPABASE_SESSION_POOLER_DEV
       ACCESS_TOKEN_SECRET_NAME: SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW or SUPABASE_ACCESS_TOKEN
       SUPABASE_URL_SECRET_NAME: NEXT_PUBLIC_SUPABASE_URL
@@ -114,10 +114,13 @@ jobs:
           fi
 
           echo "Deploying wallet-critical Edge Functions for ${TARGET_LABEL}: ${TCOIN_EDGE_FUNCTIONS}"
-          supabase functions deploy ${TCOIN_EDGE_FUNCTIONS} \
-            --project-ref "$project_ref" \
-            --no-verify-jwt \
-            --use-api
+          for function_name in ${TCOIN_EDGE_FUNCTIONS}; do
+            echo "Deploying ${function_name}."
+            supabase functions deploy "$function_name" \
+              --project-ref "$project_ref" \
+              --no-verify-jwt \
+              --use-api
+          done
 
       - name: Report Edge Function deployment plan
         if: env.DEPLOY_EDGE_FUNCTIONS != 'true'
@@ -144,7 +147,7 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN_TCOIN_PRODUCTION || secrets.SUPABASE_ACCESS_TOKEN }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL }}
       RUN_MODE: ${{ github.event_name == 'pull_request' && 'dry-run' || github.event_name == 'push' && 'deploy' || github.event.inputs.mode }}
-      DEPLOY_EDGE_FUNCTIONS: ${{ github.event_name == 'pull_request' && 'false' || github.event_name == 'push' && 'true' || github.event.inputs.deploy_edge_functions }}
+      DEPLOY_EDGE_FUNCTIONS: ${{ github.event_name == 'pull_request' && 'false' || github.event_name == 'push' && 'true' || (github.event.inputs.mode == 'deploy' && github.event.inputs.deploy_edge_functions == 'true' && 'true' || 'false') }}
       DB_URL_SECRET_NAME: SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION or SUPABASE_SESSION_POOLER_PROD
       ACCESS_TOKEN_SECRET_NAME: SUPABASE_ACCESS_TOKEN_TCOIN_PRODUCTION or SUPABASE_ACCESS_TOKEN
       SUPABASE_URL_SECRET_NAME: NEXT_PUBLIC_SUPABASE_URL
@@ -203,10 +206,13 @@ jobs:
           fi
 
           echo "Deploying wallet-critical Edge Functions for ${TARGET_LABEL}: ${TCOIN_EDGE_FUNCTIONS}"
-          supabase functions deploy ${TCOIN_EDGE_FUNCTIONS} \
-            --project-ref "$project_ref" \
-            --no-verify-jwt \
-            --use-api
+          for function_name in ${TCOIN_EDGE_FUNCTIONS}; do
+            echo "Deploying ${function_name}."
+            supabase functions deploy "$function_name" \
+              --project-ref "$project_ref" \
+              --no-verify-jwt \
+              --use-api
+          done
 
       - name: Report Edge Function deployment plan
         if: env.DEPLOY_EDGE_FUNCTIONS != 'true'
