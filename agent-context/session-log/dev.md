@@ -1,5 +1,14 @@
 # Session Log - dev
 
+## 2026-07-20T17:55:44Z - Fix Preview OTP provisioning token handoff
+
+- agent: Codex
+- branch: codex/tcoin-preview-smoke-buy
+- head: da5fb27
+- summary: Continued Sprint #78 Goal #79 Task #86 by tracing Preview OTP smoke in Chrome. OTP delivery succeeded and the Preview auth modal accepted the code, but hosted provisioning then looped on `Unauthorized` while calling the authenticated user-settings ensure-user path. Patched the internal Edge client to accept a freshly verified access-token override and wired wallet/sparechange sign-in plus `useAuth` user reconciliation through that token so post-OTP provisioning does not depend on a delayed session re-read.
+- validation: `pnpm exec vitest run shared/lib/edge/core.test.ts app/tcoin/wallet/components/modals/SignInModal.test.tsx`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`.
+- follow-ups: Publish this branch and rerun hosted Preview OTP smoke against the PR deployment before claiming Task #86 fully green. Do not proceed to Task #87 pay-link create/resolve until signed-in Preview dashboard smoke passes on a deployed build.
+
 ## 2026-07-20T17:45:30Z - Record Preview Buy TCOIN sandbox blocker
 
 - agent: Codex
