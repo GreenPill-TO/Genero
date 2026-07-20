@@ -8,12 +8,14 @@ async function main() {
   const supabase = createServiceRoleClientCore({
     context: "indexer touch worker",
   });
-  const result = await drainIndexerTouchQueueOnce({ supabase });
+  const scopeKey = process.env.INDEXER_TOUCH_WORKER_SCOPE_KEY?.trim() || null;
+  const result = await drainIndexerTouchQueueOnce({ supabase, scopeKey });
 
   console.log(
     JSON.stringify(
       {
         generatedAt: new Date().toISOString(),
+        scopeKey,
         processed: result.processed,
         request: result.request,
         result: result.result,

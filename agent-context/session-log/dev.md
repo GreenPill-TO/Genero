@@ -1,5 +1,14 @@
 # Session Log - dev
 
+## 2026-07-20T14:35:24Z - Configure bounded worker scheduler target
+
+- agent: Codex
+- branch: codex/tcoin-worker-scheduler-proof
+- head: 878c6e8
+- summary: Started Sprint #78 Goal #80 Task #88 and configured the indexer scheduler target contract without linked Supabase writes. The indexer touch worker now accepts `INDEXER_TOUCH_WORKER_SCOPE_KEY`, package scripts expose local/remote profile-backed drain commands, and the wallet release runbook documents the one-minute one-shot scheduler cadence, required worker env, service-role boundary, and current blocker: recurring scheduler enablement must wait for Task #89 queue-drain proof because prior Preview worker attempts timed out before checkpoint progress.
+- validation: `pnpm exec vitest run services/indexer/src/touchQueue.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`.
+- follow-ups: Task #89 must prove bounded queue drain and health reporting before any linked Preview/Production recurring scheduler is enabled. Linked Supabase scheduler writes were not run in this task because no just-in-time approval was provided for this turn.
+
 ## 2026-07-20T13:03:12Z - Address PR #94 ops status review
 
 - agent: Codex

@@ -41,6 +41,23 @@ describe("drainIndexerTouchQueueOnce", () => {
     ).rejects.toThrow("A scoped service-role Supabase client is required to drain indexer touch requests.");
   });
 
+  it("can claim only one configured scheduler scope", async () => {
+    const rpc = vi.fn().mockResolvedValueOnce({
+      data: null,
+      error: null,
+    });
+    const schema = vi.fn().mockReturnValue({ rpc });
+
+    await drainIndexerTouchQueueOnce({
+      supabase: { schema, rpc } as never,
+      scopeKey: "tcoin:42220",
+    });
+
+    expect(rpc).toHaveBeenCalledWith("claim_touch_request_v1", {
+      p_scope_key: "tcoin:42220",
+    });
+  });
+
   it("claims a queued request, runs the indexer, and marks success", async () => {
     const rpc = vi
       .fn()
