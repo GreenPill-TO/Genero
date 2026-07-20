@@ -1,5 +1,14 @@
 # Session Log - dev
 
+## 2026-07-20T17:59:38Z - Capture Preview Edge alignment blocker for OTP smoke
+
+- agent: Codex
+- branch: codex/tcoin-preview-smoke-buy
+- head: c9d6530
+- summary: Opened PR #96 and reran Task #86 against the PR Preview deployment at `https://tcoin-git-codex-tcoin-preview-smoke-buy-cubid-team.vercel.app`. Chrome reached the Preview dashboard, the auth modal sent a fresh OTP, Gmail delivered the Supabase Auth email, and the code was entered without recording it in durable comments/logs. The PR deployment still failed post-OTP provisioning with `Failed to finish authenticated user provisioning: Unauthorized`, so the remaining blocker is Preview Supabase Edge Function/runtime alignment for `user-settings /auth/ensure-user`, not the Next.js token handoff alone.
+- validation: `pnpm test`; `pnpm build`; PR #96 checks observed `build-and-test=SUCCESS`, `trufflehog-diff=SUCCESS`, `version-bump=SUCCESS`, `Vercel - tcoin=SUCCESS`; Chrome hosted smoke against the PR Preview URL failed after OTP with the same `Unauthorized` provisioning error.
+- follow-ups: Do not start Task #87 pay-link create/resolve until Task #86 is green. Completing #86 now requires explicit just-in-time approval to inspect/repair/deploy the Preview Supabase `user-settings` Edge Function/runtime env, including `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, against the intended Preview project.
+
 ## 2026-07-20T17:55:44Z - Fix Preview OTP provisioning token handoff
 
 - agent: Codex
