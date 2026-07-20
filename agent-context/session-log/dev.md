@@ -1,5 +1,14 @@
 # Session Log - dev
 
+## 2026-07-20T00:55:12Z - Repair Preview Supabase release alignment
+
+- agent: Codex
+- branch: codex/tcoin-production-launch-readiness
+- head: 888ca50
+- summary: After explicit operator approval for Preview TCOIN linked Supabase changes only, repaired the `GeneroDev` remote release-health blockers by enabling `pg_cron`, scheduling `wallet-payment-request-links-cleanup`, exposing `indexer`/`chain_data` through PostgREST config, and repairing TCOIN indexer metadata visibility for the two expected pools. Also fixed the local TorontoCoin ops read-model check so live chain-discovered pools are compared against remote indexer pool details instead of only the static bootstrap pool.
+- validation: `pnpm ops:wallet:preflight:supabase-remote` passed with no blockers and expected warnings for `development`, dormant onramp secrets, and no recent cron run details; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin` passed with no release blockers; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin:pools` passed with no release blockers; `pnpm exec vitest run shared/lib/indexer/statusReadModel.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `pnpm test`; `git diff --check`.
+- follow-ups: The one-shot indexer queue worker still timed out during manual Preview repair and should not be scheduled until Goal #80 inspects/fixes bounded worker runtime behaviour. Production Supabase was not changed. Vercel env confirmation and deployment-profile smoke remain separate launch-readiness tasks.
+
 ## 2026-07-16T19:22:38Z - Vet Sprint #78 and start release env alignment
 
 - agent: Codex
