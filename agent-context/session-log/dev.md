@@ -1,5 +1,14 @@
 # Session Log - dev
 
+## 2026-07-20T17:45:30Z - Record Preview Buy TCOIN sandbox blocker
+
+- agent: Codex
+- branch: codex/tcoin-preview-smoke-buy
+- head: 578c5eb
+- summary: Started Sprint #78 Goal #79 Task #85 and attempted hosted Preview smoke for the Buy TCOIN sandbox path. The configured Preview smoke URL redirects all tested routes through Vercel Deployment Protection (`302` to `vercel.com/sso-api`), and the `Preview - tcoin` GitHub Environment currently has `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false`, so Buy TCOIN sandbox checkout is not currently smokeable from this shell. Added runbook prerequisites for Preview Buy TCOIN sandbox evidence and kept live/Production enablement gated.
+- validation: `gh variable list --env "Preview – tcoin"`; `gh secret list --env "Preview – tcoin"`; `SMOKE_BASE_URL=https://tcoin-git-dev-cubid-team.vercel.app SMOKE_SKIP_BUILD=1 pnpm smoke:e2e` failed because every route redirected to Vercel `/login`; `curl -sS -D - -o /tmp/tcoin-preview-wallet.html -L https://tcoin-git-dev-cubid-team.vercel.app/tcoin/wallet` confirmed Vercel SSO redirect headers.
+- follow-ups: To complete Task #85, an operator must either disable Vercel Deployment Protection for the Preview smoke target or provide an approved automation bypass, then configure Vercel Preview plus Preview Edge Function onramp sandbox env and redeploy with `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true`.
+
 ## 2026-07-20T14:51:02Z - Address PR #95 env template review
 
 - agent: Codex

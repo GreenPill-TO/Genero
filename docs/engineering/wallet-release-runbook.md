@@ -232,6 +232,17 @@ Use a clean browser profile if possible.
 8. If Twilio env is configured, open the wallet off-ramp flow and confirm `/api/send_otp` plus `/api/verify_otp` both succeed.
 9. If `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true`, open the Buy TCOIN modal and confirm it can create a checkout session without exposing the configuration-error fallback state.
 
+### Preview Buy TCOIN sandbox prerequisites
+
+Do not treat Preview Buy TCOIN as smokeable until all of these are true:
+
+1. The Preview deployment URL is reachable without Vercel SSO or has an approved automation-bypass token available to the smoke runner.
+2. Vercel Preview env has `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true`.
+3. The matching Preview Supabase Edge Function/runtime env has the sandbox `ONRAMP_*` provider secrets and deposit-wallet settings required by the onramp function.
+4. The checkout provider is in sandbox/test mode, and the runbook evidence identifies the provider environment without recording secret values.
+
+If any prerequisite is missing, keep `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false`, record the exact blocker on the Preview smoke Goal, and do not attempt to enable the live Production path.
+
 ## Production smoke steps
 
 Run these immediately after deploy against the production host.
