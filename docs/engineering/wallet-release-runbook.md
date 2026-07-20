@@ -131,6 +131,30 @@ If the timeout fires, the worker marks both `indexer.run_control` and the claime
 
 Do not enable a linked Preview or Production recurring scheduler until queue drain proof is captured. During the Preview repair on 2026-07-20, manual one-shot queue-drain attempts timed out before checkpoint progress, so Task #89 must first prove bounded queue drain behaviour and health reporting. If an operator configures a hosted scheduler, record the exact target, cadence, environment, and latest run evidence on Goal #80.
 
+Operator verification after scheduler configuration:
+
+1. Queue or identify one safe Preview request for the `tcoin:42220` scope.
+2. Run the scheduler target once manually and confirm the command exits `0` for success/skip or non-zero for bounded failure.
+3. Re-run:
+   ```bash
+   pnpm ops:wallet:preflight:supabase-remote
+   pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin
+   ```
+4. Confirm the health output reports:
+   - `indexerSummary.queue.pendingRequestCount = 0`
+   - `indexerSummary.queue.blocked = false`
+   - `indexerSummary.queue.stale = false`
+   - `indexerSummary.lastStatus = success|skipped` for a healthy drain, or `error` with a bounded failure reason for a failed drain
+   - `releaseBlockers = []` in the TorontoCoin ops output
+5. Capture the scheduler provider, target command, cadence, latest run timestamp, exit status, and relevant preflight/ops excerpts on Goal #80.
+
+Failure handling:
+
+- If the worker times out once, leave the scheduler disabled or paused, capture the failed request id and run-control status, and retry manually with lower `INDEXER_MAX_BLOCKS_PER_RUN` or `INDEXER_DISCOVERY_POOL_LIMIT` only if the target RPC and Supabase health are otherwise normal.
+- If the worker times out repeatedly, treat it as a launch blocker and inspect pool discovery, RPC latency, and voucher/BIA derivation before enabling a recurring scheduler.
+- If queue health is `blocked` or `stale`, do not proceed to Preview smoke. Drain or fail the stuck request through the worker boundary first, then re-run preflight.
+- If the scheduler provider cannot run the Node command with the service-role worker env, do not move `SUPABASE_SERVICE_ROLE_KEY` into Vercel/Next.js. Use a dedicated worker runtime or Supabase Edge/worker implementation instead.
+
 ### CI-assisted remote alignment
 
 `.github/workflows/release-alignment-tcoin.yml` automates the remote/deployment release-alignment checks after the Supabase migration deploy workflow succeeds on `dev` or `main`. It is also available through manual dispatch for Preview or Production.

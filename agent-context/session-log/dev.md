@@ -18,6 +18,15 @@
 - validation: `pnpm exec vitest run services/indexer/src/touchQueue.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`; `pnpm ops:wallet:preflight:supabase-remote`; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin`.
 - follow-ups: A real linked Preview queue-drain run still requires just-in-time approval to create or identify a safe queue request. Until that approval is given and the drain is observed, recurring scheduler enablement should remain blocked.
 
+## 2026-07-20T14:41:15Z - Capture scheduler runbook evidence
+
+- agent: Codex
+- branch: codex/tcoin-worker-scheduler-proof
+- head: 304d773
+- summary: Completed Sprint #78 Goal #80 Task #90 by expanding the wallet release runbook with scheduler verification evidence requirements, concrete health fields to inspect, manual retry guidance, repeated-timeout handling, and escalation rules that keep the service-role key out of the deployed Next.js shell.
+- validation: `pnpm exec vitest run services/indexer/src/touchQueue.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`.
+- follow-ups: Goal #80 can move to review with a residual launch blocker: actual hosted Preview queue-drain proof and recurring scheduler enablement still require just-in-time linked Supabase/operator approval.
+
 ## 2026-07-20T13:03:12Z - Address PR #94 ops status review
 
 - agent: Codex
