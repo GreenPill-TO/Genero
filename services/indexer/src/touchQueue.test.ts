@@ -150,4 +150,53 @@ describe("drainIndexerTouchQueueOnce", () => {
       p_error: "boom",
     });
   });
+
+  it("marks run control and queue request failed when the worker times out", async () => {
+    const schemaRpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          requestId: 11,
+          scopeKey: "tcoin:42220",
+          citySlug: "tcoin",
+          chainId: 42220,
+          source: "scheduler",
+          requestedAt: "2026-04-26T12:00:00.000Z",
+          claimedAt: "2026-04-26T12:00:01.000Z",
+          attemptCount: 1,
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: null,
+        error: null,
+      });
+    const rootRpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: null,
+    });
+    const schema = vi.fn().mockReturnValue({ rpc: schemaRpc });
+
+    h.mockRunIndexerTouch.mockReturnValue(new Promise(() => {}));
+
+    await expect(
+      drainIndexerTouchQueueOnce({
+        supabase: { schema, rpc: rootRpc } as never,
+        timeoutMs: 1,
+      })
+    ).rejects.toThrow("Indexer touch worker timed out after 1ms.");
+
+    expect(rootRpc).toHaveBeenCalledWith("indexer_complete_run", {
+      p_scope_key: "tcoin:42220",
+      p_status: "error",
+      p_error: "Indexer touch worker timed out after 1ms.",
+      p_cooldown_seconds: 300,
+    });
+    expect(schemaRpc).toHaveBeenNthCalledWith(2, "complete_touch_request_v1", {
+      p_request_id: 11,
+      p_status: "failed",
+      p_run_status: "error",
+      p_error: "Indexer touch worker timed out after 1ms.",
+    });
+  });
 });

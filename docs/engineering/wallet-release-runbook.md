@@ -108,14 +108,14 @@ Operational note:
 The scheduler target for queued indexer touches is the external Node worker command, not the deployed Next.js runtime:
 
 ```bash
-INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220 pnpm ops:indexer:drain-touch-queue
+INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220 INDEXER_TOUCH_WORKER_TIMEOUT_MS=240000 pnpm ops:indexer:drain-touch-queue
 ```
 
 For local operator proof against the ignored env profiles, use:
 
 ```bash
-INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220 pnpm ops:indexer:drain-touch-queue:supabase-local
-INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220 pnpm ops:indexer:drain-touch-queue:supabase-remote
+INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220 INDEXER_TOUCH_WORKER_TIMEOUT_MS=240000 pnpm ops:indexer:drain-touch-queue:supabase-local
+INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220 INDEXER_TOUCH_WORKER_TIMEOUT_MS=240000 pnpm ops:indexer:drain-touch-queue:supabase-remote
 ```
 
 Recommended scheduler contract:
@@ -123,8 +123,11 @@ Recommended scheduler contract:
 - cadence: every minute
 - mode: one-shot command execution only; do not add a long-running loop in this pass
 - scope: `INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220`
+- timeout: `INDEXER_TOUCH_WORKER_TIMEOUT_MS=240000` unless a lower target-specific bound has been proven safe
 - runtime env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_CITYCOIN=tcoin`, `INDEXER_CHAIN_ID=42220`, `INDEXER_CHAIN_RPC_URL`, `INDEXER_INITIAL_BLOCK`, `INDEXER_MAX_BLOCKS_PER_RUN`, and `INDEXER_DISCOVERY_POOL_LIMIT`
 - service-role boundary: the service-role key belongs only in this worker runtime and privileged Edge Functions, not in the deployed Next.js shell
+
+If the timeout fires, the worker marks both `indexer.run_control` and the claimed touch request as `error`/`failed` before exiting non-zero. Treat repeated timeout failures as a release blocker rather than increasing the timeout without first checking RPC latency, `INDEXER_MAX_BLOCKS_PER_RUN`, and `INDEXER_DISCOVERY_POOL_LIMIT`.
 
 Do not enable a linked Preview or Production recurring scheduler until queue drain proof is captured. During the Preview repair on 2026-07-20, manual one-shot queue-drain attempts timed out before checkpoint progress, so Task #89 must first prove bounded queue drain behaviour and health reporting. If an operator configures a hosted scheduler, record the exact target, cadence, environment, and latest run evidence on Goal #80.
 
