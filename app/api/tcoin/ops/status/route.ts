@@ -22,6 +22,7 @@ export async function GET() {
       citySlug: "tcoin",
       chainId: status.addresses.chainId,
       requiredTokenAddress: status.addresses.cplTcoin,
+      expectedTorontoCoinPools: status.pools,
     });
 
     return NextResponse.json({

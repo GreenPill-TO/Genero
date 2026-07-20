@@ -1,5 +1,14 @@
 # Session Log - dev
 
+## 2026-07-20T13:03:12Z - Address PR #94 ops status review
+
+- agent: Codex
+- branch: codex/tcoin-production-launch-readiness
+- head: 41b65e7
+- summary: Addressed the Codex review comment on PR #94 by wiring live TorontoCoin pools into `/api/tcoin/ops/status` indexer enrichment, matching the CLI ops checks so hosted admin/operator status no longer falls back to bootstrap-only tracked pool metadata.
+- validation: `pnpm exec vitest run app/api/tcoin/ops/status/route.test.ts shared/lib/indexer/statusReadModel.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`.
+- follow-ups: Push the review-fix commit to PR #94, reply to the review thread with the fix commit, resolve the thread, and wait for CI to rerun.
+
 ## 2026-07-20T00:55:12Z - Repair Preview Supabase release alignment
 
 - agent: Codex
