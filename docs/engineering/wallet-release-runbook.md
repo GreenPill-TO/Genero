@@ -232,6 +232,28 @@ Use a clean browser profile if possible.
 8. If Twilio env is configured, open the wallet off-ramp flow and confirm `/api/send_otp` plus `/api/verify_otp` both succeed.
 9. If `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true`, open the Buy TCOIN modal and confirm it can create a checkout session without exposing the configuration-error fallback state.
 
+### Preview Buy TCOIN sandbox prerequisites
+
+Do not treat Preview Buy TCOIN as smokeable until all of these are true:
+
+1. The Preview deployment URL is reachable without Vercel SSO or has an approved automation-bypass token available to the smoke runner.
+2. Vercel Preview env has `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true`.
+3. The matching Preview Supabase Edge Function/runtime env has the sandbox `ONRAMP_*` provider secrets and deposit-wallet settings required by the onramp function.
+4. The checkout provider is in sandbox/test mode, and the runbook evidence identifies the provider environment without recording secret values.
+
+If any prerequisite is missing, keep `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false`, record the exact blocker on the Preview smoke Goal, and do not attempt to enable the live Production path.
+
+### Preview signed-in smoke prerequisites
+
+Preview signed-in smoke requires the deployed Next.js build and the Preview Supabase Edge Functions to be aligned. Before treating OTP smoke failures as app regressions, confirm:
+
+1. The Preview deployment can reach the intended Preview Supabase project.
+2. The `user-settings` Edge Function deployed to that project includes the request-scoped `/auth/ensure-user` path.
+3. The Edge Function runtime has `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set alongside the privileged service-role key used for the narrowly labelled ensure-user reconciliation write.
+4. The browser console does not show `Failed to finish authenticated user provisioning: Unauthorized` after OTP verification.
+
+If OTP verification succeeds but provisioning stays on the modal with `Unauthorized`, stop the smoke, keep pay-link creation blocked, and repair/deploy the Preview Edge Function boundary before retrying.
+
 ## Production smoke steps
 
 Run these immediately after deploy against the production host.

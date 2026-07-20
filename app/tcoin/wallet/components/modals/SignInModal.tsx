@@ -116,7 +116,7 @@ function SignInModal({ closeModal, postAuthRedirect }: SignInModalProps) {
       return null;
     }
 
-    const { user, error } = await fetchUserByContact(authMethod, fullContact);
+    const { user, error } = await fetchUserByContact(authMethod, fullContact, session.access_token);
 
     if (error || !user) {
       console.error("Failed to finish authenticated user provisioning:", error);

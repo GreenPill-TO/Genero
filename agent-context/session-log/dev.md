@@ -1,5 +1,32 @@
 # Session Log - dev
 
+## 2026-07-20T17:59:38Z - Capture Preview Edge alignment blocker for OTP smoke
+
+- agent: Codex
+- branch: codex/tcoin-preview-smoke-buy
+- head: c9d6530
+- summary: Opened PR #96 and reran Task #86 against the PR Preview deployment at `https://tcoin-git-codex-tcoin-preview-smoke-buy-cubid-team.vercel.app`. Chrome reached the Preview dashboard, the auth modal sent a fresh OTP, Gmail delivered the Supabase Auth email, and the code was entered without recording it in durable comments/logs. The PR deployment still failed post-OTP provisioning with `Failed to finish authenticated user provisioning: Unauthorized`, so the remaining blocker is Preview Supabase Edge Function/runtime alignment for `user-settings /auth/ensure-user`, not the Next.js token handoff alone.
+- validation: `pnpm test`; `pnpm build`; PR #96 checks observed `build-and-test=SUCCESS`, `trufflehog-diff=SUCCESS`, `version-bump=SUCCESS`, `Vercel - tcoin=SUCCESS`; Chrome hosted smoke against the PR Preview URL failed after OTP with the same `Unauthorized` provisioning error.
+- follow-ups: Do not start Task #87 pay-link create/resolve until Task #86 is green. Completing #86 now requires explicit just-in-time approval to inspect/repair/deploy the Preview Supabase `user-settings` Edge Function/runtime env, including `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, against the intended Preview project.
+
+## 2026-07-20T17:55:44Z - Fix Preview OTP provisioning token handoff
+
+- agent: Codex
+- branch: codex/tcoin-preview-smoke-buy
+- head: da5fb27
+- summary: Continued Sprint #78 Goal #79 Task #86 by tracing Preview OTP smoke in Chrome. OTP delivery succeeded and the Preview auth modal accepted the code, but hosted provisioning then looped on `Unauthorized` while calling the authenticated user-settings ensure-user path. Patched the internal Edge client to accept a freshly verified access-token override and wired wallet/sparechange sign-in plus `useAuth` user reconciliation through that token so post-OTP provisioning does not depend on a delayed session re-read.
+- validation: `pnpm exec vitest run shared/lib/edge/core.test.ts app/tcoin/wallet/components/modals/SignInModal.test.tsx`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`.
+- follow-ups: Publish this branch and rerun hosted Preview OTP smoke against the PR deployment before claiming Task #86 fully green. Do not proceed to Task #87 pay-link create/resolve until signed-in Preview dashboard smoke passes on a deployed build.
+
+## 2026-07-20T17:45:30Z - Record Preview Buy TCOIN sandbox blocker
+
+- agent: Codex
+- branch: codex/tcoin-preview-smoke-buy
+- head: 578c5eb
+- summary: Started Sprint #78 Goal #79 Task #85 and attempted hosted Preview smoke for the Buy TCOIN sandbox path. The configured Preview smoke URL redirects all tested routes through Vercel Deployment Protection (`302` to `vercel.com/sso-api`), and the `Preview - tcoin` GitHub Environment currently has `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false`, so Buy TCOIN sandbox checkout is not currently smokeable from this shell. Added runbook prerequisites for Preview Buy TCOIN sandbox evidence and kept live/Production enablement gated.
+- validation: `gh variable list --env "Preview – tcoin"`; `gh secret list --env "Preview – tcoin"`; `SMOKE_BASE_URL=https://tcoin-git-dev-cubid-team.vercel.app SMOKE_SKIP_BUILD=1 pnpm smoke:e2e` failed because every route redirected to Vercel `/login`; `curl -sS -D - -o /tmp/tcoin-preview-wallet.html -L https://tcoin-git-dev-cubid-team.vercel.app/tcoin/wallet` confirmed Vercel SSO redirect headers.
+- follow-ups: To complete Task #85, an operator must either disable Vercel Deployment Protection for the Preview smoke target or provide an approved automation bypass, then configure Vercel Preview plus Preview Edge Function onramp sandbox env and redeploy with `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true`.
+
 ## 2026-07-20T14:51:02Z - Address PR #95 env template review
 
 - agent: Codex
