@@ -1,5 +1,41 @@
 # Session Log - dev
 
+## 2026-07-20T14:51:02Z - Address PR #95 env template review
+
+- agent: Codex
+- branch: codex/tcoin-worker-scheduler-proof
+- head: 8cb1be6
+- summary: Addressed the Codex review comment on PR #95 by documenting `INDEXER_TOUCH_WORKER_SCOPE_KEY` and `INDEXER_TOUCH_WORKER_TIMEOUT_MS` in `.env.example` with safe TorontoCoin launch defaults and timeout behaviour notes.
+- validation: `pnpm exec vitest run services/indexer/src/touchQueue.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`.
+- follow-ups: Push the fix to PR #95, reply to and resolve the Codex review thread, then wait for CI to rerun.
+
+## 2026-07-20T14:35:24Z - Configure bounded worker scheduler target
+
+- agent: Codex
+- branch: codex/tcoin-worker-scheduler-proof
+- head: 878c6e8
+- summary: Started Sprint #78 Goal #80 Task #88 and configured the indexer scheduler target contract without linked Supabase writes. The indexer touch worker now accepts `INDEXER_TOUCH_WORKER_SCOPE_KEY`, package scripts expose local/remote profile-backed drain commands, and the wallet release runbook documents the one-minute one-shot scheduler cadence, required worker env, service-role boundary, and current blocker: recurring scheduler enablement must wait for Task #89 queue-drain proof because prior Preview worker attempts timed out before checkpoint progress.
+- validation: `pnpm exec vitest run services/indexer/src/touchQueue.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`.
+- follow-ups: Task #89 must prove bounded queue drain and health reporting before any linked Preview/Production recurring scheduler is enabled. Linked Supabase scheduler writes were not run in this task because no just-in-time approval was provided for this turn.
+
+## 2026-07-20T14:39:46Z - Prove bounded indexer queue drain behaviour
+
+- agent: Codex
+- branch: codex/tcoin-worker-scheduler-proof
+- head: 332446b
+- summary: Continued Sprint #78 Goal #80 Task #89 by adding a bounded worker timeout path for indexer queue drains. Timed-out workers now mark both `indexer.run_control` and the claimed touch request as failed before the CLI exits non-zero, preventing the previous indefinite running-state failure mode. Read-only remote health confirmed Preview currently has no blockers, queue pending count `0`, and queue `blocked=false`/`stale=false`.
+- validation: `pnpm exec vitest run services/indexer/src/touchQueue.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`; `pnpm ops:wallet:preflight:supabase-remote`; `pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin`.
+- follow-ups: A real linked Preview queue-drain run still requires just-in-time approval to create or identify a safe queue request. Until that approval is given and the drain is observed, recurring scheduler enablement should remain blocked.
+
+## 2026-07-20T14:41:15Z - Capture scheduler runbook evidence
+
+- agent: Codex
+- branch: codex/tcoin-worker-scheduler-proof
+- head: 304d773
+- summary: Completed Sprint #78 Goal #80 Task #90 by expanding the wallet release runbook with scheduler verification evidence requirements, concrete health fields to inspect, manual retry guidance, repeated-timeout handling, and escalation rules that keep the service-role key out of the deployed Next.js shell.
+- validation: `pnpm exec vitest run services/indexer/src/touchQueue.test.ts`; `pnpm exec tsc --noEmit --pretty false`; `pnpm lint`; `git diff --check`.
+- follow-ups: Goal #80 can move to review with a residual launch blocker: actual hosted Preview queue-drain proof and recurring scheduler enablement still require just-in-time linked Supabase/operator approval.
+
 ## 2026-07-20T13:03:12Z - Address PR #94 ops status review
 
 - agent: Codex
