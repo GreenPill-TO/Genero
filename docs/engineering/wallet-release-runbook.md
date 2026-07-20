@@ -22,9 +22,9 @@ Env template references:
 | Area | Env vars | Why it matters |
 | --- | --- | --- |
 | Core Supabase runtime | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Required by browser auth, edge-function proxying, and the publishable-key wallet release health preflight. |
-| Worker and privileged function runtime | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | The deployed Next.js wallet runtime does not need the service-role key. Edge Functions need the publishable key for request-scoped self-service RPCs and scoped identity/app-context resolution. The service-role key remains required only for explicit route-specific privileged Edge operations, webhook/settlement paths, custody/transfer bookkeeping, and the external indexer touch worker (`pnpm ops:indexer:drain-touch-queue`). |
+| Worker and privileged function runtime | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or Supabase's default `SUPABASE_PUBLISHABLE_KEYS` | The deployed Next.js wallet runtime does not need the service-role key. Edge Functions need a publishable key for request-scoped self-service RPCs and scoped identity/app-context resolution; hosted Supabase functions can use the platform-provided publishable-key dictionary without a custom alias. The service-role key remains required only for explicit route-specific privileged Edge operations, webhook/settlement paths, custody/transfer bookkeeping, and the external indexer touch worker (`pnpm ops:indexer:drain-touch-queue`). |
 | App scoping | `NEXT_PUBLIC_CITYCOIN=tcoin`, `NEXT_PUBLIC_APP_NAME=wallet`, `NEXT_PUBLIC_APP_ENVIRONMENT=staging|production` | Controls app-instance scoping, auth bootstrap behaviour, and production-versus-local auth rules. |
-| Public wallet URLing | `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `USER_SETTINGS_ALLOWED_ORIGINS` | Required for pay-link generation, edge CORS, and public callback/origin checks. |
+| Public wallet URLing | `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `USER_SETTINGS_ALLOWED_ORIGINS` | Required for pay-link generation, edge CORS, and public callback/origin checks. The `user-settings` Edge Function has exact-match fallbacks for local development, the standard TCOIN Preview Vercel hosts, and the public `tcoin.me` launch hosts; configure `USER_SETTINGS_ALLOWED_ORIGINS` for any additional deployment URLs. |
 | Wallet user experience | `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL`, `NEXT_PUBLIC_TCOIN_BANNER_DARK_URL` | Keeps public landing and authenticated wallet flows coherent when exchange-rate or explorer data is needed. |
 | Indexer runtime | `INDEXER_CHAIN_ID`, `INDEXER_CHAIN_RPC_URL`, `INDEXER_INITIAL_BLOCK`, `INDEXER_MAX_BLOCKS_PER_RUN`, `INDEXER_DISCOVERY_POOL_LIMIT` | Drives `/api/indexer/touch`, `/api/indexer/status`, wallet stats, and operator health. |
 
@@ -249,7 +249,7 @@ Preview signed-in smoke requires the deployed Next.js build and the Preview Supa
 
 1. The Preview deployment can reach the intended Preview Supabase project.
 2. The `user-settings` Edge Function deployed to that project includes the request-scoped `/auth/ensure-user` path.
-3. The Edge Function runtime has `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set alongside the privileged service-role key used for the narrowly labelled ensure-user reconciliation write.
+3. The Edge Function runtime has either `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set or Supabase's default `SUPABASE_PUBLISHABLE_KEYS` available alongside the privileged service-role key used for the narrowly labelled ensure-user reconciliation write.
 4. The browser console does not show `Failed to finish authenticated user provisioning: Unauthorized` after OTP verification.
 
 If OTP verification succeeds but provisioning stays on the modal with `Unauthorized`, stop the smoke, keep pay-link creation blocked, and repair/deploy the Preview Edge Function boundary before retrying.

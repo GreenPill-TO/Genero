@@ -3,6 +3,10 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://127.0.0.1:3000",
   "http://localhost:3001",
   "http://127.0.0.1:3001",
+  "https://tcoin-git-dev-cubid-team.vercel.app",
+  "https://tcoin-git-main-cubid-team.vercel.app",
+  "https://tcoin.me",
+  "https://www.tcoin.me",
 ];
 
 function readAllowedOriginsFromEnv(): string[] {

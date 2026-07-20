@@ -4,14 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const rpcMock = vi.hoisted(() => vi.fn());
 const getUserMock = vi.hoisted(() => vi.fn());
 const createClientMock = vi.hoisted(() => vi.fn(() => ({ auth: { getUser: getUserMock }, rpc: rpcMock })));
+const denoEnvValues = vi.hoisted(() => ({
+  SUPABASE_URL: "https://project.supabase.co",
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+  SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
+} as Record<string, string | undefined>));
 const denoEnv = vi.hoisted(() => {
   const env = {
     get(name: string) {
-      return {
-        SUPABASE_URL: "https://project.supabase.co",
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
-        SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
-      }[name];
+      return denoEnvValues[name];
     },
   };
   (globalThis as any).Deno = { env };
@@ -33,6 +34,12 @@ import {
 describe("edge auth client boundaries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    denoEnvValues.SUPABASE_URL = "https://project.supabase.co";
+    denoEnvValues.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test";
+    denoEnvValues.SUPABASE_PUBLISHABLE_KEYS = undefined;
+    denoEnvValues.SUPABASE_PUBLISHABLE_KEY = undefined;
+    denoEnvValues.SUPABASE_ANON_KEY = undefined;
+    denoEnvValues.SUPABASE_SERVICE_ROLE_KEY = "service-role-test";
     (globalThis as any).Deno = { env: denoEnv };
     rpcMock.mockReset();
     getUserMock.mockReset();
@@ -55,6 +62,47 @@ describe("edge auth client boundaries", () => {
           },
         },
       })
+    );
+  });
+
+  it("uses Supabase's hosted publishable-key dictionary when no custom canonical secret is set", () => {
+    denoEnvValues.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = undefined;
+    denoEnvValues.SUPABASE_PUBLISHABLE_KEYS = JSON.stringify({
+      default: {
+        api_key: "sb_publishable_hosted_default",
+      },
+    });
+
+    createAuthenticatedRequestClient(
+      new Request("http://localhost/functions/v1/test", {
+        headers: { authorization: "Bearer caller-token" },
+      }),
+      { purpose: "unit test hosted scoped read" }
+    );
+
+    expect(createClientMock).toHaveBeenCalledWith(
+      "https://project.supabase.co",
+      "sb_publishable_hosted_default",
+      expect.any(Object)
+    );
+  });
+
+  it("falls back to the platform anon key only when publishable keys are unavailable", () => {
+    denoEnvValues.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = undefined;
+    denoEnvValues.SUPABASE_PUBLISHABLE_KEYS = undefined;
+    denoEnvValues.SUPABASE_ANON_KEY = "legacy-anon-key";
+
+    createAuthenticatedRequestClient(
+      new Request("http://localhost/functions/v1/test", {
+        headers: { authorization: "Bearer caller-token" },
+      }),
+      { purpose: "unit test legacy scoped read" }
+    );
+
+    expect(createClientMock).toHaveBeenCalledWith(
+      "https://project.supabase.co",
+      "legacy-anon-key",
+      expect.any(Object)
     );
   });
 
