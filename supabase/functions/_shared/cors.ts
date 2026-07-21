@@ -5,11 +5,13 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://127.0.0.1:3001",
   "https://tcoin-git-dev-cubid-team.vercel.app",
   "https://tcoin-git-main-cubid-team.vercel.app",
+  "https://dev.tcoin.me",
   "https://tcoin.me",
   "https://www.tcoin.me",
 ];
 
-const VERCEL_PREVIEW_HOST_PATTERN = /^(?:tcoin|spare-change)(?:-[a-z0-9]+|-git-[a-z0-9-]+)-cubid-team\.vercel\.app$/;
+const VERCEL_PREVIEW_HOST_PATTERN =
+  /^(?:tcoin|tcoin-dev|spare-change)(?:-[a-z0-9]+|-git-[a-z0-9-]+)-cubid-team\.vercel\.app$/;
 
 function readAllowedOriginsFromEnv(): string[] {
   const configured = [
