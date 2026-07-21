@@ -28,9 +28,8 @@ auth_container="supabase_auth_${project_name}"
 network_name="supabase_network_${project_name}"
 default_excludes=(-x storage-api,imgproxy,logflare,vector,studio)
 
-if docker context ls --format '{{.Name}}' | grep -qx 'colima-varrun'; then
-    docker context use colima-varrun >/dev/null
-fi
+export DOCKER_CONTEXT="${DOCKER_CONTEXT:-colima-agents}"
+unset DOCKER_HOST
 
 if [ "$#" -eq 0 ]; then
     supabase_args=("${default_excludes[@]}")

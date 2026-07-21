@@ -22,9 +22,9 @@ Env template references:
 | Area | Env vars | Why it matters |
 | --- | --- | --- |
 | Core Supabase runtime | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Required by browser auth, edge-function proxying, and the publishable-key wallet release health preflight. |
-| Worker and privileged function runtime | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | The deployed Next.js wallet runtime does not need the service-role key. Edge Functions need the publishable key for request-scoped self-service RPCs and scoped identity/app-context resolution. The service-role key remains required only for explicit route-specific privileged Edge operations, webhook/settlement paths, custody/transfer bookkeeping, and the external indexer touch worker (`pnpm ops:indexer:drain-touch-queue`). |
+| Worker and privileged function runtime | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or Supabase's default `SUPABASE_PUBLISHABLE_KEYS` | The deployed Next.js wallet runtime does not need the service-role key. Edge Functions need a publishable key for request-scoped self-service RPCs and scoped identity/app-context resolution; hosted Supabase functions can use the platform-provided publishable-key dictionary without a custom alias. The service-role key remains required only for explicit route-specific privileged Edge operations, webhook/settlement paths, custody/transfer bookkeeping, and the external indexer touch worker (`pnpm ops:indexer:drain-touch-queue`). |
 | App scoping | `NEXT_PUBLIC_CITYCOIN=tcoin`, `NEXT_PUBLIC_APP_NAME=wallet`, `NEXT_PUBLIC_APP_ENVIRONMENT=staging|production` | Controls app-instance scoping, auth bootstrap behaviour, and production-versus-local auth rules. |
-| Public wallet URLing | `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `USER_SETTINGS_ALLOWED_ORIGINS` | Required for pay-link generation, edge CORS, and public callback/origin checks. |
+| Public wallet URLing | `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`, `USER_SETTINGS_ALLOWED_ORIGINS` | Required for pay-link generation, edge CORS, and public callback/origin checks. The `user-settings` Edge Function has exact-match fallbacks for local development, the standard TCOIN Preview Vercel hosts, and the public `tcoin.me` launch hosts; configure `USER_SETTINGS_ALLOWED_ORIGINS` for any additional deployment URLs. |
 | Wallet user experience | `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL`, `NEXT_PUBLIC_TCOIN_BANNER_DARK_URL` | Keeps public landing and authenticated wallet flows coherent when exchange-rate or explorer data is needed. |
 | Indexer runtime | `INDEXER_CHAIN_ID`, `INDEXER_CHAIN_RPC_URL`, `INDEXER_INITIAL_BLOCK`, `INDEXER_MAX_BLOCKS_PER_RUN`, `INDEXER_DISCOVERY_POOL_LIMIT` | Drives `/api/indexer/touch`, `/api/indexer/status`, wallet stats, and operator health. |
 
@@ -103,6 +103,58 @@ Operational note:
 - If queue-backed indexer health reports `blocked` or `stale`, treat that as a release blocker until the worker or scheduler is running again and the pending queue drains.
 - Treat any reported `releaseBlockers` output as a hard stop for go-live.
 
+### Async indexer worker scheduler target
+
+The scheduler target for queued indexer touches is the external Node worker command, not the deployed Next.js runtime:
+
+```bash
+INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220 INDEXER_TOUCH_WORKER_TIMEOUT_MS=240000 pnpm ops:indexer:drain-touch-queue
+```
+
+For local operator proof against the ignored env profiles, use:
+
+```bash
+INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220 INDEXER_TOUCH_WORKER_TIMEOUT_MS=240000 pnpm ops:indexer:drain-touch-queue:supabase-local
+INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220 INDEXER_TOUCH_WORKER_TIMEOUT_MS=240000 pnpm ops:indexer:drain-touch-queue:supabase-remote
+```
+
+Recommended scheduler contract:
+
+- cadence: every minute
+- mode: one-shot command execution only; do not add a long-running loop in this pass
+- scope: `INDEXER_TOUCH_WORKER_SCOPE_KEY=tcoin:42220`
+- timeout: `INDEXER_TOUCH_WORKER_TIMEOUT_MS=240000` unless a lower target-specific bound has been proven safe
+- runtime env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_CITYCOIN=tcoin`, `INDEXER_CHAIN_ID=42220`, `INDEXER_CHAIN_RPC_URL`, `INDEXER_INITIAL_BLOCK`, `INDEXER_MAX_BLOCKS_PER_RUN`, and `INDEXER_DISCOVERY_POOL_LIMIT`
+- service-role boundary: the service-role key belongs only in this worker runtime and privileged Edge Functions, not in the deployed Next.js shell
+
+If the timeout fires, the worker marks both `indexer.run_control` and the claimed touch request as `error`/`failed` before exiting non-zero. Treat repeated timeout failures as a release blocker rather than increasing the timeout without first checking RPC latency, `INDEXER_MAX_BLOCKS_PER_RUN`, and `INDEXER_DISCOVERY_POOL_LIMIT`.
+
+Do not enable a linked Preview or Production recurring scheduler until queue drain proof is captured. During the Preview repair on 2026-07-20, manual one-shot queue-drain attempts timed out before checkpoint progress, so Task #89 must first prove bounded queue drain behaviour and health reporting. If an operator configures a hosted scheduler, record the exact target, cadence, environment, and latest run evidence on Goal #80.
+
+Operator verification after scheduler configuration:
+
+1. Queue or identify one safe Preview request for the `tcoin:42220` scope.
+2. Run the scheduler target once manually and confirm the command exits `0` for success/skip or non-zero for bounded failure.
+3. Re-run:
+   ```bash
+   pnpm ops:wallet:preflight:supabase-remote
+   pnpm exec tsx scripts/run-with-env-profile.ts .env.local-supabase-remote -- pnpm ops:torontocoin
+   ```
+4. Confirm the health output reports:
+   - `indexerSummary.queue.pendingRequestCount = 0`
+   - `indexerSummary.queue.blocked = false`
+   - `indexerSummary.queue.stale = false`
+   - `indexerSummary.lastStatus = success|skipped` for a healthy drain, or `error` with a bounded failure reason for a failed drain
+   - `releaseBlockers = []` in the TorontoCoin ops output
+5. Capture the scheduler provider, target command, cadence, latest run timestamp, exit status, and relevant preflight/ops excerpts on Goal #80.
+
+Failure handling:
+
+- If the worker times out once, leave the scheduler disabled or paused, capture the failed request id and run-control status, and retry manually with lower `INDEXER_MAX_BLOCKS_PER_RUN` or `INDEXER_DISCOVERY_POOL_LIMIT` only if the target RPC and Supabase health are otherwise normal.
+- If the worker times out repeatedly, treat it as a launch blocker and inspect pool discovery, RPC latency, and voucher/BIA derivation before enabling a recurring scheduler.
+- If queue health is `blocked` or `stale`, do not proceed to Preview smoke. Drain or fail the stuck request through the worker boundary first, then re-run preflight.
+- If the scheduler provider cannot run the Node command with the service-role worker env, do not move `SUPABASE_SERVICE_ROLE_KEY` into Vercel/Next.js. Use a dedicated worker runtime or Supabase Edge/worker implementation instead.
+
 ### CI-assisted remote alignment
 
 `.github/workflows/release-alignment-tcoin.yml` automates the remote/deployment release-alignment checks after the Supabase migration deploy workflow succeeds on `dev` or `main`. It is also available through manual dispatch for Preview or Production.
@@ -179,6 +231,28 @@ Use a clean browser profile if possible.
 7. If you have an operator account, open `/tcoin/wallet/admin` and confirm the read-only health cards populate.
 8. If Twilio env is configured, open the wallet off-ramp flow and confirm `/api/send_otp` plus `/api/verify_otp` both succeed.
 9. If `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true`, open the Buy TCOIN modal and confirm it can create a checkout session without exposing the configuration-error fallback state.
+
+### Preview Buy TCOIN sandbox prerequisites
+
+Do not treat Preview Buy TCOIN as smokeable until all of these are true:
+
+1. The Preview deployment URL is reachable without Vercel SSO or has an approved automation-bypass token available to the smoke runner.
+2. Vercel Preview env has `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=true`.
+3. The matching Preview Supabase Edge Function/runtime env has the sandbox `ONRAMP_*` provider secrets and deposit-wallet settings required by the onramp function.
+4. The checkout provider is in sandbox/test mode, and the runbook evidence identifies the provider environment without recording secret values.
+
+If any prerequisite is missing, keep `NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT=false`, record the exact blocker on the Preview smoke Goal, and do not attempt to enable the live Production path.
+
+### Preview signed-in smoke prerequisites
+
+Preview signed-in smoke requires the deployed Next.js build and the Preview Supabase Edge Functions to be aligned. Before treating OTP smoke failures as app regressions, confirm:
+
+1. The Preview deployment can reach the intended Preview Supabase project.
+2. The `user-settings` Edge Function deployed to that project includes the request-scoped `/auth/ensure-user` path.
+3. The Edge Function runtime has either `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set or Supabase's default `SUPABASE_PUBLISHABLE_KEYS` available alongside the privileged service-role key used for the narrowly labelled ensure-user reconciliation write.
+4. The browser console does not show `Failed to finish authenticated user provisioning: Unauthorized` after OTP verification.
+
+If OTP verification succeeds but provisioning stays on the modal with `Unauthorized`, stop the smoke, keep pay-link creation blocked, and repair/deploy the Preview Edge Function boundary before retrying.
 
 ## Production smoke steps
 

@@ -152,7 +152,7 @@ describe("SignInModal", () => {
     });
 
     expect(waitForAuthenticatedSessionMock).not.toHaveBeenCalled();
-    expect(fetchUserByContactMock).toHaveBeenCalled();
+    expect(fetchUserByContactMock).toHaveBeenCalledWith("email", "", "fresh-token");
     expect(push).toHaveBeenCalledWith("/dashboard");
     expect(closeModal).toHaveBeenCalled();
     cleanup();

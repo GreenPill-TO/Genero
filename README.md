@@ -40,7 +40,7 @@ For local Supabase work under Colima, start the trimmed local stack with:
 ```bash
 pnpm supabase:start:local
 ```
-That helper switches to the `colima-varrun` Docker context when available and reapplies the GoTrue mailer-host patch needed to suppress local `GOTRUE_MAILER_EXTERNAL_HOSTS` warnings for browser and gateway traffic (`localhost`, `127.0.0.1`, and the local `kong` gateway host).
+That helper uses the shared `colima-agents` Docker context and reapplies the GoTrue mailer-host patch needed to suppress local `GOTRUE_MAILER_EXTERNAL_HOSTS` warnings for browser and gateway traffic (`localhost`, `127.0.0.1`, and the local `kong` gateway host).
 
 Open `http://localhost:3000` in your browser. Next.js will serve the app configured by `NEXT_PUBLIC_CITYCOIN` and `NEXT_PUBLIC_APP_NAME`.
 
@@ -113,7 +113,7 @@ Do not put real secrets in checked-in files. Keep `SUPABASE_SERVICE_ROLE_KEY` ou
 
 ## CI And Database Delivery
 
-Pull requests run frontend CI, secret scanning, and Supabase migration validation when relevant. The dedicated TCOIN Supabase workflow dry-runs migrations for PRs into `dev` against `Preview – tcoin` and PRs into `main` against `Production – tcoin`; pushes to those branches deploy migrations to the matching database after the GitHub Environment gate.
+Pull requests run frontend CI, secret scanning, and Supabase validation when relevant. The dedicated TCOIN Supabase workflow dry-runs migrations for PRs into `dev` against `Preview – tcoin` and PRs into `main` against `Production – tcoin`; it also reports the wallet-critical Edge Function deployment plan. Pushes to those branches deploy migrations and the `user-settings`, `payment-links`, and `payment-requests` Edge Functions to the matching Supabase project after the GitHub Environment gate.
 
 Agents must never directly mutate a linked Supabase database. Remote schema changes should flow through reviewed migrations and the guarded GitHub workflow, or through an explicit human/operator action described in the relevant runbook.
 
