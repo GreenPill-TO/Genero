@@ -9,6 +9,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "https://www.tcoin.me",
 ];
 
+const VERCEL_PREVIEW_HOST_PATTERN = /^(?:tcoin|spare-change)(?:-[a-z0-9]+|-git-[a-z0-9-]+)-cubid-team\.vercel\.app$/;
+
 function readAllowedOriginsFromEnv(): string[] {
   const configured = [
     Deno.env.get("USER_SETTINGS_ALLOWED_ORIGINS"),
@@ -23,6 +25,15 @@ function readAllowedOriginsFromEnv(): string[] {
     .filter(Boolean);
 }
 
+function isAllowedVercelPreviewOrigin(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    return url.protocol === "https:" && VERCEL_PREVIEW_HOST_PATTERN.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function resolveAllowedOrigin(req?: Request): string | null {
   const requestOrigin = req?.headers.get("origin")?.trim() ?? "";
   if (!requestOrigin) {
@@ -30,7 +41,7 @@ function resolveAllowedOrigin(req?: Request): string | null {
   }
 
   const allowedOrigins = new Set([...DEFAULT_ALLOWED_ORIGINS, ...readAllowedOriginsFromEnv()]);
-  return allowedOrigins.has(requestOrigin) ? requestOrigin : null;
+  return allowedOrigins.has(requestOrigin) || isAllowedVercelPreviewOrigin(requestOrigin) ? requestOrigin : null;
 }
 
 export function resolveCorsHeaders(req?: Request): Record<string, string> {
