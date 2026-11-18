@@ -67,6 +67,10 @@ Each route must return `2xx`, stay on the requested path, render visible body co
 
 ## CI validation
 
+### Isolated OTP contrast regression
+
+`pnpm exec playwright test -c playwright.otp-contrast.config.ts` compiles the actual wallet Sass/Tailwind stylesheet and checks static empty, populated, and keyboard-focus states in light/dark themes, both outside and inside the authenticated shell. This fixture starts no app or database, blocks network requests, and uses sample digits rather than requesting OTPs. It does not establish deployed sign-in acceptance. The route smoke configuration also discovers these tests.
+
 Frontend CI runs on pull requests and pushes to `dev`/`main`, except docs-only and Supabase-only changes ignored by the workflow. Vitest excludes `e2e/**`; browser smoke runs through Playwright separately. Frontend CI currently runs:
 
 - `pnpm install --frozen-lockfile`

@@ -22,6 +22,7 @@
   - The Next.js/Vercel runtime should use publishable/authenticated Supabase clients and narrow RPCs/Edge Functions. `SUPABASE_SERVICE_ROLE_KEY` belongs in privileged Supabase Edge Functions and external worker runtimes, not the deployed Next.js shell.
 - **Documentation tooling**: Internal engineering notes may include Mermaid diagrams generated through the shared local `mermaid-chart` Codex skill, which keeps Mermaid source editable and uses local HTML previews plus browser screenshots for visual checks and image exports
 - **Authentication**: Twilio SMS OTP via API routes
+  - Shared OTP digit styles deliberately exclude `wallet-auth-input` and the generic translucent surface classes so generated utility ordering and authenticated-shell overrides cannot defeat the opaque light background. `e2e/otp-field-contrast.spec.ts` compiles actual wallet Sass/Tailwind CSS and checks empty/populated/focused inputs in both themes and shell contexts without authentication or database access.
   - `/api/send_otp` and `/api/verify_otp` now share one server-side Twilio Verify helper that validates E.164 phone numbers plus digit-only passcodes before any upstream request is made.
   - The deprecated raw `/api/sendsms` route has been removed so OTP traffic flows only through the Twilio Verify contract that wallet and sparechange off-ramp flows actively use.
 - **Storage**: Supabase (Postgres + Auth)
