@@ -1,0 +1,326 @@
+{
+  "checked_at_utc": "2026-11-12T16:57:48.900305+00:00",
+  "repository": "https://github.com/GreenPill-TO/Genero.git",
+  "base": "4d7220bfeb0d7e84f71075eb6ab901f61240f3b7",
+  "remote_tips_match_local": true,
+  "bundle_created": false,
+  "restore_test_completed": false,
+  "deletion_authorized": false,
+  "refs": [
+    {
+      "remote_ref": "refs/heads/codex/add-/admin-route-for-admin-dashboard",
+      "local_source_ref": "refs/remotes/origin/codex/add-/admin-route-for-admin-dashboard",
+      "sha": "ee37492157ab8107be3b9a3ba03285e6f5b3bd01",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/add-modal-escape-functionality-and-reintroduce-header",
+      "local_source_ref": "refs/remotes/origin/codex/add-modal-escape-functionality-and-reintroduce-header",
+      "sha": "4a95ab5c4fd29c8dedb8f9fd7862facd66fa6ba1",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/allow-unauthenticated-access-to-dashboard",
+      "local_source_ref": "refs/remotes/origin/codex/allow-unauthenticated-access-to-dashboard",
+      "sha": "a71e8e7c293732be19ad54cf4359056d9e0315ca",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/allow-unauthenticated-access-to-dashboard-tolnzd",
+      "local_source_ref": "refs/remotes/origin/codex/allow-unauthenticated-access-to-dashboard-tolnzd",
+      "sha": "05ef80711003a3e028429afcb8d71fa665a85060",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/connect-to-supabase-and-export-sql-schema",
+      "local_source_ref": "refs/remotes/origin/codex/connect-to-supabase-and-export-sql-schema",
+      "sha": "9af16a79457fe0c19f940fcfaaa884835cd2880a",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/create-resources-and-contact-pages",
+      "local_source_ref": "refs/remotes/origin/codex/create-resources-and-contact-pages",
+      "sha": "012c3593f9a0faf86cc4ae3784ce0d55f108d214",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/create-resources-and-contact-pages-ccutv1",
+      "local_source_ref": "refs/remotes/origin/codex/create-resources-and-contact-pages-ccutv1",
+      "sha": "bada5b12a088a21907d6d928cb0018bba67fc3da",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/create-supabase-migration-for-fks",
+      "local_source_ref": "refs/remotes/origin/codex/create-supabase-migration-for-fks",
+      "sha": "21f6d742f9c0dda0ab705842ecea2591b560b77d",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/enhance-seo-for-ecosystem-page",
+      "local_source_ref": "refs/remotes/origin/codex/enhance-seo-for-ecosystem-page",
+      "sha": "e7240fa0200ed763fe928504bc553c532f6be9f4",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/ensure-qr-code-colors-are-consistent",
+      "local_source_ref": "refs/remotes/origin/codex/ensure-qr-code-colors-are-consistent",
+      "sha": "f62a3491487b3018719da14280464216d2cfa6f2",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/ensure-qr-code-renders-in-black-and-white",
+      "local_source_ref": "refs/remotes/origin/codex/ensure-qr-code-renders-in-black-and-white",
+      "sha": "7f0301d674c1f8da27a1ba0d34b1acac61c984cd",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/find-style-sheet-dependencies-for-monorepo-parts",
+      "local_source_ref": "refs/remotes/origin/codex/find-style-sheet-dependencies-for-monorepo-parts",
+      "sha": "f68370294ac01019195a852fe2ef6ce59a36dfc2",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/fix-app-router-page-paths",
+      "local_source_ref": "refs/remotes/origin/codex/fix-app-router-page-paths",
+      "sha": "2ba0b83ebcbe6e412489205a1e890f86f26ee340",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/fix-client-side-exception-on-dashboard",
+      "local_source_ref": "refs/remotes/origin/codex/fix-client-side-exception-on-dashboard",
+      "sha": "ba5fb373dd4b02fbc97391889d12d0f71151d5f6",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/fix-toast-error-on-signup-modal",
+      "local_source_ref": "refs/remotes/origin/codex/fix-toast-error-on-signup-modal",
+      "sha": "e2e08a83ca6551ea47a564f15b94bb679b095d09",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/fix-walletscreen-import-in-tcoin-wallet",
+      "local_source_ref": "refs/remotes/origin/codex/fix-walletscreen-import-in-tcoin-wallet",
+      "sha": "8eee41c052b9d38197435affc592093e6558456f",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/implement-wallet-app-enhancements",
+      "local_source_ref": "refs/remotes/origin/codex/implement-wallet-app-enhancements",
+      "sha": "7c9faedd1c3a9bcfe3aadbfd781fafe8e4ee5514",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/investigate-sign-in-redirect-issue",
+      "local_source_ref": "refs/remotes/origin/codex/investigate-sign-in-redirect-issue",
+      "sha": "c8c407fd0806d48c5c241d259bd512820e4d8483",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/make-/dashboard-public-in-wallet-app",
+      "local_source_ref": "refs/remotes/origin/codex/make-/dashboard-public-in-wallet-app",
+      "sha": "1e2f7786d1dc712275d48adbcc3b03025241fabc",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/migrate-user-profiles-to-app_user_profiles",
+      "local_source_ref": "refs/remotes/origin/codex/migrate-user-profiles-to-app_user_profiles",
+      "sha": "da45827f7f5cbafb221c743232fe6c67747b4a89",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/migrate-user-profiles-to-app_user_profiles-9l1l2t",
+      "local_source_ref": "refs/remotes/origin/codex/migrate-user-profiles-to-app_user_profiles-9l1l2t",
+      "sha": "89b8cb43abce18bbf23c8a776a7c7d4ce020008e",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/redesign-tcoin-wallet-home-page",
+      "local_source_ref": "refs/remotes/origin/codex/redesign-tcoin-wallet-home-page",
+      "sha": "b03e7a5827f513144133c5840dd0828840250271",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/redesign-tcoin-wallet-homepage",
+      "local_source_ref": "refs/remotes/origin/codex/redesign-tcoin-wallet-homepage",
+      "sha": "f767ed122bbb787910fda6e5358cf59ee61e9bf8",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/refactor-edit-profile-modal",
+      "local_source_ref": "refs/remotes/origin/codex/refactor-edit-profile-modal",
+      "sha": "559e78bbcd77ce29fe5c43c8494d047bd1938077",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/refactor-styling-for-tcoin-wallet-app",
+      "local_source_ref": "refs/remotes/origin/codex/refactor-styling-for-tcoin-wallet-app",
+      "sha": "3541e3c2cdead5619b1a9b8d3b4da24f84eb4cda",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/refactor-styling-for-tcoin-wallet-app-ivmgyq",
+      "local_source_ref": "refs/remotes/origin/codex/refactor-styling-for-tcoin-wallet-app-ivmgyq",
+      "sha": "785e5ade6cc17d1567a019137ff5f85644b4ce78",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/refresh-supabase-snapshot-in-sql-schema.sql",
+      "local_source_ref": "refs/remotes/origin/codex/refresh-supabase-snapshot-in-sql-schema.sql",
+      "sha": "3511d57e7bf81556566024932b7bb11cad4f232a",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/refresh-supabase-snapshot-in-sql-schema.sql-aiffl0",
+      "local_source_ref": "refs/remotes/origin/codex/refresh-supabase-snapshot-in-sql-schema.sql-aiffl0",
+      "sha": "f10e26a61997854af442cc36bb63653666c53136",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/restrict-dashboard-access-for-unauthenticated-users",
+      "local_source_ref": "refs/remotes/origin/codex/restrict-dashboard-access-for-unauthenticated-users",
+      "sha": "5308b606f5c65a833c4c53d4dfe529a8d9f8e7f7",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/rewrite-readme-and-add-agents.md",
+      "local_source_ref": "refs/remotes/origin/codex/rewrite-readme-and-add-agents.md",
+      "sha": "5e5a22e76d9f750e30f5f6dbc9ef33295c30450c",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/run-workflow-from-agents.md",
+      "local_source_ref": "refs/remotes/origin/codex/run-workflow-from-agents.md",
+      "sha": "a9a3ac2f3e55ec0f8c1a1f42b0c603d3c91b3755",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/show-auth-modal-on-landing-page",
+      "local_source_ref": "refs/remotes/origin/codex/show-auth-modal-on-landing-page",
+      "sha": "17df003d85d062003c71a9f4c31c853ae886947b",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/style-buttons-and-update-page-backgrounds",
+      "local_source_ref": "refs/remotes/origin/codex/style-buttons-and-update-page-backgrounds",
+      "sha": "420f270729ca99b79f425ac379056f500c5a5ac7",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/update-/dashboard-layout-and-footer",
+      "local_source_ref": "refs/remotes/origin/codex/update-/dashboard-layout-and-footer",
+      "sha": "8e017a78d027c2f6c5a4a90a75adf84c22a43ab9",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/update-dashboard-access-authentication-logic",
+      "local_source_ref": "refs/remotes/origin/codex/update-dashboard-access-authentication-logic",
+      "sha": "b201c5086b355b0b22aa13f23d6facb357dddca8",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/update-login-modal-to-six-digit-inputs",
+      "local_source_ref": "refs/remotes/origin/codex/update-login-modal-to-six-digit-inputs",
+      "sha": "578d22485488bce6455342bd0e09e7b59115c51b",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/update-tcoin-wallet-send-and-request-tabs",
+      "local_source_ref": "refs/remotes/origin/codex/update-tcoin-wallet-send-and-request-tabs",
+      "sha": "3b50cc6c26a82150871aa54d03f8b4cc5830c3df",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/codex/update-wallet-app-landing-page-and-routes",
+      "local_source_ref": "refs/remotes/origin/codex/update-wallet-app-landing-page-and-routes",
+      "sha": "9f13521e30d75816d3b11f1385faec171f8d530a",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/codex/update-walletscreen-import-path",
+      "local_source_ref": "refs/remotes/origin/codex/update-walletscreen-import-path",
+      "sha": "5ea35da2effb88bc24b8749f98aa49e4afdac779",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/copilot/sub-pr-48",
+      "local_source_ref": "refs/remotes/origin/copilot/sub-pr-48",
+      "sha": "8caa09eae8fb9afd204c21013b6723e134fae9a6",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/dev",
+      "local_source_ref": "refs/remotes/origin/dev",
+      "sha": "4d7220bfeb0d7e84f71075eb6ab901f61240f3b7",
+      "contained_in_dev": true,
+      "disposition": "retain integration branch"
+    },
+    {
+      "remote_ref": "refs/heads/kmmy38-codex/redesign-tcoin-wallet-home-page",
+      "local_source_ref": "refs/remotes/origin/kmmy38-codex/redesign-tcoin-wallet-home-page",
+      "sha": "5a4849e970ad7830107f4e63c4a2a6e8396b01db",
+      "contained_in_dev": true,
+      "disposition": "contained; candidate only after ownership/deployment checks"
+    },
+    {
+      "remote_ref": "refs/heads/main",
+      "local_source_ref": "refs/remotes/origin/main",
+      "sha": "3b01037c4dc03cb4a8bb84737832fa189ebe412a",
+      "contained_in_dev": false,
+      "disposition": "retain integration branch"
+    },
+    {
+      "remote_ref": "refs/heads/restructure-to-deploy",
+      "local_source_ref": "refs/remotes/origin/restructure-to-deploy",
+      "sha": "f5f2c71edf70700581fe888e1a836b15b02e0813",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    },
+    {
+      "remote_ref": "refs/heads/rus8r1-codex/rewrite-readme-and-add-agents.md",
+      "local_source_ref": "refs/remotes/origin/rus8r1-codex/rewrite-readme-and-add-agents.md",
+      "sha": "eb669a232d8f187859412b7d1d844e8de9a194ed",
+      "contained_in_dev": false,
+      "disposition": "preserve historical patches; salvage/archive decision pending"
+    }
+  ]
+}

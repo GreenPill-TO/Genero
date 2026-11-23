@@ -152,3 +152,120 @@
 - summary: Migrated this repo to branch-scoped session logs, archived the legacy monolithic log when present, documented the new workflow, and added PR version-bump automation.
 - validation: Generated migration artifacts were inspected by script; run `node .github/scripts/pr-version-bump.mjs --base dev --dry-run` and `node .github/scripts/pr-version-bump.mjs --base main --dry-run` after migration.
 - follow-ups: Future agents should append new entries to this branch log before each commit and keep completed work out of archived legacy logs.
+
+## 2026-11-12T05:27:55Z - TCOIN post-disk-failure inventory
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Inventoried canonical checkout, all remote refs, PR/issue roadmap, both recovery roots and preservation manifests. Recorded branch tips/dispositions and phased recovery plan; refreshed recovery status and deferred-reference guidance. No branches/files deleted and no runtime, hosted or chain state changed.
+- validation: Fresh origin fetch; clean starting status; worktree/stash/reflog inventory; git fsck; ancestry/patch-equivalence checks; targeted source and recovery metadata inspection; GitHub PR/issues/settings/Project reads. Product tests not run (inventory only; dependencies/env absent).
+- follow-ups: Preserve historical branch evidence, salvage OTP ideas through #75, repair local runtime bootstrap, restore dev validation, reconcile #77/Sprint #78, then retire verified residue.
+
+## 2026-11-12T05:34:55Z - Reconcile supplied precrash Preview memories
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Cross-checked supplied history with #97–#99, review corrections in 5c9198a, #86 smoke comments, current CORS/OTP style source and Sprint issue mapping. Added fresh stable-domain OTP diagnosis, computed contrast validation, signed-in Preview smoke and downstream release gates without removing original recovery sessions.
+- validation: Read-only GitHub/source inspection; git diff --check. No product tests/browser smoke or hosted changes performed.
+- follow-ups: Restore environment, diagnose current OTP limits, measure entered-digit contrast, complete #86/#87/#85 Preview acceptance and worker proof, then Production gates and original verified cleanup.
+
+## 2026-11-12T16:55:54Z - Half-day queue reconciliation
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Refreshed open GitHub issues/PRs and Project statuses; recorded historical #87 success with host/funding gaps and #80 hosted execution gates. Added bounded ready/conditional queue, acceptance evidence and distinct premise/recommendation/alternative decisions to existing recovery inventory.
+- validation: Read-only GitHub/source inspection; git diff --check. No services/heavy tests, hosted changes, OTP requests, transactions or cross-project actions.
+- follow-ups: Runtime/profile read-only repair specification next; only 1–1.5 hours strictly ready, 4–8-hour queue depends on access/config/operator decisions.
+
+## 2026-11-12T16:57:48.911576+00:00 - Startup/profile specification and preservation manifest
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Traced startup/profile callers, canonical runtime-env and CLI ownership contract; specified independent-session startup guards, removal of automatic Auth recreation and narrow profile validation. Added 45-ref SHA manifest verified against current remote tips; documented bundle/restore procedure without creating archive or deleting refs. Existing decision packet retained; credential source still unidentified.
+- validation: Read-only source inspection; ls-remote/local SHA equality for all 45 branches; manifest count/disposition checks; git diff --check. No runtime/OTP/hosted mutations, services or heavy tests.
+- follow-ups: Resolve secure config owner; bounded startup/profile repair and focused checks when authorized; actual bundle creation/restore verification remain unperformed.
+
+## 2026-11-12T17:07:59.526866+00:00 - Prepare runtime acceptance and archive verification contract
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Added concrete stub-first startup/profile rejection and success cases, standalone archive restoration criteria and existing-chat ownership note to the recovery plan. Retained all unanswered decisions and implementation/runtime/hosted gates.
+- validation: Documentation inspection and git diff --check only; cases specified, not executed.
+- follow-ups: Restore configuration/access decisions and authorize bounded next implementation/preservation action; no padding of remaining ready work.
+
+## 2026-11-13T14:57:57.717321+00:00 - Reconnection source and reachability refresh
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Confirmed unchanged local/remote dev/main and open PR77 with historical green checks; refreshed #85/#86/#87 dates. Stable dev wallet returned HTTP 200; Vercel dev alias redirects to SSO. Updated current tally and Ready/conditional gates without repeating completed implementation.
+- validation: Read-only Git/GitHub metadata and two bounded HTTP GETs; git diff --check. No rendered/auth/contrast acceptance claimed.
+- follow-ups: Stable-domain rendered read-only inspection where accessible; OTP/configuration/implementation/hosted/deletion gates remain.
+
+## 2026-11-13T15:57:58.944610+00:00 - Render stable dev without OTP
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Stable dev landing rendered; open-wallet displayed signed-out auth modal. Read computed empty email field colours (dark text/white surface, approximately 20.17:1); OTP-entry stage absent. Recorded precise no-OTP gate and marked independent rendered read-only work complete.
+- validation: Browser accessibility/screenshot inspection and read-only computed field styles; git diff --check. No fresh login, dark-mode or entered-digit acceptance claimed.
+- follow-ups: Fresh Preview OTP needs permission beyond current restriction; local repair/configuration is the alternative conditional path. No services, sends, hosted changes or excluded-project actions.
+
+## 2026-11-13T17:42:27.207762+00:00 - Seed actual coordination state
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Confirmed no existing Tcoin task/decision records; created blocked acceptance T22 linked to #86/#79 and decision D15 with a local template-format document for the explicit no-OTP gate. Preserved conditional backlog, observed evidence and all other unanswered decisions.
+- validation: CLI creation outputs and project status inspection; git diff --check. No product implementation, sends, services or hosted mutation.
+- follow-ups: Await a real human decision on D15; rate-limit/access constraints still apply even if execution is permitted. No current workers to register/seed.
+
+## 2026-11-18T01:37:07.073686+00:00 - Correct T22/D15 OTP provenance
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Corrected earlier overbroad interpretation of inspection-only no-OTP instructions. User context supports Preview login/readability; #86 documents intended identity/Gmail browser route but applicable original specific human send authority, current retrieval availability/target and cooldown data remain unestablished. Revised D15 in place without a human answer or claimed acceptance.
+- validation: Original available chat context and refreshed #86/#79 evidence; ledger reconciliation and git diff --check. No OTP/send/email access/hosted change.
+- follow-ups: Establish specific authority and existing retrieval access, then respect actual rate-limit guidance before any authorized bounded Preview attempt.
+
+## 2026-11-18T01:54:40.868713+00:00 - Fresh Preview login passes; dark OTP contrast fails
+
+- agent: Codex
+- branch: dev
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7
+- summary: Verified human-confirmed D15; used existing named Gmail/Chrome access and normal stable-dev OTP UI. Two accepted requests 111 seconds apart due to modal dismissal/reset; matched issuer to GeneroDev and completed fresh auth into setup then dashboard. Confirmed dark entered-digit contrast ~1.14:1; no product fix implemented.
+- validation: Rendered snapshots, computed input/parent colours and populated-field count, matching service/recipient/time email evidence, authenticated dashboard screenshot inspection and captured application error logs (none). git diff --check. No code values in repo/ledger.
+- follow-ups: Minimal shared field style conflict repair and post-fix light/dark browser acceptance under #86/#79; SES backend configuration not independently verified. No payment, Production, provider/security changes or local runtime started.
+
+## 2026-11-18T02:31:16.364246+00:00 - T22 local fix handoff
+
+- agent: Codex
+- branch: dev (canonical recovery record); implementation branch codex/tcoin-otp-contrast
+- head: 4d7220bfeb0d7e84f71075eb6ab901f61240f3b7; implementation 0b6c9ac, final docs-only successor 2f469d9
+- summary: Completed bounded OTP surface correction in isolated worktree; canonical recovery documents remain preserved. Eleven focused tests, targeted TS/scoped ESLint and four CUA rendered contexts pass; independent exact-source review found no actionable findings and verified final successor is docs-only.
+- validation: Local fixture contrast 20.17:1 light /18.41:1 dark; baseline regression fails. Full-app release checks and deployed acceptance not run. No publish/deploy/OTP/config/payment/Production changes in this repair pass; fixture server stopped.
+- follow-ups: Normal full-app checks and authorized dev PR delivery, then hosted post-fix light/dark fresh-OTP acceptance. T22 not complete.
+
+## 2026-11-18T04:07:54.514620+00:00 - T22 full local checks checkpoint
+
+- agent: Codex
+- branch: dev canonical record; implementation codex/tcoin-otp-contrast
+- head: 4d7220b canonical; local repair/log head 2f11336, product 0b6c9ac
+- summary: Full frozen dependencies restored in repair worktree. Repo lint, CI TypeScript and all 483 tests/109 files pass. Build deferred due competing headless-browser workload and kernel pressure level2; no source drift/concurrent Tcoin writer. Prepared local PR description and documented no authority for publication in this pass.
+- validation: Frozen install; pnpm lint; tsc CI config; serial full Vitest; focused fixture/config TS; git diff --check. Local Node26 differs from CI Node20. No full build/browser/deployed acceptance claimed.
+- follow-ups: Fresh resource/concurrency preflight then single-worker build; exact dev PR delivery authority and normal CI/hosted acceptance thereafter. No push, deployment, Supabase/Colima, payment or Production changes.
+
+## 2026-11-18T04:59:56.111352+00:00 - T22 build still deferred by resource guard
+
+- agent: Codex
+- branch: dev canonical record; repair branch codex/tcoin-otp-contrast
+- head: repair2f11336 clean; product0b6c9ac unchanged
+- summary: Rechecked full permitted host/concurrency guard once; pressure2,33% free,swap~14.2GiB,Data12GiB,active CPU-bound Node/sharedVM. Did not start or retry the bounded build.
+- validation: Read-only branch/resource/process observations only. Prior lint,CI typecheck and483 tests remain; no new build result.
+- follow-ups: Release T22 for fresh resource-clear build opportunity. Node26/CI20 parity,exact dev-PR authority and deployed acceptance remain. No peer/runtime/browser/publication/payment/config/Production action.

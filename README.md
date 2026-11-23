@@ -40,7 +40,7 @@ For local Supabase work under Colima, start the trimmed local stack with:
 ```bash
 pnpm supabase:start:local
 ```
-That helper uses the shared `colima-agents` Docker context and reapplies the GoTrue mailer-host patch needed to suppress local `GOTRUE_MAILER_EXTERNAL_HOSTS` warnings for browser and gateway traffic (`localhost`, `127.0.0.1`, and the local `kong` gateway host).
+That helper requires the exact active self-service lease and independent session inputs. It sources the canonical `codex-supabase` runtime environment, starts only the admitted project, and never recreates Auth. See [local recovery setup](docs/engineering/local-development-recovery.md) before running it.
 
 Open `http://localhost:3000` in your browser. Next.js will serve the app configured by `NEXT_PUBLIC_CITYCOIN` and `NEXT_PUBLIC_APP_NAME`.
 
@@ -57,7 +57,7 @@ Open `http://localhost:3000` in your browser. Next.js will serve the app configu
 - `pnpm start:supabase-remote` – start the production server with the remote-Supabase profile loaded
 - `pnpm smoke:e2e` – run the Playwright smoke harness against `SMOKE_BASE_URL` or build and start a local production server
 - `pnpm smoke:e2e:supabase-local` – build with the local-Supabase profile and smoke stable public/preview-safe routes in Chromium
-- `pnpm supabase:start:local` – start the local Supabase stack for this repo and patch local GoTrue mailer host handling
+- `pnpm supabase:start:local` – start only the admitted independent local Supabase project
 - `pnpm lint` – run Next.js lint plus the app-facing Supabase boundary guard
 - `pnpm test` – run the Vitest suite
 - `pnpm ops:wallet:preflight:supabase-local` – run the wallet release preflight against the local Supabase profile
