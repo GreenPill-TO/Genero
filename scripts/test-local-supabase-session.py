@@ -151,6 +151,37 @@ class LocalSessionTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn('unrecognized arguments', result.stderr)
 
+    def test_shell_wrapper_preserves_actions_without_executing_them_on_source(self):
+        scripts = self.base / 'wrapper/scripts'
+        scripts.mkdir(parents=True)
+        runtime = self.base / 'runtime-env-stub.sh'
+        # Match the canonical script's dual source/execute behaviour without runtime access.
+        runtime.write_text('if [ "$#" -gt 0 ]; then "$@"; fi\n')
+        source = Path(helper.__file__).with_name('start-local-supabase.sh').read_text()
+        source = source.replace('/Users/botmaster/.codex/skills/local-supabase-coordinator/scripts/runtime-env.sh', str(runtime))
+        (scripts / 'start-local-supabase.sh').write_text(source)
+        (scripts / 'local-supabase-session.py').write_text('import json,sys; print(json.dumps(sys.argv[1:]))\n')
+        for action in ['check', 'start', 'stop']:
+            with self.subTest(action=action):
+                result = subprocess.run(['zsh', str(scripts / 'start-local-supabase.sh'), action],
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout), [action])
+
+    def test_shell_wrapper_does_not_fall_back_after_runtime_source_failure(self):
+        scripts = self.base / 'failed-wrapper/scripts'
+        scripts.mkdir(parents=True)
+        runtime = self.base / 'failed-runtime.sh'
+        runtime.write_text('return 1\n')
+        source = Path(helper.__file__).with_name('start-local-supabase.sh').read_text()
+        source = source.replace('/Users/botmaster/.codex/skills/local-supabase-coordinator/scripts/runtime-env.sh', str(runtime))
+        (scripts / 'start-local-supabase.sh').write_text(source)
+        (scripts / 'local-supabase-session.py').write_text('print("UNSAFE FALLBACK")\n')
+        result = subprocess.run(['zsh', str(scripts / 'start-local-supabase.sh'), 'check'],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('UNSAFE FALLBACK', result.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()
