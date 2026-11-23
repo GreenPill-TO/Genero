@@ -26,3 +26,12 @@
 - summary: Cherry-picked original OTP contrast product0b6c9ac, retaining source branch/evidence. Both independent validators passed the repaired wrapper and combined source with no remaining source findings. Recorded Noak's ledger acceptance of S33–S36 and started S34 for recovery prerequisites.
 - validation: 14 Python checks, full111-file/495-test serial Vitest suite, repo lint/Edge boundary guard, CI TypeScript and bounded one-worker production build pass. Build completed in approximately40 seconds with no pressure stop, using CI placeholders; Node26/CI20 parity remains a limitation. Local browser verified public wallet landing, Resources and signed-out modal without OTP/real backend; owned server stopped, port3149 listener absent. No contract change or chain transaction.
 - follow-ups: Complete admitted fresh migration/seed/auth/Edge validation when the FIFO queue grants this exact session. Queue lastposition2; do not start without ownership. Preserve the final unpublished candidate in a refreshed verified bundle. Hosted post-fix acceptance and PR/CI delivery remain separate.
+
+## 2026-11-23T23:51:35.608655+00:00 - Consolidate verified backups and preserve candidate remotely
+
+- agent: Codex (Tcoin HBIC)
+- branch: codex/tcoin-recovery-restoration
+- head: d86480c6a85a91630c4749bb880ac262a52af8ec
+- summary: Opened draft PR100 against dev through the normal publish workflow. Restored the refreshed bundle into an independent bare repo, verified all original objects/HEADs/ref header and fsck/no alternates, then removed only our two disposable bare restore copies and superseded bundle. Retained one private verified bundle, original file snapshots, manifests and every linked worktree. Re-enabled the existing inactivity-disabled Secret Scan workflow for required diff scanning on the next push.
+- validation: New bundle SHA-256 fe5696b40ca0e849734869ddf08575f03bd6e82bf2f049049a47f9efbc5f15ef;14492329bytes. Feature push and draft PR read back. No source changes in this checkpoint; diff check passed. Initial CI/deployments pending; actual local runtime queueposition1, no stack start.
+- follow-ups: Follow CI, automatic Codex review and exact local admission; do not treat queued/preview deployment state as acceptance. Finish runtime and hosted acceptance evidence before closing their issues.
