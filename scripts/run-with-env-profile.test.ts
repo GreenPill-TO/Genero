@@ -1,13 +1,15 @@
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 
 const directories: string[] = [];
 afterEach(() => directories.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
 
 function run(contents: string, local: boolean) {
-  const dir = mkdtempSync("/Volumes/MiniBot/scratch/tcoin-profile-test-");
+  const scratch = process.platform === "darwin" ? "/Volumes/MiniBot/scratch" : tmpdir();
+  const dir = mkdtempSync(join(scratch, "tcoin-profile-test-"));
   directories.push(dir);
   const profile = join(dir, local ? ".env.local-supabase-local" : ".env.test-profile");
   const marker = join(dir, "started");

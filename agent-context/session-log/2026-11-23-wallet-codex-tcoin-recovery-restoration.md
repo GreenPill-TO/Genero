@@ -35,3 +35,12 @@
 - summary: Opened draft PR100 against dev through the normal publish workflow. Restored the refreshed bundle into an independent bare repo, verified all original objects/HEADs/ref header and fsck/no alternates, then removed only our two disposable bare restore copies and superseded bundle. Retained one private verified bundle, original file snapshots, manifests and every linked worktree. Re-enabled the existing inactivity-disabled Secret Scan workflow for required diff scanning on the next push.
 - validation: New bundle SHA-256 fe5696b40ca0e849734869ddf08575f03bd6e82bf2f049049a47f9efbc5f15ef;14492329bytes. Feature push and draft PR read back. No source changes in this checkpoint; diff check passed. Initial CI/deployments pending; actual local runtime queueposition1, no stack start.
 - follow-ups: Follow CI, automatic Codex review and exact local admission; do not treat queued/preview deployment state as acceptance. Finish runtime and hosted acceptance evidence before closing their issues.
+
+## 2026-11-23T23:57:42.804802+00:00 - Repair Linux test scratch portability
+
+- agent: Codex (sole recovery writer)
+- branch: codex/tcoin-recovery-restoration
+- head: cc346b36d21f8b73922c5f834d7a1262bf98af7f
+- summary: Frontend CI45292409218 passed lint/typecheck/build but four newly added profile tests failed because their temporary-directory prefix assumed this Mac's MiniBot mount. Select the OS temporary directory on Linux while retaining the mandated MiniBot scratch location on macOS. No product/runtime behaviour changed.
+- validation: Focused four profile tests pass locally after correction; targeted ESLint and diff check pass. Secret Scan45292409123 passed; all three Vercel candidates deployed. Separately compiled current-dependency OTP fixtures and CUA verified intended foreground/background for empty/sample digits and visible keyboard focus in light/dark public/authenticated shells (20.17:1 light /18.41:1 dark). No fixture Auth request; own fixture server stopped.
+- follow-ups: Push the test repair and require post-fix CI. Candidate fresh-login check and exact local runtime admission remain separate and in progress; no issue accepted from deployment alone.
