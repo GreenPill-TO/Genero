@@ -17,3 +17,12 @@
 - summary: Both frozen-source validators found inherited shell arguments caused the shared sourced runtime script to execute check/stop before Python. Saved the wrapper arguments, cleared positional parameters during source, and passed the saved array to Python. Added positive check/start/stop wrapper tests using a harmless equivalent source fixture plus source-failure no-fallback coverage. No shared runtime script was changed.
 - validation: 14 stub-only Python tests and12 focused Vitest tests pass after repair; shell syntax/diff checks pass. Independent revalidation of this replacement SHA follows. Actual local runtime still pending queue admission.
 - follow-ups: Revalidate R1 and AXE-T882-001; do not mark actual startup/auth/stop/release accepted from mock tests.
+
+## 2026-11-23T23:47:21.565909+00:00 - Combine reviewed OTP correction and validate recovery candidate
+
+- agent: Codex (Tcoin HBIC)
+- branch: codex/tcoin-recovery-restoration
+- head: 7ffb644bb8b7b57b60c4724bf4ada0888e051e56
+- summary: Cherry-picked original OTP contrast product0b6c9ac, retaining source branch/evidence. Both independent validators passed the repaired wrapper and combined source with no remaining source findings. Recorded Noak's ledger acceptance of S33–S36 and started S34 for recovery prerequisites.
+- validation: 14 Python checks, full111-file/495-test serial Vitest suite, repo lint/Edge boundary guard, CI TypeScript and bounded one-worker production build pass. Build completed in approximately40 seconds with no pressure stop, using CI placeholders; Node26/CI20 parity remains a limitation. Local browser verified public wallet landing, Resources and signed-out modal without OTP/real backend; owned server stopped, port3149 listener absent. No contract change or chain transaction.
+- follow-ups: Complete admitted fresh migration/seed/auth/Edge validation when the FIFO queue grants this exact session. Queue lastposition2; do not start without ownership. Preserve the final unpublished candidate in a refreshed verified bundle. Hosted post-fix acceptance and PR/CI delivery remain separate.
