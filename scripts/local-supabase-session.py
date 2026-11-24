@@ -23,6 +23,35 @@ PORT_FIELDS = {
 }
 
 
+def verify_local_cli_state(checkout, project):
+    # Fresh `start` itself creates these local files. Never accept remote target
+    # metadata, another project's runtime secrets or saved database branches.
+    secret_dir = f'start-secrets/supabase_edge_runtime_{project}'
+    allowed = {
+        '.temp': ({'cli-latest', f'{secret_dir}/env/docker.env'},
+                  {'start-secrets', secret_dir, f'{secret_dir}/env'}),
+        '.branches': ({'_current_branch'}, set()),
+    }
+    for name, (files, directories) in allowed.items():
+        root = checkout / 'supabase' / name
+        if root.is_symlink() or (root.exists() and not root.is_dir()):
+            raise ValueError('Independent inputs must not contain hosted linkage or unknown CLI state.')
+        if not root.exists():
+            continue
+        for entry in root.rglob('*'):
+            relative = entry.relative_to(root).as_posix()
+            permitted = relative in (directories if entry.is_dir() else files)
+            if entry.is_symlink() or not permitted or not (entry.is_file() or entry.is_dir()):
+                raise ValueError('Independent inputs must not contain hosted linkage or unknown CLI state.')
+            if relative.endswith('/env/docker.env'):
+                info = entry.stat()
+                if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o600:
+                    raise ValueError('CLI-generated local runtime secrets must remain private.')
+        marker = root / '_current_branch'
+        if name == '.branches' and marker.exists() and marker.read_text().strip() != 'main':
+            raise ValueError('Independent inputs must not contain saved database branch state.')
+
+
 def context(env):
     if (env.get('COLIMA_HOME') != RUNTIME or env.get('DOCKER_HOST') != SOCKET
             or env.get('COLIMA_PROFILE') != 'codex-supabase' or env.get('DOCKER_CONTEXT')):
@@ -37,13 +66,6 @@ def context(env):
     expected = (SESSIONS / agent / identity).resolve()
     if checkout != expected:
         raise ValueError('SLOT_DIR must be this identity\'s independent Colima session directory.')
-    cache = checkout / 'supabase/.temp'
-    if cache.is_symlink() or (cache.exists() and (not cache.is_dir() or any(
-            entry.name != 'cli-latest' or entry.is_symlink() or not entry.is_file()
-            for entry in cache.iterdir()))):
-        raise ValueError('Independent inputs must not contain hosted linkage or unknown CLI state.')
-    if (checkout / 'supabase/.branches').exists():
-        raise ValueError('Independent inputs must not contain hosted linkage or old branch state.')
     token_path = Path(env['SLOT_TOKEN_FILE'])
     if token_path.is_symlink() or not token_path.is_file():
         raise ValueError('SLOT_TOKEN_FILE must be a private regular file.')
@@ -57,6 +79,7 @@ def context(env):
     project = config.get('project_id', '')
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', project) or project.lower() == 'genero':
         raise ValueError('Independent inputs need a unique session project_id.')
+    verify_local_cli_state(checkout, project)
     return {'session': session, 'checkout': checkout, 'token': token,
             'scope': env['SLOT_SCOPE'], 'project': project, 'config': config}
 
@@ -117,8 +140,9 @@ def execute(action, env, runner=subprocess.run):
     start = verify_lease(slot('check', ctx, runner), ctx)
     if action == 'check':
         return {'project_id': ctx['project'], 'api_port': start + 1, 'status': 'active'}
-    command = (['supabase', 'start', '-x', 'storage-api,imgproxy,logflare,vector,studio']
-               if action == 'start' else ['supabase', 'stop', '--project-id', ctx['project']])
+    command = ['supabase', '--workdir', str(ctx['checkout'])] + (
+        ['start', '-x', 'storage-api,imgproxy,logflare,vector,studio']
+        if action == 'start' else ['stop', '--project-id', ctx['project']])
     result = runner(command, cwd=ctx['checkout'], env=env)
     if result.returncode:
         raise ValueError(f'Project-only {action} failed. Preserve ownership and diagnose this project.')

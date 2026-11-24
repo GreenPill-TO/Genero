@@ -27,6 +27,18 @@ Choose a currently free registered family from the shared port registry. Explici
 | 8 | edge_runtime.inspector_port |
 | 9 | db.pooler.port |
 
+Copy `supabase/otp-email.html` into the independent inputs as well. The wallet expects six digits; the CLI's default local mail contains only a magic link. Add these sections to the independent config before starting, keeping mail delivery inside the local email-testing service:
+
+```toml
+[auth.email.template.magic_link]
+subject = "Local TCOIN sign-in code"
+content_path = "./supabase/otp-email.html"
+
+[auth.email.template.confirmation]
+subject = "Local TCOIN sign-in code"
+content_path = "./supabase/otp-email.html"
+```
+
 ## Admission and runtime
 
 Source `/Users/botmaster/.codex/skills/local-supabase-coordinator/scripts/runtime-env.sh` in every runtime shell. Use only its explicit socket and `codex-supabase` profile. Request via `slots.py request` with the saved identity/token, unique project ID, full family, independent checkout and bounded scope/duration. Follow the exact policy and examples in AGENTS.md; never edit the ledger.
@@ -40,7 +52,7 @@ pnpm supabase:start:local
 zsh scripts/start-local-supabase.sh check
 ```
 
-The helper rejects mismatched identity, canonical checkout, scope, runtime kind, project or ports. A regular CLI-generated `.temp/cli-latest` update-cache file is allowed; hosted project linkage, unknown cache files and symlinks are rejected. It cannot accept a linked target or arbitrary Supabase flags. It keeps CLI-managed Auth intact and does not deploy hosted functions or change the linked database.
+The helper rejects mismatched identity, canonical checkout, scope, runtime kind, project or ports. It permits only the CLI-generated update cache, the default local branch marker without saved database branches, and this project's private Edge runtime env file. Hosted project linkage, foreign/unknown state and symlinks are rejected. Start and stop explicitly pin the verified workdir, overriding inherited `SUPABASE_WORKDIR`. The helper cannot accept a linked target or arbitrary Supabase flags. It keeps CLI-managed Auth intact and does not deploy hosted functions or change the linked database.
 
 ## Local app profile
 

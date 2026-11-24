@@ -54,13 +54,13 @@ class LocalSessionTests(unittest.TestCase):
     def test_start_uses_only_owned_checkout_and_no_auth_recreation(self):
         self.assertEqual(self.execute()['status'], 'started')
         self.assertEqual(self.calls[0][0][2], 'check')
-        self.assertEqual(self.calls[1][0], ['supabase', 'start', '-x', 'storage-api,imgproxy,logflare,vector,studio'])
+        self.assertEqual(self.calls[1][0], ['supabase', '--workdir', str(self.checkout), 'start', '-x', 'storage-api,imgproxy,logflare,vector,studio'])
         self.assertEqual(self.calls[1][1]['cwd'], self.checkout)
         self.assertEqual(len(self.calls), 2)
 
     def test_stop_is_project_specific_then_release(self):
         self.assertEqual(self.execute('stop')['status'], 'released')
-        self.assertEqual(self.calls[1][0], ['supabase', 'stop', '--project-id', self.record['project_id']])
+        self.assertEqual(self.calls[1][0], ['supabase', '--workdir', str(self.checkout), 'stop', '--project-id', self.record['project_id']])
         self.assertEqual(self.calls[2][0][2], 'release')
 
     def test_check_reports_only_own_public_identity(self):
@@ -124,7 +124,7 @@ class LocalSessionTests(unittest.TestCase):
         (cache / 'cli-latest').write_text('v2.117.0')
         self.assertEqual(self.execute('check')['status'], 'active')
         self.assertEqual(self.execute('stop')['status'], 'released')
-        self.assertEqual(self.calls[-2][0], ['supabase', 'stop', '--project-id', self.record['project_id']])
+        self.assertEqual(self.calls[-2][0], ['supabase', '--workdir', str(self.checkout), 'stop', '--project-id', self.record['project_id']])
         self.assertEqual(self.calls[-1][0][2], 'release')
 
     def test_unknown_or_symlinked_cli_cache_is_rejected(self):
@@ -134,6 +134,55 @@ class LocalSessionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'hosted linkage'):
             self.execute('check')
         self.assertEqual(self.calls, [])
+
+    def test_fresh_start_metadata_allows_check_and_stop_without_saved_databases(self):
+        secret = self.checkout / 'supabase/.temp/start-secrets/supabase_edge_runtime_tcoin-test-session/env/docker.env'
+        secret.parent.mkdir(parents=True)
+        secret.write_text('LOCAL_TEST_ONLY=true')
+        secret.chmod(0o600)
+        branches = self.checkout / 'supabase/.branches'
+        branches.mkdir()
+        (branches / '_current_branch').write_text('main')
+        self.assertEqual(self.execute('check')['status'], 'active')
+        self.assertEqual(self.execute('stop')['status'], 'released')
+        (branches / 'main').mkdir()
+        with self.assertRaisesRegex(ValueError, 'unknown CLI state'):
+            self.execute('check')
+
+    def test_foreign_project_or_public_runtime_secret_is_rejected(self):
+        secret = self.checkout / 'supabase/.temp/start-secrets/supabase_edge_runtime_tcoin-test-session/env/docker.env'
+        secret.parent.mkdir(parents=True)
+        secret.write_text('LOCAL_TEST_ONLY=true')
+        secret.chmod(0o644)
+        with self.assertRaisesRegex(ValueError, 'remain private'):
+            self.execute('check')
+        secret.chmod(0o600)
+        foreign = secret.parent.parent.with_name('supabase_edge_runtime_foreign')
+        secret.parent.parent.rename(foreign)
+        with self.assertRaisesRegex(ValueError, 'unknown CLI state'):
+            self.execute('check')
+        self.assertEqual(self.calls, [])
+
+    def test_unknown_or_symlinked_branch_marker_is_rejected(self):
+        branches = self.checkout / 'supabase/.branches'
+        branches.mkdir()
+        marker = branches / '_current_branch'
+        marker.write_text('recovered-db')
+        with self.assertRaisesRegex(ValueError, 'saved database branch'):
+            self.execute('check')
+        marker.unlink()
+        marker.symlink_to(self.token)
+        with self.assertRaisesRegex(ValueError, 'unknown CLI state'):
+            self.execute('check')
+        self.assertEqual(self.calls, [])
+
+    def test_inherited_workdir_cannot_redirect_start_or_stop(self):
+        self.env['SUPABASE_WORKDIR'] = str(self.base / 'foreign-checkout')
+        self.execute('start')
+        self.assertEqual(self.calls[1][0][:4], ['supabase', '--workdir', str(self.checkout), 'start'])
+        self.calls.clear()
+        self.execute('stop')
+        self.assertEqual(self.calls[1][0][:4], ['supabase', '--workdir', str(self.checkout), 'stop'])
 
     def test_optional_and_duplicate_ports_are_rejected(self):
         self.config['analytics']['port'] = 54327
