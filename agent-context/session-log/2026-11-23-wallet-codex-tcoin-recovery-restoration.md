@@ -62,3 +62,12 @@
 - summary: Actual startup applied38 fresh migrations and the intended seed, then local synthetic email verification, ensure-user and bootstrap all returned200. Guarded profile-backed Next dev reached Ready. The CLI also generates .branches/_current_branch and an owner0600 project-specific Edge env file; allow only these exact local artefacts with no saved branch databases, hosted/foreign/unknown state or symlinks. Automatic Codex review identified the same start-then-check/stop issue (P1) and inherited SUPABASE_WORKDIR redirection (P2); start/stop now explicitly pin --workdir to the verified checkout.
 - validation: 20 Python checks pass, covering generated-state check/stop, foreign/public/symlink rejection and inherited conflicting workdir. Actual admitted status and profile start succeeded after the metadata repair; no privileged values emitted. Local CLI default email has only a magic link, so added a local OTP email template and documented applying it to independent config before startup. Same admitted project's CLI-managed stop/start reconfigures its own local mail template; canonical project config, hosted settings and shared runtime remain unchanged.
 - follow-ups: Complete local digit-template and browser acceptance, project-only stop and central release; frozen repair revalidation, original review replies/resolution and final CI. Fresh candidate Preview login already passed once on matching GeneroDev issuer with18.41:1 real dark-digit contrast and authenticated wallet dashboard. No code values were retained in evidence.
+
+## 2026-11-24T00:14:53.481383+00:00 - Prepare required PR version locally
+
+- agent: Codex
+- branch: codex/tcoin-recovery-restoration
+- head: 3cdca98b5e935b0617397cef3cbd9c38c2ba2181
+- summary: Ran the existing PR version helper against dev locally; package.json and npm lock metadata now agree on0.1.2. Kept the required version packaging separate from implementation fixes.
+- validation: Repeated helper run reports no further version change; only version metadata differs, with no dependency changes. CI must validate the final pushed head.
+- follow-ups: Complete local browser/stop-release evidence, reply/resolve both original review findings and push the final checkpoint without requesting rereview.
