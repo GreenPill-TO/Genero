@@ -43,3 +43,6 @@ next-env.d.ts
 # supabase cli temp cache
 supabase/.temp/
 supabase/.branches/
+
+# Local Python validation caches
+__pycache__/

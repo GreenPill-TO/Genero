@@ -208,12 +208,11 @@ If either value is `null`, stop the release. The deployed app expects the pay-li
 ### 1. Start the local stack
 
 ```bash
-cp .env.example .env.local
 pnpm supabase:start:local
-pnpm dev
+pnpm dev:supabase-local
 ```
 
-Keep `NEXT_PUBLIC_APP_ENVIRONMENT=local` and `NEXT_PUBLIC_APP_NAME=wallet` in `.env.local`.
+First follow `local-development-recovery.md`: prepare independent inputs and a complete port family, obtain an active self-service lease, and restore `.env.local-supabase-local` using only its local API/public key. Keep `NEXT_PUBLIC_APP_ENVIRONMENT=local` and `NEXT_PUBLIC_APP_NAME=wallet` in that explicit profile. A queued request is not permission to start.
 
 ### 2. Browser smoke checklist
 

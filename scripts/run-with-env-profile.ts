@@ -1,6 +1,6 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { loadEnvConfig } from "@next/env";
 
 function stripWrappingQuotes(value: string) {
@@ -17,6 +17,7 @@ function stripWrappingQuotes(value: string) {
 
 function loadProfileEnv(profilePath: string) {
   const profileContents = readFileSync(profilePath, "utf8");
+  const definedKeys = new Set<string>();
 
   for (const rawLine of profileContents.split(/\r?\n/)) {
     const trimmed = rawLine.trim();
@@ -30,9 +31,11 @@ function loadProfileEnv(profilePath: string) {
     }
 
     const key = rawLine.slice(0, separatorIndex).trim();
-    const value = stripWrappingQuotes(rawLine.slice(separatorIndex + 1)).trim();
+    const value = stripWrappingQuotes(rawLine.slice(separatorIndex + 1).trim());
     process.env[key] = value;
+    definedKeys.add(key);
   }
+  return definedKeys;
 }
 
 async function main() {
@@ -55,7 +58,30 @@ async function main() {
   }
 
   loadEnvConfig(process.cwd());
-  loadProfileEnv(profilePath);
+  const profileKeys = loadProfileEnv(profilePath);
+  if (basename(profilePath) === ".env.local-supabase-local") {
+    for (const key of ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "NEXT_PUBLIC_APP_ENVIRONMENT"]) {
+      if (!profileKeys.has(key) || !process.env[key]?.trim()) {
+        throw new Error(`Local profile must explicitly define ${key}; base/shell fallback is not allowed.`);
+      }
+    }
+    const target = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!);
+    if (process.env.NEXT_PUBLIC_APP_ENVIRONMENT !== "local" || target.protocol !== "http:" ||
+        !["127.0.0.1", "localhost"].includes(target.hostname) || target.username || target.password ||
+        target.pathname !== "/" || target.search || target.hash) {
+      throw new Error("Local profile must select a plain loopback HTTP API and APP_ENVIRONMENT=local.");
+    }
+    const admission = spawnSync("zsh", [resolve(process.cwd(), "scripts/start-local-supabase.sh"), "check"], {
+      encoding: "utf8", env: { ...process.env },
+    });
+    if (admission.status !== 0) {
+      throw new Error("Local profile requires this session's exact active Supabase lease; app command not started.");
+    }
+    const active = JSON.parse(admission.stdout) as { api_port?: number };
+    if (target.port !== String(active.api_port)) {
+      throw new Error("Local profile API port does not match the admitted independent session.");
+    }
+  }
 
   const child = spawn(command, commandArgs, {
     cwd: process.cwd(),

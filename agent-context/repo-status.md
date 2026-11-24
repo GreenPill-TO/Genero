@@ -3,7 +3,7 @@
 | Repo shape | `Pass` - Mixed multi-frontend Next.js repo with wallet, sparechange, contracts, Supabase functions, and on-chain services. |
 | README quality | `Pass` - Updated to match the real scripts, env profile model, CI/database delivery flow, and current Supabase runtime boundary. |
 | Licence | `Pass` - `LICENSE` now contains the MIT licence text referenced by the README. |
-| Session log discipline | `Pass` - `agent-context/session-log.md` is active, append-only, and current through `v1.231`. |
+| Session log discipline | `Pass` - Branch-scoped logs under `agent-context/session-log/`; legacy monolithic history is archived. |
 | AGENTS alignment | `Pass` - Updated to reflect Next.js 14.2.x, Node 20 CI, the actual lint/CI contract, the deployed Next.js service-role boundary, and the stricter multi-frontend Supabase boundary expectation. |
 | Docs placement and current-state accuracy | `Partial` - Engineering docs are consolidated under `docs/engineering/`, and the top-level runtime/CI contract is now aligned; deeper architecture docs may still need future consolidation. |
 | Cubid architecture coverage | `Partial` - Cubid remains materially used in wallet/sparechange code, but there is no single dedicated current-state Cubid architecture doc beyond focused notes like `webauthn-passkey-storage.md`. |
@@ -13,3 +13,19 @@
 | Supabase direct-access rule | `Partial` - The stricter multi-frontend boundary expectation now has a dedicated contract doc and an expanded lint guard over shared runtime helpers. Contract-management metadata is now RPC-backed; documented server/worker compatibility exceptions remain for merchant onboarding, voucher/Sarafu routing, and Cubid action-time signing. |
 | Environment and script conventions | `Pass` - Local/remote Supabase profile scripts are in place and now reflected in the canonical README and AGENTS guidance. |
 | Git and artefact hygiene | `Pass` - Common build artefacts and `.DS_Store` are ignored, and the stray local `.DS_Store` files found during cleanup were removed from the checkout. |
+
+## Recovery assessment — 2026-11-12
+
+| Requirement | Status |
+| --- | --- |
+| Canonical Git integrity | Pass — clean dev at 4d7220b before assessment; fsck clean; no stashes or extra worktrees. |
+| Recovery/branch disposition | Partial — 22 contained and 21 historical unmerged feature branches; see [inventory](../docs/engineering/recovery-inventory-2026-11-12.md). No TCOIN recovery directory identified. |
+| GitHub roadmap | Pass — GreenPill Project #1; Sprint #78 and existing launch/auth issues remain open. |
+| Merge settings | Pass — squash disabled; merge/rebase enabled; default main. |
+| Local operational readiness | Blocked — dependencies and local env profiles absent; validation not rerun. |
+| Shared local runtime compliance | Missing — startup helper still defaults to obsolete colima-agents and clears explicit socket; repair before use. |
+| Hosted delivery/acceptance | Unverified — #77 open; historical checks do not establish current health or migration/function state. |
+
+Earlier architecture/CI statuses above are prior assessments; they were not comprehensively revalidated in this recovery inventory.
+
+| Preview auth/readability recovery context | Partial — #97 review corrections are in dev; #98/#99 CORS source present. Historical fresh OTP success exists on #86, but the latest user-reported stable-domain attempt was rate-limited and entered-digit contrast remains unverified. Additive acceptance lane recorded in recovery inventory. |

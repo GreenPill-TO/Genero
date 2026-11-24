@@ -17,11 +17,18 @@ describe("formFieldStyles", () => {
       nativeFieldClass,
       reactSelectFieldShellClass,
       fileInputFieldClass,
-      otpDigitFieldClass,
     ]) {
       expect(className).toContain("bg-slate-50/92");
       expect(className).toContain("dark:bg-slate-950/55");
     }
+  });
+
+  it("keeps OTP surfaces independent of the shared dark field and authenticated-shell overrides", () => {
+    const classes = otpDigitFieldClass.split(/\s+/);
+    expect(classes).toContain("bg-white");
+    expect(classes).toContain("text-slate-950");
+    expect(classes).not.toContain("wallet-auth-input");
+    expect(classes.filter((name) => name.startsWith("dark:bg-"))).toEqual(["dark:bg-slate-100"]);
   });
 
   it("keeps auth modal email and OTP fields on a light surface in dark mode", () => {

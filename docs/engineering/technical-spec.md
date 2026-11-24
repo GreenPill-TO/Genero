@@ -22,6 +22,7 @@
   - The Next.js/Vercel runtime should use publishable/authenticated Supabase clients and narrow RPCs/Edge Functions. `SUPABASE_SERVICE_ROLE_KEY` belongs in privileged Supabase Edge Functions and external worker runtimes, not the deployed Next.js shell.
 - **Documentation tooling**: Internal engineering notes may include Mermaid diagrams generated through the shared local `mermaid-chart` Codex skill, which keeps Mermaid source editable and uses local HTML previews plus browser screenshots for visual checks and image exports
 - **Authentication**: Twilio SMS OTP via API routes
+  - Shared OTP digit styles deliberately exclude `wallet-auth-input` and the generic translucent surface classes so generated utility ordering and authenticated-shell overrides cannot defeat the opaque light background. `e2e/otp-field-contrast.spec.ts` compiles actual wallet Sass/Tailwind CSS and checks empty/populated/focused inputs in both themes and shell contexts without authentication or database access.
   - `/api/send_otp` and `/api/verify_otp` now share one server-side Twilio Verify helper that validates E.164 phone numbers plus digit-only passcodes before any upstream request is made.
   - The deprecated raw `/api/sendsms` route has been removed so OTP traffic flows only through the Twilio Verify contract that wallet and sparechange off-ramp flows actively use.
 - **Storage**: Supabase (Postgres + Auth)
@@ -412,3 +413,7 @@
   - Canonical edge-function implementations now exist for `bia-service`, `voucher-preferences`, `merchant-applications`, `store-operations`, `redemptions`, `control-plane`, `governance`, `user-requests`, and `onramp`; wallet buy flow now consumes the typed onramp contract directly.
   - Canonical edge-function implementations now also include `payment-requests`, which owns incoming/outgoing queues, recent request participants, request creation, and payment-request lifecycle actions (`mark-paid`, `dismiss`, `cancel`) for both wallet and sparechange.
   - Canonical edge-function implementations now also include `payment-links`, which fronts public Receive QR creation/resolution/consumption, the `/pay/[token]` continuation route, and Send-tab pay-link prefills without exposing raw wallet identifiers in shared URLs.
+
+### Recovery-safe local Supabase bootstrap
+
+`start-local-supabase.sh` sources the canonical runtime environment and delegates to `local-supabase-session.py`. The supported self-service CLI authenticates the private saved token and returns durable ownership; starts require an exact active project/checkout/family/scope/kind match. All ten ports, including disabled services, are explicit. `stop` targets only that project and releases through the CLI after its independent zero-resource proof. No runtime/ledger defaults or Auth recreation are permitted. The local profile loader requires explicit loopback URL/public-key/local-environment values and verifies the admitted port before spawning the app; the remote profile stays explicit and separate. See `local-development-recovery.md`.
