@@ -71,3 +71,12 @@
 - summary: Ran the existing PR version helper against dev locally; package.json and npm lock metadata now agree on0.1.2. Kept the required version packaging separate from implementation fixes.
 - validation: Repeated helper run reports no further version change; only version metadata differs, with no dependency changes. CI must validate the final pushed head.
 - follow-ups: Complete local browser/stop-release evidence, reply/resolve both original review findings and push the final checkpoint without requesting rereview.
+
+## 2026-11-24T00:24:03.169080+00:00 - Record actual local and candidate acceptance and release
+
+- agent: Codex (Tcoin HBIC)
+- branch: codex/tcoin-recovery-restoration
+- head: 33d2c40 (version checkpoint; product/guard reviewed at3cdca98)
+- summary: Completed38 fresh migrations/full seed, synthetic Auth session/ensure-user/bootstrap200, six-digit local template delivery and native Chrome signed-in dashboard via guarded profile. Added explicit public banner profile settings after a development image-host error. Local first provisioning hit JWT-future timing and recovered on normal reload;1GiB Node26 dev cap exhausted on dashboard compile, Node22/1536MiB succeeded. No token-validation or clock change. Candidate Preview fresh OTP/dashboard and18.41:1 populated dark contrast passed separately on expected GeneroDev issuer, using Noak's D15-approved Mail path.
+- validation: Twenty guard checks and independent risk/acceptance passes at3cdca98; Node20 CI45295212685, Secret Scan45295212629 and all three candidate deployments green at that source. Replied/resolved both original automatic review threads (P1 generated state, P2 workdir pinning); no rereview. Own frontend stopped; guarded Supabase stop+release succeeded2026-11-24T00:21:35Z, readback zero own leases/queue/services/family listeners and shared Colima running. Private generated credential/session logs removed; sanitized evidence retained.
+- follow-ups: Push documentation/version checkpoint and require final-head CI, then merge through ordinary dev policy and verify promotion before branch cleanup. Stable-domain Preview acceptance and remaining S33 release work are separate. The local timing flake remains an existing auth follow-up rather than an invented showstopper.

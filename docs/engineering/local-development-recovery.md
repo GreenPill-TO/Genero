@@ -10,7 +10,7 @@ Use the pinned pnpm version and `pnpm install --frozen-lockfile`. Preserve local
 
 Use the actual stable session ID and one private random token saved in normal local Codex storage (for example `~/.codex/session-secrets/<thread>/supabase-slot.token`, owner-only mode 0600). Reuse it after interruption. Export `SLOT_SESSION`, `SLOT_TOKEN_FILE`, `SLOT_DIR` and `SLOT_SCOPE`; the latter must match the requested scope exactly. Do not put the token value in logs or `.env.example`.
 
-`SLOT_DIR` is `/Volumes/MiniBot/colima/sessions/codex/<actual-thread-id>/` (or the equivalent Claude session directory). Generate fresh Supabase CLI config there, use a unique session project ID, and copy intended migrations, seed and functions including authorized changes. Exclude `.temp`, `.branches`, `.env*`, credentials and old databases. Preserve the canonical config. Current CLI calls the email testing section `local_smtp`; older configs use `inbucket`. Configure exactly one.
+`SLOT_DIR` is `/Volumes/MiniBot/colima/sessions/codex/<actual-thread-id>/` (or the equivalent Claude session directory). Generate fresh Supabase CLI config there, use a new project ID for each intended fresh baseline (do not silently reuse an old CLI database backup), and copy intended migrations, seed and functions including authorized changes. Exclude `.temp`, `.branches`, `.env*`, credentials and old databases. Preserve the canonical config. Current CLI calls the email testing section `local_smtp`; older configs use `inbucket`. Configure exactly one.
 
 Choose a currently free registered family from the shared port registry. Explicitly assign all ten offsets even when services are disabled:
 
@@ -56,10 +56,10 @@ The helper rejects mismatched identity, canonical checkout, scope, runtime kind,
 
 ## Local app profile
 
-Capture local CLI status privately (never print its complete credential output); write only the local API URL/public key and necessary app configuration into ignored `.env.local-supabase-local`, mode 0600. Required explicit values are `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_APP_ENVIRONMENT=local`. Set `NEXT_PUBLIC_CITYCOIN=tcoin`, `NEXT_PUBLIC_APP_NAME=wallet` and a local `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL` as appropriate; keep Buy checkout disabled for initial auth checks. No service-role key is needed in this app profile.
+Capture local CLI status privately (never print its complete credential output); write only the local API URL/public key and necessary app configuration into ignored `.env.local-supabase-local`, mode 0600. Required explicit values are `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_APP_ENVIRONMENT=local`. Set `NEXT_PUBLIC_CITYCOIN=tcoin`, `NEXT_PUBLIC_APP_NAME=wallet` and a local `NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL` as appropriate; keep Buy checkout disabled for initial auth checks. Set the existing `NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL` and `NEXT_PUBLIC_TCOIN_BANNER_DARK_URL` profile values to the intended public banner assets as well, so their host is included in Next.js image configuration. The defaults in `shared/lib/supabase/assets.ts` use a public asset project separate from the local API; omitting these profile values causes a development-mode image-host error. These public asset URLs do not change the Auth/database target. No service-role key is needed in this app profile.
 
 ```sh
-pnpm dev:supabase-local
+pnpm dev:supabase-local --hostname 127.0.0.1 --port 3001
 ```
 
 The profile loader verifies exact active admission and API port before starting the app. It will not inherit a missing local target/key from base/shell settings. Use the separate `.env.local-supabase-remote` profile only for intentionally authorized remote development. Profile syntax is simple KEY=VALUE with optional wrapping quotes, not shell code or full dotenv interpolation.
@@ -82,3 +82,9 @@ pnpm exec vitest run scripts/run-with-env-profile.test.ts shared/api/services/su
 ```
 
 These use private temporary inputs and stubbed admission replies. They do not start Docker/Supabase or mutate the real slot ledger. A passing stub test is not migration, local auth, browser or deployed acceptance; those require a separately recorded admitted runtime run.
+
+## Recovery validation limits
+
+The 2026-11-23 run applied38 fresh migrations and seed, passed local Auth/ensure-user/bootstrap API checks, launched the guarded profile and rendered the signed-in dashboard in Chrome. Local mail used the six-digit template above. Node22 with a1536MiB heap limit compiled the dashboard; a deliberately smaller1GiB cap on Node26 exhausted the heap. GitHub CI separately validated Node20.
+
+The initial local browser provisioning attempt returned `JWT issued at future`; normal reload recovered using the already verified local session. Host/container clocks agreed when sampled. Keep this timing flake recorded under the existing auth follow-up; do not disable token validation, alter shared clocks or describe that first attempt as clean. Candidate hosted Preview login passed separately without that local failure. The stack and frontend were stopped afterward, with central release proving zero owned resources and leaving Colima running.
