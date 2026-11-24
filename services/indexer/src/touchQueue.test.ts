@@ -41,6 +41,23 @@ describe("drainIndexerTouchQueueOnce", () => {
     ).rejects.toThrow("A scoped service-role Supabase client is required to drain indexer touch requests.");
   });
 
+  it("can claim only one configured scheduler scope", async () => {
+    const rpc = vi.fn().mockResolvedValueOnce({
+      data: null,
+      error: null,
+    });
+    const schema = vi.fn().mockReturnValue({ rpc });
+
+    await drainIndexerTouchQueueOnce({
+      supabase: { schema, rpc } as never,
+      scopeKey: "tcoin:42220",
+    });
+
+    expect(rpc).toHaveBeenCalledWith("claim_touch_request_v1", {
+      p_scope_key: "tcoin:42220",
+    });
+  });
+
   it("claims a queued request, runs the indexer, and marks success", async () => {
     const rpc = vi
       .fn()
@@ -131,6 +148,55 @@ describe("drainIndexerTouchQueueOnce", () => {
       p_status: "failed",
       p_run_status: "error",
       p_error: "boom",
+    });
+  });
+
+  it("marks run control and queue request failed when the worker times out", async () => {
+    const schemaRpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          requestId: 11,
+          scopeKey: "tcoin:42220",
+          citySlug: "tcoin",
+          chainId: 42220,
+          source: "scheduler",
+          requestedAt: "2026-04-26T12:00:00.000Z",
+          claimedAt: "2026-04-26T12:00:01.000Z",
+          attemptCount: 1,
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: null,
+        error: null,
+      });
+    const rootRpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: null,
+    });
+    const schema = vi.fn().mockReturnValue({ rpc: schemaRpc });
+
+    h.mockRunIndexerTouch.mockReturnValue(new Promise(() => {}));
+
+    await expect(
+      drainIndexerTouchQueueOnce({
+        supabase: { schema, rpc: rootRpc } as never,
+        timeoutMs: 1,
+      })
+    ).rejects.toThrow("Indexer touch worker timed out after 1ms.");
+
+    expect(rootRpc).toHaveBeenCalledWith("indexer_complete_run", {
+      p_scope_key: "tcoin:42220",
+      p_status: "error",
+      p_error: "Indexer touch worker timed out after 1ms.",
+      p_cooldown_seconds: 300,
+    });
+    expect(schemaRpc).toHaveBeenNthCalledWith(2, "complete_touch_request_v1", {
+      p_request_id: 11,
+      p_status: "failed",
+      p_run_status: "error",
+      p_error: "Indexer touch worker timed out after 1ms.",
     });
   });
 });

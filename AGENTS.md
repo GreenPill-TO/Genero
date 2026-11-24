@@ -24,7 +24,6 @@ Source files are organized under the `app/` directory. Agent workflow artefacts 
 ```
 .github/workflows/       # PR template + CI workflows for build, lint, supabase, secret scanning
 agent-context/           # logs and recurring agent workflow context
-├─ session-log.md        # Mandatory - append-only per session, new entries at top of file, v ↑ per edit
 ├─ db-workflow.md        # CI/CD overview for database changes
 ├─ app-context.md        # Problem, approach, value prop
 ├─ style-guide.md        # Style for the wallet app
@@ -48,7 +47,6 @@ services/                # Node service modules and worker entrypoints for index
 styles/                  # global styles
 supabase/
 ├─ sql-schema.sql        # latest sql schema (github action runs db pull on PR)
-├─ migrations/           # Agent-generated incremental SQL patches (file name starts with session version referencing session-log.md)
 └─ functions/            # Supabase Edge Functions and shared Deno-safe helpers
    ├─ _shared/           # Shared auth, app scoping, RBAC, validation and domain helpers
    └─ */                 # Domain edge functions (for example user-settings, bia-service, store-operations)
@@ -92,7 +90,6 @@ AGENTS.md                # this file
 * **Pull Requests**
   * Keep pull request descriptions concise and reviewer-focused.
   * If any related issues are known, mention them in PR (e.g. "Issues: #10, #11")
-* **Session version tags**
   * Follow SemVer (v2.0.0-alpha)
   * Major IDs ("v1.0", "v2.0") mirror new feature branches
   * Minor IDs ("v2.0", "v2.1") mirror different coding sesssions on the same feature branch
@@ -118,9 +115,18 @@ Agents **must** read and follow `workflow.md` each time.
 
 * SQL migrations must be **idempotent & reversible** where practical (include rollback notes or a `-- DOWN` section; each DROP/ALTER should be preceded by IF EXISTS/IF NOT EXISTS where supported).
 * Pre-commit hook **warns** (not blocks) if ESLint and similar (e.g. in Foundry) cannot start.
-* Session log must bump version +1 for each session
 * All new external calls must use SafeERC20 / Address.functionCall and be covered in tests.
 * Agents must **never** directly modify the linked Supabase database. Only a human may run commands that target the linked database and change its state.
 * Agents must always stop and ask for explicit human permission before proposing or running any Supabase command that could change the linked database, including `supabase db push`, `supabase migration up`, `supabase db reset --linked`, `supabase link`, or any `supabase --linked` write operation.
 * This repo qualifies for the stricter multi-frontend Supabase boundary rule: app-facing wallet/sparechange/contracts flows should use typed Edge Functions, narrow RPCs, read-model helpers, or documented server boundaries rather than broad direct browser/client table access. Existing direct-access compatibility paths should be treated as cleanup candidates unless `docs/engineering/supabase-boundary-contract.md` and `scripts/check-no-direct-supabase-db.mjs` explicitly allow them.
 * Deployed Next.js/Vercel runtime should not require `SUPABASE_SERVICE_ROLE_KEY`. That key belongs only in privileged Supabase Edge Functions and the external indexer/onramp worker/runtime paths that intentionally need service-role access.
+
+## Branch-Scoped Session Logs And Todos
+
+- Use `agent-context/session-log/` for active session logs. Do not add new entries to legacy `agent-context/session-log.md` files.
+- For feature branches, update the branch log immediately before each commit. Use `YYYY-MM-DD-featurebranch.md` in single-app repos and `YYYY-MM-DD-app-featurebranch.md` in monorepos.
+- Direct work on `main` may use `agent-context/session-log/main.md`; direct work on `dev` may use `agent-context/session-log/dev.md`.
+- Each entry must include UTC timestamp, agent, branch, head, summary, validation, and follow-ups.
+- Keep `agent-context/todo.md` focused on roadmap items and active follow-ups. Completed work belongs in the current branch log.
+- See `agent-context/session-log/README.md` for naming and archival rules.
+

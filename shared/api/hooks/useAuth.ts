@@ -118,7 +118,8 @@ export const useAuth = () => {
       try {
         const { user, error: ensuredUserError } = await fetchUserByContact(
           authQuery?.data?.user?.app_metadata?.provider || "email",
-          authQuery?.data?.user?.email || ""
+          authQuery?.data?.user?.email || "",
+          accessToken
         );
 
         if (ensuredUserError) {

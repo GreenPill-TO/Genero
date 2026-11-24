@@ -1,0 +1,52 @@
+name: PR Version Bump
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - dev
+      - main
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  version-bump:
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject forked PR writeback
+        if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          echo "PR version bump writes back to same-repo branches only. Please apply the expected package.json version bump manually for forked PRs."
+          exit 1
+
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }} --depth=1
+
+      - name: Apply expected version bump
+        run: node .github/scripts/pr-version-bump.mjs --base ${{ github.base_ref }}
+
+      - name: Commit version bump
+        run: |
+          if git diff --quiet; then
+            echo "Version already matches expected bump."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json app/package.json app/package-lock.json apps/*/package.json apps/*/package-lock.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No package version files were staged."
+            exit 0
+          fi
+          git commit -m "chore: bump PR version"
+          git push

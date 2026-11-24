@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runIndexerTouch } from "./index";
+import { completeRun } from "./state/runControl";
 import type { IndexerTouchResult } from "./types";
 
 export type ClaimedIndexerTouchRequest = {
@@ -24,6 +25,37 @@ export type DrainIndexerTouchQueueResult =
       request: ClaimedIndexerTouchRequest;
       result: IndexerTouchResult;
     };
+
+class IndexerTouchWorkerTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Indexer touch worker timed out after ${timeoutMs}ms.`);
+    this.name = "IndexerTouchWorkerTimeoutError";
+  }
+}
+
+function isPositiveTimeout(timeoutMs?: number | null): timeoutMs is number {
+  return typeof timeoutMs === "number" && Number.isFinite(timeoutMs) && timeoutMs > 0;
+}
+
+async function withWorkerTimeout<T>(promise: Promise<T>, timeoutMs?: number | null): Promise<T> {
+  if (!isPositiveTimeout(timeoutMs)) {
+    return promise;
+  }
+
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(() => reject(new IndexerTouchWorkerTimeoutError(timeoutMs)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
 
 function parseClaimedRequest(data: unknown): ClaimedIndexerTouchRequest | null {
   if (!data || typeof data !== "object") {
@@ -98,6 +130,7 @@ export async function completeIndexerTouchRequest(options: {
 export async function drainIndexerTouchQueueOnce(options: {
   supabase: SupabaseClient<any, any, any>;
   scopeKey?: string | null;
+  timeoutMs?: number | null;
 }): Promise<DrainIndexerTouchQueueResult> {
   const supabase = options?.supabase;
   if (!supabase) {
@@ -118,10 +151,13 @@ export async function drainIndexerTouchQueueOnce(options: {
   }
 
   try {
-    const result = await runIndexerTouch({
-      supabase,
-      citySlug: request.citySlug,
-    });
+    const result = await withWorkerTimeout(
+      runIndexerTouch({
+        supabase,
+        citySlug: request.citySlug,
+      }),
+      options.timeoutMs
+    );
 
     await completeIndexerTouchRequest({
       supabase,
@@ -143,6 +179,14 @@ export async function drainIndexerTouchQueueOnce(options: {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown indexer queue error";
+    if (error instanceof IndexerTouchWorkerTimeoutError) {
+      await completeRun({
+        supabase,
+        scopeKey: request.scopeKey,
+        status: "error",
+        errorMessage: message,
+      });
+    }
     await completeIndexerTouchRequest({
       supabase,
       requestId: request.requestId,

@@ -51,12 +51,14 @@ export type WalletCustodyMaterialResponse = {
 
 export async function ensureAuthenticatedUserRecord(
   payload?: EnsureUserRequest,
-  appContext?: AppScopeInput | null
+  appContext?: AppScopeInput | null,
+  options?: { accessToken?: string | null }
 ): Promise<EnsureUserResponse> {
   return invokeEdgeFunction<EnsureUserResponse>("user-settings", "/auth/ensure-user", {
     method: "POST",
     body: (payload ?? {}) as Record<string, unknown>,
     appContext,
+    accessToken: options?.accessToken,
   });
 }
 

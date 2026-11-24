@@ -4,6 +4,7 @@ import OTPForm from "@tcoin/sparechange/components/forms/OTPForm";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import type { Session } from "@supabase/supabase-js";
 
 import { fetchUserByContact, waitForAuthenticatedSession } from "@shared/api/services/supabaseService";
 
@@ -67,9 +68,9 @@ function SignInModal({ closeModal }: SignInModalProps) {
   });
 
   const verifyCodeMut = useVerifyPasscodeMutation({
-    onSuccessCallback: async (result) => {
+    onSuccessCallback: async (verifiedSession?: Session | null) => {
       toast.success("Passcode verified successfully!");
-      await handlePostAuthentication(fullContact);
+      await handlePostAuthentication(fullContact, verifiedSession ?? null);
       closeModal();
     },
     onErrorCallback: (err) => {
@@ -95,14 +96,15 @@ function SignInModal({ closeModal }: SignInModalProps) {
     [authMethod, fullContact, passcode, verifyCodeMut]
   );
 
-  const handlePostAuthentication = async (fullContact: string) => {
-    const session = await waitForAuthenticatedSession();
+  const handlePostAuthentication = async (fullContact: string, verifiedSession?: Session | null) => {
+    const session =
+      verifiedSession?.access_token ? verifiedSession : await waitForAuthenticatedSession();
     if (!session?.access_token) {
       toast.error("We couldn't finish signing you in. Please try again.");
       return;
     }
 
-    const { user, error } = await fetchUserByContact(authMethod, fullContact);
+    const { user, error } = await fetchUserByContact(authMethod, fullContact, session.access_token);
 
     if (error || !user) {
       console.error("Failed to finish authenticated user provisioning:", error);

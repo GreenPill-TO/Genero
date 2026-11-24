@@ -103,6 +103,37 @@ describe("invokeEdgeFunction", () => {
     );
   });
 
+  it("uses an explicit access token before falling back to session resolution", async () => {
+    const { setSessionSnapshot } = await import("@shared/lib/supabase/session");
+    setSessionSnapshot(null);
+    getSessionMock.mockResolvedValue({ data: { session: null } });
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+
+    const { invokeEdgeFunction } = await import("./core");
+
+    await invokeEdgeFunction("user-settings", "/auth/ensure-user", {
+      method: "POST",
+      body: { authMethod: "email", fullContact: "person@example.test" },
+      appContext: { citySlug: "tcoin" },
+      accessToken: "fresh-otp-token",
+    });
+
+    expect(getSessionMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer fresh-otp-token",
+        }),
+      })
+    );
+  });
+
   it("expands bare 404 not-found responses into a route-specific message", async () => {
     const { setSessionSnapshot } = await import("@shared/lib/supabase/session");
     setSessionSnapshot(null);

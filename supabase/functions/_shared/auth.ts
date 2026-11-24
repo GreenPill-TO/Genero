@@ -30,6 +30,48 @@ function requireFirstEnv(names: string[]): string {
   throw new Error(`${names.join(" or ")} is required.`);
 }
 
+function resolvePublishableKeyFromDictionary(rawValue: string): string | null {
+  try {
+    const parsed = JSON.parse(rawValue) as unknown;
+    const candidates: unknown[] = Array.isArray(parsed) ? parsed : Object.values((parsed ?? {}) as Record<string, unknown>);
+
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.startsWith("sb_publishable_")) {
+        return candidate;
+      }
+
+      if (candidate && typeof candidate === "object") {
+        for (const nested of Object.values(candidate as Record<string, unknown>)) {
+          if (typeof nested === "string" && nested.startsWith("sb_publishable_")) {
+            return nested;
+          }
+        }
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function resolveEdgePublishableKey(): string {
+  const canonical = DenoRuntime?.env.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  if (canonical) {
+    return canonical;
+  }
+
+  const publishableKeys = DenoRuntime?.env.get("SUPABASE_PUBLISHABLE_KEYS");
+  if (publishableKeys) {
+    const key = resolvePublishableKeyFromDictionary(publishableKeys);
+    if (key) {
+      return key;
+    }
+  }
+
+  return requireFirstEnv(["SUPABASE_PUBLISHABLE_KEY", "SUPABASE_ANON_KEY"]);
+}
+
 export function createServiceRoleClient(options?: { purpose?: string }) {
   const purpose = options?.purpose?.trim();
   if (!purpose) {
@@ -54,7 +96,7 @@ export function createAuthenticatedRequestClient(req: Request, options?: { purpo
 
   return createClient(
     requireFirstEnv(["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"]),
-    requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
+    resolveEdgePublishableKey(),
     {
       auth: {
         autoRefreshToken: false,

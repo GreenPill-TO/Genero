@@ -8,6 +8,7 @@ type EdgeInvokeOptions = {
   method?: "GET" | "POST" | "PATCH";
   body?: Record<string, unknown>;
   appContext?: AppScopeInput | null;
+  accessToken?: string | null;
 };
 
 function normalizePath(path: string): string {
@@ -41,7 +42,8 @@ export async function invokeEdgeFunction<T>(
   const supabase = createClient();
   const context = resolveAppScope(options?.appContext);
   const method = options?.method ?? "GET";
-  const accessToken = await resolveAccessToken(supabase);
+  const explicitAccessToken = options?.accessToken?.trim();
+  const accessToken = explicitAccessToken || (await resolveAccessToken(supabase));
 
   const response = await fetch(
     `${resolveSupabaseUrl()}/functions/v1/${functionName}${normalizePath(path)}`,

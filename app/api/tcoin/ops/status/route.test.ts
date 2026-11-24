@@ -40,7 +40,13 @@ describe("GET /api/tcoin/ops/status", () => {
     h.mockGetTorontoCoinOpsStatus.mockResolvedValue({
       addresses: { liquidityRouter: "0xrouter", chainId: 42220, cplTcoin: "0xtoken" },
       ownership: {},
-      pools: [],
+      pools: [
+        {
+          poolId: "0xpoolid",
+          poolAddress: "0xpool",
+          expectedIndexerVisibility: true,
+        },
+      ],
       reserveRouteHealth: {},
       artifactTimestamps: {},
     });
@@ -70,6 +76,13 @@ describe("GET /api/tcoin/ops/status", () => {
         citySlug: "tcoin",
         chainId: 42220,
         requiredTokenAddress: "0xtoken",
+        expectedTorontoCoinPools: [
+          {
+            poolId: "0xpoolid",
+            poolAddress: "0xpool",
+            expectedIndexerVisibility: true,
+          },
+        ],
       })
     );
   });

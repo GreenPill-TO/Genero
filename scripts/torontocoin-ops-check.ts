@@ -53,6 +53,7 @@ async function main() {
     citySlug: "tcoin",
     chainId: opsStatus.addresses.chainId,
     requiredTokenAddress: opsStatus.addresses.cplTcoin,
+    expectedTorontoCoinPools: opsStatus.pools,
   });
   const blockers = collectReleaseBlockers({
     opsStatus,

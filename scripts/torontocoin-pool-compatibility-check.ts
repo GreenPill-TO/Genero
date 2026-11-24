@@ -16,6 +16,7 @@ async function main() {
     citySlug: "tcoin",
     chainId: status.addresses.chainId,
     requiredTokenAddress: status.addresses.cplTcoin,
+    expectedTorontoCoinPools: status.pools,
   });
 
   const poolSummaries = status.pools.map((pool) => {

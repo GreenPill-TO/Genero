@@ -121,6 +121,73 @@ describe("getIndexerScopeStatusReadModel", () => {
     expect("activePoolDetails" in status).toBe(false);
   });
 
+  it("can enrich live TorontoCoin pools that are not in the static bootstrap runtime", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        scopeKey: "tcoin:42220",
+        citySlug: "tcoin",
+        chainId: 42220,
+        runControl: null,
+        checkpoints: [],
+        activePoolCount: 2,
+        activeTokenCount: 3,
+        biaSummary: {
+          activeBias: 0,
+          mappedPools: 0,
+          unmappedPools: 0,
+          staleMappings: 0,
+          componentMismatches: 0,
+          lastActivityByBia: [],
+        },
+        voucherSummary: {
+          trackedVoucherTokens: 0,
+          walletsWithVoucherBalances: 0,
+          merchantCreditRows: 0,
+          lastVoucherBlock: null,
+        },
+        torontoCoinTracking: {
+          requiredTokenAddress: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
+          cplTcoinTracked: true,
+          trackedPools: [],
+        },
+        activePoolDetails: [
+          {
+            poolAddress: "0xde2a979ec49811ad27730e451651e52b4540c594",
+            tokenAddresses: ["0xaec330e9d808e4e938bf830016c6b2eb350e1a19"],
+          },
+          {
+            poolAddress: "0xa6f024ad53766d332057d5e40215b695522ee3de",
+            tokenAddresses: ["0xaec330e9d808e4e938bf830016c6b2eb350e1a19"],
+          },
+        ],
+      },
+      error: null,
+    });
+
+    const status = await getIndexerScopeStatusReadModel({
+      supabase: { rpc } as never,
+      expectedTorontoCoinPools: [
+        {
+          poolId:
+            "0x746f726f6e746f2d63697263756c61722d65636f6e6f6d790000000000000000",
+          poolAddress: "0xA6f024Ad53766d332057d5e40215b695522ee3dE",
+          expectedIndexerVisibility: true,
+        },
+      ],
+    });
+
+    expect(status.torontoCoinTracking?.trackedPools).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          poolId:
+            "0x746f726f6e746f2d63697263756c61722d65636f6e6f6d790000000000000000",
+          tracked: true,
+          healthy: true,
+        }),
+      ])
+    );
+  });
+
   it("defaults omitted scope parameters from the configured runtime environment", async () => {
     process.env.NEXT_PUBLIC_CITYCOIN = "othercoin";
     process.env.INDEXER_CHAIN_ID = "12345";

@@ -112,11 +112,17 @@ export const normaliseDeviceInfo = (value: DeviceInfoPayload | null | undefined)
   return Object.keys(normalised).length > 0 ? normalised : null;
 };
 
-export const fetchUserByContact = async (authMethod: "phone" | "email" | string, fullContact: string) => {
+export const fetchUserByContact = async (
+  authMethod: "phone" | "email" | string,
+  fullContact: string,
+  accessToken?: string | null
+) => {
   try {
     const result = await ensureAuthenticatedUserRecord({
       authMethod,
       fullContact,
+    }, null, {
+      accessToken,
     });
 
     return {
@@ -181,12 +187,19 @@ export const fetchContactsForOwner = async (ownerUserId: number | string | null 
   }));
 };
 
-export const createNewUser = async (authMethod: "phone" | "email", fullContact: string, uuid: string) => {
+export const createNewUser = async (
+  authMethod: "phone" | "email",
+  fullContact: string,
+  uuid: string,
+  accessToken?: string | null
+) => {
   try {
     const result = await ensureAuthenticatedUserRecord({
       authMethod,
       fullContact,
       cubidId: uuid,
+    }, null, {
+      accessToken,
     });
 
     return {
