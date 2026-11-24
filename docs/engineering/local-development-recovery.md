@@ -40,7 +40,7 @@ pnpm supabase:start:local
 zsh scripts/start-local-supabase.sh check
 ```
 
-The helper rejects mismatched identity, canonical checkout, scope, runtime kind, project or ports. It cannot accept a linked target or arbitrary Supabase flags. It keeps CLI-managed Auth intact and does not deploy hosted functions or change the linked database.
+The helper rejects mismatched identity, canonical checkout, scope, runtime kind, project or ports. A regular CLI-generated `.temp/cli-latest` update-cache file is allowed; hosted project linkage, unknown cache files and symlinks are rejected. It cannot accept a linked target or arbitrary Supabase flags. It keeps CLI-managed Auth intact and does not deploy hosted functions or change the linked database.
 
 ## Local app profile
 

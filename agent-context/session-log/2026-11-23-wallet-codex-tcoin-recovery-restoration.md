@@ -44,3 +44,12 @@
 - summary: Frontend CI45292409218 passed lint/typecheck/build but four newly added profile tests failed because their temporary-directory prefix assumed this Mac's MiniBot mount. Select the OS temporary directory on Linux while retaining the mandated MiniBot scratch location on macOS. No product/runtime behaviour changed.
 - validation: Focused four profile tests pass locally after correction; targeted ESLint and diff check pass. Secret Scan45292409123 passed; all three Vercel candidates deployed. Separately compiled current-dependency OTP fixtures and CUA verified intended foreground/background for empty/sample digits and visible keyboard focus in light/dark public/authenticated shells (20.17:1 light /18.41:1 dark). No fixture Auth request; own fixture server stopped.
 - follow-ups: Push the test repair and require post-fix CI. Candidate fresh-login check and exact local runtime admission remain separate and in progress; no issue accepted from deployment alone.
+
+## 2026-11-24T00:04:43.605721+00:00 - Allow harmless CLI version cache under active admission
+
+- agent: Codex (sole recovery writer)
+- branch: codex/tcoin-recovery-restoration
+- head: 80932ec1fa250d48b1e9bd3b15b1d612922b44ca
+- summary: Exact lease for tcoin-01a1ce37-recovery/family64320–64329 was granted and heartbeated. First guarded start stopped before runtime because CLI init/update checking had generated only supabase/.temp/cli-latest. Allow that one regular cache file while continuing to reject hosted project-ref, unknown cache entries and symlinks. No runtime/pressure gate or shared helper changed.
+- validation: 16 Python checks pass, including version-cache check/project-stop success and linked/symlinked-state rejection; diff check passed. Same-lease guarded retry has reached database startup; fresh migrations/seeds/Auth/Edge/stop acceptance is not yet claimed. Node20 post-portability CI45293390595 and Secret Scan45293390524 passed. Automatic Codex review was triggered once by the ready transition and is running; no rereview requested.
+- follow-ups: Finish the actual admitted run, stop own project and verify release. Independently inspect the frozen cache-guard repair, push and wait for final CI/review. Record candidate fresh OTP/contrast/dashboard evidence separately from stable-domain acceptance.

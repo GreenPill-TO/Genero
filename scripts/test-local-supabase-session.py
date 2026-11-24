@@ -108,12 +108,31 @@ class LocalSessionTests(unittest.TestCase):
     def test_linked_state_and_public_token_file_are_rejected(self):
         linked = self.checkout / 'supabase/.temp'
         linked.mkdir()
+        (linked / 'project-ref').write_text('hosted-target')
         with self.assertRaisesRegex(ValueError, 'hosted linkage'):
             self.execute()
+        (linked / 'project-ref').unlink()
         linked.rmdir()
         self.token.chmod(0o644)
         with self.assertRaisesRegex(ValueError, '0600'):
             self.execute()
+        self.assertEqual(self.calls, [])
+
+    def test_cli_version_cache_allows_check_and_project_stop(self):
+        cache = self.checkout / 'supabase/.temp'
+        cache.mkdir()
+        (cache / 'cli-latest').write_text('v2.117.0')
+        self.assertEqual(self.execute('check')['status'], 'active')
+        self.assertEqual(self.execute('stop')['status'], 'released')
+        self.assertEqual(self.calls[-2][0], ['supabase', 'stop', '--project-id', self.record['project_id']])
+        self.assertEqual(self.calls[-1][0][2], 'release')
+
+    def test_unknown_or_symlinked_cli_cache_is_rejected(self):
+        cache = self.checkout / 'supabase/.temp'
+        cache.mkdir()
+        (cache / 'cli-latest').symlink_to(self.token)
+        with self.assertRaisesRegex(ValueError, 'hosted linkage'):
+            self.execute('check')
         self.assertEqual(self.calls, [])
 
     def test_optional_and_duplicate_ports_are_rejected(self):

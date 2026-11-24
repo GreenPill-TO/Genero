@@ -37,7 +37,12 @@ def context(env):
     expected = (SESSIONS / agent / identity).resolve()
     if checkout != expected:
         raise ValueError('SLOT_DIR must be this identity\'s independent Colima session directory.')
-    if (checkout / 'supabase/.temp').exists() or (checkout / 'supabase/.branches').exists():
+    cache = checkout / 'supabase/.temp'
+    if cache.is_symlink() or (cache.exists() and (not cache.is_dir() or any(
+            entry.name != 'cli-latest' or entry.is_symlink() or not entry.is_file()
+            for entry in cache.iterdir()))):
+        raise ValueError('Independent inputs must not contain hosted linkage or unknown CLI state.')
+    if (checkout / 'supabase/.branches').exists():
         raise ValueError('Independent inputs must not contain hosted linkage or old branch state.')
     token_path = Path(env['SLOT_TOKEN_FILE'])
     if token_path.is_symlink() or not token_path.is_file():
