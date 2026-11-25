@@ -34,14 +34,23 @@
 - validation: Focused Vitest passed 4/4 release-profile and workflow-contract tests (13/13 with the shared runtime tests); TypeScript no-emit, targeted ESLint, workflow YAML parsing, production CLI profile validation, and diff checks passed. No network, Supabase runtime, browser, or chain validation was run for this source-only workflow repair.
 - follow-ups: The workflow has not been executed against hosted Preview or Production configuration. Preview full pool and Buy acceptance remain intentionally unavailable; Production retains those gates. Independent review and post-push CI/workflow evidence remain required.
 
-## 2026-11-25T22:16:25Z - Repair release-profile workflow outputs (#87)
+## 2026-11-25T22:16:25Z - Cover release-profile workflow outputs (#87)
 
 - agent: Wriley #87 (Codex)
 - branch: codex/tcoin-celo-sepolia-smoke
 - head: 17cc2b4f404545a42d4c137bcdd3b3eea4c101c6
-- summary: Made GitHub output serialization unambiguous by joining actual newline-delimited records, and added real CLI regression coverage for Production `true`, Preview `false`, and invalid-profile/no-output branches. Labelled the retained Preview wallet preflight as legacy chain `42220` shared health evidence rather than Celo Sepolia indexer, funding, or acceptance proof; the broader T893/D70 queue/worker gate remains unchanged.
+- summary: Preserved the already-valid newline-delimited GitHub output behaviour while expressing it as an explicit join, and added real CLI regression coverage for Production `true`, Preview `false`, and invalid-profile/no-output branches. The earlier template-literal `\n` escapes were valid TypeScript newline escapes, not literal backslash-n output. Labelled the retained Preview wallet preflight as legacy chain `42220` shared health evidence rather than Celo Sepolia indexer, funding, or acceptance proof; the broader T893/D70 queue/worker gate remains unchanged.
 - validation: Focused CLI/unit Vitest passed 6/6, including temporary `GITHUB_OUTPUT` files with exact physical-line assertions and invalid-profile failure; TypeScript no-emit and diff checks passed. No hosted workflow, network, Supabase runtime, browser, or chain operation ran.
-- follow-ups: The repaired output dispatch still needs independent review and post-push GitHub Actions evidence. Celo Sepolia `11142220` indexer/funded acceptance remains unestablished and outside this source-only repair.
+- follow-ups: The now CLI-covered output dispatch still needs independent review and post-push GitHub Actions evidence. Celo Sepolia `11142220` indexer/funded acceptance remains unestablished and outside this source-only follow-up.
+
+## 2026-11-25T22:18:01Z - Correct release-output historical record (#87)
+
+- agent: Wriley #87 (Codex)
+- branch: codex/tcoin-celo-sepolia-smoke
+- head: 7ace723b98915dbf25f7a47a9e769f4cf605d265
+- summary: Corrected the session record to state that commit `17cc2b4` already used valid TypeScript newline escapes. Commit `7ace723` added explicit serialization and meaningful real-CLI regression evidence; it did not repair malformed output.
+- validation: Documentation-only correction; no tests rerun, as requested. The 6/6 CLI/unit evidence recorded above remains the relevant validation.
+- follow-ups: Independent review and actual post-push GitHub Actions output consumption remain the delivery evidence gates.
 
 ## 2026-11-25T21:52:30.429747+00:00 - Prepare PR version metadata
 
