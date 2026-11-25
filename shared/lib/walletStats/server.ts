@@ -2,7 +2,10 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { type TorontoCoinOpsCoreStatus } from "@shared/lib/contracts/torontocoinOps";
-import { TORONTOCOIN_RUNTIME } from "@shared/lib/contracts/torontocoinRuntime";
+import {
+  assertTorontoCoinMainnetRuntimeAdmitted,
+  TORONTOCOIN_RUNTIME,
+} from "@shared/lib/contracts/torontocoinRuntime";
 import type { IndexerScopeStatus } from "@shared/lib/indexer/types";
 import type {
   WalletStatsAssetBalanceRow,
@@ -413,6 +416,7 @@ export function buildWalletStatsSummary(
 export async function getWalletStatsSummary(
   supabase: SupabaseClient
 ): Promise<WalletStatsSummary> {
+  assertTorontoCoinMainnetRuntimeAdmitted();
   const { data, error } = await supabase.rpc("wallet_stats_summary_v1", {
     p_city_slug: CITY_SLUG,
     p_chain_id: CHAIN_ID,

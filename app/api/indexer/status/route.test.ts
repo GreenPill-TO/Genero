@@ -22,8 +22,20 @@ import { GET } from "./route";
 
 describe("GET /api/indexer/status", () => {
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "production";
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-mainnet";
+    process.env.NEXT_PUBLIC_CITYCOIN = "tcoin";
     h.mockGetUser.mockReset();
     h.mockGetIndexerScopeStatus.mockReset();
+  });
+
+  it("rejects staging without a target before auth or indexer reads", async () => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "staging";
+    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
+    const response = await GET(new Request("http://localhost/api/indexer/status"));
+    expect(response.status).toBe(409);
+    expect(h.mockGetUser).not.toHaveBeenCalled();
+    expect(h.mockGetIndexerScopeStatus).not.toHaveBeenCalled();
   });
 
   it("returns indexer scope status including biaSummary", async () => {

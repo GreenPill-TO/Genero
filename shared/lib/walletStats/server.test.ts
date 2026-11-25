@@ -7,6 +7,12 @@ vi.mock("@shared/lib/contracts/torontocoinOps", () => ({
 
 vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
   TORONTOCOIN_RUNTIME: { chainId: 42220 },
+  assertTorontoCoinMainnetRuntimeAdmitted: () => {
+    if (
+      process.env.NEXT_PUBLIC_APP_ENVIRONMENT !== "production" ||
+      process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET !== "celo-mainnet"
+    ) throw new Error("mainnet unavailable");
+  },
 }));
 
 vi.mock("@services/indexer/src", () => ({
@@ -17,7 +23,7 @@ vi.mock("@shared/lib/supabase/serviceRole", () => ({
   createServiceRoleClient: vi.fn(),
 }));
 
-import { buildWalletStatsSummary, type WalletStatsSummarySnapshot } from "./server";
+import { buildWalletStatsSummary, getWalletStatsSummary, type WalletStatsSummarySnapshot } from "./server";
 
 function createSnapshot(
   overrides: Partial<WalletStatsSummarySnapshot> = {}
@@ -42,6 +48,15 @@ function createSnapshot(
 }
 
 describe("buildWalletStatsSummary", () => {
+  it("rejects Preview before querying the mainnet-shaped stats RPC", async () => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "development";
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-sepolia-pay-link";
+    const rpc = vi.fn();
+    await expect(getWalletStatsSummary({ rpc } as never)).rejects.toThrow("unavailable");
+    expect(rpc).not.toHaveBeenCalled();
+    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
+    delete process.env.NEXT_PUBLIC_APP_ENVIRONMENT;
+  });
   it("aggregates overview totals from the supplied snapshot", () => {
     const summary = buildWalletStatsSummary(
       createSnapshot({

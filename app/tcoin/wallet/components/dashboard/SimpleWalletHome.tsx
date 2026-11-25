@@ -6,6 +6,7 @@ import { useAuth } from "@shared/api/hooks/useAuth";
 import { useModal } from "@shared/contexts/ModalContext";
 import { walletActionButtonClass, walletBadgeClass, walletPanelClass, walletPanelMutedClass } from "./authenticated-ui";
 import { LuChevronDown } from "react-icons/lu";
+import { isTorontoCoinPayLinkPreviewTarget } from "@shared/lib/contracts/torontocoinRuntime";
 
 export function SimpleWalletHome({ tokenLabel = "TCOIN" }: { tokenLabel?: string }) {
   const { userData } = useAuth();
@@ -19,6 +20,7 @@ export function SimpleWalletHome({ tokenLabel = "TCOIN" }: { tokenLabel?: string
   const { balance } = useTokenBalance(senderWallet);
   const { exchangeRate, fallbackMessage } = useControlVariables();
   const parsedBalance = Number.parseFloat(balance || "0") || 0;
+  const previewPayLinkOnly = isTorontoCoinPayLinkPreviewTarget();
 
   const formatNumber = (value: number, isCad = false) => {
     const formatted = value.toLocaleString("en-US", {
@@ -76,6 +78,11 @@ export function SimpleWalletHome({ tokenLabel = "TCOIN" }: { tokenLabel?: string
 
   return (
     <div className="space-y-4" data-testid="simple-wallet-home">
+      {previewPayLinkOnly ? (
+        <p role="status" className="rounded-2xl border border-amber-400/60 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+          Celo Sepolia — test tokens, no real value. Buying and top-ups are unavailable.
+        </p>
+      ) : null}
       <section className={`${walletPanelClass} space-y-5`}>
         <div className="space-y-3">
           <span className={walletBadgeClass}>Account overview</span>
@@ -84,20 +91,22 @@ export function SimpleWalletHome({ tokenLabel = "TCOIN" }: { tokenLabel?: string
             <p className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
               {formatNumber(parsedBalance)}
             </p>
-            <p className="text-lg text-muted-foreground">
+            {!previewPayLinkOnly ? <p className="text-lg text-muted-foreground">
               {formatNumber(parsedBalance * exchangeRate, true)} CAD
-            </p>
+            </p> : null}
           </div>
         </div>
 
         <div className={`${walletPanelMutedClass} space-y-3`}>
           <p className="text-sm text-muted-foreground">
-            Keep this screen focused on your spendable balance, then top up or buy more when you need to.
+            {previewPayLinkOnly
+              ? "This isolated test balance is only for the reviewed pay-link smoke flow."
+              : "Keep this screen focused on your spendable balance, then top up or buy more when you need to."}
           </p>
           {fallbackMessage ? <p className="text-sm text-amber-700 dark:text-amber-300">{fallbackMessage}</p> : null}
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        {!previewPayLinkOnly ? <div className="flex flex-wrap gap-3">
           <div className="relative" ref={buyMenuRef}>
             <button
               type="button"
@@ -135,7 +144,7 @@ export function SimpleWalletHome({ tokenLabel = "TCOIN" }: { tokenLabel?: string
               </div>
             ) : null}
           </div>
-        </div>
+        </div> : null}
       </section>
     </div>
   );

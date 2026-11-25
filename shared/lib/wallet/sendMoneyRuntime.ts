@@ -2,6 +2,8 @@ import { ethers } from "ethers";
 import { Shamir } from "@spliterati/shamir";
 import { WebAuthnCrypto } from "cubid-wallet";
 import { tokenAbi } from "@shared/hooks/abi";
+import { assertTorontoCoinWalletTokenIdentity } from "@shared/lib/contracts/torontocoinRuntime";
+import type { Hex } from "viem";
 import { transfer } from "@shared/utils/insertNotification";
 import {
   normaliseTransferResult,
@@ -87,6 +89,28 @@ const getWebAuthn = () => {
   return webAuthnInstance;
 };
 
+export async function runAfterRuntimeChainCheck<T>(
+  provider: { getNetwork: () => Promise<{ chainId: number }> },
+  expectedChainId: number,
+  operation: () => Promise<T>
+): Promise<T> {
+  const network = await provider.getNetwork();
+  if (network.chainId !== expectedChainId) {
+    throw new Error(
+      `Wallet RPC chain mismatch: expected ${expectedChainId}, received ${network.chainId}.`
+    );
+  }
+  return operation();
+}
+
+export async function runAfterTokenIdentityCheck<T>(
+  identity: Parameters<typeof assertTorontoCoinWalletTokenIdentity>[0],
+  operation: () => Promise<T>
+): Promise<T> {
+  assertTorontoCoinWalletTokenIdentity(identity);
+  return operation();
+}
+
 export async function runWithWebAuthnLock<T>(
   operation: () => Promise<T>
 ): Promise<T> {
@@ -122,19 +146,57 @@ async function decodeUserShare(jsonData: WebAuthnDecryptPayload): Promise<string
 }
 
 async function buildWalletFromShares({ appShare, userShareEncrypted }: SharePayload) {
-  const jsonData = {
-    encryptedAesKey: base64ToArrayBuffer(userShareEncrypted.encryptedAesKey),
-    encryptedData: base64ToArrayBuffer(userShareEncrypted.encryptedData),
-    encryptionMethod: userShareEncrypted.encryptionMethod,
-    id: userShareEncrypted.id,
-    iv: base64ToArrayBuffer(userShareEncrypted.iv),
-    ivForKeyEncryption: userShareEncrypted.ivForKeyEncryption,
-    salt: userShareEncrypted.salt,
-    credentialId: base64ToArrayBuffer(userShareEncrypted.credentialId),
-  } as unknown as WebAuthnDecryptPayload;
+  const runtimeConfig = await resolveTokenRuntimeConfig();
+  const provider = new ethers.providers.JsonRpcProvider(runtimeConfig.rpcUrl);
+  const privateKeyHex = await runAfterRuntimeChainCheck(
+    provider,
+    runtimeConfig.chainId,
+    async () => {
+      const readOnlyToken = new ethers.Contract(
+        runtimeConfig.tokenAddress,
+        tokenAbi,
+        provider
+      );
+      const [bytecode, name, symbol, decimals] = await Promise.all([
+        provider.getCode(runtimeConfig.tokenAddress),
+        readOnlyToken.name(),
+        readOnlyToken.symbol(),
+        readOnlyToken.decimals(),
+      ]);
+      return runAfterTokenIdentityCheck({
+        runtime: {
+          chainId: runtimeConfig.chainId,
+          cplTcoin: {
+            address: runtimeConfig.tokenAddress,
+            name: runtimeConfig.tokenName,
+            symbol: runtimeConfig.tokenSymbol,
+            decimals: runtimeConfig.decimals,
+            explorerPath: `/token/${runtimeConfig.tokenAddress}`,
+          },
+          cplTcoinRuntimeCodeHash: runtimeConfig.cplTcoinRuntimeCodeHash,
+        },
+        actualChainId: runtimeConfig.chainId,
+        bytecode: bytecode as Hex,
+        name: String(name),
+        symbol: String(symbol),
+        decimals: Number(decimals),
+      }, async () => {
+        const jsonData = {
+        encryptedAesKey: base64ToArrayBuffer(userShareEncrypted.encryptedAesKey),
+        encryptedData: base64ToArrayBuffer(userShareEncrypted.encryptedData),
+        encryptionMethod: userShareEncrypted.encryptionMethod,
+        id: userShareEncrypted.id,
+        iv: base64ToArrayBuffer(userShareEncrypted.iv),
+        ivForKeyEncryption: userShareEncrypted.ivForKeyEncryption,
+        salt: userShareEncrypted.salt,
+        credentialId: base64ToArrayBuffer(userShareEncrypted.credentialId),
+        } as unknown as WebAuthnDecryptPayload;
 
-  const userShare = await decodeUserShare(jsonData);
-  const privateKeyHex = combineShares([appShare, userShare]);
+        const userShare = await decodeUserShare(jsonData);
+        return combineShares([appShare, userShare]);
+      });
+    }
+  );
   if (!privateKeyHex) {
     throw new Error("Failed to reconstruct private key from shares");
   }
@@ -142,9 +204,13 @@ async function buildWalletFromShares({ appShare, userShareEncrypted }: SharePayl
   const privateKey = privateKeyHex.startsWith("0x")
     ? privateKeyHex
     : `0x${privateKeyHex}`;
-  const runtimeConfig = await resolveTokenRuntimeConfig();
-  const provider = new ethers.providers.JsonRpcProvider(runtimeConfig.rpcUrl);
   const walletInstance = new ethers.Wallet(privateKey, provider);
+  const signingNetwork = await walletInstance.provider.getNetwork();
+  if (signingNetwork.chainId !== runtimeConfig.chainId) {
+    throw new Error(
+      `Wallet signing provider chain mismatch: expected ${runtimeConfig.chainId}, received ${signingNetwork.chainId}.`
+    );
+  }
 
   return {
     runtimeConfig,
@@ -164,6 +230,10 @@ export async function burnToken({
     sharePayload
   );
 
+  if (runtimeConfig.purpose === "pay-link-only") {
+    throw new Error("Burn is disabled in the isolated Preview pay-link profile.");
+  }
+
   const tokenContract = new ethers.Contract(
     runtimeConfig.tokenAddress,
     tokenAbi,
@@ -178,9 +248,16 @@ export async function burnToken({
     parsedAmount.toString(),
     runtimeConfig.decimals
   );
+  const gasLimit = await tokenContract.estimateGas.burn(value);
+  if (gasLimit.gt(runtimeConfig.transferGasLimit)) {
+    throw new Error("Burn gas estimate exceeds the reviewed transaction gas limit.");
+  }
   const gasPrice = await provider.getGasPrice();
+  if (gasPrice.gt(runtimeConfig.maxFeePerGasWei)) {
+    throw new Error("Current gas price exceeds the reviewed fee ceiling.");
+  }
   const txResponse = await tokenContract.burn(value, {
-    gasLimit: ethers.BigNumber.from(50000000),
+    gasLimit,
     gasPrice,
   });
   const txReceipt = await txResponse.wait();
@@ -225,24 +302,28 @@ export async function sendTokenTransfer({
     runtimeConfig.decimals
   );
 
-  let gasLimit;
-  try {
-    gasLimit = await tokenContract.estimateGas.transfer(receiverWallet, value);
-  } catch (estimateError: any) {
-    console.warn(
-      "Gas estimation failed, falling back to default gas limit. Error:",
-      estimateError.message
-    );
-    gasLimit = ethers.BigNumber.from(50000000);
+  const gasLimit = await tokenContract.estimateGas.transfer(receiverWallet, value);
+  if (gasLimit.gt(runtimeConfig.transferGasLimit)) {
+    throw new Error("Transfer gas estimate exceeds the reviewed transaction gas limit.");
   }
 
   const gasPrice = await provider.getGasPrice();
+  if (gasPrice.gt(runtimeConfig.maxFeePerGasWei)) {
+    throw new Error("Current gas price exceeds the reviewed fee ceiling.");
+  }
   const txResponse = await tokenContract.transfer(receiverWallet, value, {
     gasLimit,
     gasPrice,
   });
   const txReceipt = await txResponse.wait();
   const transactionHash = txReceipt?.transactionHash ?? txResponse.hash;
+
+  if (runtimeConfig.purpose === "pay-link-only") {
+    return {
+      transactionHash,
+      transferRecord: null,
+    };
+  }
 
   try {
     const transferResult = await transfer({
@@ -288,6 +369,10 @@ export async function executeVoucherTransfer({
   const { runtimeConfig, walletInstance } = await buildWalletFromShares(
     sharePayload
   );
+
+  if (runtimeConfig.purpose === "pay-link-only") {
+    throw new Error("Voucher transfers are disabled in the isolated Preview pay-link profile.");
+  }
 
   return executeVoucherSwapAndTransfer({
     signer: walletInstance,

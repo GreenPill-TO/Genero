@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
 import { isLocalOrDevelopmentEnvironment } from "@shared/lib/bia/apiAuth";
 import { createServiceRoleClientCore } from "@shared/lib/supabase/serviceRoleCore";
+import { isTorontoCoinMainnetRuntimeAdmitted } from "@shared/lib/contracts/torontocoinRuntime";
 
 const DEFAULT_CITY_SLUG = "tcoin";
 const DEFAULT_CHAIN_ID = 42220;
@@ -38,6 +39,13 @@ function getSafeIndexerTouchError(error: unknown) {
 
 export async function POST(req: Request) {
   try {
+    const configuredCitySlug = getConfiguredCitySlug();
+    if (configuredCitySlug === "tcoin" && !isTorontoCoinMainnetRuntimeAdmitted()) {
+      return NextResponse.json(
+        { error: "Indexer touch requires the explicit Production celo-mainnet profile." },
+        { status: 409 }
+      );
+    }
     const supabase = createClient();
     const isLocalOrDevelopment = isLocalOrDevelopmentEnvironment();
     const {
@@ -56,7 +64,6 @@ export async function POST(req: Request) {
       body = {};
     }
 
-    const configuredCitySlug = getConfiguredCitySlug();
     const requestedCitySlug = normaliseCitySlug(body.citySlug) || configuredCitySlug;
     if (requestedCitySlug !== configuredCitySlug) {
       return NextResponse.json(

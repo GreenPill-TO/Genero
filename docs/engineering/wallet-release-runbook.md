@@ -28,6 +28,29 @@ Env template references:
 | Wallet user experience | `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL`, `NEXT_PUBLIC_TCOIN_BANNER_DARK_URL` | Keeps public landing and authenticated wallet flows coherent when exchange-rate or explorer data is needed. |
 | Indexer runtime | `INDEXER_CHAIN_ID`, `INDEXER_CHAIN_RPC_URL`, `INDEXER_INITIAL_BLOCK`, `INDEXER_MAX_BLOCKS_PER_RUN`, `INDEXER_DISCOVERY_POOL_LIMIT` | Drives `/api/indexer/touch`, `/api/indexer/status`, wallet stats, and operator health. |
 
+### Isolated Celo Sepolia pay-link preparation
+
+This lane is not a normal wallet release and does not inherit Production/mainnet readiness. Set `NEXT_PUBLIC_TCOIN_RUNTIME_TARGET=celo-sepolia-pay-link` only after the reviewed public manifest is available. The manifest must name chain `11142220`, exact cplTCOIN/mrTCOIN and Sarafu suite addresses, HTTPS RPC/explorer endpoints, and bounded transfer gas/fee ceilings. Missing or invalid configuration must leave chain operations unavailable; do not work around it with the legacy city registry or a mainnet address.
+
+Before any later deployment or mint execution:
+
+1. Freeze and review the source commit and `deploy-config.json` hash.
+2. Create the issuer with `cast wallet new <secure-keystore-directory> <account-name>` and enter its password only at the hidden prompt. Create payer and recipient through the normal TCOIN/Cubid Preview onboarding flow so their passkeys and custody shares remain app-managed; do not assume external keystore addresses can be imported into those wallets. Never export any raw key into chat, a plan, shell history, repository files, CI variables, screenshots, or logs. Record only the three public addresses after setup. Review the exact deployer, vault owner, token admin, operational indexer, payer, recipient, and planned contract addresses; payer and recipient must differ from each other and from the issuer. Confirm the token admin can grant/revoke the intended temporary writer—ownership alone is not writer authority. The dedicated deploy script uses the reviewed public deployer with Foundry's external signer (`--account <name> --sender <public-address>`); it does not read `DEPLOYER_KEY`. If that signer is unavailable or does not match, stop rather than exporting a raw key.
+3. Produce a public plan with exact per-transaction gas limits/fee ceilings and a total maximum native-gas cost, then run `TCOIN_PAY_LINK_REVIEWED_COMMIT=<sha> pnpm ops:torontocoin:pay-link:plan <plan.json>`. This command validates only and never signs or broadcasts.
+4. Confirm the RPC reports chain `11142220` immediately before any separately authorised signing. Re-read deployed bytecode, six-decimal token identity, ownership/writers, registry/pool/adapter wiring, and zero pre-mint supply before approving the mint plan.
+5. Treat deployment and post-deployment mint/payment as separate approvals and gas budgets. The plan validator covers only the latter stage and requires five bound transactions (four mint-authority calls plus the 100-token payment); it does not prove deployment funding or authorise execution. Under separate authority: set the cplTCOIN cap to `500_000_000`, grant the reviewed temporary writer, mint exactly `500_000_000` to the reviewed payer once, revoke the writer, and read back cap, total supply, payer balance, Mint receipt, and revocation. If interrupted, inspect those facts and resume only a missing step; never blindly remint. Demurrage can make the later visible balance lower than the exact Mint event/supply accounting.
+
+6. Keep pool seed, mrTCOIN mint, reserve mint, Mento, Buy, voucher, admin and indexer-worker execution at zero/off. Any request to enable one is a new scope decision.
+7. Only after the authorised Preview Edge host is `https://dev.tcoin.me`, create one `100.000000`-token request. Require the raw returned URL, QR value, copied value and opened URL to be the same unmodified `https://dev.tcoin.me/pay/...` value. Creating/resolving the link is not payment approval; consuming/paying remains separately gated.
+
+The Preview Next.js environment and the `voucher-runtime` and `onramp` Edge Function environments must mirror the dedicated target/purpose/chain selectors before functional Preview claims. The gated TCOIN Edge deployment workflow includes those bundles; keep Buy disabled and do not deploy them ad hoc.
+
+Mainnet operational surfaces require positive admission: app environment `production`, runtime target `celo-mainnet`, and city `tcoin`. A missing or unknown target, any non-production app environment, or the Vercel production deployment context used for `dev.tcoin.me` must not restore mainnet ops, stats, pools, indexer, voucher, or onramp behaviour.
+
+The retained wallet deployment preflight queries legacy chain `42220` indexer and checked-in mainnet cplTCOIN health. In the isolated Preview workflow, treat that result only as shared legacy-health evidence; it does not validate Celo Sepolia chain `11142220` indexer state, account funding, deployment, or pay-link acceptance. The broader queue/worker-health gate remains owned by T893/D70 and is not bypassed here.
+
+Evidence must distinguish offline source preparation, separately authorised account-onboarding actions (including any OTP use), and funded or hosted acceptance. State the writes that actually occurred. Do not imply that account setup proves deployment, funding, minting, payment, hosted configuration, or any chain write; Production and Celo mainnet remain separate release gates.
+
 ### Required when the related launch surface is enabled
 
 | Surface | Env vars | Notes |

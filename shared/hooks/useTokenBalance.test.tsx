@@ -1,31 +1,26 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getActiveCityContractsMock, getRpcUrlForChainIdMock } = vi.hoisted(() => ({
-  getActiveCityContractsMock: vi.fn(),
-  getRpcUrlForChainIdMock: vi.fn(),
+const { getTorontoCoinWalletRuntimeOrThrowMock, assertTokenIdentityMock } = vi.hoisted(() => ({
+  getTorontoCoinWalletRuntimeOrThrowMock: vi.fn(),
+  assertTokenIdentityMock: vi.fn(),
 }));
 
-const { getTorontoCoinRuntimeConfigMock } = vi.hoisted(() => ({
-  getTorontoCoinRuntimeConfigMock: vi.fn(),
-}));
-
-const { createPublicClientMock, httpMock, readContractMock } = vi.hoisted(() => {
+const { createPublicClientMock, httpMock, readContractMock, getChainIdMock, getBytecodeMock } = vi.hoisted(() => {
   const readContract = vi.fn();
-  const createPublicClient = vi.fn(() => ({ readContract }));
+  const getChainId = vi.fn();
+  const getBytecode = vi.fn();
+  const createPublicClient = vi.fn(() => ({ readContract, getChainId, getBytecode }));
   const http = vi.fn((url: string) => ({ url }));
 
   return {
     createPublicClientMock: createPublicClient,
     httpMock: http,
     readContractMock: readContract,
+    getChainIdMock: getChainId,
+    getBytecodeMock: getBytecode,
   };
 });
-
-vi.mock("@shared/lib/contracts/cityContracts", () => ({
-  getActiveCityContracts: getActiveCityContractsMock,
-  getRpcUrlForChainId: getRpcUrlForChainIdMock,
-}));
 
 vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
   TORONTOCOIN_RUNTIME: {
@@ -33,7 +28,8 @@ vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
     cplTcoin: { address: "0x1111111111111111111111111111111111111111", decimals: 6 },
     rpcUrl: "https://forno.celo.org",
   },
-  getTorontoCoinRuntimeConfig: getTorontoCoinRuntimeConfigMock,
+  getTorontoCoinWalletRuntimeOrThrow: getTorontoCoinWalletRuntimeOrThrowMock,
+  assertTorontoCoinWalletTokenIdentity: assertTokenIdentityMock,
 }));
 
 vi.mock("viem", () => ({
@@ -49,17 +45,25 @@ import { useTokenBalance } from "./useTokenBalance";
 
 describe("useTokenBalance", () => {
   beforeEach(() => {
-    getActiveCityContractsMock.mockReset();
-    getRpcUrlForChainIdMock.mockReset();
-    getTorontoCoinRuntimeConfigMock.mockReset();
+    getTorontoCoinWalletRuntimeOrThrowMock.mockReset();
     createPublicClientMock.mockClear();
     httpMock.mockClear();
     readContractMock.mockReset();
+    getChainIdMock.mockReset();
+    getBytecodeMock.mockReset();
+    assertTokenIdentityMock.mockReset();
+    getChainIdMock.mockResolvedValue(42220);
+    getBytecodeMock.mockResolvedValue("0x6000");
   });
 
   it("reads cplTCOIN balance from the TorontoCoin runtime bridge", async () => {
-    getTorontoCoinRuntimeConfigMock.mockReturnValue({
-      cplTcoin: { address: "0x1111111111111111111111111111111111111111", decimals: 6 },
+    getTorontoCoinWalletRuntimeOrThrowMock.mockReturnValue({
+      cplTcoin: {
+        address: "0x1111111111111111111111111111111111111111",
+        decimals: 6,
+        name: "Cross Pool Liquidity TCOIN",
+        symbol: "cplTCOIN",
+      },
       rpcUrl: "https://forno.celo.org",
       chainId: 42220,
     });
@@ -71,6 +75,9 @@ describe("useTokenBalance", () => {
       if (functionName === "decimals") {
         return 6;
       }
+
+      if (functionName === "name") return "Cross Pool Liquidity TCOIN";
+      if (functionName === "symbol") return "cplTCOIN";
 
       return 0;
     });
@@ -93,58 +100,55 @@ describe("useTokenBalance", () => {
         args: ["0x00000000000000000000000000000000000000aa"],
       })
     );
+    const balanceCallIndex = readContractMock.mock.calls.findIndex(
+      (call) => call[0].functionName === "balanceOf"
+    );
+    expect(assertTokenIdentityMock.mock.invocationCallOrder[0]).toBeLessThan(
+      readContractMock.mock.invocationCallOrder[balanceCallIndex]
+    );
   });
 
-  it("falls back to registry-resolved legacy contracts outside the TorontoCoin runtime", async () => {
-    getTorontoCoinRuntimeConfigMock.mockReturnValue(null);
-    getActiveCityContractsMock.mockResolvedValue({
-      chainId: 545,
-      contracts: { TCOIN: "0x0000000000000000000000000000000000000001" },
+  it("does not read a balance when chain or live token identity validation fails", async () => {
+    getTorontoCoinWalletRuntimeOrThrowMock.mockReturnValue({
+      cplTcoin: {
+        address: "0x1111111111111111111111111111111111111111",
+        decimals: 6,
+        name: "Cross Pool Liquidity TCOIN",
+        symbol: "cplTCOIN",
+      },
+      rpcUrl: "https://preview.example",
+      chainId: 11142220,
     });
-    getRpcUrlForChainIdMock.mockReturnValue("https://testnet.evm.nodes.onflow.org");
+    getChainIdMock.mockResolvedValue(42220);
     readContractMock.mockImplementation(async ({ functionName }: { functionName: string }) => {
-      if (functionName === "balanceOf") {
-        return BigInt("1000000000000000000");
-      }
-
-      if (functionName === "decimals") {
-        return 18;
-      }
-
-      return 0;
+      if (functionName === "decimals") return 18;
+      if (functionName === "name") return "Generic Token";
+      if (functionName === "symbol") return "ERC20";
+      throw new Error(`unexpected ${functionName}`);
+    });
+    assertTokenIdentityMock.mockImplementation(() => {
+      throw new Error("Wallet RPC chain mismatch: expected 11142220, received 42220.");
     });
 
     const { result } = renderHook(() =>
       useTokenBalance("0x00000000000000000000000000000000000000aa")
     );
-
-    await waitFor(() => {
-      expect(result.current.balance).toBe("1");
-    });
-
-    expect(getActiveCityContractsMock).toHaveBeenCalledTimes(1);
-    expect(getRpcUrlForChainIdMock).toHaveBeenCalledWith(545);
-    expect(readContractMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        address: "0x0000000000000000000000000000000000000001",
-        functionName: "balanceOf",
-        args: ["0x00000000000000000000000000000000000000aa"],
-      })
-    );
+    await waitFor(() => expect(result.current.error).toContain("expected 11142220"));
+    expect(readContractMock.mock.calls.some((call) => call[0].functionName === "balanceOf")).toBe(false);
   });
 
-  it("surfaces registry resolution errors", async () => {
-    getTorontoCoinRuntimeConfigMock.mockReturnValue(null);
-    getActiveCityContractsMock.mockRejectedValue(
-      new Error("City registry bootstrap address is not configured.")
-    );
+  it("surfaces fail-closed Preview runtime errors without making an RPC call", async () => {
+    getTorontoCoinWalletRuntimeOrThrowMock.mockImplementation(() => {
+      throw new Error("Preview wallet runtime is not configured.");
+    });
 
     const { result } = renderHook(() =>
       useTokenBalance("0x00000000000000000000000000000000000000aa")
     );
 
     await waitFor(() => {
-      expect(result.current.error).toBe("City registry bootstrap address is not configured.");
+      expect(result.current.error).toBe("Preview wallet runtime is not configured.");
     });
+    expect(createPublicClientMock).not.toHaveBeenCalled();
   });
 });

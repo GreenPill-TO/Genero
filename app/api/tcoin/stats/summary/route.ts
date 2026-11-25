@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
 import { getWalletStatsSummary } from "@shared/lib/walletStats/server";
+import { isTorontoCoinMainnetRuntimeAdmitted } from "@shared/lib/contracts/torontocoinRuntime";
 
 export async function GET() {
   try {
+    if (!isTorontoCoinMainnetRuntimeAdmitted()) {
+      return NextResponse.json(
+        { error: "Wallet stats require the explicit Production celo-mainnet profile." },
+        { status: 409 }
+      );
+    }
     const supabase = createClient();
     const {
       data: { user },

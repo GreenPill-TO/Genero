@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, beforeEach, vi } from "vitest";
 
 const useTokenBalanceMock = vi.hoisted(() =>
   vi.fn().mockReturnValue({ balance: "1", loading: false, error: null })
@@ -21,6 +21,7 @@ describe("AccountCard", () => {
   beforeEach(() => {
     useTokenBalanceMock.mockClear();
   });
+  afterEach(cleanup);
 
   it("keeps the home card focused on balance and activity", () => {
     const onOpenTransactionHistory = vi.fn();
@@ -37,5 +38,22 @@ describe("AccountCard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /View transaction history/i }));
     expect(onOpenTransactionHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not present Preview test tokens as CAD or spendable value", () => {
+    render(
+      <AccountCard
+        balance={10}
+        senderWallet="0xabc123"
+        isTestToken
+        onOpenTransactionHistory={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/Test token balance/i)).toBeTruthy();
+    expect(screen.getByText(/no cash value/i)).toBeTruthy();
+    expect(screen.queryByText(/ready to spend/i)).toBeNull();
+    expect(screen.queryByText(/CAD/i)).toBeNull();
+    expect(screen.queryByText(/Spendable now/i)).toBeNull();
   });
 });

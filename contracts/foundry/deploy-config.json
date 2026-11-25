@@ -290,6 +290,104 @@
           "executeBuy": false
         }
       }
+    },
+    "celo-sepolia-pay-link": {
+      "chainId": 11142220,
+      "rpcEnvVar": "CELO_SEPOLIA_RPC_URL",
+      "explorerApiKeyEnvVar": "CELOSCAN_API_KEY",
+      "purpose": "pay-link-only",
+      "roles": {
+        "governanceOwnsTokens": false,
+        "requireExplicitAddresses": true
+      },
+      "torontocoin": {
+        "governance": {
+          "defaultVotingWindow": 604800
+        },
+        "treasuryController": {
+          "cadPeg18": 3300000000000000000,
+          "userRedeemRateBps": 8000,
+          "merchantRedeemRateBps": 9700,
+          "charityMintRateBps": 300,
+          "overcollateralizationTarget18": 1100000000000000000
+        },
+        "tokens": {
+          "mrTcoin": {
+            "name": "Municipal Reserve TCOIN (Celo Sepolia)",
+            "symbol": "mrTCOIN-cs",
+            "decimals": 6,
+            "decayLevel": 18446735446994636799,
+            "periodMinutes": 43200,
+            "defaultMerchantFeeBps": 0
+          },
+          "cplTcoin": {
+            "name": "Cross Pool Liquidity TCOIN (Celo Sepolia)",
+            "symbol": "cplTCOIN-cs",
+            "decimals": 6,
+            "decayLevel": 18446735446994636799,
+            "periodMinutes": 43200,
+            "defaultMerchantFeeBps": 100
+          }
+        },
+        "preferences": {
+          "maxVoluntaryFeeBps": 1000
+        },
+        "router": {
+          "charityTopupBps": 300,
+          "weightLowMrTcoinLiquidity": 1,
+          "weightHighCplTcoinLiquidity": 1,
+          "weightUserPoolPreference": 100,
+          "weightUserMerchantPreference": 50
+        },
+        "reserves": {
+          "cadm": {
+            "assetId": "0x4341444d00000000000000000000000000000000000000000000000000000000",
+            "code": "CADm",
+            "tokenDecimals": 18,
+            "staleAfter": 86400,
+            "staticCadPrice18": 1000000000000000000,
+            "deployToken": true,
+            "deployedTokenName": "Celo Sepolia Pay-Link Test Reserve",
+            "deployedTokenSymbol": "csCAD",
+            "deployedTokenMintAmount": 0
+          }
+        },
+        "mento": {
+          "enabled": false
+        },
+        "bootstrap": {
+          "charity": {
+            "name": "Celo Sepolia Community Fund",
+            "metadataRecordId": "celo-sepolia-community-fund"
+          },
+          "steward": {
+            "name": "Celo Sepolia Bootstrap Steward",
+            "metadataRecordId": "celo-sepolia-bootstrap-steward"
+          },
+          "pool": {
+            "poolId": "0x63656c6f2d7365706f6c69612d67656e65736973000000000000000000000000",
+            "name": "Celo Sepolia Genesis Pool",
+            "metadataRecordId": "celo-sepolia-genesis-pool"
+          },
+          "merchant": {
+            "merchantId": "0x63656c6f2d7365706f6c69612d6d65726368616e740000000000000000000000",
+            "metadataRecordId": "celo-sepolia-genesis-merchant"
+          },
+          "poolQuoteBps": 10000,
+          "poolExecutionEnabled": true,
+          "initialPoolSeed": 0
+        },
+        "scenarioB": {
+          "inputAmount": 0,
+          "minReserveOut": 1,
+          "minCplTcoinOut": 1,
+          "executeBuy": false
+        },
+        "payLink": {
+          "mintAmount": 500000000,
+          "paymentAmount": 100000000
+        }
+      }
     }
   }
 }

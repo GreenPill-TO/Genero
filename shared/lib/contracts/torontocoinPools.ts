@@ -12,6 +12,7 @@ import {
 import {
   getConfiguredTorontoCoinTrackedPools,
   getTorontoCoinRpcUrl,
+  assertTorontoCoinMainnetRuntimeAdmitted,
   TORONTOCOIN_RUNTIME,
   type TorontoCoinRuntimeConfig,
   type TrackedTorontoCoinPool,
@@ -743,6 +744,7 @@ async function readScenarioPreview(
 export function createTorontoCoinPublicClient(
   runtime: TorontoCoinRuntimeConfig = TORONTOCOIN_RUNTIME
 ): PublicClient {
+  assertTorontoCoinMainnetRuntimeAdmitted();
   return createPublicClient({
     transport: http(getTorontoCoinRpcUrl()),
   });
@@ -752,6 +754,7 @@ export async function listTorontoCoinTrackedPools(options?: {
   client?: PublicClient;
   runtime?: TorontoCoinRuntimeConfig;
 }): Promise<TrackedTorontoCoinPool[]> {
+  assertTorontoCoinMainnetRuntimeAdmitted();
   const runtime = options?.runtime ?? TORONTOCOIN_RUNTIME;
   const client = options?.client ?? createTorontoCoinPublicClient(runtime);
   const configured = getConfiguredTorontoCoinTrackedPools({
@@ -766,6 +769,7 @@ export async function getTorontoCoinTrackedPoolStatuses(options?: {
   client?: PublicClient;
   runtime?: TorontoCoinRuntimeConfig;
 }): Promise<TorontoCoinTrackedPoolStatus[]> {
+  assertTorontoCoinMainnetRuntimeAdmitted();
   const runtime = options?.runtime ?? TORONTOCOIN_RUNTIME;
   const client = options?.client ?? createTorontoCoinPublicClient(runtime);
   const pools = await listTorontoCoinTrackedPools({ client, runtime });

@@ -10,6 +10,7 @@ const useTokenBalanceMock = vi.hoisted(() => vi.fn());
 const useControlVariablesMock = vi.hoisted(() => vi.fn());
 const openModalMock = vi.hoisted(() => vi.fn());
 const closeModalMock = vi.hoisted(() => vi.fn());
+const previewTargetMock = vi.hoisted(() => vi.fn(() => false));
 
 vi.mock("@shared/api/hooks/useAuth", () => ({
   useAuth: () => useAuthMock(),
@@ -32,6 +33,9 @@ vi.mock("@shared/contexts/ModalContext", () => ({
     openModal: openModalMock,
     closeModal: closeModalMock,
   }),
+}));
+vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
+  isTorontoCoinPayLinkPreviewTarget: previewTargetMock,
 }));
 
 vi.mock("@tcoin/wallet/components/modals/BuyTcoinModal", () => ({
@@ -62,6 +66,16 @@ describe("SimpleWalletHome", () => {
       exchangeRate: 3.35,
       fallbackMessage: null,
     });
+    previewTargetMock.mockReturnValue(false);
+  });
+
+  it("shows test-token safety copy and removes fiat purchase actions in Preview", () => {
+    previewTargetMock.mockReturnValue(true);
+    render(<SimpleWalletHome />);
+
+    expect(screen.getByRole("status").textContent).toContain("test tokens, no real value");
+    expect(screen.queryByText(/CAD$/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Buy more TCOIN/i })).toBeNull();
   });
 
   afterEach(() => {

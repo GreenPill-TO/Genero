@@ -47,6 +47,8 @@ jobs:
       NEXT_PUBLIC_CITYCOIN: ${{ vars.NEXT_PUBLIC_CITYCOIN || 'tcoin' }}
       NEXT_PUBLIC_APP_NAME: ${{ vars.NEXT_PUBLIC_APP_NAME || 'wallet' }}
       NEXT_PUBLIC_APP_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_APP_ENVIRONMENT || 'staging' }}
+      NEXT_PUBLIC_TCOIN_RUNTIME_TARGET: ${{ vars.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET || secrets.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET }}
+      NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST: ${{ vars.NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST || secrets.NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST }}
       NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL: ${{ vars.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL || secrets.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL }}
       NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
       NEXT_PUBLIC_EXPLORER_URL: ${{ vars.NEXT_PUBLIC_EXPLORER_URL || secrets.NEXT_PUBLIC_EXPLORER_URL }}
@@ -96,6 +98,8 @@ jobs:
             NEXT_PUBLIC_CITYCOIN
             NEXT_PUBLIC_APP_NAME
             NEXT_PUBLIC_APP_ENVIRONMENT
+            NEXT_PUBLIC_TCOIN_RUNTIME_TARGET
+            NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST
             NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL
             NEXT_PUBLIC_SITE_URL
             NEXT_PUBLIC_EXPLORER_URL
@@ -109,20 +113,39 @@ jobs:
           done
           exit "$missing"
 
+      - name: Validate TCOIN release profile
+        id: profile
+        run: pnpm ops:tcoin:release-profile --mode=preview
+
       - name: Reload PostgREST schema cache
         run: |
           set -euo pipefail
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
           sleep 5
 
-      - name: Run wallet deployment preflight
+      - name: Run shared wallet preflight (legacy 42220 health)
         run: pnpm ops:wallet:preflight:deployment
 
       - name: Run TorontoCoin ops checks
+        if: steps.profile.outputs.run_full_suite_checks == 'true'
         run: |
           set -euo pipefail
           pnpm ops:torontocoin
           pnpm ops:torontocoin:pools
+
+      - name: Report isolated pay-link acceptance boundary
+        if: steps.profile.outputs.run_full_suite_checks == 'false'
+        run: |
+          set -euo pipefail
+          echo "::notice::The pay-link-only Preview profile is configured. Full TorontoCoin pool and Buy acceptance are unavailable for this isolated lane and were not run."
+          {
+            echo "### Isolated TCOIN Preview alignment"
+            echo "- Runtime profile: pay-link-only on Celo Sepolia"
+            echo "- Wallet preflight: retained legacy Celo mainnet (42220) health only"
+            echo "- Full pool compatibility: unavailable (not passed)"
+            echo "- Buy TCOIN acceptance: unavailable (not passed)"
+            echo "- Celo Sepolia indexer/funded acceptance: not established"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Optional browser smoke
         run: |
@@ -156,6 +179,8 @@ jobs:
       NEXT_PUBLIC_CITYCOIN: ${{ vars.NEXT_PUBLIC_CITYCOIN || 'tcoin' }}
       NEXT_PUBLIC_APP_NAME: ${{ vars.NEXT_PUBLIC_APP_NAME || 'wallet' }}
       NEXT_PUBLIC_APP_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_APP_ENVIRONMENT || 'production' }}
+      NEXT_PUBLIC_TCOIN_RUNTIME_TARGET: ${{ vars.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET || secrets.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET }}
+      NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST: ${{ vars.NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST || secrets.NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST }}
       NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL: ${{ vars.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL || secrets.NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL }}
       NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || secrets.NEXT_PUBLIC_SITE_URL }}
       NEXT_PUBLIC_EXPLORER_URL: ${{ vars.NEXT_PUBLIC_EXPLORER_URL || secrets.NEXT_PUBLIC_EXPLORER_URL }}
@@ -205,6 +230,7 @@ jobs:
             NEXT_PUBLIC_CITYCOIN
             NEXT_PUBLIC_APP_NAME
             NEXT_PUBLIC_APP_ENVIRONMENT
+            NEXT_PUBLIC_TCOIN_RUNTIME_TARGET
             NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL
             NEXT_PUBLIC_SITE_URL
             NEXT_PUBLIC_EXPLORER_URL
@@ -218,6 +244,10 @@ jobs:
           done
           exit "$missing"
 
+      - name: Validate TCOIN release profile
+        id: profile
+        run: pnpm ops:tcoin:release-profile --mode=production
+
       - name: Reload PostgREST schema cache
         run: |
           set -euo pipefail
@@ -228,6 +258,7 @@ jobs:
         run: pnpm ops:wallet:preflight:deployment
 
       - name: Run TorontoCoin ops checks
+        if: steps.profile.outputs.run_full_suite_checks == 'true'
         run: |
           set -euo pipefail
           pnpm ops:torontocoin

@@ -30,6 +30,15 @@ function formatAmount(value: number): string {
   return value.toFixed(6);
 }
 
+function requireVoucherRuntime(options: { citySlug: string; chainId?: number | null }) {
+  const chainId = options.chainId ?? TORONTOCOIN_RUNTIME.chainId;
+  const runtime = getTorontoCoinRuntimeConfig({ citySlug: options.citySlug, chainId });
+  if (!runtime) {
+    throw new Error(`Voucher runtime is unavailable for ${options.citySlug}:${chainId}.`);
+  }
+  return runtime;
+}
+
 function buildVoucherPortfolio(options: {
   citySlug: string;
   chainId: number;
@@ -142,11 +151,7 @@ export async function getVoucherPortfolioRuntime(options: {
   chainId?: number | null;
   wallet?: string | null;
 }) {
-  const runtime =
-    getTorontoCoinRuntimeConfig({
-      citySlug: options.citySlug,
-      chainId: options.chainId ?? TORONTOCOIN_RUNTIME.chainId,
-    }) ?? TORONTOCOIN_RUNTIME;
+  const runtime = requireVoucherRuntime(options);
   const chainId = options.chainId && options.chainId > 0 ? Math.trunc(options.chainId) : runtime.chainId;
 
   const walletAddress = await resolveWalletAddress({
@@ -261,11 +266,7 @@ export async function getVoucherRouteRuntime(options: {
   recipientWallet?: string | null;
   recipientUserId?: number | null;
 }) {
-  const runtime =
-    getTorontoCoinRuntimeConfig({
-      citySlug: options.citySlug,
-      chainId: options.chainId ?? TORONTOCOIN_RUNTIME.chainId,
-    }) ?? TORONTOCOIN_RUNTIME;
+  const runtime = requireVoucherRuntime(options);
   const chainId = options.chainId && options.chainId > 0 ? Math.trunc(options.chainId) : runtime.chainId;
 
   const recipientWallet = await resolveRecipientWallet({
@@ -305,11 +306,7 @@ export async function createVoucherPaymentRecordRuntime(options: {
   chainId?: number | null;
   payload: Record<string, unknown>;
 }) {
-  const runtime =
-    getTorontoCoinRuntimeConfig({
-      citySlug: options.citySlug,
-      chainId: options.chainId ?? TORONTOCOIN_RUNTIME.chainId,
-    }) ?? TORONTOCOIN_RUNTIME;
+  const runtime = requireVoucherRuntime(options);
   const chainId = options.chainId && options.chainId > 0 ? Math.trunc(options.chainId) : runtime.chainId;
   const body = options.payload;
 

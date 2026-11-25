@@ -1,20 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { getActiveCityContractsMock, getRpcUrlForChainIdMock } = vi.hoisted(() => ({
-  getActiveCityContractsMock: vi.fn(),
-  getRpcUrlForChainIdMock: vi.fn(),
-}));
-
-const { getTorontoCoinRuntimeConfigMock } = vi.hoisted(() => ({
-  getTorontoCoinRuntimeConfigMock: vi.fn(),
-}));
-
-vi.mock("@shared/lib/contracts/cityContracts", () => ({
-  getActiveCityContracts: getActiveCityContractsMock,
-  getRpcUrlForChainId: getRpcUrlForChainIdMock,
+const { getTorontoCoinWalletRuntimeOrThrowMock, assertTokenIdentityMock } = vi.hoisted(() => ({
+  getTorontoCoinWalletRuntimeOrThrowMock: vi.fn(),
+  assertTokenIdentityMock: vi.fn(),
 }));
 
 vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
+  assertTorontoCoinWalletTokenIdentity: assertTokenIdentityMock,
   TORONTOCOIN_RUNTIME: {
     chainId: 42220,
     cplTcoin: {
@@ -23,7 +15,7 @@ vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
     },
     rpcUrl: "https://forno.celo.org",
   },
-  getTorontoCoinRuntimeConfig: getTorontoCoinRuntimeConfigMock,
+  getTorontoCoinWalletRuntimeOrThrow: getTorontoCoinWalletRuntimeOrThrowMock,
 }));
 
 vi.mock("cubid-wallet", () => ({
@@ -39,6 +31,8 @@ import {
 } from "@shared/lib/wallet/sendMoneyShared";
 import {
   resetWebAuthnRuntimeForTests,
+  runAfterRuntimeChainCheck,
+  runAfterTokenIdentityCheck,
   runWithWebAuthnLock,
 } from "@shared/lib/wallet/sendMoneyRuntime";
 
@@ -48,9 +42,7 @@ describe("runWithWebAuthnLock", () => {
   afterEach(() => {
     consoleWarnSpy.mockClear();
     resetWebAuthnRuntimeForTests();
-    getActiveCityContractsMock.mockReset();
-    getRpcUrlForChainIdMock.mockReset();
-    getTorontoCoinRuntimeConfigMock.mockReset();
+    getTorontoCoinWalletRuntimeOrThrowMock.mockReset();
   });
 
   it("prevents concurrent WebAuthn requests", async () => {
@@ -72,14 +64,45 @@ describe("runWithWebAuthnLock", () => {
     await expect(runWithWebAuthnLock(async () => "second")).resolves.toBe("second");
   });
 
+  it("rejects a wrong actual RPC chain before invoking signing material", async () => {
+    const signingMaterial = vi.fn(async () => "private-material");
+    await expect(
+      runAfterRuntimeChainCheck(
+        { getNetwork: async () => ({ chainId: 42220 }) },
+        11142220,
+        signingMaterial
+      )
+    ).rejects.toThrow("expected 11142220, received 42220");
+    expect(signingMaterial).not.toHaveBeenCalled();
+  });
+
+  it("rejects wrong live token identity before invoking WebAuthn material", async () => {
+    const webAuthnMaterial = vi.fn(async () => "private-material");
+    assertTokenIdentityMock.mockImplementationOnce(() => {
+      throw new Error("Configured cplTCOIN runtime bytecode does not match the reviewed deployment.");
+    });
+    await expect(
+      runAfterTokenIdentityCheck({} as never, webAuthnMaterial)
+    ).rejects.toThrow("bytecode does not match");
+    expect(webAuthnMaterial).not.toHaveBeenCalled();
+  });
+
   it("resolves token runtime config from the TorontoCoin runtime bridge on Celo mainnet", async () => {
-    getTorontoCoinRuntimeConfigMock.mockReturnValue({
+    getTorontoCoinWalletRuntimeOrThrowMock.mockReturnValue({
+      target: "celo-mainnet",
+      purpose: "production",
       cplTcoin: {
         address: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
         decimals: 6,
+        name: "Community Pool Liquidity Toronto Coin",
+        symbol: "cplTCOIN",
       },
       rpcUrl: "https://forno.celo.org",
       chainId: 42220,
+      explorerBaseUrl: "https://celoscan.io",
+      transferGasLimit: BigInt(250000),
+      maxFeePerGasWei: BigInt(100000000000),
+      cplTcoinRuntimeCodeHash: null,
     });
 
     await expect(resolveTokenRuntimeConfig()).resolves.toEqual({
@@ -87,23 +110,22 @@ describe("runWithWebAuthnLock", () => {
       rpcUrl: "https://forno.celo.org",
       chainId: 42220,
       decimals: 6,
+      explorerBaseUrl: "https://celoscan.io",
+      maxFeePerGasWei: BigInt(100000000000),
+      tokenName: "Community Pool Liquidity Toronto Coin",
+      tokenSymbol: "cplTCOIN",
+      cplTcoinRuntimeCodeHash: null,
+      purpose: "production",
+      target: "celo-mainnet",
+      transferGasLimit: BigInt(250000),
     });
   });
 
-  it("falls back to runtime-aware defaults when registry resolution fails", async () => {
-    getTorontoCoinRuntimeConfigMock.mockReturnValue(null);
-    getActiveCityContractsMock.mockRejectedValue(new Error("registry unavailable"));
-    getRpcUrlForChainIdMock.mockImplementation((chainId: number) => {
-      if (chainId === 42220) return "https://forno.celo.org";
-      throw new Error("unexpected chain");
+  it("fails closed without consulting a registry or mainnet fallback", async () => {
+    getTorontoCoinWalletRuntimeOrThrowMock.mockImplementation(() => {
+      throw new Error("Preview wallet runtime is not configured.");
     });
-
-    await expect(resolveTokenRuntimeConfig()).resolves.toEqual({
-      tokenAddress: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
-      rpcUrl: "https://forno.celo.org",
-      chainId: 42220,
-      decimals: 6,
-    });
+    await expect(resolveTokenRuntimeConfig()).rejects.toThrow("not configured");
   });
 });
 

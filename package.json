@@ -1,6 +1,6 @@
 {
   "name": "genero",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -29,6 +29,8 @@
     "ops:torontocoin": "tsx scripts/torontocoin-ops-check.ts",
     "ops:torontocoin:pools": "tsx scripts/torontocoin-pool-compatibility-check.ts",
     "ops:torontocoin:acceptance": "tsx scripts/torontocoin-pool-acceptance.ts",
+    "ops:torontocoin:pay-link:plan": "tsx scripts/torontocoin-pay-link-plan.ts",
+    "ops:tcoin:release-profile": "tsx scripts/tcoin-release-profile-check.ts",
     "forge:deploy:registry": "cd contracts/foundry && forge script script/deploy/DeployCityImplementationRegistry.s.sol:DeployCityImplementationRegistry --broadcast",
     "forge:promote:city": "cd contracts/foundry && forge script script/deploy/PromoteCityVersion.s.sol:PromoteCityVersion --broadcast"
   },

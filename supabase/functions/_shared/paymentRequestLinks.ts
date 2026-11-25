@@ -76,7 +76,7 @@ function assertValidAmount(value: unknown): number | null {
   return amount;
 }
 
-function resolveWalletPublicBaseUrl(): string {
+export function resolveWalletPublicBaseUrl(): string {
   return (
     toNullableString(Deno.env.get("WALLET_PUBLIC_BASE_URL")) ??
     toNullableString(Deno.env.get("NEXT_PUBLIC_WALLET_PUBLIC_BASE_URL")) ??
@@ -84,7 +84,7 @@ function resolveWalletPublicBaseUrl(): string {
   ).replace(/\/$/, "");
 }
 
-function buildWalletPayUrl(token: string): string {
+export function buildWalletPayUrl(token: string): string {
   return `${resolveWalletPublicBaseUrl()}/pay/${encodeURIComponent(token)}`;
 }
 

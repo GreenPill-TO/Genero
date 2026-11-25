@@ -1,15 +1,20 @@
 /** @vitest-environment jsdom */
 import React from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const useSendMoneyMock = vi.hoisted(() =>
-  vi.fn().mockReturnValue({
+const { useSendMoneyMock, sendMoneyActionMock } = vi.hoisted(() => {
+  const sendMoney = vi.fn();
+  return { useSendMoneyMock: vi.fn().mockReturnValue({
     senderWallet: "0x-sender-from-hook",
-    sendMoney: vi.fn(),
+    sendMoney,
     getLastTransferRecord: vi.fn(),
-  })
-);
+  }), sendMoneyActionMock: sendMoney };
+});
+const { walletRuntimeSelectionMock, resolveTokenRuntimeConfigMock } = vi.hoisted(() => ({
+  walletRuntimeSelectionMock: vi.fn(),
+  resolveTokenRuntimeConfigMock: vi.fn(),
+}));
 const useCameraAvailabilityMock = vi.hoisted(() =>
   vi.fn().mockReturnValue({
     hasCamera: true,
@@ -30,6 +35,14 @@ vi.mock("@shared/hooks/useGetLatestExchangeRate", () => ({
 
 vi.mock("@shared/hooks/useSendMoney", () => ({
   useSendMoney: useSendMoneyMock,
+}));
+
+vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
+  getTorontoCoinWalletRuntimeSelection: walletRuntimeSelectionMock,
+}));
+
+vi.mock("@shared/lib/wallet/sendMoneyShared", () => ({
+  resolveTokenRuntimeConfig: resolveTokenRuntimeConfigMock,
 }));
 
 const useTokenBalanceMock = vi.hoisted(() =>
@@ -192,6 +205,14 @@ vi.mock("@tcoin/wallet/components/modals/QrScanModal", () => ({
 
 import { SendTab } from "./SendTab";
 
+beforeEach(() => {
+  walletRuntimeSelectionMock.mockReturnValue({
+    configured: true,
+    runtime: { purpose: "production", chainId: 42220 },
+  });
+  resolveTokenRuntimeConfigMock.mockResolvedValue({ purpose: "production", chainId: 42220 });
+});
+
 afterEach(() => {
   cleanup();
   sendCardProps = undefined;
@@ -203,6 +224,9 @@ afterEach(() => {
   lookupWalletUserByIdentifierMock.mockReset();
   clearPendingPaymentIntentMutateAsyncMock.mockReset();
   useTokenBalanceMock.mockClear();
+  sendMoneyActionMock.mockReset();
+  walletRuntimeSelectionMock.mockReset();
+  resolveTokenRuntimeConfigMock.mockReset();
   useCameraAvailabilityMock.mockReset();
   useCameraAvailabilityMock.mockReturnValue({
     hasCamera: true,
@@ -212,6 +236,29 @@ afterEach(() => {
 });
 
 describe("SendTab", () => {
+  it("labels Preview test tokens and bypasses voucher/mainnet routing", async () => {
+    walletRuntimeSelectionMock.mockReturnValue({
+      configured: true,
+      runtime: { purpose: "pay-link-only", chainId: 11142220 },
+    });
+    resolveTokenRuntimeConfigMock.mockResolvedValue({
+      purpose: "pay-link-only",
+      chainId: 11142220,
+    });
+    sendMoneyActionMock.mockResolvedValue("0xtestnet");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    render(<SendTab recipient={{ id: 123, wallet_address: "0xrecipient" } as any} />);
+    expect(screen.getByTestId("preview-token-warning").textContent).toContain(
+      "Celo Sepolia — test tokens, no real value"
+    );
+
+    await expect(sendCardProps.sendMoney("1")).resolves.toBe("0xtestnet");
+    expect(sendMoneyActionMock).toHaveBeenCalledWith("1");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
   it("provides sender and receiver IDs to useSendMoney", () => {
     render(<SendTab recipient={{ id: 123 } as any} />);
     expect(useSendMoneyMock).toHaveBeenCalledWith({

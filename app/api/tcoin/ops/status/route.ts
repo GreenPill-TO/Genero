@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
 import { isLocalOrDevelopmentEnvironment } from "@shared/lib/bia/apiAuth";
 import { getTorontoCoinOpsStatus } from "@shared/lib/contracts/torontocoinOps";
+import { isTorontoCoinMainnetRuntimeAdmitted } from "@shared/lib/contracts/torontocoinRuntime";
 import { getIndexerScopeStatusReadModel } from "@shared/lib/indexer/statusReadModel";
 
 export async function GET() {
   try {
+    if (!isTorontoCoinMainnetRuntimeAdmitted()) {
+      return NextResponse.json(
+        { error: "TorontoCoin ops require the explicit Production celo-mainnet profile." },
+        { status: 409 }
+      );
+    }
     const supabase = createClient();
     const {
       data: { user },

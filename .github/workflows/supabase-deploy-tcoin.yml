@@ -59,7 +59,7 @@ jobs:
       DB_URL_SECRET_NAME: SUPABASE_SESSION_POOLER_TCOIN_PREVIEW or SUPABASE_SESSION_POOLER_DEV
       ACCESS_TOKEN_SECRET_NAME: SUPABASE_ACCESS_TOKEN_TCOIN_PREVIEW or SUPABASE_ACCESS_TOKEN
       SUPABASE_URL_SECRET_NAME: NEXT_PUBLIC_SUPABASE_URL
-      TCOIN_EDGE_FUNCTIONS: user-settings payment-links payment-requests
+      TCOIN_EDGE_FUNCTIONS: user-settings payment-links payment-requests voucher-runtime onramp
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -151,7 +151,7 @@ jobs:
       DB_URL_SECRET_NAME: SUPABASE_SESSION_POOLER_TCOIN_PRODUCTION or SUPABASE_SESSION_POOLER_PROD
       ACCESS_TOKEN_SECRET_NAME: SUPABASE_ACCESS_TOKEN_TCOIN_PRODUCTION or SUPABASE_ACCESS_TOKEN
       SUPABASE_URL_SECRET_NAME: NEXT_PUBLIC_SUPABASE_URL
-      TCOIN_EDGE_FUNCTIONS: user-settings payment-links payment-requests
+      TCOIN_EDGE_FUNCTIONS: user-settings payment-links payment-requests voucher-runtime onramp
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1

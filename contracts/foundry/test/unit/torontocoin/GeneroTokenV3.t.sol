@@ -176,6 +176,26 @@ contract GeneroTokenV3Test is Test {
         localToken.burn(1e6);
     }
 
+    function test_PayLinkMintCapsSupplyAndRevokesTemporaryWriter() public {
+        GeneroTokenV3 localToken = _deployToken(6, false);
+        address temporaryWriter = address(0x8701);
+
+        localToken.setMaxSupply(500e6);
+        localToken.addWriter(temporaryWriter);
+
+        vm.prank(temporaryWriter);
+        assertTrue(localToken.mintTo(PAYER, 500e6));
+        assertEq(localToken.totalSupply(), 500e6);
+        assertEq(localToken.balanceOf(PAYER), 500e6);
+
+        localToken.deleteWriter(temporaryWriter);
+        assertFalse(localToken.isWriter(temporaryWriter));
+
+        vm.prank(temporaryWriter);
+        vm.expectRevert(bytes("ERR_ACCESS"));
+        localToken.mintTo(PAYER, 1);
+    }
+
     function test_PreviewTransferAndMerchantPreviewAgree() public view {
         (uint256 payerDebit, uint256 recipientCredit, uint256 charityCredit, bool feeApplies_) =
             token.previewTransfer(PAYER, MERCHANT, 100e6);

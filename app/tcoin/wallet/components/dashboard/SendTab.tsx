@@ -28,6 +28,8 @@ import { SendCard, type PaymentCompletionDetails } from "./SendCard";
 import type { ContactRecord } from "@shared/api/services/supabaseService";
 import type { UserSettingsPendingPaymentIntent } from "@shared/lib/userSettings/types";
 import { extractTransactionId } from "@shared/utils/transferRecord";
+import { resolveTokenRuntimeConfig } from "@shared/lib/wallet/sendMoneyShared";
+import { getTorontoCoinWalletRuntimeSelection } from "@shared/lib/contracts/torontocoinRuntime";
 import type { QrScanModalProps } from "@tcoin/wallet/components/modals/QrScanModal";
 
 interface SendTabProps {
@@ -323,13 +325,17 @@ export function SendTab({
   const postPaymentRecord = useCallback(
     async (payload: Record<string, unknown>) => {
       try {
+        const runtime = await resolveTokenRuntimeConfig();
+        if (runtime.purpose === "pay-link-only") {
+          return;
+        }
         await fetch("/api/vouchers/payment-record", {
           method: "POST",
           headers: { "content-type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
             citySlug: "tcoin",
-            chainId: 42220,
+            chainId: runtime.chainId,
             payerWallet: senderWallet,
             recipientWallet: toSendData?.wallet_address ?? null,
             ...payload,
@@ -348,6 +354,11 @@ export function SendTab({
         typeof toSendData?.wallet_address === "string" ? toSendData.wallet_address.trim() : "";
       const amountNumeric = Number.parseFloat(amount);
       if (!recipientWallet || !Number.isFinite(amountNumeric) || amountNumeric <= 0) {
+        return sendMoney(amount);
+      }
+
+      const runtime = await resolveTokenRuntimeConfig();
+      if (runtime.purpose === "pay-link-only") {
         return sendMoney(amount);
       }
 
@@ -966,9 +977,20 @@ export function SendTab({
   const lockRecipient = Boolean(selectedRequest);
   const lockAmount = lockRecipient ? shouldLockAmount : false;
   const recipientHeading = selectedRequest ? "Requested By:" : undefined;
+  const walletRuntime = getTorontoCoinWalletRuntimeSelection();
+  const isPreviewPayLinkRuntime =
+    walletRuntime.configured && walletRuntime.runtime.purpose === "pay-link-only";
 
   return (
     <div data-testid="send-tab-layout" className="space-y-4">
+      {isPreviewPayLinkRuntime ? (
+        <p
+          data-testid="preview-token-warning"
+          className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-900 dark:text-amber-100"
+        >
+          Celo Sepolia — test tokens, no real value
+        </p>
+      ) : null}
       <section className="rounded-2xl border border-border bg-card/70 p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-center gap-2">{modeActions}</div>
       </section>

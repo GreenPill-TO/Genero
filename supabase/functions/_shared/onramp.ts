@@ -230,8 +230,10 @@ function getOnrampConfig(): OnrampConfig {
   }
 
   const targetChainId = integerEnv("ONRAMP_TARGET_CHAIN_ID", TORONTOCOIN_RUNTIME.chainId);
-  const runtime =
-    getTorontoCoinRuntimeConfig({ citySlug: "tcoin", chainId: targetChainId }) ?? TORONTOCOIN_RUNTIME;
+  const runtime = getTorontoCoinRuntimeConfig({ citySlug: "tcoin", chainId: targetChainId });
+  if (!runtime) {
+    throw new Error(`Onramp is unavailable for tcoin:${targetChainId}.`);
+  }
 
   return {
     transakApiKey: env("ONRAMP_TRANSAK_API_KEY"),
@@ -2246,8 +2248,10 @@ export async function createPoolPurchaseRequest(options: {
     throw new Error("This BIA pool is currently frozen.");
   }
 
-  const runtime =
-    getTorontoCoinRuntimeConfig({ citySlug: options.citySlug, chainId }) ?? TORONTOCOIN_RUNTIME;
+  const runtime = getTorontoCoinRuntimeConfig({ citySlug: options.citySlug, chainId });
+  if (!runtime) {
+    throw new Error(`Onramp is unavailable for ${options.citySlug}:${chainId}.`);
+  }
   const tokenAddress =
     normalizeOptionalAddress(body.tokenAddress) ?? runtime.cplTcoin.address;
   const txHash =

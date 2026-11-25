@@ -31,6 +31,11 @@ export function getTorontoCoinRuntimeConfig(input?: {
   citySlug?: string | null;
   chainId?: number | null;
 }) {
+  const appEnvironment = Deno.env.get("NEXT_PUBLIC_APP_ENVIRONMENT")?.trim();
+  const selectedTarget = Deno.env.get("NEXT_PUBLIC_TCOIN_RUNTIME_TARGET")?.trim();
+  if (appEnvironment !== "production" || selectedTarget !== "celo-mainnet") {
+    return null;
+  }
   const citySlug = (input?.citySlug ?? "tcoin").trim().toLowerCase();
   const chainId = input?.chainId ?? 42220;
   if (citySlug === TORONTOCOIN_RUNTIME.citySlug && chainId === TORONTOCOIN_RUNTIME.chainId) {

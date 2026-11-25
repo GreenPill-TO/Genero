@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getConfiguredTorontoCoinTrackedPools,
   getTorontoCoinWalletToken,
+  assertTorontoCoinMainnetRuntimeAdmitted,
   TORONTOCOIN_RUNTIME,
 } from "@shared/lib/contracts/torontocoinRuntime";
 import type { IndexerScopeStatus } from "./types";
@@ -112,6 +113,7 @@ export async function getIndexerScopeStatusReadModel(
   options: IndexerScopeStatusReadOptions
 ): Promise<IndexerScopeStatus> {
   const citySlug = normaliseCitySlug(options.citySlug) || getConfiguredCitySlug();
+  if (citySlug === "tcoin") assertTorontoCoinMainnetRuntimeAdmitted();
   const chainId = options.chainId ?? getConfiguredChainId();
   const requiredTokenAddress =
     options.requiredTokenAddress ??

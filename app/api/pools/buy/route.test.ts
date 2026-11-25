@@ -13,6 +13,7 @@ import { POST } from "./route";
 
 describe("POST /api/pools/buy", () => {
   beforeEach(() => {
+    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
     h.proxyEdgeRequestMock.mockReset();
     h.proxyEdgeRequestMock.mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {
@@ -20,6 +21,15 @@ describe("POST /api/pools/buy", () => {
         headers: { "content-type": "application/json" },
       })
     );
+  });
+
+  it("disables Buy for the isolated Preview pay-link profile", async () => {
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-sepolia-pay-link";
+    const response = await POST(
+      new Request("http://localhost/api/pools/buy", { method: "POST" })
+    );
+    expect(response.status).toBe(409);
+    expect(h.proxyEdgeRequestMock).not.toHaveBeenCalled();
   });
 
   it("proxies pool purchase requests to the onramp edge function", async () => {

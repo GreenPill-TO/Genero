@@ -37,6 +37,18 @@ describe("POST /api/indexer/touch", () => {
     h.mockIsLocalOrDevelopmentEnvironment.mockReset();
     process.env.NEXT_PUBLIC_CITYCOIN = "tcoin";
     process.env.INDEXER_CHAIN_ID = "42220";
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-mainnet";
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "production";
+  });
+
+  it("disables indexer touches for the isolated Preview pay-link profile", async () => {
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-sepolia-pay-link";
+    const response = await POST(
+      new Request("http://localhost/api/indexer/touch", { method: "POST" })
+    );
+    expect(response.status).toBe(409);
+    expect(h.mockRpc).not.toHaveBeenCalled();
+    expect(h.mockServiceRoleRpc).not.toHaveBeenCalled();
   });
 
   it("requires an authenticated user outside local/development environments", async () => {

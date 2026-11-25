@@ -5,6 +5,7 @@ import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 import {LiquidityRouter} from "../../src/torontocoin/LiquidityRouter.sol";
 import {MentoBrokerSwapAdapter} from "../../src/torontocoin/MentoBrokerSwapAdapter.sol";
+import {MintableTestReserveToken} from "../../src/torontocoin/MintableTestReserveToken.sol";
 import {PoolRegistry} from "../../src/torontocoin/PoolRegistry.sol";
 import {ReserveInputRouter} from "../../src/torontocoin/ReserveInputRouter.sol";
 import {ReserveRegistry} from "../../src/torontocoin/ReserveRegistry.sol";
@@ -65,6 +66,7 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         address reserveAssetToken = suite.readAddress(".reserveAssetToken");
         address scenarioInputToken = suite.readAddress(".scenarioInputToken");
         bool mentoEnabled = _chainConfigBoolOr(selection, ".torontocoin.mento.enabled", true);
+        bool payLinkOnly = _validatePayLinkProfile(selection);
         address configuredUsdmToken =
             mentoEnabled ? _chainConfigAddress(selection, ".torontocoin.mento.usdmToken") : address(0);
 
@@ -89,6 +91,45 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
                 || scenarioInputToken == address(0)
         ) {
             revert ValidationFailed("zero address in suite artifact");
+        }
+        if (!_sameString(suite.readString(".target"), selection.target)) {
+            revert ValidationFailed("suite target mismatch");
+        }
+        if (payLinkOnly) {
+            address expectedTokenAdmin = _chainConfigAddress(selection, ".roles.tokenAdmin");
+            if (
+                governance.code.length == 0 || treasury.code.length == 0 || poolRegistry.code.length == 0
+                    || liquidityRouter.code.length == 0 || sarafuSwapPoolAdapter.code.length == 0
+                    || bootstrapSwapPool.code.length == 0 || mrTcoin.code.length == 0 || cplTcoin.code.length == 0
+                    || reserveAssetToken.code.length == 0
+            ) revert ValidationFailed("pay-link suite contract code missing");
+            if (
+                GeneroTokenV3(mrTcoin).owner() != expectedTokenAdmin
+                    || GeneroTokenV3(cplTcoin).owner() != expectedTokenAdmin
+            ) {
+                revert ValidationFailed("pay-link token owner mismatch");
+            }
+            if (
+                !_sameString(
+                        GeneroTokenV3(mrTcoin).name(), _chainConfigString(selection, ".torontocoin.tokens.mrTcoin.name")
+                    )
+                    || !_sameString(
+                        GeneroTokenV3(mrTcoin).symbol(),
+                        _chainConfigString(selection, ".torontocoin.tokens.mrTcoin.symbol")
+                    )
+                    || !_sameString(
+                        GeneroTokenV3(cplTcoin).name(),
+                        _chainConfigString(selection, ".torontocoin.tokens.cplTcoin.name")
+                    )
+                    || !_sameString(
+                        GeneroTokenV3(cplTcoin).symbol(),
+                        _chainConfigString(selection, ".torontocoin.tokens.cplTcoin.symbol")
+                    )
+            ) revert ValidationFailed("pay-link token identity mismatch");
+            if (
+                GeneroTokenV3(mrTcoin).totalSupply() != 0 || GeneroTokenV3(cplTcoin).totalSupply() != 0
+                    || MintableTestReserveToken(reserveAssetToken).totalSupply() != 0
+            ) revert ValidationFailed("pay-link deployment must have zero initial supply");
         }
 
         if (!Treasury(treasury).authorizedCallers(treasuryController)) {
@@ -153,7 +194,10 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
 
         (uint256 mrLiquidity, uint256 cplLiquidity, bool poolActive) =
             SarafuSwapPoolAdapter(sarafuSwapPoolAdapter).getPoolLiquidityState(bootstrapPoolId);
-        if (!poolActive || cplLiquidity == 0) {
+        if (
+            !poolActive || (payLinkOnly && (mrLiquidity != 0 || cplLiquidity != 0))
+                || (!payLinkOnly && cplLiquidity == 0)
+        ) {
             revert ValidationFailed("bootstrap sarafu pool not ready");
         }
 
@@ -196,17 +240,22 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
             revert ValidationFailed("static cad oracle invalid");
         }
 
-        (bytes32 scenarioPoolId,,, uint256 scenarioMrTcoinOut,,,,) = LiquidityRouter(liquidityRouter)
-            .previewBuyCplTcoin(bootstrapPoolId, scenarioBuyer, scenarioInputToken, scenarioInputAmount);
-        if (scenarioPoolId != bootstrapPoolId) {
-            revert ValidationFailed("scenario preview selected unexpected pool");
-        }
+        uint256 scenarioMrTcoinOut;
+        uint256 scenarioQuotedOutAfterFee;
+        if (!payLinkOnly) {
+            bytes32 scenarioPoolId;
+            (scenarioPoolId,,, scenarioMrTcoinOut,,,,) = LiquidityRouter(liquidityRouter)
+                .previewBuyCplTcoin(bootstrapPoolId, scenarioBuyer, scenarioInputToken, scenarioInputAmount);
+            if (scenarioPoolId != bootstrapPoolId) {
+                revert ValidationFailed("scenario preview selected unexpected pool");
+            }
 
-        uint256 scenarioQuotedOut = SwapPool(bootstrapSwapPool).getQuote(cplTcoin, mrTcoin, scenarioMrTcoinOut);
-        uint256 scenarioFee = (scenarioQuotedOut * SwapPool(bootstrapSwapPool).feePpm()) / SWAP_POOL_FEE_DENOMINATOR;
-        uint256 scenarioQuotedOutAfterFee = scenarioQuotedOut - scenarioFee;
-        if (scenarioQuotedOutAfterFee > cplLiquidity) {
-            revert ValidationFailed("bootstrap pool insufficient for configured scenario");
+            uint256 scenarioQuotedOut = SwapPool(bootstrapSwapPool).getQuote(cplTcoin, mrTcoin, scenarioMrTcoinOut);
+            uint256 scenarioFee = (scenarioQuotedOut * SwapPool(bootstrapSwapPool).feePpm()) / SWAP_POOL_FEE_DENOMINATOR;
+            scenarioQuotedOutAfterFee = scenarioQuotedOut - scenarioFee;
+            if (scenarioQuotedOutAfterFee > cplLiquidity) {
+                revert ValidationFailed("bootstrap pool insufficient for configured scenario");
+            }
         }
 
         string memory root = "validation";
@@ -217,7 +266,10 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         vm.serializeBool(root, "tokenWriterRoles", true);
         vm.serializeBool(root, "tokenDecimalsAreSix", true);
         vm.serializeBool(root, "reserveAssetActive", true);
-        vm.serializeBool(root, "bootstrapPoolReady", true);
+        vm.serializeBool(root, "bootstrapPoolReady", !payLinkOnly);
+        vm.serializeBool(root, "payLinkOnly", payLinkOnly);
+        vm.serializeBool(root, "poolFundingValidated", !payLinkOnly);
+        vm.serializeBool(root, "buyValidated", !payLinkOnly);
         vm.serializeUint(root, "bootstrapPoolMrLiquidity", mrLiquidity);
         vm.serializeUint(root, "bootstrapPoolCplLiquidity", cplLiquidity);
         vm.serializeUint(root, "scenarioInputAmount", scenarioInputAmount);

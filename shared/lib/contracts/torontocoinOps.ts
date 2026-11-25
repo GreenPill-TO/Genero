@@ -6,6 +6,7 @@ import {
 } from "./torontocoinPools";
 import {
   getTorontoCoinRpcUrl,
+  assertTorontoCoinMainnetRuntimeAdmitted,
   TORONTOCOIN_RUNTIME,
   type TorontoCoinRuntimeConfig,
 } from "./torontocoinRuntime";
@@ -124,6 +125,7 @@ async function readOwner(
 export async function getTorontoCoinOpsStatus(
   runtime: TorontoCoinRuntimeConfig = TORONTOCOIN_RUNTIME
 ): Promise<TorontoCoinOpsCoreStatus> {
+  assertTorontoCoinMainnetRuntimeAdmitted();
   const client = createTorontoCoinPublicClient(runtime);
 
   const [
