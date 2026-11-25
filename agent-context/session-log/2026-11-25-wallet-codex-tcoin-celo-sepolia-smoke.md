@@ -15,3 +15,12 @@
 - summary: Restored the original full `celo-sepolia` profile unchanged and kept the pay-link profile additive; moved target/purpose/config validation ahead of signer access; strengthened post-deployment validation for live code, identity, ownership, zero supply, writer roles and empty Sarafu liquidity; required actual RPC/token bytecode-hash and metadata checks before balance reads or WebAuthn; bound the static post-deployment plan to four exact mint-authority calls plus the 100-token payment; disabled mainnet-shaped ops/stats/pool reads and fiat/voucher/merchant actions in Preview; added a visible no-real-value wallet warning; and included affected Edge bundles in the existing gated deployment workflow. No hosted configuration, deployment, mint, funding, chain transaction, credential access, or GitHub mutation occurred.
 - validation: Focused Vitest run passed 17 files / 100 tests; TypeScript check passed; targeted ESLint and the app-facing Edge boundary guard passed; original `celo-sepolia` JSON object matched base commit `d17ac498202435073499341dea601db8267744bc`; JSON validation passed; `PayLinkProfileGuard.t.sol` passed 4/4, `GeneroTokenV3.t.sol` 16/16 and Sarafu compatibility 1/1; targeted deployment/validator Foundry build passed offline with existing warnings.
 - follow-ups: Independent replacement-commit risk, acceptance and scenario validation remain. The public issuer receipt is held outside tracked source; payer/recipient app wallets, complete reviewed public roles/contracts, deployment artefact simulation and separate budgets/approvals remain required. The plan helper is static schema validation only and authorises neither deployment nor mint/payment execution.
+
+## 2026-11-25T21:52:30.429747+00:00 - Prepare PR version metadata
+
+- agent: Codex Tcoin HBIC
+- branch: codex/tcoin-celo-sepolia-smoke
+- head: fce3f9cf21d3ef952735ac8060a63f802188b093
+- summary: Prepared the repository-required dev PR version0.1.3 as a separate metadata checkpoint after the source and repair commits.
+- validation: Version helper compared origin/dev baseline; diff is package/version metadata only. Source repair reported100 focused Vitest tests, TypeScript/lint and21 Foundry checks; independent replacement validation and full scenarios are next.
+- follow-ups: No chain broadcasts or mint; issuer encrypted-keystore creation is user-completed, payer app setup is at its user-controlled passkey step. Exact public-role/contracts/code hashes and gas review remain.
