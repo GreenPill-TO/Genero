@@ -10,6 +10,7 @@ import { getRecentPaymentRequestParticipants } from "@shared/lib/edge/paymentReq
 import { getVoucherMerchants } from "@shared/lib/edge/voucherPreferencesClient";
 import { getWalletRecents } from "@shared/lib/edge/walletOperationsClient";
 import type { VoucherMerchantLiquidity } from "@shared/lib/edge/vouchers";
+import { isTorontoCoinPayLinkPreviewTarget } from "@shared/lib/contracts/torontocoinRuntime";
 import { ContributionsCard } from "./ContributionsCard";
 import { AccountCard } from "./AccountCard";
 import {
@@ -38,11 +39,12 @@ export function WalletHome({
   const { userData } = useAuth();
   const router = useRouter();
   const activeProfile = userData?.cubidData?.activeProfile;
+  const previewPayLinkOnly = isTorontoCoinPayLinkPreviewTarget();
 
   const [selectedCharity, setSelectedCharity] = useState("");
   const [recentInteractions, setRecentInteractions] = useState<RecentInteraction[]>([]);
 
-  const buyCheckoutEnabled =
+  const buyCheckoutEnabled = !previewPayLinkOnly &&
     (process.env.NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT ?? "false").trim().toLowerCase() === "true";
 
   useEffect(() => {
@@ -65,11 +67,11 @@ export function WalletHome({
 
   const { balance: rawBalance } = useTokenBalance(senderWallet);
   const userBalance = parseFloat(rawBalance) || 0;
-  const { portfolio } = useVoucherPortfolio({ enabled: Boolean(senderWallet) });
+  const { portfolio } = useVoucherPortfolio({ enabled: Boolean(senderWallet) && !previewPayLinkOnly });
   const [myPoolMerchants, setMyPoolMerchants] = useState<VoucherMerchantLiquidity[]>([]);
 
   useEffect(() => {
-    if (!senderWallet) return;
+    if (!senderWallet || previewPayLinkOnly) return;
 
     const loadMerchants = async () => {
       try {
@@ -95,7 +97,7 @@ export function WalletHome({
     };
 
     void loadMerchants();
-  }, [senderWallet]);
+  }, [previewPayLinkOnly, senderWallet]);
 
   useEffect(() => {
     let isMounted = true;
@@ -201,6 +203,11 @@ export function WalletHome({
 
   return (
     <div data-testid="wallet-home-layout" className="space-y-4 sm:space-y-6 lg:space-y-4">
+      {previewPayLinkOnly ? (
+        <p role="status" className="rounded-2xl border border-amber-400/60 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+          Celo Sepolia — test tokens, no real value. Buying, top-ups, vouchers, and merchant actions are unavailable.
+        </p>
+      ) : null}
       <div
         data-testid="wallet-home-summary-grid"
         className="grid gap-4 sm:gap-6 lg:gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.95fr)] min-[1850px]:grid-cols-[minmax(0,1.18fr)_minmax(0,1.05fr)_minmax(320px,0.92fr)]"
@@ -211,11 +218,13 @@ export function WalletHome({
           voucherEquivalent={portfolio ? Number.parseFloat(portfolio.voucherEquivalent) : undefined}
           voucherCount={portfolio?.voucherBalances?.length ?? 0}
           senderWallet={senderWallet ?? ""}
+          isTestToken={previewPayLinkOnly}
           onOpenTransactionHistory={() => onOpenTransactionHistory?.()}
         />
         <div className="min-[1850px]:col-span-2">
           <EverydayActionsPanel
             buyCheckoutEnabled={buyCheckoutEnabled}
+            previewPayLinkOnly={previewPayLinkOnly}
             onOpenTransactionHistory={onOpenTransactionHistory}
             onOpenBuyTcoinModal={openBuyTcoinModal}
             onOpenTopUpModal={openTopUpModal}
@@ -249,6 +258,7 @@ export function WalletHome({
 
 function EverydayActionsPanel({
   buyCheckoutEnabled,
+  previewPayLinkOnly,
   onOpenTransactionHistory,
   onOpenBuyTcoinModal,
   onOpenTopUpModal,
@@ -256,6 +266,7 @@ function EverydayActionsPanel({
   merchants,
 }: {
   buyCheckoutEnabled: boolean;
+  previewPayLinkOnly: boolean;
   onOpenTransactionHistory?: () => void;
   onOpenBuyTcoinModal: () => void;
   onOpenTopUpModal: () => void;
@@ -285,15 +296,17 @@ function EverydayActionsPanel({
               Buy TCOIN
             </button>
           ) : null}
-          <button type="button" className={walletActionButtonClass} onClick={onOpenTopUpModal}>
-            Top up with Interac
-          </button>
+          {!previewPayLinkOnly ? (
+            <button type="button" className={walletActionButtonClass} onClick={onOpenTopUpModal}>
+              Top up with Interac
+            </button>
+          ) : null}
           <button type="button" className={walletActionButtonClass} onClick={onOpenContacts}>
             Open contacts
           </button>
         </div>
       </div>
-      <MerchantsPanel merchants={merchants} />
+      {!previewPayLinkOnly ? <MerchantsPanel merchants={merchants} /> : null}
     </section>
   );
 }

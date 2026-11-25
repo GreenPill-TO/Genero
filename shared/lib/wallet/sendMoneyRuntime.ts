@@ -2,6 +2,8 @@ import { ethers } from "ethers";
 import { Shamir } from "@spliterati/shamir";
 import { WebAuthnCrypto } from "cubid-wallet";
 import { tokenAbi } from "@shared/hooks/abi";
+import { assertTorontoCoinWalletTokenIdentity } from "@shared/lib/contracts/torontocoinRuntime";
+import type { Hex } from "viem";
 import { transfer } from "@shared/utils/insertNotification";
 import {
   normaliseTransferResult,
@@ -101,6 +103,14 @@ export async function runAfterRuntimeChainCheck<T>(
   return operation();
 }
 
+export async function runAfterTokenIdentityCheck<T>(
+  identity: Parameters<typeof assertTorontoCoinWalletTokenIdentity>[0],
+  operation: () => Promise<T>
+): Promise<T> {
+  assertTorontoCoinWalletTokenIdentity(identity);
+  return operation();
+}
+
 export async function runWithWebAuthnLock<T>(
   operation: () => Promise<T>
 ): Promise<T> {
@@ -142,7 +152,36 @@ async function buildWalletFromShares({ appShare, userShareEncrypted }: SharePayl
     provider,
     runtimeConfig.chainId,
     async () => {
-      const jsonData = {
+      const readOnlyToken = new ethers.Contract(
+        runtimeConfig.tokenAddress,
+        tokenAbi,
+        provider
+      );
+      const [bytecode, name, symbol, decimals] = await Promise.all([
+        provider.getCode(runtimeConfig.tokenAddress),
+        readOnlyToken.name(),
+        readOnlyToken.symbol(),
+        readOnlyToken.decimals(),
+      ]);
+      return runAfterTokenIdentityCheck({
+        runtime: {
+          chainId: runtimeConfig.chainId,
+          cplTcoin: {
+            address: runtimeConfig.tokenAddress,
+            name: runtimeConfig.tokenName,
+            symbol: runtimeConfig.tokenSymbol,
+            decimals: runtimeConfig.decimals,
+            explorerPath: `/token/${runtimeConfig.tokenAddress}`,
+          },
+          cplTcoinRuntimeCodeHash: runtimeConfig.cplTcoinRuntimeCodeHash,
+        },
+        actualChainId: runtimeConfig.chainId,
+        bytecode: bytecode as Hex,
+        name: String(name),
+        symbol: String(symbol),
+        decimals: Number(decimals),
+      }, async () => {
+        const jsonData = {
         encryptedAesKey: base64ToArrayBuffer(userShareEncrypted.encryptedAesKey),
         encryptedData: base64ToArrayBuffer(userShareEncrypted.encryptedData),
         encryptionMethod: userShareEncrypted.encryptionMethod,
@@ -151,10 +190,11 @@ async function buildWalletFromShares({ appShare, userShareEncrypted }: SharePayl
         ivForKeyEncryption: userShareEncrypted.ivForKeyEncryption,
         salt: userShareEncrypted.salt,
         credentialId: base64ToArrayBuffer(userShareEncrypted.credentialId),
-      } as unknown as WebAuthnDecryptPayload;
+        } as unknown as WebAuthnDecryptPayload;
 
-      const userShare = await decodeUserShare(jsonData);
-      return combineShares([appShare, userShare]);
+        const userShare = await decodeUserShare(jsonData);
+        return combineShares([appShare, userShare]);
+      });
     }
   );
   if (!privateKeyHex) {

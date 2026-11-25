@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { getTorontoCoinWalletRuntimeOrThrowMock } = vi.hoisted(() => ({
+const { getTorontoCoinWalletRuntimeOrThrowMock, assertTokenIdentityMock } = vi.hoisted(() => ({
   getTorontoCoinWalletRuntimeOrThrowMock: vi.fn(),
+  assertTokenIdentityMock: vi.fn(),
 }));
 
 vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
+  assertTorontoCoinWalletTokenIdentity: assertTokenIdentityMock,
   TORONTOCOIN_RUNTIME: {
     chainId: 42220,
     cplTcoin: {
@@ -30,6 +32,7 @@ import {
 import {
   resetWebAuthnRuntimeForTests,
   runAfterRuntimeChainCheck,
+  runAfterTokenIdentityCheck,
   runWithWebAuthnLock,
 } from "@shared/lib/wallet/sendMoneyRuntime";
 
@@ -73,6 +76,17 @@ describe("runWithWebAuthnLock", () => {
     expect(signingMaterial).not.toHaveBeenCalled();
   });
 
+  it("rejects wrong live token identity before invoking WebAuthn material", async () => {
+    const webAuthnMaterial = vi.fn(async () => "private-material");
+    assertTokenIdentityMock.mockImplementationOnce(() => {
+      throw new Error("Configured cplTCOIN runtime bytecode does not match the reviewed deployment.");
+    });
+    await expect(
+      runAfterTokenIdentityCheck({} as never, webAuthnMaterial)
+    ).rejects.toThrow("bytecode does not match");
+    expect(webAuthnMaterial).not.toHaveBeenCalled();
+  });
+
   it("resolves token runtime config from the TorontoCoin runtime bridge on Celo mainnet", async () => {
     getTorontoCoinWalletRuntimeOrThrowMock.mockReturnValue({
       target: "celo-mainnet",
@@ -80,12 +94,15 @@ describe("runWithWebAuthnLock", () => {
       cplTcoin: {
         address: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19",
         decimals: 6,
+        name: "Community Pool Liquidity Toronto Coin",
+        symbol: "cplTCOIN",
       },
       rpcUrl: "https://forno.celo.org",
       chainId: 42220,
       explorerBaseUrl: "https://celoscan.io",
       transferGasLimit: BigInt(250000),
       maxFeePerGasWei: BigInt(100000000000),
+      cplTcoinRuntimeCodeHash: null,
     });
 
     await expect(resolveTokenRuntimeConfig()).resolves.toEqual({
@@ -95,6 +112,9 @@ describe("runWithWebAuthnLock", () => {
       decimals: 6,
       explorerBaseUrl: "https://celoscan.io",
       maxFeePerGasWei: BigInt(100000000000),
+      tokenName: "Community Pool Liquidity Toronto Coin",
+      tokenSymbol: "cplTCOIN",
+      cplTcoinRuntimeCodeHash: null,
       purpose: "production",
       target: "celo-mainnet",
       transferGasLimit: BigInt(250000),

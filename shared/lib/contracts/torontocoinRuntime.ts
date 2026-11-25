@@ -1,4 +1,4 @@
-import { getAddress, type Address, type Hex } from "viem";
+import { getAddress, keccak256, type Address, type Hex } from "viem";
 
 export type TorontoCoinTokenMetadata = {
   address: Address;
@@ -61,6 +61,7 @@ export type TorontoCoinWalletRuntimeConfig = Pick<
   mrTcoin: TorontoCoinTokenMetadata;
   transferGasLimit: bigint;
   maxFeePerGasWei: bigint;
+  cplTcoinRuntimeCodeHash: Hex | null;
 };
 
 export type TorontoCoinWalletRuntimeSelection =
@@ -147,6 +148,7 @@ const MAINNET_WALLET_RUNTIME: TorontoCoinWalletRuntimeConfig = {
   cplTcoin: TORONTOCOIN_RUNTIME.cplTcoin,
   transferGasLimit: BigInt(250_000),
   maxFeePerGasWei: BigInt(100_000_000_000),
+  cplTcoinRuntimeCodeHash: null,
 };
 
 const ADDRESS_KEYS = [
@@ -184,6 +186,13 @@ function parsePositiveBigInt(value: unknown, key: string): bigint {
     throw new Error(`${key} must be a positive base-10 integer string.`);
   }
   return BigInt(value);
+}
+
+function parseCodeHash(value: unknown): Hex {
+  if (typeof value !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(value) || /^0x0{64}$/i.test(value)) {
+    throw new Error("cplTcoinRuntimeCodeHash must be a non-zero 32-byte hash.");
+  }
+  return value.toLowerCase() as Hex;
 }
 
 function parsePreviewToken(value: unknown, key: string): TorontoCoinTokenMetadata {
@@ -250,7 +259,44 @@ export function parseTorontoCoinPreviewRuntimeManifest(
     mrTcoin,
     transferGasLimit: parsePositiveBigInt(parsed.transferGasLimit, "transferGasLimit"),
     maxFeePerGasWei: parsePositiveBigInt(parsed.maxFeePerGasWei, "maxFeePerGasWei"),
+    cplTcoinRuntimeCodeHash: parseCodeHash(parsed.cplTcoinRuntimeCodeHash),
   };
+}
+
+export function assertTorontoCoinWalletTokenIdentity(options: {
+  runtime: Pick<
+    TorontoCoinWalletRuntimeConfig,
+    "chainId" | "cplTcoin" | "cplTcoinRuntimeCodeHash"
+  >;
+  actualChainId: number;
+  bytecode: Hex | undefined;
+  name: string;
+  symbol: string;
+  decimals: number;
+}): void {
+  const { runtime } = options;
+  if (options.actualChainId !== runtime.chainId) {
+    throw new Error(
+      `Wallet RPC chain mismatch: expected ${runtime.chainId}, received ${options.actualChainId}.`
+    );
+  }
+  if (!options.bytecode || options.bytecode === "0x") {
+    throw new Error("Configured cplTCOIN address has no deployed bytecode.");
+  }
+  if (
+    runtime.cplTcoinRuntimeCodeHash &&
+    keccak256(options.bytecode).toLowerCase() !== runtime.cplTcoinRuntimeCodeHash.toLowerCase()
+  ) {
+    throw new Error("Configured cplTCOIN runtime bytecode does not match the reviewed deployment.");
+  }
+  if (
+    options.name !== runtime.cplTcoin.name ||
+    options.symbol !== runtime.cplTcoin.symbol ||
+    options.decimals !== runtime.cplTcoin.decimals ||
+    options.decimals !== 6
+  ) {
+    throw new Error("Configured cplTCOIN live metadata does not match the reviewed six-decimal token.");
+  }
 }
 
 export function getTorontoCoinWalletRuntimeSelection(input: {
@@ -319,6 +365,10 @@ export function getTorontoCoinWalletRuntimeOrThrow(): TorontoCoinWalletRuntimeCo
     throw new TorontoCoinWalletRuntimeUnavailableError(selection.reason);
   }
   return selection.runtime;
+}
+
+export function isTorontoCoinPayLinkPreviewTarget(): boolean {
+  return process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET?.trim() === "celo-sepolia-pay-link";
 }
 
 export function isTorontoCoinRuntimeScope(input?: {

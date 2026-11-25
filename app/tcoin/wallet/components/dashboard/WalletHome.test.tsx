@@ -49,9 +49,15 @@ vi.mock("@shared/hooks/useCurrentWalletAddress", () => ({
 }));
 
 const tokenBalanceMock = vi.hoisted(() => vi.fn(() => ({ balance: "0" })));
+const previewTargetMock = vi.hoisted(() => vi.fn(() => false));
+const voucherPortfolioMock = vi.hoisted(() => vi.fn(() => ({ portfolio: null })));
 
 vi.mock("@shared/hooks/useTokenBalance", () => ({
   useTokenBalance: tokenBalanceMock,
+}));
+vi.mock("@shared/hooks/useVoucherPortfolio", () => ({ useVoucherPortfolio: voucherPortfolioMock }));
+vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
+  isTorontoCoinPayLinkPreviewTarget: previewTargetMock,
 }));
 
 const getVoucherMerchantsMock = vi.hoisted(() => vi.fn(async () => ({ merchants: [] })));
@@ -104,7 +110,22 @@ describe("WalletHome", () => {
       participants: [],
     });
     pushMock.mockReset();
+    previewTargetMock.mockReturnValue(false);
+    voucherPortfolioMock.mockClear();
+    getVoucherMerchantsMock.mockClear();
     window.history.replaceState({}, "", "/dashboard");
+  });
+
+  it("keeps Preview visibly test-only and disables voucher, merchant, buy and top-up paths", () => {
+    previewTargetMock.mockReturnValue(true);
+    render(<WalletHome />);
+
+    expect(screen.getByRole("status").textContent).toContain("test tokens, no real value");
+    expect(voucherPortfolioMock).toHaveBeenCalledWith({ enabled: false });
+    expect(getVoucherMerchantsMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /Buy TCOIN/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Top up with Interac/i })).toBeNull();
+    expect(screen.queryByText(/Merchants in My Pool/i)).toBeNull();
   });
 
   it("does not render the send panel on home", () => {

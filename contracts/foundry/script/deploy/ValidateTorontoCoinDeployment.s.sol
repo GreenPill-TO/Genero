@@ -5,6 +5,7 @@ import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
 import {LiquidityRouter} from "../../src/torontocoin/LiquidityRouter.sol";
 import {MentoBrokerSwapAdapter} from "../../src/torontocoin/MentoBrokerSwapAdapter.sol";
+import {MintableTestReserveToken} from "../../src/torontocoin/MintableTestReserveToken.sol";
 import {PoolRegistry} from "../../src/torontocoin/PoolRegistry.sol";
 import {ReserveInputRouter} from "../../src/torontocoin/ReserveInputRouter.sol";
 import {ReserveRegistry} from "../../src/torontocoin/ReserveRegistry.sol";
@@ -65,7 +66,7 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
         address reserveAssetToken = suite.readAddress(".reserveAssetToken");
         address scenarioInputToken = suite.readAddress(".scenarioInputToken");
         bool mentoEnabled = _chainConfigBoolOr(selection, ".torontocoin.mento.enabled", true);
-        bool payLinkOnly = _sameString(_chainConfigStringOr(selection, ".purpose", "full-suite"), "pay-link-only");
+        bool payLinkOnly = _validatePayLinkProfile(selection);
         address configuredUsdmToken =
             mentoEnabled ? _chainConfigAddress(selection, ".torontocoin.mento.usdmToken") : address(0);
 
@@ -90,6 +91,45 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
                 || scenarioInputToken == address(0)
         ) {
             revert ValidationFailed("zero address in suite artifact");
+        }
+        if (!_sameString(suite.readString(".target"), selection.target)) {
+            revert ValidationFailed("suite target mismatch");
+        }
+        if (payLinkOnly) {
+            address expectedTokenAdmin = _chainConfigAddress(selection, ".roles.tokenAdmin");
+            if (
+                governance.code.length == 0 || treasury.code.length == 0 || poolRegistry.code.length == 0
+                    || liquidityRouter.code.length == 0 || sarafuSwapPoolAdapter.code.length == 0
+                    || bootstrapSwapPool.code.length == 0 || mrTcoin.code.length == 0 || cplTcoin.code.length == 0
+                    || reserveAssetToken.code.length == 0
+            ) revert ValidationFailed("pay-link suite contract code missing");
+            if (
+                GeneroTokenV3(mrTcoin).owner() != expectedTokenAdmin
+                    || GeneroTokenV3(cplTcoin).owner() != expectedTokenAdmin
+            ) {
+                revert ValidationFailed("pay-link token owner mismatch");
+            }
+            if (
+                !_sameString(
+                        GeneroTokenV3(mrTcoin).name(), _chainConfigString(selection, ".torontocoin.tokens.mrTcoin.name")
+                    )
+                    || !_sameString(
+                        GeneroTokenV3(mrTcoin).symbol(),
+                        _chainConfigString(selection, ".torontocoin.tokens.mrTcoin.symbol")
+                    )
+                    || !_sameString(
+                        GeneroTokenV3(cplTcoin).name(),
+                        _chainConfigString(selection, ".torontocoin.tokens.cplTcoin.name")
+                    )
+                    || !_sameString(
+                        GeneroTokenV3(cplTcoin).symbol(),
+                        _chainConfigString(selection, ".torontocoin.tokens.cplTcoin.symbol")
+                    )
+            ) revert ValidationFailed("pay-link token identity mismatch");
+            if (
+                GeneroTokenV3(mrTcoin).totalSupply() != 0 || GeneroTokenV3(cplTcoin).totalSupply() != 0
+                    || MintableTestReserveToken(reserveAssetToken).totalSupply() != 0
+            ) revert ValidationFailed("pay-link deployment must have zero initial supply");
         }
 
         if (!Treasury(treasury).authorizedCallers(treasuryController)) {
@@ -154,7 +194,10 @@ contract ValidateTorontoCoinDeployment is DeployChainConfig {
 
         (uint256 mrLiquidity, uint256 cplLiquidity, bool poolActive) =
             SarafuSwapPoolAdapter(sarafuSwapPoolAdapter).getPoolLiquidityState(bootstrapPoolId);
-        if (!poolActive || (!payLinkOnly && cplLiquidity == 0)) {
+        if (
+            !poolActive || (payLinkOnly && (mrLiquidity != 0 || cplLiquidity != 0))
+                || (!payLinkOnly && cplLiquidity == 0)
+        ) {
             revert ValidationFailed("bootstrap sarafu pool not ready");
         }
 

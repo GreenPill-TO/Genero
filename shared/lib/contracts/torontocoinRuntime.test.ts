@@ -5,6 +5,7 @@ import {
   getTorontoCoinRuntimeConfig,
   getTorontoCoinWalletRuntimeSelection,
   parseTorontoCoinPreviewRuntimeManifest,
+  assertTorontoCoinWalletTokenIdentity,
   getTorontoCoinWalletToken,
   isTorontoCoinRuntimeScope,
 } from "./torontocoinRuntime";
@@ -33,6 +34,7 @@ describe("torontocoinRuntime", () => {
     },
     transferGasLimit: "250000",
     maxFeePerGasWei: "100000000000",
+    cplTcoinRuntimeCodeHash: "0x07ad118d6cc8642c86c03827f276d8b791a65e5c99a3845faf186be720a1455d",
   });
 
   it("resolves the checked-in Celo mainnet runtime", () => {
@@ -65,13 +67,45 @@ describe("torontocoinRuntime", () => {
   });
 
   it("parses the dedicated six-decimal Celo Sepolia pay-link runtime", () => {
-    expect(parseTorontoCoinPreviewRuntimeManifest(previewManifest)).toMatchObject({
+    const runtime = parseTorontoCoinPreviewRuntimeManifest(previewManifest);
+    expect(runtime).toMatchObject({
       target: "celo-sepolia-pay-link",
       purpose: "pay-link-only",
       chainId: 11142220,
       cplTcoin: { symbol: "cplTCOIN-cs", decimals: 6 },
       transferGasLimit: BigInt(250000),
     });
+    expect(() =>
+      assertTorontoCoinWalletTokenIdentity({
+        runtime,
+        actualChainId: 11142220,
+        bytecode: "0x6000",
+        name: runtime.cplTcoin.name,
+        symbol: runtime.cplTcoin.symbol,
+        decimals: 6,
+      })
+    ).not.toThrow();
+  });
+
+  it("rejects wrong-chain, code-hash, and live metadata identities", () => {
+    const runtime = parseTorontoCoinPreviewRuntimeManifest(previewManifest);
+    const valid = {
+      runtime,
+      actualChainId: 11142220,
+      bytecode: "0x6000" as const,
+      name: runtime.cplTcoin.name,
+      symbol: runtime.cplTcoin.symbol,
+      decimals: 6,
+    };
+    expect(() => assertTorontoCoinWalletTokenIdentity({ ...valid, actualChainId: 42220 })).toThrow(
+      "expected 11142220"
+    );
+    expect(() => assertTorontoCoinWalletTokenIdentity({ ...valid, bytecode: "0x6001" })).toThrow(
+      "bytecode"
+    );
+    expect(() => assertTorontoCoinWalletTokenIdentity({ ...valid, decimals: 18 })).toThrow(
+      "metadata"
+    );
   });
 
   it("fails closed when Preview is missing or malformed and rejects it in Production", () => {

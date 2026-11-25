@@ -23,9 +23,18 @@ import { GET } from "./route";
 
 describe("GET /api/tcoin/stats/summary", () => {
   beforeEach(() => {
+    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
     h.mockGetUser.mockReset();
     h.mockGetWalletStatsSummary.mockReset();
     h.mockSupabaseClient.auth.getUser = h.mockGetUser;
+  });
+
+  it("rejects Preview before auth or mainnet stats reads", async () => {
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-sepolia-pay-link";
+    const response = await GET();
+    expect(response.status).toBe(409);
+    expect(h.mockGetUser).not.toHaveBeenCalled();
+    expect(h.mockGetWalletStatsSummary).not.toHaveBeenCalled();
   });
 
   it("returns the aggregated stats summary for any authenticated user", async () => {

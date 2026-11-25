@@ -24,6 +24,7 @@ const MINT_ABI = [
   { type: "function", name: "mintTo", stateMutability: "nonpayable", inputs: [{ name: "beneficiary", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "deleteWriter", stateMutability: "nonpayable", inputs: [{ name: "writer", type: "address" }], outputs: [{ type: "bool" }] },
 ] as const;
+const TRANSFER_ABI = [{ type: "function", name: "transfer", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] }] as const;
 const REQUIRED_CONTRACTS = [
   "governance",
   "treasury",
@@ -68,6 +69,12 @@ export function validateTorontoCoinPayLinkPlan(plan: Plan, expected: {
   deployConfigSha256: string;
 }) {
   if (plan.version !== 1) throw new Error("version must be 1.");
+  if (plan.stage !== "post-deployment-mint-and-payment") {
+    throw new Error("stage must be post-deployment-mint-and-payment.");
+  }
+  if (plan.deploymentApproved !== true || typeof plan.deploymentPlanSha256 !== "string" || !/^[0-9a-f]{64}$/.test(plan.deploymentPlanSha256)) {
+    throw new Error("A separately reviewed deployment approval and plan hash are required.");
+  }
   if (plan.target !== "celo-sepolia-pay-link" || plan.purpose !== "pay-link-only") {
     throw new Error("target and purpose must select the dedicated pay-link profile.");
   }
@@ -113,53 +120,38 @@ export function validateTorontoCoinPayLinkPlan(plan: Plan, expected: {
     exactInteger(allocations[key], `allocations.${key}`, "0");
   }
 
-  const gasBudget = objectAt(plan, "gasBudget");
-  const transactions = gasBudget.transactions;
-  if (!Array.isArray(transactions) || transactions.length === 0) {
-    throw new Error("gasBudget.transactions must contain reviewed per-transaction ceilings.");
-  }
-  let computedMaximum = BigInt(0);
-  for (const [index, entry] of transactions.entries()) {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-      throw new Error(`gasBudget.transactions[${index}] must be an object.`);
-    }
-    const tx = entry as Record<string, unknown>;
-    if (typeof tx.label !== "string" || !tx.label.trim()) {
-      throw new Error(`gasBudget.transactions[${index}].label is required.`);
-    }
-    const gasLimit = exactInteger(tx.gasLimit, `gasBudget.transactions[${index}].gasLimit`);
-    const maxFeePerGasWei = exactInteger(
-      tx.maxFeePerGasWei,
-      `gasBudget.transactions[${index}].maxFeePerGasWei`
-    );
-    if (gasLimit === BigInt(0) || maxFeePerGasWei === BigInt(0)) {
-      throw new Error("Transaction gas and fee ceilings must be positive.");
-    }
-    computedMaximum += gasLimit * maxFeePerGasWei;
-  }
-  const totalMaximum = exactInteger(gasBudget.totalMaxCostWei, "gasBudget.totalMaxCostWei");
-  if (totalMaximum < computedMaximum) {
-    throw new Error("gasBudget.totalMaxCostWei is below the per-transaction maximum total.");
-  }
-
   const expectedOperations = [
     { step: "set-cap", from: resolvedRoles.tokenAdmin, to: resolvedContracts.cplTcoin, calldata: encodeFunctionData({ abi: MINT_ABI, functionName: "setMaxSupply", args: [BigInt(EXPECTED_MINT)] }) },
     { step: "add-writer", from: resolvedRoles.tokenAdmin, to: resolvedContracts.cplTcoin, calldata: encodeFunctionData({ abi: MINT_ABI, functionName: "addWriter", args: [resolvedRoles.temporaryWriter] }) },
     { step: "mint-once", from: resolvedRoles.temporaryWriter, to: resolvedContracts.cplTcoin, calldata: encodeFunctionData({ abi: MINT_ABI, functionName: "mintTo", args: [resolvedRoles.payer, BigInt(EXPECTED_MINT)] }) },
     { step: "revoke-writer", from: resolvedRoles.tokenAdmin, to: resolvedContracts.cplTcoin, calldata: encodeFunctionData({ abi: MINT_ABI, functionName: "deleteWriter", args: [resolvedRoles.temporaryWriter] }) },
+    { step: "pay-100", from: resolvedRoles.payer, to: resolvedContracts.cplTcoin, calldata: encodeFunctionData({ abi: TRANSFER_ABI, functionName: "transfer", args: [resolvedRoles.recipient, BigInt(EXPECTED_PAYMENT)] }) },
   ];
-  if (!Array.isArray(plan.mintOperations) || plan.mintOperations.length !== expectedOperations.length) {
-    throw new Error("mintOperations must contain the four reviewed GeneroTokenV3 calls.");
+  const gasBudget = objectAt(plan, "gasBudget");
+  const transactions = gasBudget.transactions;
+  if (!Array.isArray(transactions) || transactions.length !== expectedOperations.length) {
+    throw new Error("gasBudget.transactions must bind the four mint calls and one 100-token payment.");
   }
-  const mintOperations = plan.mintOperations as Array<Record<string, unknown>>;
+  let computedMaximum = BigInt(0);
+  const seenNonces = new Set<string>();
   expectedOperations.forEach((expectedOperation, index) => {
-    const operation = mintOperations[index];
+    const operation = transactions[index] as Record<string, unknown> | undefined;
     for (const key of ["step", "from", "to", "calldata"] as const) {
       if (String(operation?.[key]).toLowerCase() !== expectedOperation[key].toLowerCase()) {
-        throw new Error(`mintOperations[${index}].${key} does not match the bound reviewed call.`);
+        throw new Error(`gasBudget.transactions[${index}].${key} does not match the bound reviewed call.`);
       }
     }
+    const nonce = exactInteger(operation?.nonce, `gasBudget.transactions[${index}].nonce`);
+    const nonceKey = `${expectedOperation.from.toLowerCase()}:${nonce}`;
+    if (seenNonces.has(nonceKey)) throw new Error("Transaction nonces must be unique per sender.");
+    seenNonces.add(nonceKey);
+    const gasLimit = exactInteger(operation?.gasLimit, `gasBudget.transactions[${index}].gasLimit`);
+    const maxFeePerGasWei = exactInteger(operation?.maxFeePerGasWei, `gasBudget.transactions[${index}].maxFeePerGasWei`);
+    if (gasLimit === 0n || maxFeePerGasWei === 0n) throw new Error("Transaction gas and fee ceilings must be positive.");
+    computedMaximum += gasLimit * maxFeePerGasWei;
   });
+  const totalMaximum = exactInteger(gasBudget.totalMaxCostWei, "gasBudget.totalMaxCostWei");
+  if (totalMaximum < computedMaximum) throw new Error("gasBudget.totalMaxCostWei is below the per-transaction maximum total.");
   const requiredReadbacks = ["rpcChainId", "cplTcoinCode", "decimals", "owner", "temporaryWriterStatus", "maxSupply", "totalSupply", "payerBalance", "mintReceipt", "writerRevoked"];
   if (!Array.isArray(plan.requiredReadbacks) || JSON.stringify(plan.requiredReadbacks) !== JSON.stringify(requiredReadbacks)) {
     throw new Error("requiredReadbacks must retain every chain, token, supply, receipt and revocation check.");
@@ -172,8 +164,9 @@ export function validateTorontoCoinPayLinkPlan(plan: Plan, expected: {
     ...plan,
     roles: resolvedRoles,
     contracts: resolvedContracts,
-    mintOperations: expectedOperations,
-    validationLevel: "static-approval-schema-only",
+    validationLevel: "static-post-deployment-mint-and-payment-approval-schema-only",
+    deploymentExecutionAuthorised: false,
+    mintPaymentExecutionAuthorised: false,
     computedMaximumGasCostWei: computedMaximum.toString(),
   };
 }

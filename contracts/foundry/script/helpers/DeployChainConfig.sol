@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
 import "forge-std/StdJson.sol";
+import {PayLinkProfileGuard} from "./PayLinkProfileGuard.sol";
 
 abstract contract DeployChainConfig is Script {
     using stdJson for string;
@@ -146,5 +147,29 @@ abstract contract DeployChainConfig is Script {
 
     function _sameString(string memory a, string memory b) internal pure returns (bool) {
         return keccak256(bytes(a)) == keccak256(bytes(b));
+    }
+
+    function _validatePayLinkProfile(ChainSelection memory selection) internal view returns (bool) {
+        return PayLinkProfileGuard.validate(
+            PayLinkProfileGuard.Profile({
+                target: selection.target,
+                purpose: _chainConfigStringOr(selection, ".purpose", "full-suite"),
+                chainId: selection.chainId,
+                requireExplicitAddresses: _chainConfigBoolOr(selection, ".roles.requireExplicitAddresses", false),
+                governanceOwnsTokens: _chainConfigBool(selection, ".roles.governanceOwnsTokens"),
+                mentoEnabled: _chainConfigBoolOr(selection, ".torontocoin.mento.enabled", true),
+                executeBuy: _chainConfigBoolOr(selection, ".torontocoin.scenarioB.executeBuy", true),
+                mrTcoinDecimals: uint8(_chainConfigUint(selection, ".torontocoin.tokens.mrTcoin.decimals")),
+                cplTcoinDecimals: uint8(_chainConfigUint(selection, ".torontocoin.tokens.cplTcoin.decimals")),
+                mrTcoinSymbol: _chainConfigString(selection, ".torontocoin.tokens.mrTcoin.symbol"),
+                cplTcoinSymbol: _chainConfigString(selection, ".torontocoin.tokens.cplTcoin.symbol"),
+                mintAmount: _chainConfigUintOr(selection, ".torontocoin.payLink.mintAmount", 0),
+                paymentAmount: _chainConfigUintOr(selection, ".torontocoin.payLink.paymentAmount", 0),
+                deployedReserveMintAmount: _chainConfigUintOr(
+                    selection, ".torontocoin.reserves.cadm.deployedTokenMintAmount", 0
+                ),
+                initialPoolSeed: _chainConfigUint(selection, ".torontocoin.bootstrap.initialPoolSeed")
+            })
+        );
     }
 }

@@ -2,7 +2,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPublicClient, formatUnits, http, type Address } from "viem";
 import { tokenAbi } from "./abi";
-import { getTorontoCoinWalletRuntimeOrThrow } from "@shared/lib/contracts/torontocoinRuntime";
+import {
+  assertTorontoCoinWalletTokenIdentity,
+  getTorontoCoinWalletRuntimeOrThrow,
+} from "@shared/lib/contracts/torontocoinRuntime";
 
 const publicClientCache = new Map<string, ReturnType<typeof createPublicClient>>();
 
@@ -46,24 +49,45 @@ export const useTokenBalance = (walletAddress: string | null) => {
 
       const client = getCachedPublicClient(chainId, rpcUrl);
 
-      const [balanceRaw, decimalsRaw] = await Promise.all([
+      const [actualChainId, bytecode, name, symbol, decimalsRaw] = await Promise.all([
+        client.getChainId(),
+        client.getBytecode({ address: tokenAddress }),
         client.readContract({
           address: tokenAddress as Address,
           abi: tokenAbi as any,
-          functionName: "balanceOf",
-          args: [normaliseWalletAddress(walletAddress)],
+          functionName: "name",
+          args: [],
         }),
-        client
-          .readContract({
-            address: tokenAddress as Address,
-            abi: tokenAbi as any,
-            functionName: "decimals",
-            args: [],
-          })
-          .catch(() => tokenDecimals),
+        client.readContract({
+          address: tokenAddress as Address,
+          abi: tokenAbi as any,
+          functionName: "symbol",
+          args: [],
+        }),
+        client.readContract({
+          address: tokenAddress as Address,
+          abi: tokenAbi as any,
+          functionName: "decimals",
+          args: [],
+        }),
       ]);
+      assertTorontoCoinWalletTokenIdentity({
+        runtime,
+        actualChainId,
+        bytecode,
+        name: String(name),
+        symbol: String(symbol),
+        decimals: Number(decimalsRaw),
+      });
 
-      const formattedBalance = formatUnits(BigInt(balanceRaw), Number(decimalsRaw));
+      const balanceRaw = await client.readContract({
+        address: tokenAddress as Address,
+        abi: tokenAbi as any,
+        functionName: "balanceOf",
+        args: [normaliseWalletAddress(walletAddress)],
+      });
+
+      const formattedBalance = formatUnits(BigInt(balanceRaw), tokenDecimals);
 
       setBalance(formattedBalance);
     } catch (err: any) {

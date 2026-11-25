@@ -22,8 +22,19 @@ function validPlan() {
     { type: "function", name: "mintTo", stateMutability: "nonpayable", inputs: [{ name: "beneficiary", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] },
     { type: "function", name: "deleteWriter", stateMutability: "nonpayable", inputs: [{ name: "writer", type: "address" }], outputs: [{ type: "bool" }] },
   ] as const;
+  const transferAbi = [{ type: "function", name: "transfer", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ type: "bool" }] }] as const;
+  const operations = [
+    { step: "set-cap", from: roles.tokenAdmin, to: contracts.cplTcoin, calldata: encodeFunctionData({ abi, functionName: "setMaxSupply", args: [500000000n] }) },
+    { step: "add-writer", from: roles.tokenAdmin, to: contracts.cplTcoin, calldata: encodeFunctionData({ abi, functionName: "addWriter", args: [roles.temporaryWriter] }) },
+    { step: "mint-once", from: roles.temporaryWriter, to: contracts.cplTcoin, calldata: encodeFunctionData({ abi, functionName: "mintTo", args: [roles.payer, 500000000n] }) },
+    { step: "revoke-writer", from: roles.tokenAdmin, to: contracts.cplTcoin, calldata: encodeFunctionData({ abi, functionName: "deleteWriter", args: [roles.temporaryWriter] }) },
+    { step: "pay-100", from: roles.payer, to: contracts.cplTcoin, calldata: encodeFunctionData({ abi: transferAbi, functionName: "transfer", args: [roles.recipient, 100000000n] }) },
+  ];
   return {
     version: 1,
+    stage: "post-deployment-mint-and-payment",
+    deploymentApproved: true,
+    deploymentPlanSha256: "c".repeat(64),
     target: "celo-sepolia-pay-link",
     purpose: "pay-link-only",
     chainId: 11142220,
@@ -37,18 +48,9 @@ function validPlan() {
       mrTcoinMint: "0", reserveMint: "0",
     },
     gasBudget: {
-      transactions: [
-        { label: "deploy-suite", gasLimit: "100000", maxFeePerGasWei: "100" },
-        { label: "mint-and-revoke", gasLimit: "50000", maxFeePerGasWei: "100" },
-      ],
-      totalMaxCostWei: "15000000",
+      transactions: operations.map((operation, index) => ({ ...operation, nonce: String(index), gasLimit: "100000", maxFeePerGasWei: "100" })),
+      totalMaxCostWei: "50000000",
     },
-    mintOperations: [
-      { step: "set-cap", from: roles.tokenAdmin, to: contracts.cplTcoin, calldata: encodeFunctionData({ abi, functionName: "setMaxSupply", args: [500000000n] }) },
-      { step: "add-writer", from: roles.tokenAdmin, to: contracts.cplTcoin, calldata: encodeFunctionData({ abi, functionName: "addWriter", args: [roles.temporaryWriter] }) },
-      { step: "mint-once", from: roles.temporaryWriter, to: contracts.cplTcoin, calldata: encodeFunctionData({ abi, functionName: "mintTo", args: [roles.payer, 500000000n] }) },
-      { step: "revoke-writer", from: roles.tokenAdmin, to: contracts.cplTcoin, calldata: encodeFunctionData({ abi, functionName: "deleteWriter", args: [roles.temporaryWriter] }) },
-    ],
     requiredReadbacks: ["rpcChainId", "cplTcoinCode", "decimals", "owner", "temporaryWriterStatus", "maxSupply", "totalSupply", "payerBalance", "mintReceipt", "writerRevoked"],
     interruptedSequenceRecovery: "Read cap, total supply, payer balance and writer state; resume only the missing reviewed step.",
   };
@@ -57,7 +59,7 @@ function validPlan() {
 describe("TorontoCoin pay-link plan", () => {
   it("accepts the exact 500-token mint and 100-token payment plan", () => {
     expect(validateTorontoCoinPayLinkPlan(validPlan(), expected)).toMatchObject({
-      computedMaximumGasCostWei: "15000000",
+      computedMaximumGasCostWei: "50000000",
     });
   });
 
@@ -83,5 +85,15 @@ describe("TorontoCoin pay-link plan", () => {
     const placeholder = validPlan();
     placeholder.roles.payer = address("0");
     expect(() => validateTorontoCoinPayLinkPlan(placeholder, expected)).toThrow("non-zero address");
+  });
+
+  it("rejects an unbound budget row or omitted 100-token payment", () => {
+    const changedCall = validPlan();
+    changedCall.gasBudget.transactions[2].calldata = "0x1234";
+    expect(() => validateTorontoCoinPayLinkPlan(changedCall, expected)).toThrow("bound reviewed call");
+
+    const missingPayment = validPlan();
+    missingPayment.gasBudget.transactions.pop();
+    expect(() => validateTorontoCoinPayLinkPlan(missingPayment, expected)).toThrow("one 100-token payment");
   });
 });

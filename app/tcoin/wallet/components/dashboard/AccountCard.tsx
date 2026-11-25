@@ -11,6 +11,7 @@ export function AccountCard({
   voucherCount,
   senderWallet,
   onOpenTransactionHistory,
+  isTestToken = false,
 }: {
   balance: number;
   totalEquivalent?: number;
@@ -18,6 +19,7 @@ export function AccountCard({
   voucherCount?: number;
   senderWallet: string;
   onOpenTransactionHistory: () => void;
+  isTestToken?: boolean;
 }) {
   const { ...rest } = useTokenBalance(senderWallet);
   const { exchangeRate, fallbackMessage } = useControlVariables();
@@ -49,12 +51,12 @@ export function AccountCard({
             <p className="text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
               {formatNumber(rest.balance.toString(), false)}
             </p>
-            <p className="text-lg text-muted-foreground">
+            {!isTestToken ? <p className="text-lg text-muted-foreground">
               {formatNumber(convertToCad(rest.balance), true)} CAD
-            </p>
+            </p> : null}
           </div>
         </div>
-        <div className={`${walletPanelMutedClass} w-full min-w-0 space-y-3 sm:min-w-[220px] sm:max-w-[320px]`}>
+        {!isTestToken ? <div className={`${walletPanelMutedClass} w-full min-w-0 space-y-3 sm:min-w-[220px] sm:max-w-[320px]`}>
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               Today&apos;s estimate
@@ -67,10 +69,16 @@ export function AccountCard({
           <p className="text-xs text-muted-foreground">
             Wallet address, explorer access, and account settings now live in More.
           </p>
-        </div>
+        </div> : null}
       </div>
 
-      <div className="grid gap-0 sm:gap-3 sm:grid-cols-3">
+      {isTestToken ? (
+        <div className={walletPanelMutedClass}>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Test token balance</p>
+          <p className="mt-2 text-xl font-semibold">{formatNumber(balance.toString(), false)}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Celo Sepolia only; this balance has no cash value.</p>
+        </div>
+      ) : <div className="grid gap-0 sm:gap-3 sm:grid-cols-3">
         <div className={walletPanelMutedClass}>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Spendable now</p>
           <p className="mt-2 text-xl font-semibold">{formatNumber(balance.toString(), false)}</p>
@@ -92,9 +100,9 @@ export function AccountCard({
             </p>
           ) : null}
         </div>
-      </div>
+      </div>}
 
-      {fallbackMessage ? <p className="text-sm text-amber-700 dark:text-amber-300">{fallbackMessage}</p> : null}
+      {!isTestToken && fallbackMessage ? <p className="text-sm text-amber-700 dark:text-amber-300">{fallbackMessage}</p> : null}
 
       <div className="flex flex-wrap gap-3">
         <Button

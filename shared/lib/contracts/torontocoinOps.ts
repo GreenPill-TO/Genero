@@ -6,6 +6,7 @@ import {
 } from "./torontocoinPools";
 import {
   getTorontoCoinRpcUrl,
+  isTorontoCoinPayLinkPreviewTarget,
   TORONTOCOIN_RUNTIME,
   type TorontoCoinRuntimeConfig,
 } from "./torontocoinRuntime";
@@ -124,6 +125,9 @@ async function readOwner(
 export async function getTorontoCoinOpsStatus(
   runtime: TorontoCoinRuntimeConfig = TORONTOCOIN_RUNTIME
 ): Promise<TorontoCoinOpsCoreStatus> {
+  if (isTorontoCoinPayLinkPreviewTarget()) {
+    throw new Error("TorontoCoin ops are unavailable for the isolated Preview pay-link profile.");
+  }
   const client = createTorontoCoinPublicClient(runtime);
 
   const [
