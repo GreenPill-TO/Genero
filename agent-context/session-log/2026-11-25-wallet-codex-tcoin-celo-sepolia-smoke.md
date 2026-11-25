@@ -25,6 +25,15 @@
 - validation: Focused Vitest passed 19 files / 118 tests, including staging-unset, invalid-target, development-mainnet, development alias with `VERCEL_ENV=production`, explicit Production mainnet, Edge/Deno, route, stats, ops, pool, and indexer matrices. TypeScript, targeted ESLint, the app-facing Edge boundary guard, and diff checks passed.
 - follow-ups: Independent validation and full scenario QA remain. This source-only guard repair does not configure a hosted environment, create payer/recipient wallets, access credentials, query or mutate chain state, or authorise deployment/mint/payment execution.
 
+## 2026-11-25T22:11:44Z - Align release workflow with isolated Preview profile (#87)
+
+- agent: Wriley #87 (Codex)
+- branch: codex/tcoin-celo-sepolia-smoke
+- head: 053a979d1ed50019c028781b6ca761658fbc12a2
+- summary: Added an offline release-profile validator and forwarded the public runtime target/manifest into both TCOIN release-alignment jobs. Preview now requires a valid non-production Celo Sepolia pay-link manifest with Buy disabled, skips mainnet-only ops/pool commands, and records full pool/Buy acceptance as unavailable rather than passed. Production requires the explicit Production/mainnet profile and retains the full operational checks. Clarified the runbook sequence and separated source preparation, authorised account onboarding, and funded/hosted acceptance evidence.
+- validation: Focused Vitest passed 4/4 release-profile and workflow-contract tests (13/13 with the shared runtime tests); TypeScript no-emit, targeted ESLint, workflow YAML parsing, production CLI profile validation, and diff checks passed. No network, Supabase runtime, browser, or chain validation was run for this source-only workflow repair.
+- follow-ups: The workflow has not been executed against hosted Preview or Production configuration. Preview full pool and Buy acceptance remain intentionally unavailable; Production retains those gates. Independent review and post-push CI/workflow evidence remain required.
+
 ## 2026-11-25T21:52:30.429747+00:00 - Prepare PR version metadata
 
 - agent: Codex Tcoin HBIC

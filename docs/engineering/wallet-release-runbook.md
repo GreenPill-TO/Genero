@@ -40,13 +40,14 @@ Before any later deployment or mint execution:
 4. Confirm the RPC reports chain `11142220` immediately before any separately authorised signing. Re-read deployed bytecode, six-decimal token identity, ownership/writers, registry/pool/adapter wiring, and zero pre-mint supply before approving the mint plan.
 5. Treat deployment and post-deployment mint/payment as separate approvals and gas budgets. The plan validator covers only the latter stage and requires five bound transactions (four mint-authority calls plus the 100-token payment); it does not prove deployment funding or authorise execution. Under separate authority: set the cplTCOIN cap to `500_000_000`, grant the reviewed temporary writer, mint exactly `500_000_000` to the reviewed payer once, revoke the writer, and read back cap, total supply, payer balance, Mint receipt, and revocation. If interrupted, inspect those facts and resume only a missing step; never blindly remint. Demurrage can make the later visible balance lower than the exact Mint event/supply accounting.
 
-The Preview Next.js environment and the `voucher-runtime` and `onramp` Edge Function environments must mirror the dedicated target/purpose/chain selectors before functional Preview claims. The gated TCOIN Edge deployment workflow includes those bundles; keep Buy disabled and do not deploy them ad hoc.
-
-Mainnet operational surfaces require positive admission: app environment `production`, runtime target `celo-mainnet`, and city `tcoin`. A missing or unknown target, any non-production app environment, or the Vercel production deployment context used for `dev.tcoin.me` must not restore mainnet ops, stats, pools, indexer, voucher, or onramp behaviour.
 6. Keep pool seed, mrTCOIN mint, reserve mint, Mento, Buy, voucher, admin and indexer-worker execution at zero/off. Any request to enable one is a new scope decision.
 7. Only after the authorised Preview Edge host is `https://dev.tcoin.me`, create one `100.000000`-token request. Require the raw returned URL, QR value, copied value and opened URL to be the same unmodified `https://dev.tcoin.me/pay/...` value. Creating/resolving the link is not payment approval; consuming/paying remains separately gated.
 
-Preparation evidence must say explicitly that no deploy, mint, funding, payment, OTP, hosted configuration, or chain write occurred. Production and Celo mainnet behaviour remain separate release gates.
+The Preview Next.js environment and the `voucher-runtime` and `onramp` Edge Function environments must mirror the dedicated target/purpose/chain selectors before functional Preview claims. The gated TCOIN Edge deployment workflow includes those bundles; keep Buy disabled and do not deploy them ad hoc.
+
+Mainnet operational surfaces require positive admission: app environment `production`, runtime target `celo-mainnet`, and city `tcoin`. A missing or unknown target, any non-production app environment, or the Vercel production deployment context used for `dev.tcoin.me` must not restore mainnet ops, stats, pools, indexer, voucher, or onramp behaviour.
+
+Evidence must distinguish offline source preparation, separately authorised account-onboarding actions (including any OTP use), and funded or hosted acceptance. State the writes that actually occurred. Do not imply that account setup proves deployment, funding, minting, payment, hosted configuration, or any chain write; Production and Celo mainnet remain separate release gates.
 
 ### Required when the related launch surface is enabled
 
