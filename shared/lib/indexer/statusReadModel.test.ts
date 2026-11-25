@@ -14,6 +14,12 @@ vi.mock("@shared/lib/contracts/torontocoinRuntime", () => {
       citySlug: "tcoin",
       chainId: 42220,
     },
+    assertTorontoCoinMainnetRuntimeAdmitted: () => {
+      if (
+        process.env.NEXT_PUBLIC_APP_ENVIRONMENT !== "production" ||
+        process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET !== "celo-mainnet"
+      ) throw new Error("mainnet unavailable");
+    },
     getTorontoCoinWalletToken: vi.fn((input?: { citySlug?: string | null; chainId?: number | null }) =>
       input?.citySlug === "tcoin" && input?.chainId === 42220
         ? { address: "0xAEC330E9d808E4e938bf830016c6B2Eb350e1A19" }
@@ -32,6 +38,8 @@ describe("getIndexerScopeStatusReadModel", () => {
   const originalIndexerChainId = process.env.INDEXER_CHAIN_ID;
 
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "production";
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-mainnet";
     if (originalCityCoin === undefined) {
       delete process.env.NEXT_PUBLIC_CITYCOIN;
     } else {
@@ -46,6 +54,8 @@ describe("getIndexerScopeStatusReadModel", () => {
   });
 
   afterEach(() => {
+    delete process.env.NEXT_PUBLIC_APP_ENVIRONMENT;
+    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
     if (originalCityCoin === undefined) {
       delete process.env.NEXT_PUBLIC_CITYCOIN;
     } else {
@@ -57,6 +67,14 @@ describe("getIndexerScopeStatusReadModel", () => {
     } else {
       process.env.INDEXER_CHAIN_ID = originalIndexerChainId;
     }
+  });
+
+  it("rejects staging without a target before the status RPC", async () => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "staging";
+    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
+    const rpc = vi.fn();
+    await expect(getIndexerScopeStatusReadModel({ supabase: { rpc } as never })).rejects.toThrow("unavailable");
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("loads aggregate indexer status through the RPC and enriches configured pool tracking", async () => {

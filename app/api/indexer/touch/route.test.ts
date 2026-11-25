@@ -37,7 +37,8 @@ describe("POST /api/indexer/touch", () => {
     h.mockIsLocalOrDevelopmentEnvironment.mockReset();
     process.env.NEXT_PUBLIC_CITYCOIN = "tcoin";
     process.env.INDEXER_CHAIN_ID = "42220";
-    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-mainnet";
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "production";
   });
 
   it("disables indexer touches for the isolated Preview pay-link profile", async () => {

@@ -371,6 +371,25 @@ export function isTorontoCoinPayLinkPreviewTarget(): boolean {
   return process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET?.trim() === "celo-sepolia-pay-link";
 }
 
+export function isTorontoCoinMainnetRuntimeAdmitted(input: {
+  appEnvironment?: string | null;
+  target?: string | null;
+  citySlug?: string | null;
+} = {}): boolean {
+  const appEnvironment = (input.appEnvironment ?? process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? "").trim();
+  const target = (input.target ?? process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET ?? "").trim();
+  const citySlug = (input.citySlug ?? process.env.NEXT_PUBLIC_CITYCOIN ?? "").trim().toLowerCase();
+  return appEnvironment === "production" && target === "celo-mainnet" && citySlug === "tcoin";
+}
+
+export function assertTorontoCoinMainnetRuntimeAdmitted(): void {
+  if (!isTorontoCoinMainnetRuntimeAdmitted()) {
+    throw new TorontoCoinWalletRuntimeUnavailableError(
+      "TorontoCoin mainnet operations require the explicit Production celo-mainnet profile."
+    );
+  }
+}
+
 export function isTorontoCoinRuntimeScope(input?: {
   citySlug?: string | null;
   chainId?: number | null;
@@ -384,10 +403,13 @@ export function getTorontoCoinRuntimeConfig(input?: {
   citySlug?: string | null;
   chainId?: number | null;
 }): TorontoCoinRuntimeConfig | null {
-  return isTorontoCoinRuntimeScope(input) ? TORONTOCOIN_RUNTIME : null;
+  return isTorontoCoinMainnetRuntimeAdmitted() && isTorontoCoinRuntimeScope(input)
+    ? TORONTOCOIN_RUNTIME
+    : null;
 }
 
 export function getTorontoCoinRpcUrl(): string {
+  assertTorontoCoinMainnetRuntimeAdmitted();
   return process.env.INDEXER_CHAIN_RPC_URL?.trim() || TORONTOCOIN_RUNTIME.rpcUrl;
 }
 
@@ -403,12 +425,16 @@ export function getTorontoCoinWalletToken(input?: {
   citySlug?: string | null;
   chainId?: number | null;
 }): TorontoCoinTokenMetadata | null {
-  return isTorontoCoinRuntimeScope(input) ? TORONTOCOIN_RUNTIME.cplTcoin : null;
+  return isTorontoCoinMainnetRuntimeAdmitted() && isTorontoCoinRuntimeScope(input)
+    ? TORONTOCOIN_RUNTIME.cplTcoin
+    : null;
 }
 
 export function getConfiguredTorontoCoinTrackedPools(input?: {
   citySlug?: string | null;
   chainId?: number | null;
 }): readonly TrackedTorontoCoinPool[] {
-  return isTorontoCoinRuntimeScope(input) ? TORONTOCOIN_RUNTIME.trackedPools : [];
+  return isTorontoCoinMainnetRuntimeAdmitted() && isTorontoCoinRuntimeScope(input)
+    ? TORONTOCOIN_RUNTIME.trackedPools
+    : [];
 }

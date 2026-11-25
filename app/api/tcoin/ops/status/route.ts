@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
 import { isLocalOrDevelopmentEnvironment } from "@shared/lib/bia/apiAuth";
 import { getTorontoCoinOpsStatus } from "@shared/lib/contracts/torontocoinOps";
+import { isTorontoCoinMainnetRuntimeAdmitted } from "@shared/lib/contracts/torontocoinRuntime";
 import { getIndexerScopeStatusReadModel } from "@shared/lib/indexer/statusReadModel";
 
 export async function GET() {
   try {
-    if (process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET === "celo-sepolia-pay-link") {
+    if (!isTorontoCoinMainnetRuntimeAdmitted()) {
       return NextResponse.json(
-        { error: "TorontoCoin ops are unavailable for the isolated Preview pay-link profile." },
+        { error: "TorontoCoin ops require the explicit Production celo-mainnet profile." },
         { status: 409 }
       );
     }

@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { type TorontoCoinOpsCoreStatus } from "@shared/lib/contracts/torontocoinOps";
 import {
-  isTorontoCoinPayLinkPreviewTarget,
+  assertTorontoCoinMainnetRuntimeAdmitted,
   TORONTOCOIN_RUNTIME,
 } from "@shared/lib/contracts/torontocoinRuntime";
 import type { IndexerScopeStatus } from "@shared/lib/indexer/types";
@@ -416,9 +416,7 @@ export function buildWalletStatsSummary(
 export async function getWalletStatsSummary(
   supabase: SupabaseClient
 ): Promise<WalletStatsSummary> {
-  if (isTorontoCoinPayLinkPreviewTarget()) {
-    throw new Error("Wallet stats are unavailable for the isolated Preview pay-link profile.");
-  }
+  assertTorontoCoinMainnetRuntimeAdmitted();
   const { data, error } = await supabase.rpc("wallet_stats_summary_v1", {
     p_city_slug: CITY_SLUG,
     p_chain_id: CHAIN_ID,

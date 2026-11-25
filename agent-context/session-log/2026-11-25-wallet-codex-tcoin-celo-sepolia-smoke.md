@@ -16,6 +16,15 @@
 - validation: Focused Vitest run passed 17 files / 100 tests; TypeScript check passed; targeted ESLint and the app-facing Edge boundary guard passed; original `celo-sepolia` JSON object matched base commit `d17ac498202435073499341dea601db8267744bc`; JSON validation passed; `PayLinkProfileGuard.t.sol` passed 4/4, `GeneroTokenV3.t.sol` 16/16 and Sarafu compatibility 1/1; targeted deployment/validator Foundry build passed offline with existing warnings.
 - follow-ups: Independent replacement-commit risk, acceptance and scenario validation remain. The public issuer receipt is held outside tracked source; payer/recipient app wallets, complete reviewed public roles/contracts, deployment artefact simulation and separate budgets/approvals remain required. The plan helper is static schema validation only and authorises neither deployment nor mint/payment execution.
 
+## 2026-11-25T21:58:54Z - Require positive mainnet runtime admission (#87)
+
+- agent: Wriley #87 (Codex)
+- branch: codex/tcoin-celo-sepolia-smoke
+- head: 2fbbed5b408bd979a7b9913f5781eddadac15563
+- summary: Repaired the remaining fail-closed gap by requiring the explicit Production, `celo-mainnet`, `tcoin` tuple before TorontoCoin legacy pool clients, ops, stats, and indexer reads can use the checked-in mainnet runtime. Missing and unknown targets, staging/development app environments, and the Vercel production deployment context used by the development alias now stop before client, auth, database RPC, or chain RPC creation. The Edge runtime uses the same positive admission rule, while generic non-TCOIN indexer scopes remain unchanged.
+- validation: Focused Vitest passed 19 files / 118 tests, including staging-unset, invalid-target, development-mainnet, development alias with `VERCEL_ENV=production`, explicit Production mainnet, Edge/Deno, route, stats, ops, pool, and indexer matrices. TypeScript, targeted ESLint, the app-facing Edge boundary guard, and diff checks passed.
+- follow-ups: Independent validation and full scenario QA remain. This source-only guard repair does not configure a hosted environment, create payer/recipient wallets, access credentials, query or mutate chain state, or authorise deployment/mint/payment execution.
+
 ## 2026-11-25T21:52:30.429747+00:00 - Prepare PR version metadata
 
 - agent: Codex Tcoin HBIC

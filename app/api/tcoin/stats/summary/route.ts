@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@shared/lib/supabase/server";
 import { getWalletStatsSummary } from "@shared/lib/walletStats/server";
+import { isTorontoCoinMainnetRuntimeAdmitted } from "@shared/lib/contracts/torontocoinRuntime";
 
 export async function GET() {
   try {
-    if (process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET === "celo-sepolia-pay-link") {
+    if (!isTorontoCoinMainnetRuntimeAdmitted()) {
       return NextResponse.json(
-        { error: "Wallet stats are unavailable for the isolated Preview pay-link profile." },
+        { error: "Wallet stats require the explicit Production celo-mainnet profile." },
         { status: 409 }
       );
     }

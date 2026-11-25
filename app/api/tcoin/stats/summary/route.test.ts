@@ -23,14 +23,26 @@ import { GET } from "./route";
 
 describe("GET /api/tcoin/stats/summary", () => {
   beforeEach(() => {
-    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-mainnet";
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "production";
+    process.env.NEXT_PUBLIC_CITYCOIN = "tcoin";
     h.mockGetUser.mockReset();
     h.mockGetWalletStatsSummary.mockReset();
     h.mockSupabaseClient.auth.getUser = h.mockGetUser;
   });
 
   it("rejects Preview before auth or mainnet stats reads", async () => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "development";
     process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-sepolia-pay-link";
+    const response = await GET();
+    expect(response.status).toBe(409);
+    expect(h.mockGetUser).not.toHaveBeenCalled();
+    expect(h.mockGetWalletStatsSummary).not.toHaveBeenCalled();
+  });
+
+  it("rejects staging with a missing target before auth or stats reads", async () => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "staging";
+    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
     const response = await GET();
     expect(response.status).toBe(409);
     expect(h.mockGetUser).not.toHaveBeenCalled();

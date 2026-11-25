@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   TORONTOCOIN_RUNTIME,
   getConfiguredTorontoCoinTrackedPools,
@@ -8,9 +8,20 @@ import {
   assertTorontoCoinWalletTokenIdentity,
   getTorontoCoinWalletToken,
   isTorontoCoinRuntimeScope,
+  isTorontoCoinMainnetRuntimeAdmitted,
 } from "./torontocoinRuntime";
 
 describe("torontocoinRuntime", () => {
+  const admitMainnet = () => {
+    process.env.NEXT_PUBLIC_APP_ENVIRONMENT = "production";
+    process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET = "celo-mainnet";
+    process.env.NEXT_PUBLIC_CITYCOIN = "tcoin";
+  };
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_APP_ENVIRONMENT;
+    delete process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET;
+    delete process.env.NEXT_PUBLIC_CITYCOIN;
+  });
   const previewManifest = JSON.stringify({
     target: "celo-sepolia-pay-link",
     purpose: "pay-link-only",
@@ -38,6 +49,7 @@ describe("torontocoinRuntime", () => {
   });
 
   it("resolves the checked-in Celo mainnet runtime", () => {
+    admitMainnet();
     expect(
       getTorontoCoinRuntimeConfig({
         citySlug: "tcoin",
@@ -46,7 +58,15 @@ describe("torontocoinRuntime", () => {
     ).toEqual(TORONTOCOIN_RUNTIME);
   });
 
+  it("admits legacy mainnet surfaces only for the explicit Production profile", () => {
+    expect(isTorontoCoinMainnetRuntimeAdmitted({ appEnvironment: "production", target: "celo-mainnet", citySlug: "tcoin" })).toBe(true);
+    expect(isTorontoCoinMainnetRuntimeAdmitted({ appEnvironment: "staging", target: null, citySlug: "tcoin" })).toBe(false);
+    expect(isTorontoCoinMainnetRuntimeAdmitted({ appEnvironment: "development", target: "unknown", citySlug: "tcoin" })).toBe(false);
+    expect(isTorontoCoinMainnetRuntimeAdmitted({ appEnvironment: "development", target: "celo-mainnet", citySlug: "tcoin" })).toBe(false);
+  });
+
   it("exposes cplTCOIN as the wallet-facing token", () => {
+    admitMainnet();
     expect(getTorontoCoinWalletToken({ citySlug: "tcoin", chainId: 42220 })).toEqual(
       TORONTOCOIN_RUNTIME.cplTcoin
     );
@@ -55,6 +75,7 @@ describe("torontocoinRuntime", () => {
   });
 
   it("exposes the configured tracked bootstrap pool", () => {
+    admitMainnet();
     const trackedPools = getConfiguredTorontoCoinTrackedPools({
       citySlug: "tcoin",
       chainId: 42220,

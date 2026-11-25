@@ -12,7 +12,7 @@ import {
 import {
   getConfiguredTorontoCoinTrackedPools,
   getTorontoCoinRpcUrl,
-  isTorontoCoinPayLinkPreviewTarget,
+  assertTorontoCoinMainnetRuntimeAdmitted,
   TORONTOCOIN_RUNTIME,
   type TorontoCoinRuntimeConfig,
   type TrackedTorontoCoinPool,
@@ -744,9 +744,7 @@ async function readScenarioPreview(
 export function createTorontoCoinPublicClient(
   runtime: TorontoCoinRuntimeConfig = TORONTOCOIN_RUNTIME
 ): PublicClient {
-  if (isTorontoCoinPayLinkPreviewTarget()) {
-    throw new Error("TorontoCoin pool reads are unavailable for the isolated Preview pay-link profile.");
-  }
+  assertTorontoCoinMainnetRuntimeAdmitted();
   return createPublicClient({
     transport: http(getTorontoCoinRpcUrl()),
   });
@@ -756,9 +754,7 @@ export async function listTorontoCoinTrackedPools(options?: {
   client?: PublicClient;
   runtime?: TorontoCoinRuntimeConfig;
 }): Promise<TrackedTorontoCoinPool[]> {
-  if (isTorontoCoinPayLinkPreviewTarget()) {
-    throw new Error("TorontoCoin pool reads are unavailable for the isolated Preview pay-link profile.");
-  }
+  assertTorontoCoinMainnetRuntimeAdmitted();
   const runtime = options?.runtime ?? TORONTOCOIN_RUNTIME;
   const client = options?.client ?? createTorontoCoinPublicClient(runtime);
   const configured = getConfiguredTorontoCoinTrackedPools({
@@ -773,9 +769,7 @@ export async function getTorontoCoinTrackedPoolStatuses(options?: {
   client?: PublicClient;
   runtime?: TorontoCoinRuntimeConfig;
 }): Promise<TorontoCoinTrackedPoolStatus[]> {
-  if (isTorontoCoinPayLinkPreviewTarget()) {
-    throw new Error("TorontoCoin pool reads are unavailable for the isolated Preview pay-link profile.");
-  }
+  assertTorontoCoinMainnetRuntimeAdmitted();
   const runtime = options?.runtime ?? TORONTOCOIN_RUNTIME;
   const client = options?.client ?? createTorontoCoinPublicClient(runtime);
   const pools = await listTorontoCoinTrackedPools({ client, runtime });
