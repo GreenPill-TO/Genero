@@ -101,7 +101,11 @@ if (process.argv[1]?.endsWith("tcoin-release-profile-check.ts")) {
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(
       process.env.GITHUB_OUTPUT,
-      `release_lane=${result.purpose}\nrun_full_suite_checks=${String(result.runFullSuiteChecks)}\n`
+      [
+        `release_lane=${result.purpose}`,
+        `run_full_suite_checks=${String(result.runFullSuiteChecks)}`,
+        "",
+      ].join("\n")
     );
   }
 }

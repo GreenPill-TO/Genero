@@ -123,7 +123,7 @@ jobs:
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
           sleep 5
 
-      - name: Run wallet deployment preflight
+      - name: Run shared wallet preflight (legacy 42220 health)
         run: pnpm ops:wallet:preflight:deployment
 
       - name: Run TorontoCoin ops checks
@@ -141,8 +141,10 @@ jobs:
           {
             echo "### Isolated TCOIN Preview alignment"
             echo "- Runtime profile: pay-link-only on Celo Sepolia"
+            echo "- Wallet preflight: retained legacy Celo mainnet (42220) health only"
             echo "- Full pool compatibility: unavailable (not passed)"
             echo "- Buy TCOIN acceptance: unavailable (not passed)"
+            echo "- Celo Sepolia indexer/funded acceptance: not established"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Optional browser smoke

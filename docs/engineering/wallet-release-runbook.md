@@ -47,6 +47,8 @@ The Preview Next.js environment and the `voucher-runtime` and `onramp` Edge Func
 
 Mainnet operational surfaces require positive admission: app environment `production`, runtime target `celo-mainnet`, and city `tcoin`. A missing or unknown target, any non-production app environment, or the Vercel production deployment context used for `dev.tcoin.me` must not restore mainnet ops, stats, pools, indexer, voucher, or onramp behaviour.
 
+The retained wallet deployment preflight queries legacy chain `42220` indexer and checked-in mainnet cplTCOIN health. In the isolated Preview workflow, treat that result only as shared legacy-health evidence; it does not validate Celo Sepolia chain `11142220` indexer state, account funding, deployment, or pay-link acceptance. The broader queue/worker-health gate remains owned by T893/D70 and is not bypassed here.
+
 Evidence must distinguish offline source preparation, separately authorised account-onboarding actions (including any OTP use), and funded or hosted acceptance. State the writes that actually occurred. Do not imply that account setup proves deployment, funding, minting, payment, hosted configuration, or any chain write; Production and Celo mainnet remain separate release gates.
 
 ### Required when the related launch surface is enabled

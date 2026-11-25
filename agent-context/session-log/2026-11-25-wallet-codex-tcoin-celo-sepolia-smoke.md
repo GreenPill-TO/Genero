@@ -34,6 +34,15 @@
 - validation: Focused Vitest passed 4/4 release-profile and workflow-contract tests (13/13 with the shared runtime tests); TypeScript no-emit, targeted ESLint, workflow YAML parsing, production CLI profile validation, and diff checks passed. No network, Supabase runtime, browser, or chain validation was run for this source-only workflow repair.
 - follow-ups: The workflow has not been executed against hosted Preview or Production configuration. Preview full pool and Buy acceptance remain intentionally unavailable; Production retains those gates. Independent review and post-push CI/workflow evidence remain required.
 
+## 2026-11-25T22:16:25Z - Repair release-profile workflow outputs (#87)
+
+- agent: Wriley #87 (Codex)
+- branch: codex/tcoin-celo-sepolia-smoke
+- head: 17cc2b4f404545a42d4c137bcdd3b3eea4c101c6
+- summary: Made GitHub output serialization unambiguous by joining actual newline-delimited records, and added real CLI regression coverage for Production `true`, Preview `false`, and invalid-profile/no-output branches. Labelled the retained Preview wallet preflight as legacy chain `42220` shared health evidence rather than Celo Sepolia indexer, funding, or acceptance proof; the broader T893/D70 queue/worker gate remains unchanged.
+- validation: Focused CLI/unit Vitest passed 6/6, including temporary `GITHUB_OUTPUT` files with exact physical-line assertions and invalid-profile failure; TypeScript no-emit and diff checks passed. No hosted workflow, network, Supabase runtime, browser, or chain operation ran.
+- follow-ups: The repaired output dispatch still needs independent review and post-push GitHub Actions evidence. Celo Sepolia `11142220` indexer/funded acceptance remains unestablished and outside this source-only repair.
+
 ## 2026-11-25T21:52:30.429747+00:00 - Prepare PR version metadata
 
 - agent: Codex Tcoin HBIC

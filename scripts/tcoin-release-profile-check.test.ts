@@ -1,4 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateTcoinReleaseProfile } from "./tcoin-release-profile-check";
 
@@ -17,6 +20,28 @@ const previewManifest = JSON.stringify({
   maxFeePerGasWei: "100000000000",
   cplTcoinRuntimeCodeHash: "0x07ad118d6cc8642c86c03827f276d8b791a65e5c99a3845faf186be720a1455d",
 });
+
+function runProfileCli(env: Record<string, string | undefined>, mode: "preview" | "production") {
+  const directory = mkdtempSync(join(tmpdir(), "tcoin-release-profile-"));
+  const outputPath = join(directory, "github-output.txt");
+  try {
+    const result = spawnSync(
+      "pnpm",
+      ["exec", "tsx", "scripts/tcoin-release-profile-check.ts", `--mode=${mode}`],
+      {
+        cwd: process.cwd(),
+        env: { ...process.env, ...env, GITHUB_OUTPUT: outputPath },
+        encoding: "utf8",
+      }
+    );
+    return {
+      status: result.status,
+      output: existsSync(outputPath) ? readFileSync(outputPath, "utf8") : "",
+    };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
 
 describe("TCOIN release profile check", () => {
   it("validates pay-link Preview configuration and marks full-suite acceptance unavailable", () => {
@@ -53,5 +78,40 @@ describe("TCOIN release profile check", () => {
     expect(productionJob).toContain("pnpm ops:tcoin:release-profile --mode=production");
     expect(productionJob).toContain("steps.profile.outputs.run_full_suite_checks == 'true'");
     expect(productionJob).toContain("pnpm ops:torontocoin:pools");
+  });
+
+  it("writes separate production and Preview GitHub output lines from the real CLI", () => {
+    expect(runProfileCli({
+      NEXT_PUBLIC_APP_ENVIRONMENT: "production",
+      NEXT_PUBLIC_TCOIN_RUNTIME_TARGET: "celo-mainnet",
+      NEXT_PUBLIC_CITYCOIN: "tcoin",
+      NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT: "false",
+    }, "production")).toEqual({
+      status: 0,
+      output: "release_lane=production\nrun_full_suite_checks=true\n",
+    });
+
+    expect(runProfileCli({
+      NEXT_PUBLIC_APP_ENVIRONMENT: "staging",
+      NEXT_PUBLIC_TCOIN_RUNTIME_TARGET: "celo-sepolia-pay-link",
+      NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST: previewManifest,
+      NEXT_PUBLIC_CITYCOIN: "tcoin",
+      NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT: "false",
+    }, "preview")).toEqual({
+      status: 0,
+      output: "release_lane=pay-link-only\nrun_full_suite_checks=false\n",
+    });
+  });
+
+  it("writes no workflow outputs when CLI profile validation fails", () => {
+    const invalid = runProfileCli({
+      NEXT_PUBLIC_APP_ENVIRONMENT: "staging",
+      NEXT_PUBLIC_TCOIN_RUNTIME_TARGET: "celo-sepolia-pay-link",
+      NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST: "",
+      NEXT_PUBLIC_CITYCOIN: "tcoin",
+      NEXT_PUBLIC_ENABLE_BUY_TCOIN_CHECKOUT: "false",
+    }, "preview");
+    expect(invalid.status).not.toBe(0);
+    expect(invalid.output).toBe("");
   });
 });
