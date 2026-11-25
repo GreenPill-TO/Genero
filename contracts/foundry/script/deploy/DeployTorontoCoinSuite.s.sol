@@ -30,6 +30,7 @@ import {PriceIndexQuoter} from "../../src/sarafu-read-only/PriceIndexQuoter.sol"
 import {SwapPool} from "../../src/sarafu-read-only/SwapPool.sol";
 import {TokenUniqueSymbolIndex} from "../../src/sarafu-read-only/TokenUniqueSymbolIndex.sol";
 import "../helpers/DeployChainConfig.sol";
+import {PayLinkProfileGuard} from "../helpers/PayLinkProfileGuard.sol";
 
 contract DeployTorontoCoinSuite is DeployChainConfig {
     uint256 internal constant MAX_GENERO_VISIBLE_AMOUNT = 0x7fffffffffffffff;
@@ -68,16 +69,61 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
     }
 
     error ConfigAmountExceedsGeneroTokenLimit(string key, uint256 amount, uint256 maxAmount);
+    error InvalidPayLinkProfile(string reason);
 
     function run() external returns (DeploymentArtifacts memory artifacts) {
-        uint256 privateKey = vm.envUint("DEPLOYER_KEY");
-        address deployer = vm.addr(privateKey);
         ChainSelection memory selection = _assertDeployTargetChain();
+        bool dedicatedPayLinkTarget = _sameString(selection.target, "celo-sepolia-pay-link");
+        uint256 privateKey;
+        address deployer;
+        if (dedicatedPayLinkTarget) {
+            deployer = _chainConfigAddress(selection, ".roles.deployer");
+        } else {
+            privateKey = vm.envUint("DEPLOYER_KEY");
+            deployer = vm.addr(privateKey);
+        }
 
         address vaultOwner = _chainConfigAddressOrDefault(selection, ".roles.vaultOwner", deployer);
         address tokenAdmin = _chainConfigAddressOrDefault(selection, ".roles.tokenAdmin", deployer);
         address operationalIndexer = _chainConfigAddressOrDefault(selection, ".roles.operationalIndexer", deployer);
         bool governanceOwnsTokens = _chainConfigBool(selection, ".roles.governanceOwnsTokens");
+        bool payLinkOnly = PayLinkProfileGuard.validate(
+            PayLinkProfileGuard.Profile({
+                target: selection.target,
+                purpose: _chainConfigStringOr(selection, ".purpose", "full-suite"),
+                chainId: selection.chainId,
+                requireExplicitAddresses: _chainConfigBoolOr(selection, ".roles.requireExplicitAddresses", false),
+                governanceOwnsTokens: governanceOwnsTokens,
+                mentoEnabled: _chainConfigBoolOr(selection, ".torontocoin.mento.enabled", true),
+                executeBuy: _chainConfigBoolOr(selection, ".torontocoin.scenarioB.executeBuy", true),
+                mrTcoinDecimals: uint8(_chainConfigUint(selection, ".torontocoin.tokens.mrTcoin.decimals")),
+                cplTcoinDecimals: uint8(_chainConfigUint(selection, ".torontocoin.tokens.cplTcoin.decimals")),
+                mrTcoinSymbol: _chainConfigString(selection, ".torontocoin.tokens.mrTcoin.symbol"),
+                cplTcoinSymbol: _chainConfigString(selection, ".torontocoin.tokens.cplTcoin.symbol"),
+                mintAmount: _chainConfigUintOr(selection, ".torontocoin.payLink.mintAmount", 0),
+                paymentAmount: _chainConfigUintOr(selection, ".torontocoin.payLink.paymentAmount", 0),
+                deployedReserveMintAmount: _chainConfigUintOr(
+                    selection, ".torontocoin.reserves.cadm.deployedTokenMintAmount", 0
+                ),
+                initialPoolSeed: _chainConfigUint(selection, ".torontocoin.bootstrap.initialPoolSeed")
+            })
+        );
+        if (payLinkOnly) {
+            address reviewedDeployer = _chainConfigAddress(selection, ".roles.deployer");
+            vaultOwner = _chainConfigAddress(selection, ".roles.vaultOwner");
+            tokenAdmin = _chainConfigAddress(selection, ".roles.tokenAdmin");
+            operationalIndexer = _chainConfigAddress(selection, ".roles.operationalIndexer");
+            address payer = _chainConfigAddress(selection, ".torontocoin.payLink.payer");
+            address recipient = _chainConfigAddress(selection, ".torontocoin.payLink.recipient");
+            if (
+                reviewedDeployer == address(0) || reviewedDeployer != deployer || vaultOwner == address(0)
+                    || tokenAdmin == address(0) || operationalIndexer == address(0) || payer == address(0)
+                    || recipient == address(0) || payer == recipient || payer == reviewedDeployer
+                    || recipient == reviewedDeployer
+            ) {
+                revert InvalidPayLinkProfile("active deployer and distinct reviewed smoke addresses are required");
+            }
+        }
 
         bytes32 cadmAssetId = _chainConfigBytes32(selection, ".torontocoin.reserves.cadm.assetId");
         bool deployReserveToken = _chainConfigBoolOr(selection, ".torontocoin.reserves.cadm.deployToken", false);
@@ -184,7 +230,11 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         bytes32 mentoUsdmToCadmExchangeId =
             mentoEnabled ? _chainConfigBytes32(selection, ".torontocoin.mento.usdmToCadmExchangeId") : bytes32(0);
 
-        vm.startBroadcast(privateKey);
+        if (dedicatedPayLinkTarget) {
+            vm.startBroadcast(deployer);
+        } else {
+            vm.startBroadcast(privateKey);
+        }
 
         ReserveRegistry reserveRegistryImplementation = new ReserveRegistry();
         ReserveRegistry reserveRegistry = ReserveRegistry(
@@ -334,7 +384,9 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         stewardRegistry.registerSteward(stewardAccount, stewardName, stewardMetadata);
         charityRegistry.assignSteward(1, stewardAccount);
 
-        poolRegistry.addPoolWithAddress(bootstrapPoolId, bootstrapPoolName, bootstrapPoolMetadata, address(bootstrapSwapPool));
+        poolRegistry.addPoolWithAddress(
+            bootstrapPoolId, bootstrapPoolName, bootstrapPoolMetadata, address(bootstrapSwapPool)
+        );
         address[] memory merchantWallets = new address[](1);
         merchantWallets[0] = bootstrapMerchantWallet;
         poolRegistry.approveMerchant(bootstrapMerchantId, bootstrapPoolId, bootstrapMerchantMetadata, merchantWallets);
@@ -365,7 +417,11 @@ contract DeployTorontoCoinSuite is DeployChainConfig {
         }
 
         liquidityRouter.setCharityTopupBps(charityTopupBps);
-        liquidityRouter.seedPoolWithCplTcoin(bootstrapPoolId, bootstrapPoolSeed);
+        if (bootstrapPoolSeed > 0) {
+            liquidityRouter.seedPoolWithCplTcoin(bootstrapPoolId, bootstrapPoolSeed);
+        } else if (!payLinkOnly) {
+            revert InvalidPayLinkProfile("zero pool seed is reserved for the pay-link-only profile");
+        }
 
         GovernanceExecutionHelper governanceExecutionHelper = new GovernanceExecutionHelper();
         GovernanceProposalHelper governanceProposalHelper = new GovernanceProposalHelper();

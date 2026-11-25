@@ -28,6 +28,22 @@ Env template references:
 | Wallet user experience | `NEXT_PUBLIC_CITYCOIN_CAD_FALLBACK_RATE`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_TCOIN_BANNER_LIGHT_URL`, `NEXT_PUBLIC_TCOIN_BANNER_DARK_URL` | Keeps public landing and authenticated wallet flows coherent when exchange-rate or explorer data is needed. |
 | Indexer runtime | `INDEXER_CHAIN_ID`, `INDEXER_CHAIN_RPC_URL`, `INDEXER_INITIAL_BLOCK`, `INDEXER_MAX_BLOCKS_PER_RUN`, `INDEXER_DISCOVERY_POOL_LIMIT` | Drives `/api/indexer/touch`, `/api/indexer/status`, wallet stats, and operator health. |
 
+### Isolated Celo Sepolia pay-link preparation
+
+This lane is not a normal wallet release and does not inherit Production/mainnet readiness. Set `NEXT_PUBLIC_TCOIN_RUNTIME_TARGET=celo-sepolia-pay-link` only after the reviewed public manifest is available. The manifest must name chain `11142220`, exact cplTCOIN/mrTCOIN and Sarafu suite addresses, HTTPS RPC/explorer endpoints, and bounded transfer gas/fee ceilings. Missing or invalid configuration must leave chain operations unavailable; do not work around it with the legacy city registry or a mainnet address.
+
+Before any later deployment or mint execution:
+
+1. Freeze and review the source commit and `deploy-config.json` hash.
+2. Create three fresh disposable Celo Sepolia accounts through the approved wallet/operator tooling: issuer (the reviewed deployer/temporary writer), payer, and recipient. A local Foundry account can be created with `cast wallet new <secure-keystore-directory> <account-name>`; enter its password only at the hidden prompt. Keep each secret key in that wallet or the approved encrypted keystore; never export it into chat, a plan, shell history, repository files, CI variables, screenshots, or logs. Record only the public addresses in the reviewed plan. Review the exact deployer, vault owner, token admin, operational indexer, payer, recipient, and planned contract addresses; payer and recipient must differ from each other and from the issuer. Confirm the token admin can grant/revoke the intended temporary writer—ownership alone is not writer authority. The dedicated deploy script uses the reviewed public deployer with Foundry's external signer (`--account <name> --sender <public-address>`); it does not read `DEPLOYER_KEY`. If that signer is unavailable or does not match, stop rather than exporting a raw key.
+3. Produce a public plan with exact per-transaction gas limits/fee ceilings and a total maximum native-gas cost, then run `TCOIN_PAY_LINK_REVIEWED_COMMIT=<sha> pnpm ops:torontocoin:pay-link:plan <plan.json>`. This command validates only and never signs or broadcasts.
+4. Confirm the RPC reports chain `11142220` immediately before any separately authorised signing. Re-read deployed bytecode, six-decimal token identity, ownership/writers, registry/pool/adapter wiring, and zero pre-mint supply before approving the mint plan.
+5. Execute only under separate authority: set the cplTCOIN cap to `500_000_000`, grant the reviewed temporary writer, mint exactly `500_000_000` to the reviewed payer once, revoke the writer, and read back cap, total supply, payer balance, Mint receipt, and revocation. If interrupted, inspect those facts and resume only a missing step; never blindly remint. Demurrage can make the later visible balance lower than the exact Mint event/supply accounting.
+6. Keep pool seed, mrTCOIN mint, reserve mint, Mento, Buy, voucher, admin and indexer-worker execution at zero/off. Any request to enable one is a new scope decision.
+7. Only after the authorised Preview Edge host is `https://dev.tcoin.me`, create one `100.000000`-token request. Require the raw returned URL, QR value, copied value and opened URL to be the same unmodified `https://dev.tcoin.me/pay/...` value. Creating/resolving the link is not payment approval; consuming/paying remains separately gated.
+
+Preparation evidence must say explicitly that no deploy, mint, funding, payment, OTP, hosted configuration, or chain write occurred. Production and Celo mainnet behaviour remain separate release gates.
+
 ### Required when the related launch surface is enabled
 
 | Surface | Env vars | Notes |

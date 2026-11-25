@@ -192,12 +192,14 @@
         }
       }
     },
-    "celo-sepolia": {
+    "celo-sepolia-pay-link": {
       "chainId": 11142220,
       "rpcEnvVar": "CELO_SEPOLIA_RPC_URL",
       "explorerApiKeyEnvVar": "CELOSCAN_API_KEY",
+      "purpose": "pay-link-only",
       "roles": {
-        "governanceOwnsTokens": false
+        "governanceOwnsTokens": false,
+        "requireExplicitAddresses": true
       },
       "torontocoin": {
         "governance": {
@@ -241,24 +243,18 @@
         "reserves": {
           "cadm": {
             "assetId": "0x4341444d00000000000000000000000000000000000000000000000000000000",
-            "token": "0xF151c9a13b78C84f93f50B8b3bC689fedc134F60",
             "code": "CADm",
             "tokenDecimals": 18,
             "staleAfter": 86400,
-            "staticCadPrice18": 1000000000000000000
+            "staticCadPrice18": 1000000000000000000,
+            "deployToken": true,
+            "deployedTokenName": "Celo Sepolia Pay-Link Test Reserve",
+            "deployedTokenSymbol": "csCAD",
+            "deployedTokenMintAmount": 0
           }
         },
         "mento": {
-          "enabled": true,
-          "broker": "0xB9Ae2065142EB79b6c5EB1E8778F883fad6B07Ba",
-          "exchangeProvider": "0xeCB3C656C131fCd9bB8D1d80898716bD684feb78",
-          "cadmToken": "0xF151c9a13b78C84f93f50B8b3bC689fedc134F60",
-          "routeTokenIn": "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b",
-          "exchangeId": "0x517ccc3bcab9f35e2e24143a0c1809068efc649f740846cfb6a1c5703735c1ee",
-          "usdcToken": "0x01C5C0122039549AD1493B8220cABEdD739BC44E",
-          "usdmToken": "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b",
-          "usdcToUsdmExchangeId": "0xacc988382b66ee5456086643dcfd9a5ca43dd8f428f6ef22503d8b8013bcffd7",
-          "usdmToCadmExchangeId": "0x517ccc3bcab9f35e2e24143a0c1809068efc649f740846cfb6a1c5703735c1ee"
+          "enabled": false
         },
         "bootstrap": {
           "charity": {
@@ -280,14 +276,17 @@
           },
           "poolQuoteBps": 10000,
           "poolExecutionEnabled": true,
-          "initialPoolSeed": 1000000000000000000
+          "initialPoolSeed": 0
         },
         "scenarioB": {
-          "inputToken": "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b",
-          "inputAmount": 1000000000000000000,
+          "inputAmount": 0,
           "minReserveOut": 1,
           "minCplTcoinOut": 1,
           "executeBuy": false
+        },
+        "payLink": {
+          "mintAmount": 500000000,
+          "paymentAmount": 100000000
         }
       }
     }

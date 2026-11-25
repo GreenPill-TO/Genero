@@ -38,6 +38,12 @@ function getSafeIndexerTouchError(error: unknown) {
 
 export async function POST(req: Request) {
   try {
+    if (process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET === "celo-sepolia-pay-link") {
+      return NextResponse.json(
+        { error: "Indexer touch is disabled for the isolated Preview pay-link profile." },
+        { status: 409 }
+      );
+    }
     const supabase = createClient();
     const isLocalOrDevelopment = isLocalOrDevelopmentEnvironment();
     const {

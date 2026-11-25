@@ -27,6 +27,7 @@ import { useControlPlaneAccess } from "@shared/api/hooks/useControlPlaneAccess";
 import { useRouter } from "next/navigation";
 import { getMerchantApplicationStatus } from "@shared/lib/edge/merchantApplicationsClient";
 import { updateVoucherPreferences } from "@shared/lib/edge/voucherPreferencesClient";
+import { getTorontoCoinWalletRuntimeSelection } from "@shared/lib/contracts/torontocoinRuntime";
 import { toast } from "react-toastify";
 import {
   walletActionRowClass,
@@ -330,8 +331,11 @@ export function MoreTab({ tokenLabel = "TCOIN", onOpenHistory }: MoreTabProps) {
   const primaryBiaLabel =
     bootstrap?.options.bias.find((bia) => bia.id === bootstrap?.preferences.primaryBiaId)?.name ?? "Not set";
 
-  const explorerBaseUrl = process.env.NEXT_PUBLIC_EXPLORER_URL || "https://explorer.example.com/address/";
-  const explorerHref = senderWallet ? `${explorerBaseUrl}${senderWallet}` : null;
+  const runtimeSelection = getTorontoCoinWalletRuntimeSelection();
+  const explorerHref =
+    senderWallet && runtimeSelection.configured
+      ? `${runtimeSelection.runtime.explorerBaseUrl}/address/${senderWallet}`
+      : null;
   const publicUserRows = useMemo(() => {
     const cubidData = userData?.cubidData;
     const userRecord: Record<(typeof PUBLIC_USERS_COLUMNS)[number], unknown> = {

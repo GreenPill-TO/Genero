@@ -2,14 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPublicClient, formatUnits, http, type Address } from "viem";
 import { tokenAbi } from "./abi";
-import {
-  getActiveCityContracts,
-  getRpcUrlForChainId,
-} from "@shared/lib/contracts/cityContracts";
-import {
-  getTorontoCoinRuntimeConfig,
-  TORONTOCOIN_RUNTIME,
-} from "@shared/lib/contracts/torontocoinRuntime";
+import { getTorontoCoinWalletRuntimeOrThrow } from "@shared/lib/contracts/torontocoinRuntime";
 
 const publicClientCache = new Map<string, ReturnType<typeof createPublicClient>>();
 
@@ -45,27 +38,11 @@ export const useTokenBalance = (walletAddress: string | null) => {
     setError(null);
 
     try {
-      let tokenAddress: string;
-      let rpcUrl: string;
-      let chainId = TORONTOCOIN_RUNTIME.chainId;
-      let tokenDecimals = 18;
-
-      const torontoCoinRuntime = getTorontoCoinRuntimeConfig({
-        citySlug: process.env.NEXT_PUBLIC_CITYCOIN ?? "tcoin",
-        chainId: TORONTOCOIN_RUNTIME.chainId,
-      });
-
-      if (torontoCoinRuntime) {
-        tokenAddress = torontoCoinRuntime.cplTcoin.address;
-        rpcUrl = torontoCoinRuntime.rpcUrl;
-        chainId = torontoCoinRuntime.chainId;
-        tokenDecimals = torontoCoinRuntime.cplTcoin.decimals;
-      } else {
-        const activeContracts = await getActiveCityContracts();
-        tokenAddress = activeContracts.contracts.TCOIN;
-        chainId = activeContracts.chainId;
-        rpcUrl = getRpcUrlForChainId(chainId);
-      }
+      const runtime = getTorontoCoinWalletRuntimeOrThrow();
+      const tokenAddress = runtime.cplTcoin.address;
+      const rpcUrl = runtime.rpcUrl;
+      const chainId = runtime.chainId;
+      const tokenDecimals = runtime.cplTcoin.decimals;
 
       const client = getCachedPublicClient(chainId, rpcUrl);
 

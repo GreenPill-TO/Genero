@@ -235,6 +235,13 @@ vi.mock("@tcoin/wallet/components/modals/FutureAppFeaturesModal", () => ({
   FutureAppFeaturesModal: () => <div data-testid="future-features-modal" />,
 }));
 
+vi.mock("@shared/lib/contracts/torontocoinRuntime", () => ({
+  getTorontoCoinWalletRuntimeSelection: () => ({
+    configured: true,
+    runtime: { explorerBaseUrl: "https://celoscan.io" },
+  }),
+}));
+
 import { MoreTab } from "./MoreTab";
 
 describe("MoreTab", () => {
@@ -429,7 +436,7 @@ describe("MoreTab", () => {
     expect(screen.getByText(/What this wallet optimises for/i)).toBeTruthy();
     const explorerLink = screen.getByRole("link", { name: /View on Explorer/i });
     expect(explorerLink.getAttribute("href")).toBe(
-      "https://env.example/address/0xabc1234567890def1234567890abcdef1234567"
+      "https://celoscan.io/address/0xabc1234567890def1234567890abcdef1234567"
     );
   });
 

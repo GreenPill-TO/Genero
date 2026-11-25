@@ -111,6 +111,9 @@ function enrichTorontoCoinTracking(
 export async function getIndexerScopeStatusReadModel(
   options: IndexerScopeStatusReadOptions
 ): Promise<IndexerScopeStatus> {
+  if (process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET === "celo-sepolia-pay-link") {
+    throw new Error("Indexer status is unavailable for the isolated Preview pay-link profile.");
+  }
   const citySlug = normaliseCitySlug(options.citySlug) || getConfiguredCitySlug();
   const chainId = options.chainId ?? getConfiguredChainId();
   const requiredTokenAddress =

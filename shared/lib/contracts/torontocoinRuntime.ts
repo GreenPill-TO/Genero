@@ -19,7 +19,7 @@ export type TrackedTorontoCoinPool = {
 };
 
 export type TorontoCoinRuntimeConfig = {
-  target: "celo-mainnet";
+  target: "celo-mainnet" | "celo-sepolia-pay-link";
   citySlug: "tcoin";
   chainId: number;
   rpcUrl: string;
@@ -44,6 +44,35 @@ export type TorontoCoinRuntimeConfig = {
   validatedAt: number;
   deployedAt: number;
 };
+
+export type TorontoCoinWalletRuntimeConfig = Pick<
+  TorontoCoinRuntimeConfig,
+  | "target"
+  | "citySlug"
+  | "chainId"
+  | "rpcUrl"
+  | "explorerBaseUrl"
+  | "poolRegistry"
+  | "sarafuSwapPoolAdapter"
+  | "bootstrapSwapPool"
+> & {
+  purpose: "production" | "pay-link-only";
+  cplTcoin: TorontoCoinTokenMetadata;
+  mrTcoin: TorontoCoinTokenMetadata;
+  transferGasLimit: bigint;
+  maxFeePerGasWei: bigint;
+};
+
+export type TorontoCoinWalletRuntimeSelection =
+  | { configured: true; runtime: TorontoCoinWalletRuntimeConfig }
+  | { configured: false; reason: string };
+
+export class TorontoCoinWalletRuntimeUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TorontoCoinWalletRuntimeUnavailableError";
+  }
+}
 
 const CELO_MAINNET_RPC_URL = "https://forno.celo.org";
 const CELOSCAN_BASE_URL = "https://celoscan.io";
@@ -104,6 +133,194 @@ export const TORONTOCOIN_RUNTIME: TorontoCoinRuntimeConfig = {
   validatedAt: 1774220945,
 };
 
+const MAINNET_WALLET_RUNTIME: TorontoCoinWalletRuntimeConfig = {
+  target: TORONTOCOIN_RUNTIME.target,
+  purpose: "production",
+  citySlug: TORONTOCOIN_RUNTIME.citySlug,
+  chainId: TORONTOCOIN_RUNTIME.chainId,
+  rpcUrl: TORONTOCOIN_RUNTIME.rpcUrl,
+  explorerBaseUrl: TORONTOCOIN_RUNTIME.explorerBaseUrl,
+  poolRegistry: TORONTOCOIN_RUNTIME.poolRegistry,
+  sarafuSwapPoolAdapter: TORONTOCOIN_RUNTIME.sarafuSwapPoolAdapter,
+  bootstrapSwapPool: TORONTOCOIN_RUNTIME.bootstrapSwapPool,
+  mrTcoin: TORONTOCOIN_RUNTIME.mrTcoin,
+  cplTcoin: TORONTOCOIN_RUNTIME.cplTcoin,
+  transferGasLimit: BigInt(250_000),
+  maxFeePerGasWei: BigInt(100_000_000_000),
+};
+
+const ADDRESS_KEYS = [
+  "poolRegistry",
+  "sarafuSwapPoolAdapter",
+  "bootstrapSwapPool",
+] as const;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+function parseHttpsUrl(value: unknown, key: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${key} must be an HTTPS URL.`);
+  }
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || !url.hostname) {
+      throw new Error("invalid protocol");
+    }
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    throw new Error(`${key} must be an HTTPS URL.`);
+  }
+}
+
+function parseNonZeroAddress(value: unknown, key: string): Address {
+  const address = getAddress(String(value));
+  if (address.toLowerCase() === ZERO_ADDRESS) {
+    throw new Error(`${key} must be a non-zero address.`);
+  }
+  return address;
+}
+
+function parsePositiveBigInt(value: unknown, key: string): bigint {
+  if (typeof value !== "string" || !/^[1-9][0-9]*$/.test(value)) {
+    throw new Error(`${key} must be a positive base-10 integer string.`);
+  }
+  return BigInt(value);
+}
+
+function parsePreviewToken(value: unknown, key: string): TorontoCoinTokenMetadata {
+  if (!value || typeof value !== "object") {
+    throw new Error(`${key} is required.`);
+  }
+  const token = value as Record<string, unknown>;
+  if (token.decimals !== 6) {
+    throw new Error(`${key}.decimals must be 6.`);
+  }
+  if (typeof token.symbol !== "string" || typeof token.name !== "string") {
+    throw new Error(`${key} identity is incomplete.`);
+  }
+  const address = parseNonZeroAddress(token.address, `${key}.address`);
+  return {
+    address,
+    symbol: token.symbol,
+    name: token.name,
+    decimals: 6,
+    explorerPath: `/token/${address}`,
+  };
+}
+
+export function parseTorontoCoinPreviewRuntimeManifest(
+  rawManifest: string
+): TorontoCoinWalletRuntimeConfig {
+  const parsed = JSON.parse(rawManifest) as Record<string, unknown>;
+  if (parsed.target !== "celo-sepolia-pay-link" || parsed.purpose !== "pay-link-only") {
+    throw new Error("Preview runtime must target the dedicated pay-link-only profile.");
+  }
+  if (parsed.chainId !== 11142220) {
+    throw new Error("Preview runtime chainId must be Celo Sepolia (11142220).");
+  }
+  const rpcUrl = parseHttpsUrl(parsed.rpcUrl, "Preview runtime rpcUrl");
+  const explorerBaseUrl = parseHttpsUrl(
+    parsed.explorerBaseUrl,
+    "Preview runtime explorerBaseUrl"
+  );
+
+  const addresses = Object.fromEntries(
+    ADDRESS_KEYS.map((key) => [key, parseNonZeroAddress(parsed[key], key)])
+  ) as Record<(typeof ADDRESS_KEYS)[number], Address>;
+  const cplTcoin = parsePreviewToken(parsed.cplTcoin, "cplTcoin");
+  const mrTcoin = parsePreviewToken(parsed.mrTcoin, "mrTcoin");
+  if (cplTcoin.symbol !== "cplTCOIN-cs") {
+    throw new Error("Preview wallet token must be the intended cplTCOIN-cs deployment.");
+  }
+  if (mrTcoin.symbol !== "mrTCOIN-cs") {
+    throw new Error("Preview internal token must be the intended mrTCOIN-cs deployment.");
+  }
+  if (cplTcoin.address === mrTcoin.address) {
+    throw new Error("Preview cplTCOIN and mrTCOIN addresses must be distinct.");
+  }
+
+  return {
+    target: "celo-sepolia-pay-link",
+    purpose: "pay-link-only",
+    citySlug: "tcoin",
+    chainId: 11142220,
+    rpcUrl,
+    explorerBaseUrl,
+    ...addresses,
+    cplTcoin,
+    mrTcoin,
+    transferGasLimit: parsePositiveBigInt(parsed.transferGasLimit, "transferGasLimit"),
+    maxFeePerGasWei: parsePositiveBigInt(parsed.maxFeePerGasWei, "maxFeePerGasWei"),
+  };
+}
+
+export function getTorontoCoinWalletRuntimeSelection(input: {
+  target?: string | null;
+  manifest?: string | null;
+  appEnvironment?: string | null;
+  citySlug?: string | null;
+} = {}): TorontoCoinWalletRuntimeSelection {
+  const citySlug = (input.citySlug ?? process.env.NEXT_PUBLIC_CITYCOIN ?? "").trim().toLowerCase();
+  if (citySlug !== "tcoin") {
+    return {
+      configured: false,
+      reason: `TorontoCoin wallet runtime does not support city scope "${citySlug || "unset"}".`,
+    };
+  }
+  const appEnvironment = (
+    input.appEnvironment ?? process.env.NEXT_PUBLIC_APP_ENVIRONMENT ?? ""
+  ).trim();
+  const target = (input.target ?? process.env.NEXT_PUBLIC_TCOIN_RUNTIME_TARGET ?? "").trim();
+  if (!target) {
+    return {
+      configured: false,
+      reason: "TorontoCoin wallet target is not configured for this environment.",
+    };
+  }
+  if (target === "celo-mainnet") {
+    if (appEnvironment !== "production") {
+      return {
+        configured: false,
+        reason: "Celo mainnet requires the explicit Production app environment.",
+      };
+    }
+    return { configured: true, runtime: MAINNET_WALLET_RUNTIME };
+  }
+  if (target !== "celo-sepolia-pay-link") {
+    return { configured: false, reason: `Unsupported TorontoCoin wallet target: ${target}.` };
+  }
+
+  if (appEnvironment === "production") {
+    return {
+      configured: false,
+      reason: "The Celo Sepolia pay-link profile is disabled in Production.",
+    };
+  }
+
+  const manifest = input.manifest ?? process.env.NEXT_PUBLIC_TCOIN_RUNTIME_MANIFEST;
+  if (!manifest?.trim()) {
+    return {
+      configured: false,
+      reason: "Preview wallet runtime is not configured. Add the reviewed Celo Sepolia manifest.",
+    };
+  }
+  try {
+    return { configured: true, runtime: parseTorontoCoinPreviewRuntimeManifest(manifest) };
+  } catch (error) {
+    return {
+      configured: false,
+      reason: `Preview wallet runtime is invalid: ${error instanceof Error ? error.message : "unknown error"}`,
+    };
+  }
+}
+
+export function getTorontoCoinWalletRuntimeOrThrow(): TorontoCoinWalletRuntimeConfig {
+  const selection = getTorontoCoinWalletRuntimeSelection();
+  if (!selection.configured) {
+    throw new TorontoCoinWalletRuntimeUnavailableError(selection.reason);
+  }
+  return selection.runtime;
+}
+
 export function isTorontoCoinRuntimeScope(input?: {
   citySlug?: string | null;
   chainId?: number | null;
@@ -125,11 +342,11 @@ export function getTorontoCoinRpcUrl(): string {
 }
 
 export function getTorontoCoinExplorerTxUrl(txHash: string): string {
-  return `${TORONTOCOIN_RUNTIME.explorerBaseUrl}/tx/${txHash}`;
+  return `${getTorontoCoinWalletRuntimeOrThrow().explorerBaseUrl}/tx/${txHash}`;
 }
 
 export function getTorontoCoinExplorerAddressUrl(address: Address): string {
-  return `${TORONTOCOIN_RUNTIME.explorerBaseUrl}/address/${address}`;
+  return `${getTorontoCoinWalletRuntimeOrThrow().explorerBaseUrl}/address/${address}`;
 }
 
 export function getTorontoCoinWalletToken(input?: {

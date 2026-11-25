@@ -174,6 +174,7 @@ export const useSendMoney = ({
     setError(null);
 
     try {
+      await resolveTokenRuntimeConfig();
       const sharePayload = await fetchWalletShares(cubidUserId);
       const runtime = await loadSendMoneyRuntime();
       return await runtime.burnToken({
@@ -227,6 +228,7 @@ export const useSendMoney = ({
     setError(null);
 
     try {
+      await resolveTokenRuntimeConfig();
       const sharePayload = await fetchWalletShares(cubidUserId);
       const runtime = await loadSendMoneyRuntime();
       const result = await runtime.sendTokenTransfer({
@@ -288,6 +290,7 @@ export const useSendMoney = ({
     setError(null);
 
     try {
+      await resolveTokenRuntimeConfig();
       const sharePayload = await fetchWalletShares(cubidUserId);
       const runtime = await loadSendMoneyRuntime();
       return await runtime.executeVoucherTransfer({
